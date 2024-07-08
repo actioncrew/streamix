@@ -1,24 +1,19 @@
 # Streamix
 
-This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.0.0.
 
-## Code scaffolding
+  [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
+  [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
+  [![npm downloads](https://img.shields.io/npm/dm/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
+  [![min+zipped](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)
+  
+Streamix is a lightweight and naive implementation of reactive programming concepts, similar to RxJS. It provides basic functionality for creating, subscribing to, and combining asynchronous data streams using Streams and Emissions.
 
-Run `ng generate component component-name --project streamix` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module --project streamix`.
-> Note: Don't forget to add `--project streamix` or else it will be added to the default project in your `angular.json` file. 
+A Stream is a sequence of values that can be observed. Streams can emit values either synchronously or asynchronously.
 
-## Build
+An Emission represents a value emitted by a Stream. Emissions can carry additional metadata, such as whether the emission is cancelled or if there was an error.
 
-Run `ng build streamix` to build the project. The build artifacts will be stored in the `dist/` directory.
+Operators are components that can be applied to the stream data. They can be used to transform, filter, and combine streams of data.
 
-## Publishing
+A Subject is a special type of Stream that allows manually dispatch emissions. Subjects can be used to share a single execution path among multiple subscribers.
 
-After building your library with `ng build streamix`, go to the dist folder `cd dist/streamix` and run `npm publish`.
-
-## Running unit tests
-
-Run `ng test streamix` to execute the unit tests via [Karma](https://karma-runner.github.io).
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Streamix is ideal for those who need a straightforward way to handle asynchronous data without the complexity of more advanced libraries. It is intended as a lightweight alternative to RxJS for simpler use cases.
