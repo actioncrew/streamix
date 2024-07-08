@@ -10,8 +10,18 @@ export abstract class AbstractStream {
   isCancelled: boolean = false;
   isStopRequested: boolean = false;
 
-  isUnsubscribed = new Promisified<boolean>(false);
-  isStopped = new Promisified<boolean>(false);
+  _isStopped = new Promisified<boolean>(false);
+  _isUnsubscribed =  new Promisified<boolean>(false);
+
+  get isUnsubscribed(): Promisified<boolean> {
+    if (this.source === this) { return this._isUnsubscribed; }
+    else return this.source._isUnsubscribed;
+  }
+
+  get isStopped(): Promisified<boolean> {
+    if (this.source === this) { return this._isStopped; }
+    else return this.source._isStopped;
+  }
 
   protected subscribers: ((value: any) => any)[] = [];
   protected head?: AbstractOperator;
