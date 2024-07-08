@@ -16,8 +16,8 @@ export class Promisified<T> {
     if (this._promise.then === undefined) {
       throw new Error('Promise already settled');
     }
-    this._resolve(value);
     this._value = value;
+    this._resolve(value);
   }
 
   public reject(reason?: any): void {

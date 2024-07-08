@@ -1,7 +1,9 @@
+import { Subscription } from '../abstractions';
 import { AbstractStream } from '../abstractions/stream';
 
 export class CombineLatestStream extends AbstractStream {
-  private readonly sources: AbstractStream[];
+  private readonly sources: AbstractStream[] = [];
+  private subscriptions: Subscription[] = [];
   private values: any[];
   private remaining: number;
 
@@ -15,7 +17,13 @@ export class CombineLatestStream extends AbstractStream {
   run(): Promise<void> {
     return new Promise<void>((resolve) => {
       this.sources.forEach((source, index) => {
-        source.subscribe((value: any) => {
+        this.subscriptions.push(source.subscribe((value: any) => {
+          if(this.sources.some(source => source.isStopped.value || source.isCancelled || source.isAutoComplete)) {
+            this.isStopped.resolve(true);
+            resolve();
+            return;
+          }
+
           this.values[index].hasValue = true;
           this.values[index].value = value;
 
@@ -26,13 +34,25 @@ export class CombineLatestStream extends AbstractStream {
           if (this.remaining === 0) {
             this.emit({ value: [...this.values.map(({value}) => value)] });
           }
-        });
+        }));
       });
 
-      if(this.sources.some(source => source.isStopped.value || source.isCancelled || source.isAutoComplete || source.isUnsubscribed.value)) {
-        this.isStopped.resolve(true);
-        resolve();
-      }
+      this.isUnsubscribed.promise.then(() => {
+        if(!this.isStopRequested) {
+          this.isStopRequested = true;
+          return this.isStopped.promise.then(() => resolve());
+        } else {
+          return Promise.resolve();
+        }
+      });
+
+      this.isStopped.promise.then(() => {
+        this.subscriptions.forEach((subscription) => {
+          subscription.unsubscribe();
+        });
+
+        this.isUnsubscribed.resolve(true);
+      });
     });
   }
 
