@@ -1,16 +1,17 @@
 {
-  "name": "rxjs-phantom",
-  "version": "0.0.0",
+  "name": "streamix",
+  "version": "0.0.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "minify": "node terser.mjs",
+    "bundle": "dts-bundle-generator --o ./dist/streamix/@actioncrew/streamix.d.ts ./dist/streamix/index.d.ts && npm run minify"
   },
   "private": true,
   "dependencies": {
-    "@actioncrew/actionstack": "^1.0.26",
     "@angular/animations": "^18.0.0",
     "@angular/common": "^18.0.0",
     "@angular/compiler": "^18.0.0",
@@ -28,6 +29,7 @@
     "@angular/cli": "^18.0.1",
     "@angular/compiler-cli": "^18.0.0",
     "@types/jasmine": "~5.1.0",
+    "dts-bundle-generator": "^9.5.1",
     "jasmine-core": "~5.1.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",

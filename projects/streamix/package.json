@@ -1,12 +1,22 @@
 {
-  "name": "streamix",
+  "name": "@actioncrew/streamix",
   "version": "0.0.1",
-  "peerDependencies": {
-    "@angular/common": "^18.0.0",
-    "@angular/core": "^18.0.0"
-  },
+  "description": "Lightweight RxJS alternative",
+  "license": "MIT",
+  "keywords": [
+    "RxJS",
+    "reactive"
+  ],
   "dependencies": {
     "tslib": "^2.3.0"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "main": "public-api.ts",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/actioncrew/streamix.git"
+  },
+  "author": "Oleksii Shepel",
+  "email": "oleksii.shepel@outlook.com"
 }
