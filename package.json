@@ -10,6 +10,7 @@
   },
   "private": true,
   "dependencies": {
+    "@actioncrew/actionstack": "^1.0.26",
     "@angular/animations": "^18.0.0",
     "@angular/common": "^18.0.0",
     "@angular/compiler": "^18.0.0",
@@ -33,6 +34,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "ng-packagr": "^18.0.0",
     "typescript": "~5.4.2"
   }
 }
