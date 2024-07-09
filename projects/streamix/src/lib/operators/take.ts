@@ -1,3 +1,4 @@
+import { AbstractStream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { AbstractOperator } from '../abstractions/operator';
 
@@ -10,12 +11,13 @@ export class TakeOperator extends AbstractOperator {
     this.count = count;
   }
 
-  handle(request: Emission): Promise<Emission> {
+  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
     if (this.emittedCount < this.count) {
       this.emittedCount++;
-      return this.next ? this.next.handle(request) : Promise.resolve(request);
+      return this.next ? this.next.handle(request, stream) : Promise.resolve(request);
     } else {
-      return Promise.resolve({ ...request, isPhantom: true });
+      request.isPhantom = true;
+      return Promise.resolve(request);
     }
   }
 }

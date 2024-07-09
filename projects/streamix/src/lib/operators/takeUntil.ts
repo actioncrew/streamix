@@ -10,8 +10,8 @@ export class TakeUntilOperator extends AbstractOperator {
     this.notifier = notifier;
   }
 
-  handle(request: Emission, cancellationToken?: boolean): Promise<Emission> {
-    if (cancellationToken) {
+  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled) {
       return Promise.resolve({ ...request, isCancelled: true });
     }
 
@@ -22,7 +22,7 @@ export class TakeUntilOperator extends AbstractOperator {
       });
 
       if (this.next) {
-        this.next.handle(request, cancellationToken).then(resolve);
+        this.next.handle(request, stream).then(resolve);
       } else {
         resolve(request);
       }

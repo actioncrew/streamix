@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { combineLatest, interval, timer } from 'streamix';
+import { combineLatest, concat, interval, take, timer } from 'streamix';
 
 @Component({
   selector: 'app-root',
@@ -14,11 +14,12 @@ export class AppComponent {
   firstTimer = interval(50); // emit 0, 1, 2... every second, starting immediately
   secondTimer = timer(25, 50); // emit 0, 1, 2... every second, starting 0.5 seconds from now
 
-  combinedTimers = combineLatest([this.firstTimer, this.secondTimer]).subscribe((value) => console.log(value));
-
+  combinedTimers = combineLatest([interval(50), timer(25, 50)]).pipe(take(20));
+  combinedTimers2 = combineLatest([this.firstTimer, this.secondTimer]).pipe(take(20));
+  concatStreams = concat(this.combinedTimers, this.combinedTimers2).subscribe((value) => console.log(value));
   async ngOnInit(): Promise<void> {
     let timeout = setTimeout(() => {
-      this.combinedTimers.unsubscribe();
-    }, 5000);
+      this.concatStreams.unsubscribe();
+    }, 10000);
   }
 }

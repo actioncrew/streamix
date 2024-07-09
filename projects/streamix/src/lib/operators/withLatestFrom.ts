@@ -15,8 +15,8 @@ export class WithLatestFromOperator extends AbstractOperator {
     });
   }
 
-  handle(request: Emission, cancellationToken?: boolean): Promise<Emission> {
-    if (cancellationToken) {
+  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled) {
       return Promise.resolve({ ...request, isCancelled: true });
     }
 
@@ -31,7 +31,7 @@ export class WithLatestFromOperator extends AbstractOperator {
       error: undefined
     };
 
-    return this.next?.handle(emission, cancellationToken) ?? Promise.resolve(emission);
+    return this.next?.handle(emission, stream) ?? Promise.resolve(emission);
   }
 }
 

@@ -30,13 +30,18 @@ export class ConcatStream extends AbstractStream {
         this.emit({ value });
       });
 
-      this.currentSubscription.unsubscribe = () => {
+      currentSource.isStopped.promise.then(() => {
         resolve();
-      };
-    }).then(() => {
-      this.currentSourceIndex++;
-      return this.run(); // Continue emitting from the next source
+        this.currentSourceIndex++;
+        this.run(); // Continue emitting from the next source
+      });
     });
+  }
+
+  override unsubscribe(): void {
+    if (this.currentSubscription) {
+      this.currentSubscription.unsubscribe();
+    }
   }
 }
 

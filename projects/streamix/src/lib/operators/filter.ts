@@ -1,3 +1,4 @@
+import { AbstractStream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { AbstractOperator } from '../abstractions/operator';
 
@@ -10,8 +11,8 @@ export class FilterOperator extends AbstractOperator {
     this.predicate = predicate;
   }
 
-  handle(request: Emission, cancellationToken?: boolean): Promise<Emission> {
-    if (cancellationToken) {
+  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled) {
       return Promise.resolve({ ...request, isCancelled: true });
     }
 
@@ -23,7 +24,7 @@ export class FilterOperator extends AbstractOperator {
     if(isPhantom) {
       return Promise.resolve(emission);
     } else {
-      return this.next ? this.next.handle(emission, cancellationToken) : Promise.resolve(emission);
+      return this.next ? this.next.handle(emission, stream) : Promise.resolve(emission);
     }
   }
 }

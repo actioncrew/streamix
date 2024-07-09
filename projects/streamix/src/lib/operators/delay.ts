@@ -1,3 +1,4 @@
+import { AbstractStream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { AbstractOperator } from '../abstractions/operator';
 
@@ -9,8 +10,8 @@ export class DelayOperator extends AbstractOperator {
     this.delayTime = delayTime;
   }
 
-  handle(request: Emission, cancellationToken?: boolean): Promise<Emission> {
-    if (cancellationToken) {
+  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled) {
       return Promise.resolve({ ...request, isCancelled: true });
     }
 
@@ -18,7 +19,7 @@ export class DelayOperator extends AbstractOperator {
       setTimeout(() => {
         resolve(request);
       }, this.delayTime);
-    }).then((emission) => this.next?.handle(emission, cancellationToken) ?? emission);
+    }).then((emission) => this.next?.handle(emission, stream) ?? emission);
   }
 }
 

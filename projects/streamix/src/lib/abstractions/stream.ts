@@ -10,18 +10,8 @@ export abstract class AbstractStream {
   isCancelled: boolean = false;
   isStopRequested: boolean = false;
 
-  _isStopped = new Promisified<boolean>(false);
-  _isUnsubscribed =  new Promisified<boolean>(false);
-
-  get isUnsubscribed(): Promisified<boolean> {
-    if (this.source === this) { return this._isUnsubscribed; }
-    else return this.source._isUnsubscribed;
-  }
-
-  get isStopped(): Promisified<boolean> {
-    if (this.source === this) { return this._isStopped; }
-    else return this.source._isStopped;
-  }
+  isStopped = new Promisified<boolean>(false);
+  isUnsubscribed =  new Promisified<boolean>(false);
 
   protected subscribers: ((value: any) => any)[] = [];
   protected head?: AbstractOperator;
@@ -29,7 +19,7 @@ export abstract class AbstractStream {
 
   protected async emit(emission: Emission): Promise<void> {
     try {
-      let promise = this.head ? this.head.handle(emission, this.isCancelled) : Promise.resolve(emission);
+      let promise = this.head ? this.head.handle(emission, this) : Promise.resolve(emission);
       emission = await promise;
 
       if (emission.isPhantom || emission.isCancelled || emission.isFailed) {
@@ -48,12 +38,12 @@ export abstract class AbstractStream {
 
   cancel(): Promise<void> {
     this.isCancelled = true;
-    return this.isStopped.promise.then(() => Promise.resolve());
+    return this.isStopped.promise.then(() => this.source.isStopped.resolve(true)).then(() => Promise.resolve());
   }
 
   complete(): Promise<void> {
     this.isStopRequested = true;
-    return this.isStopped.promise.then(() => Promise.resolve());
+    return this.isStopped.promise.then(() => this.source.isStopped.resolve(true)).then(() => Promise.resolve());
   }
 
   pipe(...operators: AbstractOperator[]): AbstractStream {
