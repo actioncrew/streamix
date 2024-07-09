@@ -11,37 +11,30 @@ export class ConcatStream extends AbstractStream {
     this.sources = sources;
   }
 
-  run(): Promise<void> {
+  async run(): Promise<void> {
+    while (this.currentSourceIndex < this.sources.length && !this.isCancelled) {
+      await this.runCurrentSource();
+      this.currentSourceIndex++;
+    }
+
     if (this.currentSourceIndex >= this.sources.length) {
       this.isAutoComplete = true;
-      return Promise.resolve();
     }
-
-    const currentSource = this.sources[this.currentSourceIndex];
-
-    // If there's an ongoing subscription, unsubscribe to ensure we move to the next source
-    if (this.currentSubscription) {
-      this.currentSubscription.unsubscribe();
-      this.currentSubscription = undefined;
-    }
-
-    return new Promise<void>((resolve) => {
-      this.currentSubscription = currentSource.subscribe((value: any) => {
-        this.emit({ value });
-      });
-
-      currentSource.isStopped.promise.then(() => {
-        resolve();
-        this.currentSourceIndex++;
-        this.run(); // Continue emitting from the next source
-      });
-    });
   }
 
-  override unsubscribe(): void {
-    if (this.currentSubscription) {
-      this.currentSubscription.unsubscribe();
-    }
+  private async runCurrentSource(): Promise<void> {
+    const currentSource = this.sources[this.currentSourceIndex];
+
+    this.currentSubscription = currentSource.subscribe((value: any) => {
+      this.emit({ value });
+    });
+
+    await currentSource.isStopped.promise;
+    this.currentSubscription.unsubscribe();
+  }
+
+  override cancel(): Promise<void> {
+    return super.cancel();
   }
 }
 
