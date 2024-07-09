@@ -69,7 +69,8 @@ export abstract class AbstractStream {
 
   protected unsubscribe(callback: (value: any) => any): void {
     this.subscribers = this.subscribers.filter(subscriber => subscriber !== callback);
-    if (this.subscribers.length === 0 && !this.isAutoComplete) {
+    if (this.subscribers.length === 0) {
+      this.isStopRequested = true;
       this.isUnsubscribed.resolve(true);
     }
   }
