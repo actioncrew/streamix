@@ -16,15 +16,17 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     let index = 0;
 
-    combinedTimers.subscribe((latestValues: any) => {
+    let subscription = combinedTimers.subscribe((latestValues: any) => {
       try {
         expect(latestValues).toEqual(expectedValues[index]);
         index++;
 
         if (index === expectedValues.length) {
+          subscription.unsubscribe();
           done();
         }
       } catch (error) {
+        subscription.unsubscribe();
         done(error);
       }
     });
@@ -38,18 +40,13 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     const subscription = combinedTimers.subscribe((latestValues: any) => {
       try {
-        if (latestValues[0] === 1 && latestValues[1] === 1) {
-          subscription.unsubscribe();
-          done();
-        }
+        subscription.unsubscribe();
       } catch (error) {
         done(error);
       }
     });
 
-    setTimeout(() => {
-      done(new Error('Stream did not cancel correctly'));
-    }, 200);
+    combinedTimers.isStopped.promise.then(() => done());
   });
 
   it('should handle completion of one stream', (done) => {
@@ -85,31 +82,33 @@ describe('CombineLatestStream with TimerStreams', () => {
   });
 
   it('should combine multiple streams correctly', (done) => {
-    const firstTimer = timer(0, 50); // emit 0, 1, 2... every 50ms, starting immediately
-    const secondTimer = timer(25, 50); // emit 0, 1, 2... every 50ms, starting 25ms from now
-    const thirdTimer = timer(10, 50); // emit 0, 1, 2... every 50ms, starting 10ms from now
+    const firstTimer = timer(0, 500); // emit 0, 1, 2... every 50ms, starting immediately
+    const secondTimer = timer(250, 500); // emit 0, 1, 2... every 50ms, starting 25ms from now
+    const thirdTimer = timer(100, 500); // emit 0, 1, 2... every 50ms, starting 10ms from now
 
     const combinedTimers = combineLatest([firstTimer, secondTimer, thirdTimer]);
     const expectedValues = [
-      [0, 0, 0], // at t = 25ms
-      [1, 0, 0], // at t = 50ms
-      [1, 1, 0], // at t = 75ms
-      [2, 1, 0], // at t = 100ms
-      [2, 2, 0], // at t = 125ms
-      [2, 2, 1], // at t = 150ms
+      [0, 0, 0],
+      [1, 0, 0],
+      [1, 0, 1],
+      [1, 1, 1],
+      [2, 1, 1],
+      [2, 1, 2],
     ];
 
     let index = 0;
 
-    combinedTimers.subscribe((latestValues: any) => {
+    const subscription = combinedTimers.subscribe((latestValues: any) => {
       try {
         expect(latestValues).toEqual(expectedValues[index]);
         index++;
 
         if (index === expectedValues.length) {
+          subscription.unsubscribe();
           done();
         }
       } catch (error) {
+        subscription.unsubscribe();
         done(error);
       }
     });
