@@ -13,18 +13,16 @@ export class FilterOperator extends AbstractOperator {
 
   handle(request: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled) {
-      return Promise.resolve({ ...request, isCancelled: true });
+      request.isCancelled = true;
+      return Promise.resolve(request);
     }
 
-    const result = this.predicate(request.value);
-    const value = result ? request.value : undefined;
-    const isPhantom = !result;
-    const emission: Emission = { value, isCancelled: false, isPhantom, error: undefined };
+    request.isPhantom = !this.predicate(request.value);
 
-    if(isPhantom) {
-      return Promise.resolve(emission);
+    if(!request.isPhantom) {
+      return this.next ? this.next.handle(request, stream) : Promise.resolve(request);
     } else {
-      return this.next ? this.next.handle(emission, stream) : Promise.resolve(emission);
+      return Promise.resolve(request);
     }
   }
 }
