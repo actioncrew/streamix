@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { BehaviorSubject, combineLatest, interval, map, take } from 'streamix';
+import { combineLatest, interval, timer } from 'streamix';
 
 @Component({
   selector: 'app-root',
@@ -10,22 +10,15 @@ import { BehaviorSubject, combineLatest, interval, map, take } from 'streamix';
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  title = 'rxjs-phantom';
-  subject = new BehaviorSubject(0);
-  promise = this.subject.pipe(
-    take(5),
-    map(m => m * 2)
-  );
+  title = 'streamix';
+  firstTimer = interval(50); // emit 0, 1, 2... every second, starting immediately
+  secondTimer = timer(25, 50); // emit 0, 1, 2... every second, starting 0.5 seconds from now
 
-  promise2 = combineLatest(interval(100), this.promise).pipe(
-    map(([value, value2]) => value),
-    map(m => m * 2)
-  ).subscribe((value) => console.log(value));
+  combinedTimers = combineLatest([this.firstTimer, this.secondTimer]).subscribe((value) => console.log(value));
 
   async ngOnInit(): Promise<void> {
-    this.subject.next(1);
-    this.subject.next(2);
-    this.subject.next(3);
-    this.subject.complete();
+    let timeout = setTimeout(() => {
+      this.combinedTimers.unsubscribe();
+    }, 5000);
   }
 }

@@ -2,27 +2,33 @@ import { AbstractStream } from '../abstractions/stream';
 
 export class TimerStream extends AbstractStream {
   private delayMs: number;
-  private timeoutId: any | null;
+  private intervalId: any | null;
+  private intervalMs: number;
+  private value: number;
 
-  constructor(delayMs: number) {
+  constructor(delayMs: number, intervalMs: number) {
     super();
     this.delayMs = delayMs;
-    this.timeoutId = null;
+    this.intervalMs = intervalMs;
+    this.intervalId = null;
+    this.value = 0;
   }
 
   run(): Promise<void> {
     return new Promise<void>((resolve) => {
-      this.timeoutId = setTimeout(() => {
-        this.emit({ value: 0 }).then(() => {
-          this.isAutoComplete = true; // Mark the stream as finished after emitting
-          resolve();
+      setTimeout(() => {
+        this.emit({ value: this.value }).then(() => {
+          this.intervalId = setInterval(() => {
+            this.value++;
+            this.emit({ value: this.value });
+          }, this.intervalMs);
         });
       }, this.delayMs);
 
       this.unsubscribe = () => {
-        if (this.timeoutId) {
-          clearTimeout(this.timeoutId);
-          this.timeoutId = null;
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = null;
           this.isUnsubscribed.resolve(true);
           resolve();
         }
@@ -31,6 +37,6 @@ export class TimerStream extends AbstractStream {
   }
 }
 
-export function timer(delayMs: number) {
-  return new TimerStream(delayMs);
+export function timer(delayMs: number, interval: number) {
+  return new TimerStream(delayMs, interval);
 }
