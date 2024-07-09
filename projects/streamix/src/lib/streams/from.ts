@@ -24,7 +24,7 @@ export class FromStream extends AbstractStream {
       return super.emit({ value }).then(() => emitNext());
     };
 
-    return emitNext().then(() => { this.isAutoComplete = true; });
+    return emitNext();
   }
 }
 
