@@ -15,7 +15,8 @@ export class SkipOperator extends AbstractOperator {
       return this.next ? this.next.handle(request, stream) : Promise.resolve(request);
     } else {
       this.count--;
-      return Promise.resolve({ ...request, isPhantom: true });
+      request.isPhantom = true;
+      return Promise.resolve(request);
     }
   }
 }

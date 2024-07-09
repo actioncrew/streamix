@@ -38,12 +38,14 @@ export abstract class AbstractStream {
 
   cancel(): Promise<void> {
     this.isCancelled = true;
-    return this.isStopped.promise.then(() => this.source.isStopped.resolve(true)).then(() => Promise.resolve());
+    this.source.isStopRequested = true;
+    return this.isStopped.promise.then(() => this.source.isStopped.promise).then(() => Promise.resolve());
   }
 
   complete(): Promise<void> {
     this.isStopRequested = true;
-    return this.isStopped.promise.then(() => this.source.isStopped.resolve(true)).then(() => Promise.resolve());
+    this.source.isStopRequested = true;
+    return this.isStopped.promise.then(() => this.source.isStopped.promise).then(() => Promise.resolve());
   }
 
   pipe(...operators: AbstractOperator[]): AbstractStream {
