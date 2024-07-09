@@ -1,6 +1,7 @@
 import { Emission } from './emission';
+import { AbstractStream } from './stream';
 
 export abstract class AbstractOperator {
-  abstract handle(request: Emission, cancellationToken?: boolean): Promise<Emission>;
+  abstract handle(request: Emission, stream: AbstractStream): Promise<Emission>;
   next?: AbstractOperator;
 }

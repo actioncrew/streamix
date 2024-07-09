@@ -10,8 +10,8 @@ export class MergeMapOperator extends AbstractOperator {
     this.project = project;
   }
 
-  handle(request: Emission, cancellationToken?: boolean): Promise<Emission> {
-    if (cancellationToken) {
+  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled) {
       return Promise.resolve({ ...request, isCancelled: true });
     }
 
@@ -19,7 +19,7 @@ export class MergeMapOperator extends AbstractOperator {
     return new Promise((resolve, reject) => {
       innerStream.subscribe(async (innerValue: any) => {
         try {
-          await this.next?.handle({ value: innerValue, isCancelled: false, isPhantom: false, error: undefined }, cancellationToken);
+          await this.next?.handle({ value: innerValue, isCancelled: false, isPhantom: false, error: undefined }, stream);
         } catch (error) {
           reject(error);
         }

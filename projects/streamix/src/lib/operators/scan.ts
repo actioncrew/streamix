@@ -1,3 +1,4 @@
+import { AbstractStream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { AbstractOperator } from '../abstractions/operator';
 
@@ -13,15 +14,15 @@ export class ScanOperator extends AbstractOperator {
     this.accumulatedValue = seed;
   }
 
-  handle(request: Emission, cancellationToken?: boolean): Promise<Emission> {
-    if (cancellationToken) {
+  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled) {
       return Promise.resolve({ ...request, isCancelled: true });
     }
 
     this.accumulatedValue = this.accumulator(this.accumulatedValue, request.value!);
     const emission = { value: this.accumulatedValue, isCancelled: false, isPhantom: false, error: undefined };
 
-    return this.next?.handle(emission, cancellationToken) ?? Promise.resolve(emission);
+    return this.next?.handle(emission, stream) ?? Promise.resolve(emission);
   }
 }
 

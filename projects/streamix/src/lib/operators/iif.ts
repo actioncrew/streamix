@@ -11,14 +11,14 @@ export class IifOperator extends AbstractOperator {
     super();
   }
 
-  handle(request: Emission, cancellationToken?: boolean): Promise<Emission> {
+  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
     const selectedStream = this.condition() ? this.trueStream : this.falseStream;
     return new Promise<Emission>((resolve) => {
       selectedStream.subscribe((value: any) => {
         resolve({ value, isCancelled: false, isPhantom: false, error: undefined });
       });
     }).then((emission) => {
-      return this.next?.handle(emission, cancellationToken) ?? Promise.resolve(emission);
+      return this.next?.handle(emission, stream) ?? Promise.resolve(emission);
     });
   }
 }
