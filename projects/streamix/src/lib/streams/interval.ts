@@ -1,30 +1,8 @@
-import { AbstractStream } from '../abstractions/stream';
+import { TimerStream } from './timer';
 
-export class IntervalStream extends AbstractStream {
-  private intervalMs: number;
-  private intervalId: any | null;
-  private currentValue: number;
-
+export class IntervalStream extends TimerStream {
   constructor(intervalMs: number) {
-    super();
-    this.intervalMs = intervalMs;
-    this.intervalId = null;
-    this.currentValue = 0;
-  }
-
-  run(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      this.intervalId = setInterval(() => {
-        this.emit({ value: this.currentValue++ });
-      }, this.intervalMs);
-
-      this.unsubscribe = () => {
-        if (this.intervalId) {
-          clearInterval(this.intervalId);
-          resolve();
-        }
-      };
-    });
+    super(0, intervalMs);
   }
 }
 
