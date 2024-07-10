@@ -4,7 +4,6 @@ import { AbstractOperator } from './operator';
 import { Subscription } from './subscription';
 
 export abstract class AbstractStream {
-  source: AbstractStream = this;
 
   isAutoComplete: boolean = false;
   isCancelled: boolean = false;
@@ -42,19 +41,16 @@ export abstract class AbstractStream {
 
   cancel(): Promise<void> {
     this.isCancelled = true;
-    this.source.isStopRequested = true;
-    return this.isStopped.promise.then(() => this.source.isStopped.promise).then(() => Promise.resolve());
+    return this.isStopped.promise.then(() => Promise.resolve());
   }
 
   complete(): Promise<void> {
     this.isStopRequested = true;
-    this.source.isStopRequested = true;
-    return this.isStopped.promise.then(() => this.source.isStopped.promise).then(() => Promise.resolve());
+    return this.isStopped.promise.then(() => Promise.resolve());
   }
 
   pipe(...operators: AbstractOperator[]): AbstractStream {
-    const newStream = Object.create(this) as AbstractStream;
-    newStream.source = this;
+    const newStream = new StreamSink(this);
 
     for (const operator of operators) {
       if (!newStream.head) {
@@ -90,5 +86,46 @@ export abstract class AbstractStream {
     }
 
     return { unsubscribe: () => this.unsubscribe(callback) };
+  }
+}
+
+export class StreamSink extends AbstractStream {
+  source: AbstractStream;
+  private sourceEmitter: AbstractStream;
+
+  constructor(source: AbstractStream) {
+    super();
+    this.source = source;
+    this.sourceEmitter = new Proxy(this.source, {
+      get: (target, prop) => (prop === 'emit' ? this.emit.bind(this) : (target as any)[prop]),
+    });
+  }
+
+  async run(): Promise<void> {
+    await this.sourceEmitter.run();
+  }
+
+  override emit(emission: Emission): Promise<void> {
+    return this.emitWithOperators(emission);
+  }
+
+  async emitWithOperators(emission: Emission): Promise<void> {
+    try {
+      let currentEmission = emission;
+      let promise = this.head ? this.head.process(currentEmission, this) : Promise.resolve(currentEmission);
+
+      currentEmission = await promise;
+
+      if (currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed) {
+        return;
+      }
+
+      await Promise.all(this.subscribers.map(subscriber => subscriber(currentEmission.value)));
+      currentEmission.isComplete = true;
+    } catch (error: any) {
+      console.error(`Error in stream ${this.constructor.name}: `, error);
+      emission.isFailed = true;
+      emission.error = error;
+    }
   }
 }
