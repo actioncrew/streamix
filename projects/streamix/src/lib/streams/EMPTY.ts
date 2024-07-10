@@ -11,6 +11,4 @@ export class EmptyStream extends AbstractStream {
   }
 }
 
-export function EMPTY() {
-  return new EmptyStream();
-}
+export const EMPTY = new EmptyStream();
