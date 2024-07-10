@@ -3,3 +3,4 @@ export * from './emission';
 export * from './operator';
 export * from './stream';
 export * from './subscription';
+export * from './sink';
