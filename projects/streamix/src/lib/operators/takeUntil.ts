@@ -22,7 +22,7 @@ export class TakeUntilOperator extends AbstractOperator {
       });
 
       if (this.next) {
-        this.next.handle(request, stream).then(resolve);
+        this.next.process(request, stream).then(resolve);
       } else {
         resolve(request);
       }

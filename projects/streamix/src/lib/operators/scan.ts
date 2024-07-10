@@ -22,7 +22,7 @@ export class ScanOperator extends AbstractOperator {
     this.accumulatedValue = this.accumulator(this.accumulatedValue, request.value!);
     const emission = { value: this.accumulatedValue, isCancelled: false, isPhantom: false, error: undefined };
 
-    return this.next?.handle(emission, stream) ?? Promise.resolve(emission);
+    return this.next?.process(emission, stream) ?? Promise.resolve(emission);
   }
 }
 

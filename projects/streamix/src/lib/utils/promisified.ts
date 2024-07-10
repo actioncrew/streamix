@@ -1,11 +1,13 @@
 export class Promisified<T> {
   private _promise: Promise<T>;
+  private _default: T;
   private _value: T;
   private _resolve!: (value: T) => void; // Initialize with "!" for non-null assertion
   private _reject!: (reason?: any) => void;
 
-  constructor(intialValue: any) {
-    this._value = intialValue;
+  constructor(initialValue: any) {
+    this._value = initialValue;
+    this._default = initialValue;
     this._promise = new Promise<T>((resolve, reject) => {
       this._resolve = resolve; // Assign resolve function
       this._reject = reject;  // Assign reject function
@@ -39,6 +41,7 @@ export class Promisified<T> {
     this._promise = new Promise<T>((resolve, reject) => {
       this._resolve = resolve; // Assign resolve function
       this._reject = reject;  // Assign reject function
+      this._value = this._default;
     });
   }
 }

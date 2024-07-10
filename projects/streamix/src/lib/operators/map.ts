@@ -16,7 +16,7 @@ export class MapOperator extends AbstractOperator {
     }
 
     const transformedValue = this.transform(request.value!);
-    return this.next?.handle({ value: transformedValue, isCancelled: false, isPhantom: false, error: undefined }, stream) ?? Promise.resolve({ value: transformedValue, isCancelled: false, isPhantom: false, error: undefined });
+    return this.next?.process({ value: transformedValue, isCancelled: false, isPhantom: false, error: undefined }, stream) ?? Promise.resolve({ value: transformedValue, isCancelled: false, isPhantom: false, error: undefined });
   }
 }
 

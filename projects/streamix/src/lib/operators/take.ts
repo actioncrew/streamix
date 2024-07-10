@@ -14,7 +14,7 @@ export class TakeOperator extends AbstractOperator {
   handle(request: Emission, stream: AbstractStream): Promise<Emission> {
     if (this.emittedCount < this.count) {
       this.emittedCount++;
-      let promise = this.next ? this.next.handle(request, stream) : Promise.resolve(request);
+      let promise = this.next?.process(request, stream) ?? Promise.resolve(request);
       if(this.emittedCount === this.count) {
         stream.complete();
       }

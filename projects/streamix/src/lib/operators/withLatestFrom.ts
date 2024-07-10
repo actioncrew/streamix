@@ -31,7 +31,7 @@ export class WithLatestFromOperator extends AbstractOperator {
       error: undefined
     };
 
-    return this.next?.handle(emission, stream) ?? Promise.resolve(emission);
+    return this.next?.process(emission, stream) ?? Promise.resolve(emission);
   }
 }
 

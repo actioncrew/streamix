@@ -19,7 +19,7 @@ export class MergeMapOperator extends AbstractOperator {
     return new Promise((resolve, reject) => {
       innerStream.subscribe(async (innerValue: any) => {
         try {
-          await this.next?.handle({ value: innerValue, isCancelled: false, isPhantom: false, error: undefined }, stream);
+          await this.next?.process({ value: innerValue, isCancelled: false, isPhantom: false, error: undefined }, stream);
         } catch (error) {
           reject(error);
         }
