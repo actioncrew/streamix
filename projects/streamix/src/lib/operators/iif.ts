@@ -18,7 +18,7 @@ export class IifOperator extends AbstractOperator {
         resolve({ value, isCancelled: false, isPhantom: false, error: undefined });
       });
     }).then((emission) => {
-      return this.next?.handle(emission, stream) ?? Promise.resolve(emission);
+      return this.next?.process(emission, stream) ?? Promise.resolve(emission);
     });
   }
 }

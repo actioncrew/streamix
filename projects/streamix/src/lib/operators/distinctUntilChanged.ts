@@ -13,7 +13,7 @@ export class DistinctUntilChangedOperator extends AbstractOperator {
   async handle(emission: Emission, stream: AbstractStream): Promise<any> {
     if (this.lastEmittedValue === undefined || emission.value !== this.lastEmittedValue) {
       this.lastEmittedValue = emission.value;
-      return this.next?.handle(emission, stream);
+      return this.next?.process(emission, stream);
     } else {
       emission.isPhantom = true;
       return;

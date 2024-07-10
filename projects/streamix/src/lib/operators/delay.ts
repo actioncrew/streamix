@@ -19,7 +19,7 @@ export class DelayOperator extends AbstractOperator {
       setTimeout(() => {
         resolve(request);
       }, this.delayTime);
-    }).then((emission) => this.next?.handle(emission, stream) ?? emission);
+    }).then((emission) => this.next?.process(emission, stream) ?? emission);
   }
 }
 
