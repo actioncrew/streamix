@@ -5,7 +5,7 @@ export class Promisified<T> {
   private _resolve!: (value: T) => void; // Initialize with "!" for non-null assertion
   private _reject!: (reason?: any) => void;
 
-  constructor(initialValue: any) {
+  constructor(initialValue: T) {
     this._value = initialValue;
     this._default = initialValue;
     this._promise = new Promise<T>((resolve, reject) => {
@@ -14,7 +14,7 @@ export class Promisified<T> {
     });
   }
 
-  public resolve(value: T): void {
+  resolve(value: T): void {
     if (this._promise.then === undefined) {
       throw new Error('Promise already settled');
     }
@@ -22,18 +22,18 @@ export class Promisified<T> {
     this._resolve(value);
   }
 
-  public reject(reason?: any): void {
+  reject(reason?: any): void {
     if (this._promise.then === undefined) {
       throw new Error('Promise already settled');
     }
     this._reject(reason);
   }
 
-  public get promise(): Promise<T> {
+  get promise(): Promise<T> {
     return this._promise;
   }
 
-  public get value() {
+  get value() {
     return this._value;
   }
 

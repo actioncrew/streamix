@@ -90,7 +90,7 @@ class TestStream extends AbstractStream {
         await this.emit({ value: this.values[this.index] });
         this.index++;
       }
-      this.isAutoComplete = true;
+      this.isAutoComplete.resolve(true);
     } catch (error) {
       console.error('Error in TestStream:', error);
       // Handle errors appropriately in your testing environment

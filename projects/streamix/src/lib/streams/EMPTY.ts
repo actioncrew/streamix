@@ -6,7 +6,7 @@ export class EmptyStream extends AbstractStream {
   }
 
   run(): Promise<void> {
-    this.isAutoComplete = true;
+    this.isAutoComplete.resolve(true);
     return Promise.resolve();
   }
 }

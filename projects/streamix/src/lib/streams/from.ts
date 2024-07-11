@@ -12,11 +12,11 @@ export class FromStream extends AbstractStream {
   run() {
     const emitNext = (): Promise<void> => {
       if (this.index >= this.values.length) {
-        this.isAutoComplete = true;
+        this.isAutoComplete.resolve(true);
         this.isStopped.resolve(true);
         return Promise.resolve();
       }
-      if(this.isUnsubscribed.value || this.isStopRequested || this.isCancelled) {
+      if(this.isUnsubscribed.value || this.isStopRequested.value || this.isCancelled.value) {
         this.isStopped.resolve(true);
         return Promise.resolve();
       }
