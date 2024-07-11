@@ -10,7 +10,7 @@ export class FromEventStream extends AbstractStream {
     this.eventName = eventName;
   }
 
-  run(): Promise<void> {
+  override async run(): Promise<void> {
     return new Promise<void>((resolve) => {
       const listener = (event: Event) => {
         this.emit({ value: event });

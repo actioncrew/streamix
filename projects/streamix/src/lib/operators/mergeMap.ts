@@ -1,6 +1,4 @@
-import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
-import { AbstractStream } from '../abstractions/stream';
+import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
 
 export class MergeMapOperator extends AbstractOperator {
   private readonly project: (value: any) => AbstractStream;
@@ -10,22 +8,32 @@ export class MergeMapOperator extends AbstractOperator {
     this.project = project;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
-      return Promise.resolve({ ...request, isCancelled: true });
+      request.isCancelled = true;
+      return request;
     }
 
     const innerStream = this.project(request.value!);
-    return new Promise((resolve, reject) => {
-      innerStream.subscribe(async (innerValue: any) => {
-        try {
-          await this.next?.process({ value: innerValue, isCancelled: false, isPhantom: false, error: undefined }, stream);
-        } catch (error) {
-          reject(error);
-        }
-      });
 
-      resolve(request);
+    return new Promise<Emission>((resolve, reject) => {
+      const subscription = innerStream.subscribe(
+        (value) => {
+          const newEmission = { value };
+          this.next?.process(newEmission, stream).catch(reject);
+        });
+
+      innerStream.isFailed.promise.then((error) => {
+        request.error = error;
+        request.isFailed = true;
+        subscription.unsubscribe();
+        reject(error);
+      })
+
+      innerStream.isStopped.promise.then(() => {
+        request.isPhantom = true;
+        resolve(request);
+      }); // Complete the outer promise when inner stream completes
     });
   }
 }

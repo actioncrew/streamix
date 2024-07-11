@@ -3,7 +3,7 @@ import { Emission } from './emission';
 import { AbstractOperator } from './operator';
 import { Subscription } from './subscription';
 
-export abstract class AbstractStream {
+export class AbstractStream {
 
   isAutoComplete = new Promisified<boolean>(false);
   isCancelled = new Promisified<boolean>(false);
@@ -48,7 +48,9 @@ export abstract class AbstractStream {
     return new StreamSink(this).pipe(...operators);
   }
 
-  abstract run(): Promise<void>;
+  run(): Promise<void> {
+    throw new Error('Method is not implemented.');
+  }
 
   protected unsubscribe(callback: (value: any) => any): void {
     this.subscribers = this.subscribers.filter(subscriber => subscriber !== callback);
@@ -112,7 +114,7 @@ export class StreamSink extends AbstractStream {
     return this;
   }
 
-  async run(): Promise<void> {
+  override async run(): Promise<void> {
     return this.sourceEmitter.run();
   }
 
