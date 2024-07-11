@@ -8,7 +8,7 @@ export class OfStream extends AbstractStream {
     this.value = value;
   }
 
-  run(): Promise<void> {
+  override async run(): Promise<void> {
     return (this.isUnsubscribed.value ? Promise.resolve() : super.emit({ value: this.value })).then(() => this.isAutoComplete.resolve(true));
   }
 }

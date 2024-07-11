@@ -14,7 +14,7 @@ export class TimerStream extends AbstractStream {
     this.value = 0;
   }
 
-  run(): Promise<void> {
+  override async run(): Promise<void> {
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         this.emit({ value: this.value }).then(() => {

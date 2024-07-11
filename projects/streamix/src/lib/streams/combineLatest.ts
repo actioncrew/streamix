@@ -14,7 +14,7 @@ export class CombineLatestStream extends AbstractStream {
     this.remaining = sources.length;
   }
 
-  run(): Promise<void> {
+  override async run(): Promise<void> {
     return new Promise<void>((resolve) => {
       this.sources.forEach((source, index) => {
         this.subscriptions.push(source.subscribe((value: any) => {

@@ -6,7 +6,7 @@ export class Subject extends AbstractStream {
   private emissionQueue: Emission[] = [];
   private emissionAvailable = new Promisified<boolean>(false);
 
-  async run(): Promise<void> {
+  override async run(): Promise<void> {
     try {
       while (!this.isStopped.value && !this.isUnsubscribed.value) {
         await Promise.race([this.isUnsubscribed.promise, this.emissionAvailable.promise]);

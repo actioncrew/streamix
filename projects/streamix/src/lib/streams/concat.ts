@@ -11,7 +11,7 @@ export class ConcatStream extends AbstractStream {
     this.sources = sources;
   }
 
-  async run(): Promise<void> {
+  override async run(): Promise<void> {
     while (this.currentSourceIndex < this.sources.length && !this.isCancelled.value) {
       await this.runCurrentSource();
       this.currentSourceIndex++;

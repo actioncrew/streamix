@@ -9,7 +9,7 @@ export class FromStream extends AbstractStream {
     this.values = values;
   }
 
-  run() {
+  override async run() {
     const emitNext = (): Promise<void> => {
       if (this.index >= this.values.length) {
         this.isAutoComplete.resolve(true);
