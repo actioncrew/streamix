@@ -12,7 +12,7 @@ export class FilterOperator extends AbstractOperator {
   }
 
   handle(request: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled) {
+    if (stream.isCancelled.value) {
       request.isCancelled = true;
       return Promise.resolve(request);
     }
@@ -20,7 +20,7 @@ export class FilterOperator extends AbstractOperator {
     request.isPhantom = !this.predicate(request.value);
 
     if(!request.isPhantom) {
-      return this.next ? this.next.process(request, stream) : Promise.resolve(request);
+      return this.next?.process(request, stream) ?? Promise.resolve(request);
     } else {
       return Promise.resolve(request);
     }

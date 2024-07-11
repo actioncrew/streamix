@@ -13,7 +13,7 @@ export class ConcatMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission | AbstractStream> {
-    if (stream.isCancelled) {
+    if (stream.isCancelled.value) {
       emission.isCancelled = true;
       return emission;
     }
@@ -45,7 +45,7 @@ export class ConcatMapOperator extends AbstractOperator {
   private async processQueue(stream: AbstractStream) {
     this.isProcessing.resolve(true);
 
-    while (this.queue.length > 0 && !stream.isCancelled) {
+    while (this.queue.length > 0 && !stream.isCancelled.value {
       const emission = this.queue.shift()!;
       const innerStream = this.project(emission.value);
 
