@@ -45,7 +45,7 @@ export class ConcatMapOperator extends AbstractOperator {
   private async processQueue(stream: AbstractStream) {
     this.isProcessing.resolve(true);
 
-    while (this.queue.length > 0 && !stream.isCancelled.value {
+    while (this.queue.length > 0 && !stream.isCancelled.value) {
       const emission = this.queue.shift()!;
       const innerStream = this.project(emission.value);
 
