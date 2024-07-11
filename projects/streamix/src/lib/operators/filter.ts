@@ -11,10 +11,10 @@ export class FilterOperator extends AbstractOperator {
     this.predicate = predicate;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
       request.isCancelled = true;
-      return Promise.resolve(request);
+      return request;
     }
 
     request.isPhantom = !this.predicate(request.value);
@@ -22,7 +22,7 @@ export class FilterOperator extends AbstractOperator {
     if(!request.isPhantom) {
       return this.next?.process(request, stream) ?? Promise.resolve(request);
     } else {
-      return Promise.resolve(request);
+      return request;
     }
   }
 }

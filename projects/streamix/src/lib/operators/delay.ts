@@ -12,7 +12,7 @@ export class DelayOperator extends AbstractOperator {
   async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
       request.isCancelled = true;
-      return Promise.resolve(request);
+      return request;
     }
 
     // Queue up the promise for delay

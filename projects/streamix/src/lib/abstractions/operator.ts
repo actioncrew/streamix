@@ -7,27 +7,54 @@ export abstract class AbstractOperator {
   abstract handle(emission: Emission, stream: AbstractStream): Promise<Emission | AbstractStream>;
 
   async process(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    const result = await this.handle(emission, stream);
+    const request = await this.handle(emission, stream);
 
-    if (result instanceof AbstractStream) {
-      return new Promise<Emission>((resolve) => {
-        result.subscribe((value) => {
-          const newEmission = { value } as Emission;
+    if (request instanceof AbstractStream) {
+      return new Promise<Emission>((resolve, reject) => {
+        const newEmission = { value: undefined } as Emission;
+        let isResolved = false;
+
+        const subscription = request.subscribe((value) => {
+          newEmission.value = value;
           if (this.next) {
-            this.next.process(newEmission, stream).then(resolve);
+            this.next.process(newEmission, stream)
+              .then(resolve)
+              .catch(reject)
+              .finally(() => {
+                if (!isResolved) {
+                  isResolved = true;
+                  subscription.unsubscribe();
+                }
+              });
           } else {
             resolve(newEmission);
+            isResolved = true;
+            subscription.unsubscribe();
           }
         });
 
-        result.isStopped.promise.then(() => {
-          resolve({ isPhantom: true });
-        })
+        request.isCancelled.promise.then(() => {
+          if (!isResolved) {
+            newEmission.isCancelled = true;
+            resolve(newEmission);
+            isResolved = true;
+            subscription.unsubscribe();
+          }
+        });
+
+        request.isStopped.promise.then(() => {
+          if (!isResolved) {
+            newEmission.isPhantom = true;
+            resolve({ isPhantom: true });
+            isResolved = true;
+            subscription.unsubscribe();
+          }
+        });
       });
     } else if (this.next) {
-      return this.next.process(result, stream);
+      return this.next.process(request, stream);
     } else {
-      return result;
+      return request;
     }
   }
 }
