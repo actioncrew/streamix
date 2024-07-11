@@ -76,9 +76,9 @@ describe('CombineLatestStream with TimerStreams', () => {
       }
     });
 
-    setTimeout(() => {
+    combinedTimers.isStopped.promise.then(() => {
       done(new Error('Stream did not handle completion correctly'));
-    }, 200);
+    });
   });
 
   it('should combine multiple streams correctly', (done) => {

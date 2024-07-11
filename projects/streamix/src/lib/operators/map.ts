@@ -10,13 +10,21 @@ export class MapOperator extends AbstractOperator {
     this.transform = transform;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
-      return Promise.resolve({ ...request, isCancelled: true });
+      request.isCancelled = true;
+      return request;
     }
 
-    const transformedValue = this.transform(request.value!);
-    return this.next?.process({ value: transformedValue, isCancelled: false, isPhantom: false, error: undefined }, stream) ?? Promise.resolve({ value: transformedValue, isCancelled: false, isPhantom: false, error: undefined });
+    try {
+      request.value = this.transform(request.value);
+      return this.next?.process(request, stream) ?? Promise.resolve(request);
+    } catch(error) {
+      request.error = error;
+      request.isFailed = true;
+      stream.isFailed.resolve(error);
+      return request;
+    }
   }
 }
 
