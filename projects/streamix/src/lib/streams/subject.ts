@@ -20,7 +20,7 @@ export class Subject extends AbstractStream {
         }
 
         while (this.emissionQueue.length > 0 && !this.isStopped.value && !this.isUnsubscribed.value) {
-          if (this.isCancelled || this.isUnsubscribed.value) {
+          if (this.isCancelled.value || this.isUnsubscribed.value) {
             this.emissionQueue.forEach(emission => emission.value.isCancelled = true);
             this.isStopped.resolve(true);
             break;
@@ -30,7 +30,7 @@ export class Subject extends AbstractStream {
             await super.emit(emission);
             promisified.resolve(emission);
 
-            if (this.isStopRequested && this.emissionQueue.length == 0) {
+            if (this.isStopRequested.value && this.emissionQueue.length == 0) {
               this.isStopped.resolve(true);
               break;
             }
@@ -48,7 +48,7 @@ export class Subject extends AbstractStream {
       console.warn('Cannot push value to a stopped Subject.');
       return Promise.resolve();
     }
-    if (!this.isStopRequested && !this.isCancelled) {
+    if (!this.isStopRequested.value && !this.isCancelled.value) {
       const emission = new Promisified<Emission>({value});
       this.emissionQueue.push(emission);
       this.hasNewValue.resolve(true);

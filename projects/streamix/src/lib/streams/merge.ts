@@ -15,7 +15,7 @@ export class MergeStream extends AbstractStream {
     }));
 
     return Promise.all(subscriptions).then(() => {
-      this.isAutoComplete = true;
+      this.isAutoComplete.resolve(true);
     });
   }
 }

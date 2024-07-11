@@ -11,13 +11,13 @@ export class FromPromiseStream extends AbstractStream {
   }
 
   async run(): Promise<void> {
-    if (this.isUnsubscribed.value || this.isAutoComplete) {
+    if (this.isUnsubscribed.value || this.isAutoComplete.value) {
       return Promise.resolve();
     }
 
     const value = await this.promise;
     return super.emit({ value }).then(() => {
-      this.isAutoComplete = true;
+      this.isAutoComplete.resolve(true);
     });
   }
 

@@ -12,13 +12,13 @@ export class ConcatStream extends AbstractStream {
   }
 
   async run(): Promise<void> {
-    while (this.currentSourceIndex < this.sources.length && !this.isCancelled) {
+    while (this.currentSourceIndex < this.sources.length && !this.isCancelled.value) {
       await this.runCurrentSource();
       this.currentSourceIndex++;
     }
 
     if (this.currentSourceIndex >= this.sources.length) {
-      this.isAutoComplete = true;
+      this.isAutoComplete.resolve(true);
     }
   }
 

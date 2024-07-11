@@ -5,18 +5,19 @@ import { Subscription } from './subscription';
 
 export abstract class AbstractStream {
 
-  isAutoComplete: boolean = false;
-  isCancelled: boolean = false;
-  isStopRequested: boolean = false;
+  isAutoComplete = new Promisified<boolean>(false);
+  isCancelled = new Promisified<boolean>(false);
+  isStopRequested = new Promisified<boolean>(false);
 
-  isFailed = new Promisified<Error>(undefined);
+  isFailed = new Promisified<any>(undefined);
   isStopped = new Promisified<boolean>(false);
-  isUnsubscribed =  new Promisified<boolean>(false);
+  isUnsubscribed = new Promisified<boolean>(false);
 
   protected subscribers: ((value: any) => any)[] = [];
 
-  public async emit(emission: Emission): Promise<void> {
-    if (this.isCancelled || this.isStopRequested) {
+  async emit(emission: Emission): Promise<void> {
+    if (this.isCancelled.value) {
+      emission.isCancelled = true;
       return;
     }
 
@@ -34,12 +35,12 @@ export abstract class AbstractStream {
   }
 
   cancel(): Promise<void> {
-    this.isCancelled = true;
+    this.isCancelled.resolve(true);
     return this.isStopped.promise.then(() => Promise.resolve());
   }
 
   complete(): Promise<void> {
-    this.isStopRequested = true;
+    this.isStopRequested.resolve(true);
     return this.isStopped.promise.then(() => Promise.resolve());
   }
 
@@ -52,7 +53,7 @@ export abstract class AbstractStream {
   protected unsubscribe(callback: (value: any) => any): void {
     this.subscribers = this.subscribers.filter(subscriber => subscriber !== callback);
     if (this.subscribers.length === 0) {
-      this.isStopRequested = true;
+      this.isStopRequested.resolve(true);
       this.isUnsubscribed.resolve(true);
     }
   }
@@ -87,12 +88,12 @@ export class StreamSink extends AbstractStream {
   }
 
   override cancel(): Promise<void> {
-    this.source.isCancelled = true;
+    this.source.isCancelled.resolve(true);
     return this.source.isStopped.promise.then(() => Promise.resolve());
   }
 
   override complete(): Promise<void> {
-    this.source.isStopRequested = true;
+    this.source.isStopRequested.resolve(true);
     return this.source.isStopped.promise.then(() => Promise.resolve());
   }
 
@@ -112,7 +113,7 @@ export class StreamSink extends AbstractStream {
   }
 
   async run(): Promise<void> {
-    await this.sourceEmitter.run();
+    return this.sourceEmitter.run();
   }
 
   override emit(emission: Emission): Promise<void> {
@@ -121,6 +122,11 @@ export class StreamSink extends AbstractStream {
 
   async emitWithOperators(emission: Emission): Promise<void> {
     try {
+      if (this.source.isCancelled.value) {
+        emission.isCancelled = true;
+        return;
+      }
+
       let currentEmission = emission;
       let promise = this.head ? this.head.process(currentEmission, this) : Promise.resolve(currentEmission);
 
