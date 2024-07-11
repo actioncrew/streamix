@@ -14,8 +14,6 @@ export abstract class AbstractStream {
   isUnsubscribed =  new Promisified<boolean>(false);
 
   protected subscribers: ((value: any) => any)[] = [];
-  protected head?: AbstractOperator;
-  protected tail?: AbstractOperator;
 
   public async emit(emission: Emission): Promise<void> {
     if (this.isCancelled || this.isStopRequested) {
@@ -23,10 +21,6 @@ export abstract class AbstractStream {
     }
 
     try {
-      if (this.head) {
-        emission = await this.head.process(emission, this);
-      }
-
       if (!emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
         await Promise.all(this.subscribers.map(subscriber => subscriber(emission.value)));
         emission.isComplete = true;
@@ -50,19 +44,7 @@ export abstract class AbstractStream {
   }
 
   pipe(...operators: AbstractOperator[]): AbstractStream {
-    const newStream = new StreamSink(this);
-
-    for (const operator of operators) {
-      if (!newStream.head) {
-        newStream.head = operator;
-        newStream.tail = operator;
-      } else {
-        newStream.tail!.next = operator;
-        newStream.tail = operator;
-      }
-    }
-
-    return newStream;
+    return new StreamSink(this).pipe(...operators);
   }
 
   abstract run(): Promise<void>;
@@ -90,8 +72,11 @@ export abstract class AbstractStream {
 }
 
 export class StreamSink extends AbstractStream {
-  source: AbstractStream;
-  private sourceEmitter: AbstractStream;
+  protected source: AbstractStream;
+  protected head?: AbstractOperator;
+  protected tail?: AbstractOperator;
+
+  protected sourceEmitter: AbstractStream;
 
   constructor(source: AbstractStream) {
     super();
@@ -99,6 +84,31 @@ export class StreamSink extends AbstractStream {
     this.sourceEmitter = new Proxy(this.source, {
       get: (target, prop) => (prop === 'emit' ? this.emit.bind(this) : (target as any)[prop]),
     });
+  }
+
+  override cancel(): Promise<void> {
+    this.source.isCancelled = true;
+    return this.source.isStopped.promise.then(() => Promise.resolve());
+  }
+
+  override complete(): Promise<void> {
+    this.source.isStopRequested = true;
+    return this.source.isStopped.promise.then(() => Promise.resolve());
+  }
+
+  override pipe(...operators: AbstractOperator[]): AbstractStream {
+
+    for (const operator of operators) {
+      if (!this.head) {
+        this.head = operator;
+        this.tail = operator;
+      } else {
+        this.tail!.next = operator;
+        this.tail = operator;
+      }
+    }
+
+    return this;
   }
 
   async run(): Promise<void> {
