@@ -16,7 +16,7 @@ export class WithLatestFromOperator extends AbstractOperator {
   }
 
   handle(request: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled) {
+    if (stream.isCancelled.value) {
       return Promise.resolve({ ...request, isCancelled: true });
     }
 

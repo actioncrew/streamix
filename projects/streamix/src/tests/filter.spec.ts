@@ -11,20 +11,16 @@ describe('FilterOperator', () => {
 
     filteredStream.subscribe((value) => {
       didEmit = true;
-      console.log(value);
       expect(value).toBeGreaterThanOrEqual(2); // Only even numbers should be emitted
     });
 
-    filteredStream.isStopped.promise.then(() => {});
-
-    // Manually check for completion after a timeout
-    setTimeout(() => {
+    filteredStream.isStopped.promise.then(() => {
       if (!didEmit) {
         done(new Error('No values emitted'));
       } else {
         done();
       }
-    }, 100); // Adjust timeout based on your test stream implementation
+    });
   });
 
   it('should not emit values that fail the predicate', (done) => {
