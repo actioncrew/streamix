@@ -37,13 +37,13 @@ describe('FilterOperator', () => {
     });
 
     // Manually check for completion after a timeout
-    setTimeout(() => {
+    filteredStream.isStopped.promise.then(() => {
       if (didEmit) {
         done(new Error('Should not emit if no values pass the predicate'));
       } else {
         done();
       }
-    }, 100); // Adjust timeout based on your test stream implementation
+    });
   });
 
   it('should emit all allowed values before stopping', (done) => {
@@ -59,13 +59,13 @@ describe('FilterOperator', () => {
     });
 
     // Manually check for completion and expected number of emissions after a timeout
-    setTimeout(() => {
+    filteredStream.isStopped.promise.then(() => {
       if (count === 3) {
         done();
       } else {
         done(new Error('Did not emit all allowed values or stopped prematurely'));
       }
-    }, 100); // Adjust timeout based on your test stream implementation
+    });
   });
 });
 
