@@ -2,39 +2,39 @@ import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
 
 export class DelayOperator extends AbstractOperator {
   private readonly delayTime: number;
-  private isCancelled: boolean = false;
-  private timeoutId?: any;
+  private promiseQueue: Promise<Emission> | undefined;
 
   constructor(delayTime: number) {
     super();
     this.delayTime = delayTime;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
-    return new Promise<Emission>((resolve) => {
-      if (this.isCancelled) {
-        request.isCancelled = true;
-        resolve(request);
-        return;
+  async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled.value) {
+      request.isCancelled = true;
+      return Promise.resolve(request);
+    }
+
+    // Queue up the promise for delay
+    this.promiseQueue = this.promiseQueue ?? Promise.resolve(request);
+    this.promiseQueue = this.promiseQueue.then(async (emission) => {
+      if (stream.isCancelled.value) {
+        emission.isCancelled = true;
+        return emission;
       }
 
-      this.timeoutId = setTimeout(() => {
-        resolve(request);
-      }, this.delayTime);
+      return new Promise<Emission>((resolve) => {
+        let timeout = setTimeout(() => resolve(emission), this.delayTime);
 
-      stream.isCancelled.promise.then(() => {
-        this.cancel(); // Cancel operation if stream is cancelled
-        resolve(request);
+        stream.isCancelled.promise.then(() => {
+          emission.isCancelled = true;
+          clearTimeout(timeout);
+          resolve(emission);
+        });
       });
-    }).then((emission) => this.next?.process(emission, stream) ?? emission);
-  }
+    });
 
-  cancel(): void {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-      this.timeoutId = undefined;
-    }
-    this.isCancelled = true;
+    return this.promiseQueue.then((emission) => this.next?.process(emission, stream) ?? emission);
   }
 }
 
