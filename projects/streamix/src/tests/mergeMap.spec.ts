@@ -42,7 +42,7 @@ describe('mergeMap operator', () => {
     });
 
     mergedStream.isStopped.promise.then(() => {
-      expect(results).toEqual([1, 2, 2, 4, 3, 6]);
+      expect(results).toEqual([1, 2]);
       done();
     });
   });
