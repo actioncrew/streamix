@@ -1,4 +1,4 @@
-import { AbstractStream, mergeMap } from '../lib';
+import { AbstractStream, filter, mergeMap } from '../lib';
 
 // Mock AbstractStream implementation for testing purposes
 class MockStream extends AbstractStream {
@@ -22,18 +22,18 @@ class MockStream extends AbstractStream {
       console.error('Error in MockStream:', error);
       // Handle errors appropriately in your testing environment
     } finally {
-      this.isStopped.resolve(true);
+      this.isStopRequested.resolve(true);
     }
   }
 }
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {
-    const testStream = new MockStream([1]);
+    const testStream = new MockStream([1, 2, 3, 4, 5]);
 
     const project = (value: number) => new MockStream([value, value * 2]);
 
-    const mergedStream = testStream.pipe(mergeMap(project));
+    const mergedStream = testStream.pipe(mergeMap(project), filter(value => value > 3));
 
     let results: any[] = [];
 
@@ -42,7 +42,7 @@ describe('mergeMap operator', () => {
     });
 
     mergedStream.isStopped.promise.then(() => {
-      expect(results).toEqual([1, 2]);
+      expect(results).toEqual([1, 2, 2, 3, 4, 6]);
       done();
     });
   });
