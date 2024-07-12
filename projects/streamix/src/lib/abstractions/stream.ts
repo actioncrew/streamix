@@ -13,7 +13,7 @@ export class AbstractStream {
   isStopped = new Promisified<boolean>(false);
   isUnsubscribed = new Promisified<boolean>(false);
 
-  protected subscribers: ((value: any) => any)[] = [];
+  subscribers: ((value: any) => any)[] = [];
 
   async emit(emission: Emission): Promise<void> {
     if (this.isCancelled.value) {
@@ -76,10 +76,11 @@ export class AbstractStream {
 
 export class StreamSink extends AbstractStream {
   protected source: AbstractStream;
-  protected head?: AbstractOperator;
-  protected tail?: AbstractOperator;
+  operators: AbstractOperator[] = [];
+  currentOperator: number = 0;
 
   protected sourceEmitter: AbstractStream;
+  protected sinks: StreamSink[] = [this];
 
   constructor(source: AbstractStream) {
     super();
@@ -100,17 +101,7 @@ export class StreamSink extends AbstractStream {
   }
 
   override pipe(...operators: AbstractOperator[]): AbstractStream {
-
-    for (const operator of operators) {
-      if (!this.head) {
-        this.head = operator;
-        this.tail = operator;
-      } else {
-        this.tail!.next = operator;
-        this.tail = operator;
-      }
-    }
-
+    this.operators.push(...operators);
     return this;
   }
 
@@ -118,32 +109,47 @@ export class StreamSink extends AbstractStream {
     return this.sourceEmitter.run();
   }
 
-  override emit(emission: Emission): Promise<void> {
-    return this.emitWithOperators(emission);
-  }
-
-  async emitWithOperators(emission: Emission): Promise<void> {
+  override async emit(emission: Emission): Promise<void> {
     try {
-      if (this.source.isCancelled.value) {
+      if (this.isCancelled.value) {
         emission.isCancelled = true;
         return;
       }
 
-      let currentEmission = emission;
-      let promise = this.head ? this.head.process(currentEmission, this) : Promise.resolve(currentEmission);
+      let currentEmission: AbstractStream | Emission = emission;
 
-      currentEmission = await promise;
-
-      if (currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed) {
-        return;
+      for (let i = 0; i < this.operators.length; i++) {
+        this.currentOperator = i;
+        const operator = this.operators[i];
+        if(currentEmission instanceof AbstractStream) {
+          currentEmission = await operator.handle(emission, currentEmission);
+        } else {
+          currentEmission = await operator.handle(currentEmission, this);
+        }
       }
 
-      await Promise.all(this.subscribers.map(subscriber => subscriber(currentEmission.value)));
-      currentEmission.isComplete = true;
+      if (!(currentEmission instanceof AbstractStream)) {
+
+        if (currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed) {
+          return;
+        }
+
+        await Promise.all(this.subscribers.map(subscriber => subscriber(currentEmission.value)));
+        currentEmission.isComplete = true;
+      }
     } catch (error: any) {
       console.error(`Error in stream ${this.constructor.name}: `, error);
       emission.isFailed = true;
       emission.error = error;
     }
   }
+
+  addSink(sink: StreamSink) {
+    this.sinks.push(sink);
+  }
+
+  removeSink(sink: StreamSink) {
+    this.sinks = this.sinks.filter(s => s !== sink);
+  }
 }
+
