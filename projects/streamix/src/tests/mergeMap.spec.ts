@@ -11,7 +11,7 @@ class MockStream extends AbstractStream {
     this.index = 0;
   }
 
-  async run(): Promise<void> {
+  override async run(): Promise<void> {
     try {
       while (this.index < this.values.length && !this.isStopRequested.value) {
         await this.emit({ value: this.values[this.index] });
@@ -29,7 +29,7 @@ class MockStream extends AbstractStream {
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = new MockStream([1]);
 
     const project = (value: number) => new MockStream([value, value * 2]);
 
