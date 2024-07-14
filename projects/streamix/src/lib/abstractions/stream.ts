@@ -153,6 +153,18 @@ export class StreamSink extends AbstractStream {
     
     this.left = new StreamSink(stream);
     this.left.head = operator.next; this.left.tail = this.tail;
+
+    this.left.subscribe = new Proxy(this.subscribe.bind(this), {
+      apply: (target, thisArg, argumentsList) => {
+        return target(...argumentsList);
+      }
+    });
+
+    this.left.unsubscribe = new Proxy(this.unsubscribe.bind(this), {
+      apply: (target, thisArg, argumentsList) => {
+        return target(...argumentsList);
+      }
+    });
     
     // Use a proxy to share subscribers with the parent
     this.left.subscribers = new Proxy(this.subscribers, {
