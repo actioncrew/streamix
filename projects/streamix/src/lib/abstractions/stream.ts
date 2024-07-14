@@ -162,7 +162,7 @@ export class StreamSink extends AbstractStream {
           return operator.next;
         }
         if (prop === 'tail') {
-          this.tail;
+          return this.tail;
         }
         return (target as any)[prop];
       },
