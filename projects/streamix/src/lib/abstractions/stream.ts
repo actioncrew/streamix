@@ -151,49 +151,23 @@ export class StreamSink extends AbstractStream {
     this.right = new StreamSink(this.source);
     this.right.head = this.head; this.right.tail = operator;
     
-    this.left = new StreamSink(stream);
     this.left.head = operator.next; this.left.tail = this.tail;
 
-    this.left.subscribe = new Proxy(this.subscribe.bind(this), {
-      apply: (target, thisArg, argumentsList) => {
-        return target(...argumentsList);
-      }
-    });
-
-    this.left.unsubscribe = new Proxy(this.unsubscribe.bind(this), {
-      apply: (target, thisArg, argumentsList) => {
-        return target(...argumentsList);
-      }
-    });
-    
-    // Use a proxy to share subscribers with the parent
-    this.left.subscribers = new Proxy(this.subscribers, {
+    this.left = new Proxy(this, {
       get: (target, prop) => {
-        if (typeof prop === 'symbol' || isNaN(Number(prop))) {
-          return (target as any)[prop];
+        if (prop === 'source') {
+          return stream;
         }
-        return target[prop];
+        if (prop === 'head') {
+          return operator.next;
+        }
+        if (prop === 'tail') {
+          this.tail;
+        }
+        return (target as any)[prop];
       },
       set: (target, prop, value) => {
-        if (typeof prop === 'symbol' || isNaN(Number(prop))) {
-          (target as any)[prop] = value;
-        } else {
-          target[prop as any] = value;
-        }
-        return true;
-      },
-      deleteProperty: (target, prop) => {
-        if (typeof prop === 'symbol' || isNaN(Number(prop))) {
-          delete (target as any)[prop];
-        } else {
-          target.splice(Number(prop), 1);
-        }
-
-        if (target.length === 0 && this.isSplitted) {
-          this.right.subscribers = [];
-        }
-
-        return true;
+        throw new Error('Properties are read only');
       }
     });
 
