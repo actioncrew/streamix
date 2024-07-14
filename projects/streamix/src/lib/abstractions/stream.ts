@@ -82,25 +82,24 @@ export class StreamSink extends AbstractStream {
   protected isSplitted: boolean = false;
   protected right?: StreamSink;
   protected left?: StreamSink;
-  
-  protected sourceEmitter: AbstractStream;
 
   constructor(source: AbstractStream) {
     super();
     this.source = source;
-    this.sourceEmitter = new Proxy(this.source, {
-      get: (target, prop) => (prop === 'emit' ? this.emit.bind(this) : (target as any)[prop]),
+    // Proxy all other properties and methods from source
+    return new Proxy(this, {
+      get: (target, prop) => {
+        if (prop in this) {
+          return (this as any)[prop];
+        } else {
+          return (this.source as any)[prop];
+        }
+      },
+      set: (target, prop, value) => {
+        (this.source as any)[prop] = value;
+        return true;
+      }
     });
-  }
-
-  override cancel(): Promise<void> {
-    this.source.isCancelled.resolve(true);
-    return this.source.isStopped.promise.then(() => Promise.resolve());
-  }
-
-  override complete(): Promise<void> {
-    this.source.isStopRequested.resolve(true);
-    return this.source.isStopped.promise.then(() => Promise.resolve());
   }
 
   override pipe(...operators: AbstractOperator[]): AbstractStream {
@@ -116,10 +115,6 @@ export class StreamSink extends AbstractStream {
     }
 
     return this;
-  }
-
-  override async run(): Promise<void> {
-    return this.sourceEmitter.run();
   }
 
   override emit(emission: Emission): Promise<void> {
