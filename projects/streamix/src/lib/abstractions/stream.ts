@@ -78,7 +78,11 @@ export class StreamSink extends AbstractStream {
   protected source: AbstractStream;
   protected head?: AbstractOperator;
   protected tail?: AbstractOperator;
-
+  
+  protected isSplitted: boolean = false;
+  protected right?: StreamSink;
+  protected left?: StreamSink;
+  
   protected sourceEmitter: AbstractStream;
 
   constructor(source: AbstractStream) {
@@ -141,5 +145,44 @@ export class StreamSink extends AbstractStream {
       emission.isFailed = true;
       emission.error = error;
     }
+  }
+
+  split(operator: AbstractOperator, stream: AbstractStream) {
+    this.right = new StreamSink(this.source);
+    this.left = new StreamSink(stream);
+
+    // Use a proxy to share subscribers with the parent
+    this.left.subscribers = new Proxy(this.subscribers, {
+      get: (target, prop) => {
+        if (typeof prop === 'symbol' || isNaN(Number(prop))) {
+          return (target as any)[prop];
+        }
+        return target[prop];
+      },
+      set: (target, prop, value) => {
+        if (typeof prop === 'symbol' || isNaN(Number(prop))) {
+          (target as any)[prop] = value;
+        } else {
+          target[prop as any] = value;
+        }
+        return true;
+      },
+      deleteProperty: (target, prop) => {
+        if (typeof prop === 'symbol' || isNaN(Number(prop))) {
+          delete (target as any)[prop];
+        } else {
+          target.splice(Number(prop), 1);
+        }
+
+        if (target.length === 0 && this.rightSink) {
+          this.rightSink.subscribers = [];
+        }
+
+        return true;
+      }
+    });
+
+    // Single subscriber for right sink
+    right.subscribers = [];
   }
 }
