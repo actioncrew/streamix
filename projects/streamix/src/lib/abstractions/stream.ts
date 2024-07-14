@@ -149,8 +149,11 @@ export class StreamSink extends AbstractStream {
 
   split(operator: AbstractOperator, stream: AbstractStream) {
     this.right = new StreamSink(this.source);
+    this.right.head = this.head; this.right.tail = operator;
+    
     this.left = new StreamSink(stream);
-
+    this.left.head = operator.next; this.left.tail = this.tail;
+    
     // Use a proxy to share subscribers with the parent
     this.left.subscribers = new Proxy(this.subscribers, {
       get: (target, prop) => {
@@ -174,8 +177,8 @@ export class StreamSink extends AbstractStream {
           target.splice(Number(prop), 1);
         }
 
-        if (target.length === 0 && this.rightSink) {
-          this.rightSink.subscribers = [];
+        if (target.length === 0 && this.isSplitted) {
+          this.right.subscribers = [];
         }
 
         return true;
@@ -183,6 +186,7 @@ export class StreamSink extends AbstractStream {
     });
 
     // Single subscriber for right sink
-    right.subscribers = [];
+    this.right.subscribe(() => {});
+    this.isSplitted = true;
   }
 }
