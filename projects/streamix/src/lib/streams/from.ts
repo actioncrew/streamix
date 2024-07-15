@@ -10,21 +10,18 @@ export class FromStream extends AbstractStream {
   }
 
   override async run() {
-    const emitNext = (): Promise<void> => {
-      if (this.index >= this.values.length) {
-        this.isAutoComplete.resolve(true);
-        this.isStopped.resolve(true);
-        return Promise.resolve();
+    try {
+      while (this.index < this.values.length && !this.isStopRequested.value) {
+        await this.emit({ value: this.values[this.index] });
+        this.index++;
       }
-      if(this.isUnsubscribed.value || this.isStopRequested.value || this.isCancelled.value) {
-        this.isStopped.resolve(true);
-        return Promise.resolve();
-      }
-      const value = this.values[this.index++];
-      return super.emit({ value }).then(() => emitNext());
-    };
-
-    return emitNext();
+      this.isAutoComplete.resolve(true);
+    } catch (error) {
+      console.error('Error in FromStream:', error);
+      this.isFailed.resolve(error);
+    } finally {
+      this.isStopped.resolve(true);
+    }
   }
 }
 

@@ -30,7 +30,10 @@ export class IifOperator extends AbstractOperator {
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     let streamSink = stream as StreamSink;
-    if(streamSink instanceof StreamSink) {
+    if(!(streamSink instanceof StreamSink)) {
+      streamSink = new StreamSink(streamSink);
+    }
+    if(streamSink instanceof StreamSink && this.left === undefined) {
       const [left, right] = streamSink.split(this, this.outerStream);
       this.left = left; this.right = right;
     }
@@ -41,9 +44,13 @@ export class IifOperator extends AbstractOperator {
       await this.right.emit({value});
     });
 
-    Promise.race([innerStream.isFailed.promise, innerStream.isStopped.promise]).then((error) => {
+    Promise.race([innerStream.isUnsubscribed.promise || innerStream.isAutoComplete.promise ||
+      innerStream.isFailed.promise || innerStream.isCancelled.promise ||
+      innerStream.isStopRequested.promise]).then((error) => {
       subscription.unsubscribe();
     });
+
+    emission.isPhantom = true;
 
     return new Promise<Emission>((resolve) => {
       innerStream.isStopped.promise.then(() => resolve(emission));
