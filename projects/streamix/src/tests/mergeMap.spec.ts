@@ -1,11 +1,11 @@
-import { AbstractStream, filter, mergeMap } from '../lib';
+import { AbstractStream, mergeMap } from '../lib';
 
 // Mock AbstractStream implementation for testing purposes
 class MockStream extends AbstractStream {
   private values: any[];
   private index: number;
 
-  constructor(values: any[]) {
+  constructor(values: any[], private str: string) {
     super();
     this.values = values;
     this.index = 0;
@@ -22,18 +22,18 @@ class MockStream extends AbstractStream {
       console.error('Error in MockStream:', error);
       // Handle errors appropriately in your testing environment
     } finally {
-      this.isStopRequested.resolve(true);
+      this.isStopped.resolve(true);
     }
   }
 }
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {
-    const testStream = new MockStream([1, 2, 3, 4, 5]);
+    const testStream = new MockStream([1,2,3], "testStream");
 
-    const project = (value: number) => new MockStream([value, value * 2]);
+    const project = (value: number) => new MockStream([value * 2, value * 4], "innerStream");
 
-    const mergedStream = testStream.pipe(mergeMap(project), filter(value => value > 3));
+    const mergedStream = testStream.pipe(mergeMap(project));
 
     let results: any[] = [];
 
@@ -42,16 +42,16 @@ describe('mergeMap operator', () => {
     });
 
     mergedStream.isStopped.promise.then(() => {
-      expect(results).toEqual([1, 2, 2, 3, 4, 6]);
+      expect(results).toEqual([2, 4, 4, 8, 6, 12]);
       done();
     });
   });
 
   it('should handle inner stream cancellation', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = new MockStream([1, 2, 3], "testStream");
 
     const project = (value: number) => {
-      const innerStream = new MockStream([value, value * 2]);
+      const innerStream = new MockStream([value, value * 2], "innerStream");
       setTimeout(() => innerStream.cancel(), 10); // Cancel inner stream after a delay
       return innerStream;
     };
@@ -71,13 +71,13 @@ describe('mergeMap operator', () => {
   });
 
   it('should handle errors in inner streams', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = new MockStream([1, 2, 3], "testStream");
 
     const project = (value: number) => {
       if (value === 2) {
         throw new Error('Error in inner stream');
       }
-      return new MockStream([value, value * 2]);
+      return new MockStream([value, value * 2], "innerStream");
     };
 
     const mergedStream = testStream.pipe(mergeMap(project));
