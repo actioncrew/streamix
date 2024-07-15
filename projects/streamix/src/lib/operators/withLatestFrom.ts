@@ -15,22 +15,18 @@ export class WithLatestFromOperator extends AbstractOperator {
     });
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
-      return Promise.resolve({ ...request, isCancelled: true });
+      emission.isCancelled = true;
+      return emission;
     }
 
     if (!this.isLatestValueSet) {
-      return Promise.resolve({ ...request, isCancelled: true });
+      emission.isCancelled = true;
+      return Promise.resolve(emission);
     }
 
-    const emission = {
-      value: [request.value, this.latestValue],
-      isCancelled: false,
-      isPhantom: false,
-      error: undefined
-    };
-
+    emission.value = [emission.value, this.latestValue];
     return this.next?.process(emission, stream) ?? Promise.resolve(emission);
   }
 }

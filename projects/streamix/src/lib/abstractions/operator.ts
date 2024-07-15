@@ -7,6 +7,7 @@ export abstract class AbstractOperator {
   abstract handle(emission: Emission, stream: AbstractStream): Promise<Emission>;
 
   async process(emission: Emission, stream: AbstractStream): Promise<Emission> {
+
     const request = await this.handle(emission, stream);
     if (this.next) {
       return this.next.process(request, stream);

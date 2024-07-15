@@ -10,17 +10,19 @@ export class TakeWhileOperator extends AbstractOperator {
     this.predicate = predicate;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
-      return Promise.resolve({ ...request, isCancelled: true });
+      emission.isCancelled = true;
+      return emission;
     }
 
-    const shouldContinue = this.predicate(request.value);
+    const shouldContinue = this.predicate(emission.value);
     if (!shouldContinue) {
-      return Promise.resolve({ ...request, isFinished: true });
+      emission.isComplete = true;
+      return Promise.resolve(emission);
     }
 
-    return this.next?.process(request, stream)?? Promise.resolve(request);
+    return this.next?.process(emission, stream) ?? Promise.resolve(emission);
   }
 }
 

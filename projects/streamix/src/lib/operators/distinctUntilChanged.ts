@@ -10,6 +10,11 @@ export class DistinctUntilChangedOperator<T> extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<any> {
+    if (stream.isCancelled.value) {
+      emission.isCancelled = true;
+      return emission;
+    }
+
     if (this.lastEmittedValue === undefined || emission.value !== this.lastEmittedValue) {
       this.lastEmittedValue = emission.value;
       return this.next?.process(emission, stream) ?? Promise.resolve(emission);
