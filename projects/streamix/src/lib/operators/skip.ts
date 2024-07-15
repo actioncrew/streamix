@@ -10,13 +10,17 @@ export class SkipOperator extends AbstractOperator {
     this.count = count;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled.value) {
+      emission.isCancelled = true;
+      return emission;
+    }
     if (this.count <= 0) {
-      return this.next?.process(request, stream) ?? Promise.resolve(request);
+      return this.next?.process(emission, stream) ?? Promise.resolve(emission);
     } else {
       this.count--;
-      request.isPhantom = true;
-      return Promise.resolve(request);
+      emission.isPhantom = true;
+      return Promise.resolve(emission);
     }
   }
 }

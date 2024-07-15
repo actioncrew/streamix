@@ -14,13 +14,14 @@ export class ScanOperator extends AbstractOperator {
     this.accumulatedValue = seed;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
-      return Promise.resolve({ ...request, isCancelled: true });
+      emission.isCancelled = true;
+      return emission;
     }
 
-    this.accumulatedValue = this.accumulator(this.accumulatedValue, request.value!);
-    const emission = { value: this.accumulatedValue, isCancelled: false, isPhantom: false, error: undefined };
+    this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!);
+    emission.value = this.accumulatedValue;
 
     return this.next?.process(emission, stream) ?? Promise.resolve(emission);
   }

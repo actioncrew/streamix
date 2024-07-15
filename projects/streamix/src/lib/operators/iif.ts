@@ -29,6 +29,11 @@ export class IifOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled.value) {
+      emission.isCancelled = true;
+      return emission;
+    }
+
     let streamSink = stream as StreamSink;
     if(!(streamSink instanceof StreamSink)) {
       streamSink = new StreamSink(streamSink);

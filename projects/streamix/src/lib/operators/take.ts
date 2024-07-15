@@ -11,17 +11,21 @@ export class TakeOperator extends AbstractOperator {
     this.count = count;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+    if (stream.isCancelled.value) {
+      emission.isCancelled = true;
+      return emission;
+    }
     if (this.emittedCount < this.count) {
       this.emittedCount++;
-      let promise = this.next?.process(request, stream) ?? Promise.resolve(request);
+      let promise = this.next?.process(emission, stream) ?? Promise.resolve(emission);
       if(this.emittedCount === this.count) {
         stream.complete();
       }
       return promise;
     } else {
-      request.isPhantom = true;
-      return Promise.resolve(request);
+      emission.isPhantom = true;
+      return Promise.resolve(emission);
     }
   }
 }

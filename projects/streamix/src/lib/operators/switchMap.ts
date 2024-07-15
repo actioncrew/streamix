@@ -12,12 +12,13 @@ export class SwitchMapOperator extends AbstractOperator {
     this.project = project;
   }
 
-  handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
-      return Promise.resolve({ ...request, isCancelled: true });
+      emission.isCancelled = true;
+      return emission;
     }
 
-    const newSource = this.project(request.value!);
+    const newSource = this.project(emission.value!);
 
     // Clean up previous subscription before switching to the new source
     if (this.currentSubscription) {
