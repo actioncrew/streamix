@@ -11,7 +11,7 @@ class MockStream extends AbstractStream {
     this.index = 0;
   }
 
-  async run(): Promise<void> {
+  override async run(): Promise<void> {
     try {
       while (this.index < this.values.length && !this.isStopRequested.value) {
         await this.emit({ value: this.values[this.index] });
@@ -52,12 +52,16 @@ describe('iif operator', () => {
     const trueStream = new MockStream([10, 20, 30]);
     const falseStream = new MockStream([1, 2, 3]);
 
-    const operator = iif(condition, trueStream, falseStream);
+    const operator = new MockStream([10]).pipe(iif(condition, trueStream, falseStream));
+    const result: any[] = [];
 
-    const testEmission = new MockEmission(10);
+    const subscription = operator.subscribe((value) => {
+      result.push(value);
+    });
 
-    operator.handle(testEmission, new MockStream([])).then((result: any) => {
-      expect(result).toBe(trueStream);
+    operator.isStopped.promise.then(() => {
+      expect(result).toEqual([10, 20, 30]);
+      subscription.unsubscribe();
       done();
     });
   });
@@ -67,12 +71,16 @@ describe('iif operator', () => {
     const trueStream = new MockStream([10, 20, 30]);
     const falseStream = new MockStream([1, 2, 3]);
 
-    const operator = iif(condition, trueStream, falseStream);
+    const operator = new MockStream([2]).pipe(iif(condition, trueStream, falseStream));
+    const result: any[] = [];
 
-    const testEmission = new MockEmission(2);
+    const subscription = operator.subscribe((value) => {
+      result.push(value);
+    });
 
-    operator.handle(testEmission, new MockStream([])).then((result: any) => {
-      expect(result).toBe(falseStream);
+    operator.isStopped.promise.then(() => {
+      expect(result).toEqual([1, 2, 3]);
+      subscription.unsubscribe();
       done();
     });
   });
