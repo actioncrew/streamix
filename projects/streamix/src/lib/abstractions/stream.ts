@@ -12,6 +12,7 @@ export class AbstractStream {
   isFailed = new Promisified<any>(undefined);
   isStopped = new Promisified<boolean>(false);
   isUnsubscribed = new Promisified<boolean>(false);
+  isRunning = new Promisified<boolean>(false);
 
   protected subscribers: ((value: any) => any)[] = [];
 
@@ -64,10 +65,14 @@ export class AbstractStream {
     this.subscribers.push(callback);
 
     // Start or resume the stream
-    if(this.subscribers.length == 1) {
+    if(this.subscribers.length == 1 && this.isRunning.value === false) {
+      this.isRunning.resolve(true);
       queueMicrotask(() => this.run()
-      .then(() => this.isStopped.resolve(true))
-      .catch((error) => this.isFailed.resolve(error)));
+        .catch((error) => this.isFailed.resolve(error))
+        .finally(() => {
+          this.isStopped.resolve(true);
+          this.isRunning.reset();
+        }))
     }
 
     return { unsubscribe: () => this.unsubscribe(callback) };
@@ -78,10 +83,11 @@ export class StreamSink extends AbstractStream {
   protected source: AbstractStream;
   protected head?: AbstractOperator;
   protected tail?: AbstractOperator;
-  
-  protected isSplitted: boolean = false;
+
   protected right?: StreamSink;
   protected left?: StreamSink;
+
+  isSplitted: boolean = false;
 
   constructor(source: AbstractStream) {
     super();
@@ -89,14 +95,14 @@ export class StreamSink extends AbstractStream {
     // Proxy all other properties and methods from source
     return new Proxy(this, {
       get: (target, prop) => {
-        if (prop in this) {
+        if (prop in this && prop !== 'run') {
           return (this as any)[prop];
         } else {
           return (this.source as any)[prop];
         }
       },
       set: (target, prop, value) => {
-        (this.source as any)[prop] = value;
+        (this as any)[prop] = value;
         return true;
       }
     });
@@ -117,15 +123,15 @@ export class StreamSink extends AbstractStream {
     return this;
   }
 
-  override emit(emission: Emission): Promise<void> {
+  override async emit(emission: Emission): Promise<void> {
     try {
       if (this.source.isCancelled.value) {
         emission.isCancelled = true;
         return;
       }
 
-      let currentEmission = emission;
-      let promise = this.head ? this.head.process(currentEmission, this) : Promise.resolve(currentEmission);
+      let currentEmission: Emission = emission;
+      let promise = this.head?.process(currentEmission, this) ?? Promise.resolve(currentEmission);
 
       currentEmission = await promise;
 
@@ -143,31 +149,58 @@ export class StreamSink extends AbstractStream {
   }
 
   split(operator: AbstractOperator, stream: AbstractStream) {
-    this.right = new StreamSink(this.source);
-    this.right.head = this.head; this.right.tail = operator;
-    
-    this.left.head = operator.next; this.left.tail = this.tail;
-
-    this.left = new Proxy(this, {
-      get: (target, prop) => {
-        if (prop === 'source') {
-          return stream;
+    let subscribers: ((value: any) => any)[] = [];
+    this.left = new StreamSink(new Proxy(this.source, {
+      get: (target: AbstractStream, prop: string, receiver: any) => {
+        if (prop === 'subscribers') {
+          // Return a custom value or handle the subscribers property
+          return subscribers;
         }
-        if (prop === 'head') {
-          return operator.next;
-        }
-        if (prop === 'tail') {
-          return this.tail;
-        }
-        return (target as any)[prop];
+        return Reflect.get(target, prop, receiver);
       },
-      set: (target, prop, value) => {
-        throw new Error('Properties are read only');
+      set: (target: AbstractStream, prop: string, value: any, receiver: any) => {
+        if (prop === 'subscribers') {
+          // Handle setting the subscribers property
+          subscribers = value;
+          return true;
+        }
+        return Reflect.set(target, prop, value, receiver);
+      }
+    }));
+
+    this.left.head = this.head; this.left.tail = operator;
+    const callback = () => {}; this.left.subscribers.push(callback);
+
+    this.right = new StreamSink(stream);
+    this.right.subscribe(callback); //starting stream
+    this.right.subscribers = new Proxy(this.subscribers, {
+      get: (target: any[], prop: string, receiver: any) => {
+        if (prop === 'subscribers') {
+          return this.subscribers;
+        }
+
+        return Reflect.get(target, prop, receiver);
+      },
+      set: (target: any[], prop: string, value: any, receiver: any) => {
+        if (prop === 'subscribers') {
+          this.subscribers = value;
+          return true;
+        }
+        return Reflect.set(target, prop, value, receiver);
+    }});
+
+    this.right.unsubscribe = new Proxy(this.unsubscribe, {
+      apply: (targetUnsubscribe, thisArg, argumentsList: any) => {
+        targetUnsubscribe.apply(thisArg, argumentsList);
+        if (this.subscribers.length === 0) {
+          this.left!.unsubscribe(callback)
+        }
       }
     });
 
-    // Single subscriber for right sink
-    this.right.subscribe(() => {});
+    this.right.head = operator.next; this.right.tail = this.tail;
+
     this.isSplitted = true;
+    return [this.left, this.right];
   }
 }

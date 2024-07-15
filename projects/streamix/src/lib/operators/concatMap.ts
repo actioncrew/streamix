@@ -12,7 +12,7 @@ export class ConcatMapOperator extends AbstractOperator {
     this.project = project;
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission | AbstractStream> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
       return emission;

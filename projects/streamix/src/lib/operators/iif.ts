@@ -1,18 +1,53 @@
 import { Emission } from '../abstractions/emission';
 import { AbstractOperator } from '../abstractions/operator';
-import { AbstractStream } from '../abstractions/stream';
+import { AbstractStream, StreamSink } from '../abstractions/stream';
 
 export class IifOperator extends AbstractOperator {
+  private left!: StreamSink;
+  private right!: StreamSink;
+  private outerStream!: AbstractStream;
+
   constructor(
     private readonly condition: (emission: Emission) => boolean,
     private readonly trueStream: AbstractStream,
     private readonly falseStream: AbstractStream
   ) {
     super();
+    this.outerStream = new AbstractStream();
+
+    Object.assign(this.outerStream, {
+      run: () => {
+        return Promise.race([
+          this.outerStream.isUnsubscribed.promise,
+          this.outerStream.isAutoComplete.promise,
+          this.outerStream.isFailed.promise,
+          this.outerStream.isCancelled.promise,
+          this.outerStream.isStopRequested.promise
+        ]);
+      }
+    });
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission | AbstractStream> {
-    return this.condition(emission) ? this.trueStream : this.falseStream;
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+    let streamSink = stream as StreamSink;
+    if(streamSink instanceof StreamSink) {
+      const [left, right] = streamSink.split(this, this.outerStream);
+      this.left = left; this.right = right;
+    }
+
+    const innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
+
+    const subscription = innerStream.subscribe(async (value) => {
+      await this.right.emit({value});
+    });
+
+    Promise.race([innerStream.isFailed.promise, innerStream.isStopped.promise]).then((error) => {
+      subscription.unsubscribe();
+    });
+
+    return new Promise<Emission>((resolve) => {
+      innerStream.isStopped.promise.then(() => resolve(emission));
+    });
   }
 }
 
