@@ -18,7 +18,8 @@ export class TakeWhileOperator extends AbstractOperator {
 
     const shouldContinue = this.predicate(emission.value);
     if (!shouldContinue) {
-      emission.isComplete = true;
+      emission.isPhantom = true;
+      stream.isStopRequested.resolve(true);
       return Promise.resolve(emission);
     }
 
