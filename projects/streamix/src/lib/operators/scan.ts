@@ -29,6 +29,7 @@ export class ScanOperator extends AbstractOperator {
       emission.isFailed = true;
       emission.error = error;
       stream.isFailed.resolve(error);
+      stream.isStopped.resolve(true);
       return Promise.resolve(emission);
     }
   }
