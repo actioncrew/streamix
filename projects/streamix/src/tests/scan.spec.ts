@@ -1,4 +1,4 @@
-import { AbstractStream, map } from '../lib';
+import { AbstractStream, scan } from '../lib';
 
 // Mock implementation for AbstractStream
 class MockStream extends AbstractStream {
@@ -26,44 +26,46 @@ class MockStream extends AbstractStream {
   }
 }
 
-describe('map operator', () => {
-  it('should transform values correctly', (done) => {
+describe('scan operator', () => {
+  it('should accumulate values correctly', (done) => {
     const testStream = new MockStream([1, 2, 3]);
-    const transform = (value: number) => value * 2;
+    const accumulator = (acc: number, value: number) => acc + value;
+    const seed = 0;
 
-    const mappedStream = testStream.pipe(map(transform));
+    const scannedStream = testStream.pipe(scan(accumulator, seed));
 
     let results: any[] = [];
 
-    mappedStream.subscribe((value) => {
+    scannedStream.subscribe((value) => {
       results.push(value);
     });
 
-    mappedStream.isStopped.promise.then(() => {
-      expect(results).toEqual([2, 4, 6]);
+    scannedStream.isStopped.promise.then(() => {
+      expect(results).toEqual([1, 3, 6]);
       done();
     });
   });
 
-  it('should handle errors in transformation', (done) => {
+  it('should handle errors in accumulation', (done) => {
     const testStream = new MockStream([1, 2, 3]);
-    const transform = (value: number) => {
+    const accumulator = (acc: number, value: number) => {
       if (value === 2) {
-        throw new Error('Error in transformation');
+        throw new Error('Error in accumulation');
       }
-      return value * 2;
+      return acc + value;
     };
+    const seed = 0;
 
-    const mappedStream = testStream.pipe(map(transform));
+    const scannedStream = testStream.pipe(scan(accumulator, seed));
 
     let results: any[] = [];
 
-    mappedStream.subscribe((value) => {
+    scannedStream.subscribe((value) => {
       results.push(value);
     });
 
-    mappedStream.isStopped.promise.then(() => {
-      expect(results).toEqual([2, 6]); // Only the first value should be emitted before error
+    scannedStream.isStopped.promise.then(() => {
+      expect(results).toEqual([1]); // Only the first value should be accumulated before error
       done();
     });
   });

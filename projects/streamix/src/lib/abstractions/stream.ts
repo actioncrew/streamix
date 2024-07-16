@@ -95,7 +95,9 @@ export class StreamSink extends AbstractStream {
     // Proxy all other properties and methods from source
     return new Proxy(this, {
       get: (target, prop) => {
-        if (prop in this && prop !== 'run') {
+        if (!(prop in this.source)) {
+          return (this as any)[prop];
+        } else if (prop in this && prop !== 'run') {
           return (this as any)[prop];
         } else {
           return (this.source as any)[prop];
