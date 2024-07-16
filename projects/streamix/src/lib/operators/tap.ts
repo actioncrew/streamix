@@ -19,9 +19,10 @@ export class TapOperator extends AbstractOperator {
     try {
       this.tapFunction(emission.value);
     } catch (error: any) {
-      emission.isFailed = true;
-      emission.error = error;
-      stream.isFailed.resolve(error);
+      // swallow error
+      // emission.isFailed = true;
+      // emission.error = error;
+      // stream.isFailed.resolve(error);
       return emission;
     }
 
