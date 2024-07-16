@@ -9,7 +9,7 @@ export class MergeMapOperator extends AbstractOperator {
   private left!: StreamSink;
   private right!: StreamSink;
 
-  private counter = new PromisifiedCounter(0, 1);
+  private counter = new PromisifiedCounter(0);
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -86,7 +86,7 @@ export class MergeMapOperator extends AbstractOperator {
     this.counter.subscribe(() => {
       if(stream.isUnsubscribed.value || stream.isAutoComplete.value ||
           stream.isFailed.value || stream.isCancelled.value ||
-          stream.isStopRequested.value
+          stream.isStopRequested.value || stream.isStopped.value
         ) {
           this.left?.isStopped.resolve(true);
       }
