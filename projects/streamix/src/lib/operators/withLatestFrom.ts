@@ -1,24 +1,17 @@
+import { Subscription } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { AbstractOperator } from '../abstractions/operator';
 import { AbstractStream } from '../abstractions/stream';
+import { PromisifiedValue } from '../utils/value';
 
 export class WithLatestFromOperator extends AbstractOperator {
-  private latestValue: any | undefined;
-  private latestValuePromise: Promise<any>;
-  private hasLatestValue: boolean = false;
+  private latestValue = new PromisifiedValue();
+  private subscription: Subscription;
 
-  constructor(private readonly otherStream: AbstractStream) {
+  constructor(readonly otherStream: AbstractStream) {
     super();
-    this.latestValuePromise = new Promise((resolve, reject) => {
-      otherStream.subscribe((value) => {
-        this.latestValue = value;
-        this.hasLatestValue = true;
-        resolve(value);
-      });
-
-      otherStream.isFailed.promise.then((error) => {
-        reject(error);
-      });
+    this.subscription = otherStream.subscribe((value) => {
+      this.latestValue.value = value;
     });
   }
 
@@ -28,8 +21,12 @@ export class WithLatestFromOperator extends AbstractOperator {
       return emission;
     }
 
+    stream.isStopped.promise.then(() => {
+      this.subscription.unsubscribe();
+    });
+
     try {
-      const latestValue = await this.latestValuePromise;
+      const latestValue = await this.latestValue.value;
       emission.value = [emission.value, latestValue];
     } catch (error) {
       emission.error = error;
