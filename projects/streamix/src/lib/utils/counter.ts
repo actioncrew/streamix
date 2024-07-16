@@ -1,11 +1,10 @@
 export class PromisifiedCounter {
   private count: number;
-  private maxSubscribers: number;
-  private listeners: (() => void)[] = [];
+  private listener: (() => void) | null = null;
+  private unsubscribeMethod: (() => void) | null = null;
 
-  constructor(initialValue: number = 0, maxSubscribers: number = Infinity) {
+  constructor(initialValue: number = 0) {
     this.count = initialValue;
-    this.maxSubscribers = maxSubscribers;
   }
 
   // Increment the counter
@@ -17,7 +16,7 @@ export class PromisifiedCounter {
   async decrement(): Promise<void> {
     this.count--;
     if (this.count <= 0) {
-      this.notifyListeners();
+      this.notifyListener();
     }
   }
 
@@ -28,19 +27,29 @@ export class PromisifiedCounter {
 
   // Subscribe to the zero event
   subscribe(listener: () => void): () => void {
-    if (this.listeners.length < this.maxSubscribers) {
-      this.listeners.push(listener);
-      return () => {
-        this.listeners = this.listeners.filter(l => l !== listener);
-      };
-    } else {
-      return () => {
-        this.listeners.pop();
-      };
+    if (this.listener && this.unsubscribeMethod) {
+      return this.unsubscribeMethod;
+    }
+
+    this.listener = listener;
+    this.unsubscribeMethod = () => {
+      this.listener = null;
+    };
+
+    return this.unsubscribeMethod;
+  }
+
+  // Unsubscribe the listener
+  unsubscribe(): void {
+    if (this.unsubscribeMethod) {
+      this.unsubscribeMethod();
+      this.unsubscribeMethod = null;
     }
   }
 
-  private notifyListeners() {
-    this.listeners.forEach(listener => listener());
+  private notifyListener() {
+    if (this.listener) {
+      this.listener();
+    }
   }
 }

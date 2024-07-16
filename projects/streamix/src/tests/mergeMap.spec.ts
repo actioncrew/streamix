@@ -1,4 +1,4 @@
-import { AbstractStream, mergeMap } from '../lib';
+import { AbstractStream, Emission, mergeMap } from '../lib';
 
 // Mock AbstractStream implementation for testing purposes
 class MockStream extends AbstractStream {
@@ -14,13 +14,17 @@ class MockStream extends AbstractStream {
   override async run(): Promise<void> {
     try {
       while (this.index < this.values.length && !this.isStopRequested.value) {
-        await this.emit({ value: this.values[this.index] });
+        let emission = { value: this.values[this.index] } as Emission;
+        await this.emit(emission);
+
+        if(emission.isFailed) {
+          throw emission.error;
+        }
         this.index++;
       }
       this.isAutoComplete.resolve(true);
     } catch (error) {
-      console.error('Error in MockStream:', error);
-      // Handle errors appropriately in your testing environment
+      this.isFailed.resolve(true);
     } finally {
       this.isStopped.resolve(true);
     }
