@@ -3,15 +3,17 @@ import { AbstractOperator } from '../abstractions/operator';
 import { AbstractStream } from '../abstractions/stream';
 
 export class WithLatestFromOperator extends AbstractOperator {
-  private latestValue: any;
-  private isLatestValueSet: boolean = false;
+  private latestValue: any | undefined;
+  private latestValuePromise: Promise<any>;
 
   constructor(private readonly otherStream: AbstractStream) {
     super();
 
-    otherStream.subscribe((value: any) => {
-      this.latestValue = value;
-      this.isLatestValueSet = true;
+    this.latestValuePromise = new Promise<any>((resolve) => {
+      otherStream.subscribe((value) => {
+        this.latestValue = value;
+        resolve(value);
+      });
     });
   }
 
@@ -21,12 +23,9 @@ export class WithLatestFromOperator extends AbstractOperator {
       return emission;
     }
 
-    if (!this.isLatestValueSet) {
-      emission.isCancelled = true;
-      return Promise.resolve(emission);
-    }
-
+    await this.latestValuePromise;
     emission.value = [emission.value, this.latestValue];
+
     return this.next?.process(emission, stream) ?? Promise.resolve(emission);
   }
 }
