@@ -20,12 +20,12 @@ export class TakeOperator extends AbstractOperator {
       this.emittedCount++;
       let promise = this.next?.process(emission, stream) ?? Promise.resolve(emission);
       if(this.emittedCount === this.count) {
-        stream.complete();
+        stream.isStopRequested.resolve(true);
       }
       return promise;
     } else {
       emission.isPhantom = true;
-      return Promise.resolve(emission);
+      return emission;
     }
   }
 }
