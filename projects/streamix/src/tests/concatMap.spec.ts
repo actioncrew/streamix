@@ -75,14 +75,14 @@ describe('ConcatMapOperator', () => {
         super();
       }
 
-      async run(): Promise<void> {
+      override async run(): Promise<void> {
         await this.emit({value: this.value});
         this.isStopped.resolve(true);
       }
     }
 
     class MockStream extends AbstractStream {
-      async run(): Promise<void> {}
+      override async run(): Promise<void> {}
     }
 
     const operator = new ConcatMapOperator(value => new MockInnerStream(value));
@@ -119,7 +119,7 @@ describe('ConcatMapOperator', () => {
         super();
       }
 
-      async run(): Promise<void> {
+      override async run(): Promise<void> {
         for (const value of this.values) {
           await this.emit({ value });
         }
@@ -128,7 +128,7 @@ describe('ConcatMapOperator', () => {
     }
 
     class MockStream extends AbstractStream {
-      async run(): Promise<void> {}
+      override async run(): Promise<void> {}
     }
 
     const outerEmissions = ['outer1', 'outer2'];
@@ -179,7 +179,7 @@ class MyInnerStream extends AbstractStream {
     this.value = value;
   }
 
-  async run(): Promise<void> {
+  override async run(): Promise<void> {
     // Simulate inner stream behavior (emission, completion, error)
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
     this.emit({ value: this.value }); // Emit the projected value
@@ -188,7 +188,7 @@ class MyInnerStream extends AbstractStream {
 
 // Example Real Stream Implementation (Replace with your actual implementation)
 class MyRealStream extends AbstractStream {
-  async run(): Promise<void> {
+  override async run(): Promise<void> {
     // Simulate your real stream behavior (emitting values)
     this.emit({ value: 'streamValue1' });
   }
@@ -203,7 +203,7 @@ class ErrorInnerStream extends AbstractStream {
     this.value = value;
   }
 
-  async run(): Promise<void> {
+  override async run(): Promise<void> {
     throw new Error('Inner Stream Error');
   }
 }
