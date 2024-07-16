@@ -25,7 +25,6 @@ class MockStream extends AbstractStream {
       }
       this.isAutoComplete.resolve(true);
     } catch (error) {
-      console.error('Error in MockStream:', error);
       this.isFailed.resolve(error);
     } finally {
       this.isStopped.resolve(true);
@@ -47,6 +46,7 @@ describe('tap operator', () => {
     });
 
     tappedStream.isStopped.promise.then(() => {
+      console.log(tappedStream);
       // Check if side effect function was called for each emission
       expect(sideEffectFn).toHaveBeenCalledTimes(3);
 
@@ -60,9 +60,6 @@ describe('tap operator', () => {
 
       done();
     });
-
-    // Start running the stream
-    testStream.run();
   });
 
   it('should handle errors in the side effect function', (done) => {
@@ -88,8 +85,5 @@ describe('tap operator', () => {
 
       done();
     });
-
-    // Start running the stream
-    testStream.run();
   });
 });

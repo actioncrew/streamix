@@ -54,10 +54,6 @@ describe('withLatestFrom operator', () => {
       ]);
       done();
     });
-
-    // Start running both streams
-    mainStream.run();
-    otherStream.run();
   });
 
   it('should handle cases where other stream emits after main stream', (done) => {
@@ -71,14 +67,6 @@ describe('withLatestFrom operator', () => {
     combinedStream.subscribe((value) => {
       results.push(value);
     });
-
-    // Start running main stream first
-    mainStream.run();
-
-    // Delay starting other stream
-    setTimeout(() => {
-      otherStream.run();
-    }, 50);
 
     combinedStream.isStopped.promise.then(() => {
       expect(results).toEqual([
@@ -130,8 +118,5 @@ describe('withLatestFrom operator', () => {
       expect(results).toEqual([]);
       done();
     });
-
-    // Start running main stream
-    mainStream.run();
   });
 });

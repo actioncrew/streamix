@@ -50,9 +50,6 @@ describe('takeWhile operator', () => {
       expect(results).toEqual([1, 2, 3]); // Should emit values until predicate returns false
       done();
     });
-
-    // Start running the stream
-    testStream.run();
   });
 
   it('should handle empty stream', (done) => {
@@ -71,9 +68,6 @@ describe('takeWhile operator', () => {
       expect(results).toEqual([]); // Should not emit any values from an empty stream
       done();
     });
-
-    // Start running the stream
-    testStream.run();
   });
 
   it('should handle immediate false predicate', (done) => {
@@ -92,8 +86,5 @@ describe('takeWhile operator', () => {
       expect(results).toEqual([]); // Should not emit any values because predicate returns false immediately
       done();
     });
-
-    // Start running the stream
-    testStream.run();
   });
 });
