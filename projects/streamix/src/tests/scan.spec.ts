@@ -1,4 +1,4 @@
-import { AbstractStream, scan } from '../lib';
+import { AbstractStream, Emission, scan } from '../lib';
 
 // Mock implementation for AbstractStream
 class MockStream extends AbstractStream {
@@ -14,12 +14,19 @@ class MockStream extends AbstractStream {
   override async run(): Promise<void> {
     try {
       while (this.index < this.values.length && !this.isStopRequested.value) {
-        await this.emit({ value: this.values[this.index] });
+        let emission = { value: this.values[this.index] } as Emission;
+        await this.emit(emission);
+
+        if(emission.isFailed) {
+          throw emission.error;
+        }
+
         this.index++;
       }
       this.isAutoComplete.resolve(true);
     } catch (error) {
       console.error('Error in MockStream:', error);
+      this.isFailed.resolve(error);
     } finally {
       this.isStopped.resolve(true);
     }

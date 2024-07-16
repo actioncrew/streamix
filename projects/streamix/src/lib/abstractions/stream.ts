@@ -32,6 +32,7 @@ export class AbstractStream {
       emission.isFailed = true;
       emission.error = error;
       this.isFailed.resolve(error);
+      this.isStopped.resolve(true);
     }
   }
 
@@ -127,6 +128,7 @@ export class StreamSink extends AbstractStream {
 
   override async emit(emission: Emission): Promise<void> {
     try {
+
       if (this.source.isCancelled.value) {
         emission.isCancelled = true;
         return;
