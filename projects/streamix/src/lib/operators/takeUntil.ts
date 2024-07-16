@@ -1,13 +1,24 @@
+import { Subscription } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { AbstractOperator } from '../abstractions/operator';
 import { AbstractStream } from '../abstractions/stream';
 
 export class TakeUntilOperator extends AbstractOperator {
   private readonly notifier: AbstractStream;
+  private subscription: Subscription | undefined;
 
   constructor(notifier: AbstractStream) {
     super();
     this.notifier = notifier;
+  }
+
+  subscribeToNotifier(stream: AbstractStream) {
+    this.subscription = this.notifier.subscribe(() => {
+      if (this.subscription) {
+        this.subscription.unsubscribe();
+        stream.isStopRequested.resolve(true);
+      }
+    });
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
@@ -16,19 +27,21 @@ export class TakeUntilOperator extends AbstractOperator {
       return emission;
     }
 
-    return new Promise((resolve) => {
-      const unsubscribe = this.notifier.subscribe(() => {
-        unsubscribe.unsubscribe();
-        emission.isComplete = true;
-        resolve(emission);
-      });
+    if (!this.subscription) {
+      this.subscribeToNotifier(stream);
+    }
 
-      if (this.next) {
-        this.next.process(emission, stream).then(resolve);
-      } else {
-        resolve(emission);
-      }
+    stream.isStopped.promise.then(() => {
+      emission.isPhantom = true;
+      return emission;
     });
+
+    if (!stream.isStopped.value) {
+      if (this.next) {
+        this.next.process(emission, stream);
+      }
+    }
+    return emission;
   }
 }
 
