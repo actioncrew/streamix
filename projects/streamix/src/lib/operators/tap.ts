@@ -21,7 +21,8 @@ export class TapOperator extends AbstractOperator {
     } catch (error: any) {
       emission.isFailed = true;
       emission.error = error;
-      return Promise.resolve(emission);
+      stream.isFailed.resolve(error);
+      return emission;
     }
 
     return this.next?.process(emission, stream) ?? Promise.resolve(emission);

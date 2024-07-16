@@ -50,10 +50,6 @@ describe('takeUntil operator', () => {
       expect(results).toEqual([1, 2, 3]); // Should emit all values before notifier emits
       done();
     });
-
-    // Start running the streams
-    testStream.run();
-    notifier.run();
   });
 
   it('should handle case where notifier emits immediately', (done) => {
@@ -73,9 +69,6 @@ describe('takeUntil operator', () => {
       expect(results).toEqual([]); // Should not emit any values because notifier emits immediately
       done();
     });
-
-    // Start running the streams
-    testStream.run();
   });
 
   it('should handle empty stream', (done) => {
@@ -94,9 +87,5 @@ describe('takeUntil operator', () => {
       expect(results).toEqual([]); // Should not emit any values because the source stream is empty
       done();
     });
-
-    // Start running the streams
-    testStream.run();
-    notifier.run();
   });
 });
