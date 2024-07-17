@@ -44,4 +44,8 @@ export class Promisified<T> {
       this._value = this._default;
     });
   }
+
+  then<TResult = void>(callback: (value?: T) => TResult | PromiseLike<TResult>): Promise<TResult> {
+    return this._promise.then(callback);
+  }
 }

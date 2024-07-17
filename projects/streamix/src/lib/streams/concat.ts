@@ -12,28 +12,50 @@ export class ConcatStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    while (this.currentSourceIndex < this.sources.length && !this.isCancelled.value) {
-      await this.runCurrentSource();
-      this.currentSourceIndex++;
-    }
-
-    if (this.currentSourceIndex >= this.sources.length) {
+    try {
+      for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length; this.currentSourceIndex++) {
+        if (this.isCancelled.value || this.isUnsubscribed.value) { break; }
+        await this.runCurrentSource();
+      }
       this.isAutoComplete.resolve(true);
+    } catch(error) {
+      this.isFailed.resolve(error);
     }
   }
 
   private async runCurrentSource(): Promise<void> {
     const currentSource = this.sources[this.currentSourceIndex];
 
-    this.currentSubscription = currentSource.subscribe((value: any) => {
-      this.emit({ value });
-    });
+    return new Promise<void>((resolve, reject) => {
+      this.currentSubscription = currentSource.subscribe(async (value: any) => {
+        if (this.isCancelled.value) {
+          this.currentSubscription?.unsubscribe();
+          resolve();
+          return;
+        }
 
-    await currentSource.isStopped.promise;
-    this.currentSubscription.unsubscribe();
+        try {
+          await this.emit({ value });
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      currentSource.isStopped.promise.then(() => {
+        this.currentSubscription?.unsubscribe();
+        resolve();
+      }).catch((error) => {
+        this.currentSubscription?.unsubscribe();
+        reject(error);
+      });
+    });
   }
 
-  override cancel(): Promise<void> {
+  override async cancel(): Promise<void> {
+    this.currentSubscription?.unsubscribe();
+    for (const source of this.sources) {
+      await source.cancel();
+    }
     return super.cancel();
   }
 }
