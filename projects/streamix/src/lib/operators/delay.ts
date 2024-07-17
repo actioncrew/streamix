@@ -9,32 +9,33 @@ export class DelayOperator extends AbstractOperator {
     this.delayTime = delayTime;
   }
 
-  async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
-      request.isCancelled = true;
-      return request;
+      emission.isCancelled = true;
+      return emission;
     }
 
     // Queue up the promise for delay
-    this.promiseQueue = this.promiseQueue ?? Promise.resolve(request);
-    this.promiseQueue = this.promiseQueue.then(async (emission) => {
+    this.promiseQueue = this.promiseQueue ?? Promise.resolve(emission);
+    this.promiseQueue = this.promiseQueue.then(async (currentEmission) => {
       if (stream.isCancelled.value) {
-        emission.isCancelled = true;
-        return emission;
+        currentEmission.isCancelled = true;
+        return currentEmission;
       }
 
       return new Promise<Emission>((resolve) => {
-        let timeout = setTimeout(() => resolve(emission), this.delayTime);
+        const timeout = setTimeout(() => resolve(currentEmission), this.delayTime);
 
         stream.isCancelled.promise.then(() => {
-          emission.isCancelled = true;
+          currentEmission.isCancelled = true;
           clearTimeout(timeout);
-          resolve(emission);
+          resolve(currentEmission);
         });
       });
     });
 
-    return this.promiseQueue.then((emission) => this.next?.process(emission, stream) ?? emission);
+    const delayedEmission = await this.promiseQueue;
+    return delayedEmission;
   }
 }
 
