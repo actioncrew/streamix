@@ -6,7 +6,7 @@
   [![npm downloads](https://img.shields.io/npm/dm/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
   [![min+zipped](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)
   
-Streamix is a lightweight and naive implementation of reactive programming concepts, similar to RxJS. It provides basic functionality for creating, subscribing to, and combining asynchronous data streams using Streams and Emissions.
+Streamix is a lightweight and alternative implementation of reactive programming concepts, similar to RxJS. It provides basic functionality for creating, subscribing to, and combining asynchronous data streams using Streams and Emissions.
 
 A Stream is a sequence of values that can be observed. Streams can emit values either synchronously or asynchronously.
 

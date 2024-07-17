@@ -20,7 +20,7 @@ export class DistinctUntilChangedOperator<T> extends AbstractOperator {
       return this.next?.process(emission, stream) ?? Promise.resolve(emission);
     } else {
       emission.isPhantom = true;
-      return;
+      return emission;
     }
   }
 }
