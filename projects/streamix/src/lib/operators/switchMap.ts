@@ -1,15 +1,30 @@
-import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
-import { AbstractStream } from '../abstractions/stream';
-import { Subscription } from '../abstractions/subscription';
+import { AbstractOperator, AbstractStream, Emission, StreamSink } from '../abstractions';
 
 export class SwitchMapOperator extends AbstractOperator {
   private readonly project: (value: any) => AbstractStream;
-  private currentSubscription?: Subscription;
+  private activeInnerStream?: AbstractStream;
+  private outerStream: AbstractStream;
+
+  private left!: StreamSink;
+  private right!: StreamSink;
 
   constructor(project: (value: any) => AbstractStream) {
     super();
     this.project = project;
+
+    this.outerStream = new AbstractStream();
+
+    Object.assign(this.outerStream, {
+      run: () => {
+        return Promise.race([
+          this.outerStream.isUnsubscribed.promise,
+          this.outerStream.isAutoComplete.promise,
+          this.outerStream.isFailed.promise,
+          this.outerStream.isCancelled.promise,
+          this.outerStream.isStopRequested.promise
+        ]);
+      }
+    });
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
@@ -18,24 +33,72 @@ export class SwitchMapOperator extends AbstractOperator {
       return emission;
     }
 
-    const newSource = this.project(emission.value!);
+    try {
+      return this.processEmission(emission, stream);
+    } catch (error) {
+      return Promise.reject(error); // Reject the outer promise on error
+    }
+  }
 
-    // Clean up previous subscription before switching to the new source
-    if (this.currentSubscription) {
-      this.currentSubscription.unsubscribe();
-      this.currentSubscription = undefined;
+  private async processEmission(emission: Emission, stream: AbstractStream) {
+    if (stream.isCancelled.value) {
+      emission.isCancelled = true;
+      return emission;
     }
 
-    return new Promise<Emission>((resolve, reject) => {
-      this.currentSubscription = newSource.subscribe((value: any) => {
-        resolve({ value });
-      });
+    let streamSink = stream as StreamSink;
+    if (!(streamSink instanceof StreamSink)) {
+      streamSink = new StreamSink(streamSink);
+    }
 
-      // Handle error case
-      this.currentSubscription.unsubscribe = () => {
-        reject(new Error('Subscription cancelled'));
-      };
+    if (this.left === undefined) {
+      const [left, right] = streamSink.split(this, this.outerStream);
+      this.left = left; this.right = right;
+    }
+
+    const newInnerStream = this.project(emission.value);
+    this.activeInnerStream = newInnerStream;
+
+    // Subscribe to the new inner stream and handle emissions
+    const subscription = newInnerStream.subscribe(async (value) => {
+      await this.right.emit({ value });
     });
+
+    // Handle inner stream errors
+    newInnerStream.isFailed.promise.then((error) => {
+      emission.error = error;
+      emission.isFailed = true;
+      subscription.unsubscribe();
+      this.removeInnerStream(newInnerStream);
+    });
+
+    // Handle inner stream completion
+    newInnerStream.isStopped.promise.then(() => {
+      subscription.unsubscribe();
+      this.removeInnerStream(newInnerStream);
+    }).catch((error) => {
+      emission.error = error;
+      emission.isFailed = true;
+      this.removeInnerStream(newInnerStream);
+    });
+
+    // Ensure only the latest inner stream remains active
+    if (this.activeInnerStream !== newInnerStream) {
+      subscription.unsubscribe();
+      this.removeInnerStream(newInnerStream);
+      emission.isPhantom = true; // Indicate that this emission is ignored
+    }
+
+    emission.isPhantom = true;
+    return new Promise<Emission>((resolve) => {
+      newInnerStream.isStopped.promise.then(() => resolve(emission));
+    });
+  }
+
+  private removeInnerStream(innerStream: AbstractStream) {
+    if (this.activeInnerStream === innerStream) {
+      this.activeInnerStream = undefined;
+    }
   }
 }
 
