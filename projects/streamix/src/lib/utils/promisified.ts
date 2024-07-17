@@ -39,8 +39,8 @@ export class Promisified<T> {
 
   reset() {
     this._promise = new Promise<T>((resolve, reject) => {
-      this._resolve = resolve; // Assign resolve function
-      this._reject = reject;  // Assign reject function
+      this._resolve = resolve;
+      this._reject = reject;
       this._value = this._default;
     });
   }
