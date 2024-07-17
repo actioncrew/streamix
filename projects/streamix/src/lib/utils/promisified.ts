@@ -29,10 +29,6 @@ export class Promisified<T> {
     this._reject(reason);
   }
 
-  get promise(): Promise<T> {
-    return this._promise;
-  }
-
   get value() {
     return this._value;
   }
