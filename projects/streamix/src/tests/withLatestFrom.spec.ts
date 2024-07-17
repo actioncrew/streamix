@@ -46,7 +46,7 @@ describe('withLatestFrom operator', () => {
       results.push(value);
     });
 
-    combinedStream.isStopped.promise.then(() => {
+    combinedStream.isStopped.then(() => {
       expect(results).toEqual([
         [1, 'A'],
         [2, 'B'],
@@ -68,7 +68,7 @@ describe('withLatestFrom operator', () => {
       results.push(value);
     });
 
-    combinedStream.isStopped.promise.then(() => {
+    combinedStream.isStopped.then(() => {
       expect(results).toEqual([
         [1, 'C'], // Main stream emits 1 first, then other stream emits 'C'
         [2, 'C'], // Main stream emits 2, other stream still emits 'C'
@@ -93,7 +93,7 @@ describe('withLatestFrom operator', () => {
     // Cancel the main stream immediately
     mainStream.cancel();
 
-    combinedStream.isStopped.promise.then(() => {
+    combinedStream.isStopped.then(() => {
       expect(results).toEqual([]);
       done();
     });
@@ -114,7 +114,7 @@ describe('withLatestFrom operator', () => {
     // Cancel the other stream immediately
     otherStream.cancel();
 
-    combinedStream.isStopped.promise.then(() => {
+    combinedStream.isStopped.then(() => {
       expect(results).toEqual([]);
       done();
     });

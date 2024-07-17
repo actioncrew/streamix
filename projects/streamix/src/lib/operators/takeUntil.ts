@@ -31,7 +31,7 @@ export class TakeUntilOperator extends AbstractOperator {
       this.subscribeToNotifier(stream);
     }
 
-    stream.isStopped.promise.then(() => {
+    stream.isStopped.then(() => {
       emission.isPhantom = true;
       return emission;
     });

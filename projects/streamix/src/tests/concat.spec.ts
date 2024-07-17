@@ -35,7 +35,7 @@ describe('ConcatStream', () => {
       emittedValues.push(value);
     });
 
-    concatStream.isStopped.promise.then(() => {
+    concatStream.isStopped.then(() => {
       expect(emittedValues).toEqual([
         'source1_value1',
         'source1_value2',
@@ -76,7 +76,7 @@ describe('ConcatStream', () => {
     const subscription = concatStream.subscribe(() => {});
 
     let isCompleted = false;
-    concatStream.isStopped.promise.then(() => {
+    concatStream.isStopped.then(() => {
       isCompleted = true;
       expect(isCompleted).toBe(true);
       subscription.unsubscribe();

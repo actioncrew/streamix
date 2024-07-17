@@ -16,7 +16,7 @@ describe('DelayOperator', () => {
       expect(elapsedTime).toBeGreaterThanOrEqual(emitCount * delayTime);
     });
 
-    delayedStream.isStopped.promise.then(() => {
+    delayedStream.isStopped.then(() => {
       if (emitCount === 3) {
         done();
       } else {
@@ -40,7 +40,7 @@ describe('DelayOperator', () => {
       }
     });
 
-    delayedStream.isStopped.promise.then(() => {
+    delayedStream.isStopped.then(() => {
       expect(emitCount).toBeLessThan(3);
       done();
     });
@@ -58,7 +58,7 @@ describe('DelayOperator', () => {
       emitCount++;
     });
 
-    delayedStream.isStopped.promise.then(() => {
+    delayedStream.isStopped.then(() => {
       expect(emitCount).toBe(5);
       done();
     }).catch(done);

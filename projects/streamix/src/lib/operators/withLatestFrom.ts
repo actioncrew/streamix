@@ -21,7 +21,7 @@ export class WithLatestFromOperator extends AbstractOperator {
       return emission;
     }
 
-    stream.isStopped.promise.then(() => {
+    stream.isStopped.then(() => {
       this.subscription.unsubscribe();
     });
 

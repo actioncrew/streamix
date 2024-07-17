@@ -58,7 +58,7 @@ export class IifOperator extends AbstractOperator {
     emission.isPhantom = true;
 
     return new Promise<Emission>((resolve) => {
-      innerStream.isStopped.promise.then(() => resolve(emission));
+      innerStream.isStopped.then(() => resolve(emission));
     });
   }
 }

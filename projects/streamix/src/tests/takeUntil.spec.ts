@@ -46,7 +46,7 @@ describe('takeUntil operator', () => {
       results.push(value);
     });
 
-    takenUntilStream.isStopped.promise.then(() => {
+    takenUntilStream.isStopped.then(() => {
       expect(results).toEqual([1, 2, 3]); // Should emit all values before notifier emits
       done();
     });
@@ -65,7 +65,7 @@ describe('takeUntil operator', () => {
       results.push(value);
     });
 
-    takenUntilStream.isStopped.promise.then(() => {
+    takenUntilStream.isStopped.then(() => {
       expect(results).toEqual([]); // Should not emit any values because notifier emits immediately
       done();
     });
@@ -83,7 +83,7 @@ describe('takeUntil operator', () => {
       results.push(value);
     });
 
-    takenUntilStream.isStopped.promise.then(() => {
+    takenUntilStream.isStopped.then(() => {
       expect(results).toEqual([]); // Should not emit any values because the source stream is empty
       done();
     });

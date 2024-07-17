@@ -39,7 +39,7 @@ describe('map operator', () => {
       results.push(value);
     });
 
-    mappedStream.isStopped.promise.then(() => {
+    mappedStream.isStopped.then(() => {
       expect(results).toEqual([2, 4, 6]);
       done();
     });
@@ -62,7 +62,7 @@ describe('map operator', () => {
       results.push(value);
     });
 
-    mappedStream.isStopped.promise.then(() => {
+    mappedStream.isStopped.then(() => {
       expect(results).toEqual([2, 6]); // Only the first value should be emitted before error
       done();
     });

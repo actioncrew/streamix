@@ -65,7 +65,7 @@ export class SwitchMapOperator extends AbstractOperator {
     });
 
     // Handle inner stream errors
-    newInnerStream.isFailed.promise.then((error) => {
+    newInnerStream.isFailed.then((error) => {
       emission.error = error;
       emission.isFailed = true;
       subscription.unsubscribe();
@@ -73,7 +73,7 @@ export class SwitchMapOperator extends AbstractOperator {
     });
 
     // Handle inner stream completion
-    newInnerStream.isStopped.promise.then(() => {
+    newInnerStream.isStopped.then(() => {
       subscription.unsubscribe();
       this.removeInnerStream(newInnerStream);
     }).catch((error) => {
@@ -91,7 +91,7 @@ export class SwitchMapOperator extends AbstractOperator {
 
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {
-      newInnerStream.isStopped.promise.then(() => resolve(emission));
+      newInnerStream.isStopped.then(() => resolve(emission));
     });
   }
 

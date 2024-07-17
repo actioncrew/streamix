@@ -47,7 +47,7 @@ describe('scan operator', () => {
       results.push(value);
     });
 
-    scannedStream.isStopped.promise.then(() => {
+    scannedStream.isStopped.then(() => {
       expect(results).toEqual([1, 3, 6]);
       done();
     });
@@ -71,7 +71,7 @@ describe('scan operator', () => {
       results.push(value);
     });
 
-    scannedStream.isStopped.promise.then(() => {
+    scannedStream.isStopped.then(() => {
       expect(results).toEqual([1]); // Only the first value should be accumulated before error
       done();
     });

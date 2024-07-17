@@ -9,7 +9,7 @@ describe('EmptyStream', () => {
       emittedValues.push(value);
     });
 
-    emptyStream.isStopped.promise.then(() => {
+    emptyStream.isStopped.then(() => {
       // Ensure no values were emitted
       expect(emittedValues).toHaveLength(0);
 
@@ -28,7 +28,7 @@ describe('EMPTY constant', () => {
       emittedValues.push(value);
     });
 
-    EMPTY.isStopped.promise.then(() => {
+    EMPTY.isStopped.then(() => {
       // Ensure no values were emitted
       expect(emittedValues).toHaveLength(0);
 

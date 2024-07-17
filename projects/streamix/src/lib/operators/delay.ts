@@ -26,7 +26,7 @@ export class DelayOperator extends AbstractOperator {
       return new Promise<Emission>((resolve) => {
         const timeout = setTimeout(() => resolve(currentEmission), this.delayTime);
 
-        stream.isCancelled.promise.then(() => {
+        stream.isCancelled.then(() => {
           currentEmission.isCancelled = true;
           clearTimeout(timeout);
           resolve(currentEmission);

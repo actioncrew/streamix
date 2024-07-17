@@ -45,7 +45,7 @@ describe('mergeMap operator', () => {
       results.push(value);
     });
 
-    mergedStream.isStopped.promise.then(() => {
+    mergedStream.isStopped.then(() => {
       expect(results).toEqual([2, 4, 4, 8, 6, 12]);
       done();
     });
@@ -68,7 +68,7 @@ describe('mergeMap operator', () => {
   //     results.push(value);
   //   });
 
-  //   mergedStream.isStopped.promise.then(() => {
+  //   mergedStream.isStopped.then(() => {
   //     expect(results).toEqual([1, 2]); // Only first inner stream emissions should be processed
   //     done();
   //   });
@@ -92,7 +92,7 @@ describe('mergeMap operator', () => {
   //     results.push(value);
   //   });
 
-  //   mergedStream.isStopped.promise.then(() => {
+  //   mergedStream.isStopped.then(() => {
   //     expect(results).toEqual([1, new Error('Error in inner stream'), 3, 6]);
   //     done();
   //   });

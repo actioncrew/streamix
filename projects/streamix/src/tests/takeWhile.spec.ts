@@ -46,7 +46,7 @@ describe('takeWhile operator', () => {
       results.push(value);
     });
 
-    takenWhileStream.isStopped.promise.then(() => {
+    takenWhileStream.isStopped.then(() => {
       expect(results).toEqual([1, 2, 3]); // Should emit values until predicate returns false
       done();
     });
@@ -64,7 +64,7 @@ describe('takeWhile operator', () => {
       results.push(value);
     });
 
-    takenWhileStream.isStopped.promise.then(() => {
+    takenWhileStream.isStopped.then(() => {
       expect(results).toEqual([]); // Should not emit any values from an empty stream
       done();
     });
@@ -82,7 +82,7 @@ describe('takeWhile operator', () => {
       results.push(value);
     });
 
-    takenWhileStream.isStopped.promise.then(() => {
+    takenWhileStream.isStopped.then(() => {
       expect(results).toEqual([]); // Should not emit any values because predicate returns false immediately
       done();
     });

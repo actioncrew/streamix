@@ -45,7 +45,7 @@ describe('tap operator', () => {
       results.push(value);
     });
 
-    tappedStream.isStopped.promise.then(() => {
+    tappedStream.isStopped.then(() => {
       console.log(tappedStream);
       // Check if side effect function was called for each emission
       expect(sideEffectFn).toHaveBeenCalledTimes(3);
@@ -76,7 +76,7 @@ describe('tap operator', () => {
       results.push(value);
     });
 
-    tappedStream.isStopped.promise.then(() => {
+    tappedStream.isStopped.then(() => {
       // Check if side effect function was called for each emission
       expect(sideEffectFn).toHaveBeenCalledTimes(3);
 

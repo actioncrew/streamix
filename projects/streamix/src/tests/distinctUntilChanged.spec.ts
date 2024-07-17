@@ -53,7 +53,7 @@ describe('distinctUntilChanged', () => {
       count++;
     });
 
-    distinctStream.isStopped.promise.then(() => {
+    distinctStream.isStopped.then(() => {
       expect(count).toBe(3); // Only three distinct values should be emitted
       done();
     }); // Adjust timeout based on your test stream implementation
@@ -86,7 +86,7 @@ describe('distinctUntilChanged', () => {
       emittedValues.push(value);
     });
 
-    distinctStream.isStopped.promise.then(() => {
+    distinctStream.isStopped.then(() => {
       expect(emittedValues).toEqual(expectedValues);
       done();
     });
