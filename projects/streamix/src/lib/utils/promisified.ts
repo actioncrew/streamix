@@ -33,6 +33,10 @@ export class Promisified<T> {
     return this._value;
   }
 
+  get promise() {
+    return this._promise;
+  }
+
   reset() {
     this._promise = new Promise<T>((resolve, reject) => {
       this._resolve = resolve; // Assign resolve function

@@ -15,7 +15,7 @@ export class LastValueFromConverter extends AbstractConverter<AbstractStream, Pr
           lastValue = value; hasEmitted = true;
         });
 
-        this.then(() => {
+        this.promise.then(() => {
           if(hasEmitted) {
             resolve(lastValue!);
           } else {
