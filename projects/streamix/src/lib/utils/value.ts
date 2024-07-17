@@ -23,4 +23,8 @@ export class PromisifiedValue<T> {
   get value(): Promise<T> {
     return this._hasValue? Promise.resolve(this._value!) : this._promise;
   }
+
+  get hasValue() {
+    return this._hasValue;
+  }
 }
