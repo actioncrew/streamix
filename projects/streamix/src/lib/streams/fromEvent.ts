@@ -11,17 +11,32 @@ export class FromEventStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      const listener = (event: Event) => {
-        this.emit({ value: event });
+    return new Promise<void>((resolve, reject) => {
+      const listener = async (event: Event) => {
+        await this.emit({ value: event }); // Assuming you want to emit the entire event object
       };
 
+      // Add event listener
       this.element.addEventListener(this.eventName, listener);
 
-      this.unsubscribe = () => {
+      // Unsubscribe function
+      const unsubscribe = () => {
         this.element.removeEventListener(this.eventName, listener);
         resolve();
-      };
+      }
+
+      // Handle termination conditions
+      Promise.race([
+        this.isStopRequested.promise,
+        this.isUnsubscribed.promise,
+        this.isCancelled.promise,
+        this.isFailed.promise,
+      ]).then(() => {
+        unsubscribe();
+        resolve();
+      }).catch((error) => {
+        reject(error);
+      });
     });
   }
 }
