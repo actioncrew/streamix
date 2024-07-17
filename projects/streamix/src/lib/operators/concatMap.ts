@@ -1,10 +1,8 @@
 import { AbstractOperator, AbstractStream, Emission, StreamSink } from '../abstractions';
-import { Promisified } from '../utils/promisified';
 
 export class ConcatMapOperator extends AbstractOperator {
   private readonly project: (value: any) => AbstractStream;
   private queue: Emission[] = [];
-  private isProcessing = new Promisified<boolean>(false);
 
   private left!: StreamSink;
   private right!: StreamSink;
@@ -15,43 +13,39 @@ export class ConcatMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
+
+    let streamSink = stream as StreamSink;
+    if (!(streamSink instanceof StreamSink)) {
+      streamSink = new StreamSink(streamSink);
+    }
+    if (this.left === undefined) {
+      const [left, right] = streamSink.split(this, streamSink);
+      this.left = left;
+      this.right = right;
     }
 
     this.queue.push(emission);
-
-    if (!this.isProcessing.value) {
-      this.isProcessing.resolve(true);
-      await this.processQueue(stream);
-      this.isProcessing.reset();
-    }
+    await this.processQueue(this.right);
 
     emission.isPhantom = true;
     return emission;
   }
 
   private async processQueue(stream: AbstractStream): Promise<void> {
-    while (this.queue.length > 0 && !stream.isCancelled.value) {
+    while (this.queue.length > 0) {
       const emission = this.queue.shift()!;
-      const innerStream = this.project(emission.value);
+      if(!stream.isCancelled.value && !stream.isUnsubscribed.value) {
+        const innerStream = this.project(emission.value);
 
-      let streamSink = stream as StreamSink;
-      if (!(streamSink instanceof StreamSink)) {
-        streamSink = new StreamSink(streamSink);
+        try {
+          await this.processInnerStream(innerStream, stream);
+        } catch (error) {
+          emission.error = error;
+          emission.isFailed = true;
+        }
       }
-      if (this.left === undefined) {
-        const [left, right] = streamSink.split(this, streamSink);
-        this.left = left;
-        this.right = right;
-      }
-
-      try {
-        await this.processInnerStream(innerStream, stream);
-      } catch (error) {
-        emission.error = error;
-        emission.isFailed = true;
+      else if (stream.isCancelled.value) {
+        emission.isCancelled = true;
       }
     }
   }
@@ -59,7 +53,9 @@ export class ConcatMapOperator extends AbstractOperator {
   private async processInnerStream(innerStream: AbstractStream, stream: AbstractStream): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const subscription = innerStream.subscribe(async (value) => {
-        await this.right.emit({ value }).catch(reject);
+        if(!stream.isCancelled.value && !stream.isUnsubscribed.value) {
+          await this.right.emit({ value }).catch(reject);
+        }
       });
 
       innerStream.isFailed.promise.then((error) => {
@@ -71,6 +67,16 @@ export class ConcatMapOperator extends AbstractOperator {
         subscription.unsubscribe();
         resolve();
       }).catch(reject);
+
+      // Handle stream cancellation and stop requests
+      stream.isCancelled.promise.then(() => {
+        subscription.unsubscribe();
+        resolve();
+      });
+      stream.isStopRequested.promise.then(() => {
+        subscription.unsubscribe();
+        resolve();
+      });
     });
   }
 }
