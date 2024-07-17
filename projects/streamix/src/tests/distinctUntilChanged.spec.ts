@@ -19,7 +19,7 @@ class TestStream extends AbstractStream {
       }
       this.isAutoComplete.resolve(true);
     } catch (error) {
-      console.error('Error in TestStream:', error);
+      this.isFailed.resolve(error);
     } finally {
       this.isStopped.resolve(true);
     }

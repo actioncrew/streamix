@@ -1,11 +1,12 @@
 {
   "name": "@actioncrew/streamix",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Lightweight RxJS alternative",
   "license": "MIT",
   "keywords": [
     "RxJS",
-    "reactive"
+    "reactive programming",
+    "data streams"
   ],
   "dependencies": {
     "tslib": "^2.3.0"
