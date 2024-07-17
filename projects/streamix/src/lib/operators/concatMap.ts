@@ -54,7 +54,7 @@ export class ConcatMapOperator extends AbstractOperator {
     return new Promise<void>((resolve, reject) => {
       const subscription = innerStream.subscribe(async (value) => {
         if(!stream.isCancelled.value && !stream.isUnsubscribed.value) {
-          await this.right.emit({ value }).catch(reject);
+          await stream.emit({ value }).catch(reject);
         }
       });
 
