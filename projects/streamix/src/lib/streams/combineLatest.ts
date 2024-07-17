@@ -37,7 +37,7 @@ export class CombineLatestStream extends AbstractStream {
         }));
       });
 
-      this.isStopRequested.promise.then(() => {
+      this.isStopRequested.then(() => {
         this.subscriptions.forEach((subscription) => {
           subscription.unsubscribe();
         });

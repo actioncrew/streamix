@@ -41,7 +41,7 @@ export class ConcatStream extends AbstractStream {
         }
       });
 
-      currentSource.isStopped.promise.then(() => {
+      currentSource.isStopped.then(() => {
         this.currentSubscription?.unsubscribe();
         resolve();
       }).catch((error) => {

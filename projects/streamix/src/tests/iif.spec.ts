@@ -59,7 +59,7 @@ describe('iif operator', () => {
       result.push(value);
     });
 
-    operator.isStopped.promise.then(() => {
+    operator.isStopped.then(() => {
       expect(result).toEqual([10, 20, 30]);
       subscription.unsubscribe();
       done();
@@ -78,7 +78,7 @@ describe('iif operator', () => {
       result.push(value);
     });
 
-    operator.isStopped.promise.then(() => {
+    operator.isStopped.then(() => {
       expect(result).toEqual([1, 2, 3]);
       subscription.unsubscribe();
       done();

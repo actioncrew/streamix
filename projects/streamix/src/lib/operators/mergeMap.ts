@@ -63,13 +63,13 @@ export class MergeMapOperator extends AbstractOperator {
       await stream.emit({value});
     });
 
-    innerStream.isCancelled.promise.then(() => {
+    innerStream.isCancelled.then(() => {
       emission.isCancelled = true;
       subscription.unsubscribe();
       this.removeInnerStream(innerStream); // Remove inner stream on error
     });
 
-    innerStream.isFailed.promise.then((error) => {
+    innerStream.isFailed.then((error) => {
       emission.error = error;
       emission.isFailed = true;
       subscription.unsubscribe();
@@ -77,7 +77,7 @@ export class MergeMapOperator extends AbstractOperator {
     });
 
     // Handle inner stream completion
-    innerStream.isStopped.promise.then(() => {
+    innerStream.isStopped.then(() => {
       subscription.unsubscribe();
       this.removeInnerStream(innerStream);
       emission.isComplete = true;
@@ -99,7 +99,7 @@ export class MergeMapOperator extends AbstractOperator {
     emission.isPhantom = true;
 
     return new Promise<Emission>((resolve) => {
-      innerStream.isStopped.promise.then(() => resolve(emission));
+      innerStream.isStopped.then(() => resolve(emission));
     });
   }
 

@@ -57,30 +57,30 @@ export class ConcatMapOperator extends AbstractOperator {
         }
       });
 
-      innerStream.isCancelled.promise.then(() => {
+      innerStream.isCancelled.then(() => {
         emission.isCancelled = true;
         subscription.unsubscribe();
         resolve();
       });
 
-      innerStream.isFailed.promise.then((error) => {
+      innerStream.isFailed.then((error) => {
         subscription.unsubscribe();
         emission.isFailed = true;
         emission.error = error;
         reject(error);
       });
 
-      innerStream.isStopped.promise.then(() => {
+      innerStream.isStopped.then(() => {
         subscription.unsubscribe();
         resolve();
       }).catch(reject);
 
       // Handle stream cancellation and stop requests
-      stream.isCancelled.promise.then(() => {
+      stream.isCancelled.then(() => {
         subscription.unsubscribe();
         resolve();
       });
-      stream.isStopRequested.promise.then(() => {
+      stream.isStopRequested.then(() => {
         subscription.unsubscribe();
         resolve();
       });

@@ -45,7 +45,7 @@ export class Promisified<T> {
     });
   }
 
-  then<TResult = void>(callback: (value?: T) => TResult | PromiseLike<TResult>): Promise<TResult> {
+  then<U = void>(callback: (value?: T) => U | PromiseLike<U>): Promise<U> {
     return this._promise.then(callback);
   }
 }

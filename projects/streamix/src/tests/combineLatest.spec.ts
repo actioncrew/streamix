@@ -46,7 +46,7 @@ describe('CombineLatestStream with TimerStreams', () => {
       }
     });
 
-    combinedTimers.isStopped.promise.then(() => done());
+    combinedTimers.isStopped.then(() => done());
   });
 
   it('should handle completion of one stream', (done) => {
@@ -76,7 +76,7 @@ describe('CombineLatestStream with TimerStreams', () => {
       }
     });
 
-    combinedTimers.isStopped.promise.then(() => {
+    combinedTimers.isStopped.then(() => {
       done(new Error('Stream did not handle completion correctly'));
     });
   });

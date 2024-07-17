@@ -44,7 +44,7 @@ describe('switchMap operator', () => {
       results.push(value);
     });
 
-    switchedStream.isStopped.promise.then(() => {
+    switchedStream.isStopped.then(() => {
       expect(results).toEqual([10, 100, 20, 200, 30, 300]); // Should switch to new inner streams and emit all values
       done();
     });
@@ -67,7 +67,7 @@ describe('switchMap operator', () => {
       results.push(value);
     });
 
-    switchedStream.isStopped.promise.then(() => {
+    switchedStream.isStopped.then(() => {
       expect(results).toEqual([10, 100, 30, 300]); // Should emit values from successful inner streams only
       done();
     });
