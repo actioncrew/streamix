@@ -14,7 +14,6 @@ describe('DelayOperator', () => {
       emitCount++;
       const elapsedTime = Date.now() - startTime;
       expect(elapsedTime).toBeGreaterThanOrEqual(emitCount * delayTime);
-      console.log(`Value: ${value}, Elapsed Time: ${elapsedTime}ms`);
     });
 
     delayedStream.isStopped.promise.then(() => {

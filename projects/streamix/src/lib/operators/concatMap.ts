@@ -20,8 +20,7 @@ export class ConcatMapOperator extends AbstractOperator {
     }
     if (this.left === undefined) {
       const [left, right] = streamSink.split(this, streamSink);
-      this.left = left;
-      this.right = right;
+      this.left = left; this.right = right;
     }
 
     this.queue.push(emission);
@@ -38,7 +37,7 @@ export class ConcatMapOperator extends AbstractOperator {
         const innerStream = this.project(emission.value);
 
         try {
-          await this.processInnerStream(innerStream, stream);
+          await this.processInnerStream(emission, innerStream, stream);
         } catch (error) {
           emission.error = error;
           emission.isFailed = true;
@@ -50,7 +49,7 @@ export class ConcatMapOperator extends AbstractOperator {
     }
   }
 
-  private async processInnerStream(innerStream: AbstractStream, stream: AbstractStream): Promise<void> {
+  private async processInnerStream(emission: Emission, innerStream: AbstractStream, stream: AbstractStream): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const subscription = innerStream.subscribe(async (value) => {
         if(!stream.isCancelled.value && !stream.isUnsubscribed.value) {
@@ -58,8 +57,16 @@ export class ConcatMapOperator extends AbstractOperator {
         }
       });
 
+      innerStream.isCancelled.promise.then(() => {
+        emission.isCancelled = true;
+        subscription.unsubscribe();
+        resolve();
+      });
+
       innerStream.isFailed.promise.then((error) => {
         subscription.unsubscribe();
+        emission.isFailed = true;
+        emission.error = error;
         reject(error);
       });
 

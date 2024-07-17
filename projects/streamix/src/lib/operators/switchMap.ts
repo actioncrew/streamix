@@ -28,6 +28,16 @@ export class SwitchMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+    let streamSink = stream as StreamSink;
+    if (!(streamSink instanceof StreamSink)) {
+      streamSink = new StreamSink(streamSink);
+    }
+
+    if (this.left === undefined) {
+      const [left, right] = streamSink.split(this, this.outerStream);
+      this.left = left; this.right = right;
+    }
+
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
       return emission;
@@ -44,16 +54,6 @@ export class SwitchMapOperator extends AbstractOperator {
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
       return emission;
-    }
-
-    let streamSink = stream as StreamSink;
-    if (!(streamSink instanceof StreamSink)) {
-      streamSink = new StreamSink(streamSink);
-    }
-
-    if (this.left === undefined) {
-      const [left, right] = streamSink.split(this, this.outerStream);
-      this.left = left; this.right = right;
     }
 
     const newInnerStream = this.project(emission.value);

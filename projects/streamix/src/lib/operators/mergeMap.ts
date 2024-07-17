@@ -30,15 +30,21 @@ export class MergeMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
+    let streamSink = stream as StreamSink;
+    if(!(streamSink instanceof StreamSink)) {
+      streamSink = new StreamSink(streamSink);
+    }
+    if(this.left === undefined) {
+      const [left, right] = streamSink.split(this, this.outerStream);
+      this.left = left; this.right = right;
     }
 
     try {
-      return this.processEmission(emission, stream);
+      return this.processEmission(emission, this.right);
     } catch (error) {
-      return Promise.reject(error); // Reject the outer promise on error
+      emission.error = error;
+      emission.isFailed = true;
+      return emission;
     }
   }
 
@@ -48,21 +54,19 @@ export class MergeMapOperator extends AbstractOperator {
       return emission;
     }
 
-    let streamSink = stream as StreamSink;
-    if(!(streamSink instanceof StreamSink)) {
-      streamSink = new StreamSink(streamSink);
-    }
-    if(this.left === undefined) {
-      const [left, right] = streamSink.split(this, this.outerStream);
-      this.left = left; this.right = right;
-    }
     const innerStream = this.project(emission.value);
     this.activeInnerStreams.push(innerStream); // Track the active inner stream
     this.counter.increment();
 
     // Subscribe to inner stream and handle emissions
     const subscription = innerStream.subscribe(async (value) => {
-      await this.right.emit({value});
+      await stream.emit({value});
+    });
+
+    innerStream.isCancelled.promise.then(() => {
+      emission.isCancelled = true;
+      subscription.unsubscribe();
+      this.removeInnerStream(innerStream); // Remove inner stream on error
     });
 
     innerStream.isFailed.promise.then((error) => {
@@ -88,7 +92,7 @@ export class MergeMapOperator extends AbstractOperator {
           stream.isFailed.value || stream.isCancelled.value ||
           stream.isStopRequested.value || stream.isStopped.value
         ) {
-          this.left?.isStopped.resolve(true);
+          this.left?.isStopRequested.resolve(true);
       }
     });
 
