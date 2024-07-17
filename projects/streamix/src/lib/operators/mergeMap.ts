@@ -52,7 +52,7 @@ export class MergeMapOperator extends AbstractOperator {
     if(!(streamSink instanceof StreamSink)) {
       streamSink = new StreamSink(streamSink);
     }
-    if(streamSink instanceof StreamSink && this.left === undefined) {
+    if(this.left === undefined) {
       const [left, right] = streamSink.split(this, this.outerStream);
       this.left = left; this.right = right;
     }
