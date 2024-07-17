@@ -2,6 +2,7 @@ import { AbstractStream } from '../abstractions/stream';
 
 export class OfStream extends AbstractStream {
   private readonly value: any;
+  private emitted: boolean = false;
 
   constructor(value: any) {
     super();
@@ -9,7 +10,13 @@ export class OfStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    return (this.isUnsubscribed.value ? Promise.resolve() : super.emit({ value: this.value })).then(() => this.isAutoComplete.resolve(true));
+    if (!this.emitted && !this.isUnsubscribed.value && !this.isCancelled.value) {
+      await super.emit({ value: this.value });
+      this.emitted = true;
+    }
+    if(!this.isUnsubscribed.value && !this.isCancelled.value) {
+      this.isAutoComplete.resolve(true);
+    }
   }
 }
 
