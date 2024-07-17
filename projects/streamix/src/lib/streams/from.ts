@@ -17,10 +17,7 @@ export class FromStream extends AbstractStream {
       }
       this.isAutoComplete.resolve(true);
     } catch (error) {
-      console.error('Error in FromStream:', error);
       this.isFailed.resolve(error);
-    } finally {
-      this.isStopped.resolve(true);
     }
   }
 }
