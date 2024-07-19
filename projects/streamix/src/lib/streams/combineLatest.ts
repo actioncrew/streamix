@@ -18,8 +18,7 @@ export class CombineLatestStream extends AbstractStream {
     return new Promise<void>((resolve) => {
       this.sources.forEach((source, index) => {
         this.subscriptions.push(source.subscribe((value: any) => {
-          if (this.sources.every(source => source.isStopRequested.value || source.isCancelled.value || source.isAutoComplete.value || source.isUnsubscribed.value || source.isFailed.value)) {
-            this.isStopRequested.resolve(true);
+          if (this.sources.every(source => source.shouldComplete() || source.shouldTerminate())) {
             resolve();
             return;
           }
@@ -37,12 +36,10 @@ export class CombineLatestStream extends AbstractStream {
         }));
       });
 
-      this.isStopRequested.then(() => {
+      Promise.race([this.awaitCompletion(), this.awaitTermination()]).then(() => {
         this.subscriptions.forEach((subscription) => {
           subscription.unsubscribe();
         });
-
-        this.isUnsubscribed.resolve(true);
       });
     });
   }
