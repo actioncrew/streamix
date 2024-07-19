@@ -50,7 +50,7 @@ export class MergeMapOperator extends AbstractOperator {
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     const streamSink = stream instanceof StreamSink ? stream : new StreamSink(stream);
-    if (!this.left) [this.left, this.right] = streamSink.split(this, streamSink);
+    if (!this.left) [this.left, this.right] = streamSink.split(this, this.outerStream);
 
     try {
       return await this.processEmission(emission, this.right!);
