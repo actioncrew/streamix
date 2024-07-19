@@ -121,7 +121,6 @@ export class MergeMapOperator extends AbstractOperator {
         this.stopInnerStreams();
         this.stopLeftStream();
         this.stopRightStream();
-        this.left?.isStopRequested.resolve(true);
       }
     });
 

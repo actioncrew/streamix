@@ -4,6 +4,7 @@ export class SwitchMapOperator extends AbstractOperator {
   private readonly project: (value: any) => AbstractStream;
   private activeInnerStream?: AbstractStream;
   private outerStream: AbstractStream;
+  private innerStreamSubscription?: any;
 
   private left!: StreamSink;
   private right!: StreamSink;
@@ -11,40 +12,55 @@ export class SwitchMapOperator extends AbstractOperator {
   constructor(project: (value: any) => AbstractStream) {
     super();
     this.project = project;
-
     this.outerStream = new AbstractStream();
+    this.initializeOuterStream();
+  }
 
+  private initializeOuterStream() {
     Object.assign(this.outerStream, {
-      run: () => {
-        return Promise.race([
-          this.outerStream.isUnsubscribed.promise,
-          this.outerStream.isAutoComplete.promise,
-          this.outerStream.isFailed.promise,
-          this.outerStream.isCancelled.promise,
-          this.outerStream.isStopRequested.promise
+      run: async () => {
+        await Promise.race([
+          this.outerStream.awaitCompletion(),
+          this.outerStream.awaitTermination()
         ]);
+        if (this.activeInnerStream) {
+          await this.activeInnerStream.awaitCompletion();
+        }
+        await this.cleanup();
       }
     });
+
+    // Listen to the outer stream's events
+    this.outerStream.isCancelled.then(() => this.cleanup());
+    this.outerStream.isStopped.then(() => this.cleanup());
+  }
+
+  private async cleanup() {
+    await this.stopInnerStream();
+    if (this.left) {
+      this.left.complete();
+    }
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-
     const streamSink = stream instanceof StreamSink ? stream : new StreamSink(stream);
-    if (!this.left) [this.left, this.right] = streamSink.split(this, streamSink);
+    if (!this.left) [this.left, this.right] = streamSink.split(this, this.outerStream);
 
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
+      await this.stopInnerStream();
+      this.left.complete();
       return emission;
     }
 
     try {
-      return this.processEmission(emission, stream);
+      return await this.processEmission(emission, stream);
     } catch (error) {
       return Promise.reject(error); // Reject the outer promise on error
     }
   }
 
-  private async processEmission(emission: Emission, stream: AbstractStream) {
+  private async processEmission(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
       return emission;
@@ -53,22 +69,29 @@ export class SwitchMapOperator extends AbstractOperator {
     const newInnerStream = this.project(emission.value);
     this.activeInnerStream = newInnerStream;
 
+    // Unsubscribe from the previous inner stream if it exists
+    if (this.innerStreamSubscription) {
+      this.innerStreamSubscription.unsubscribe();
+    }
+
     // Subscribe to the new inner stream and handle emissions
-    const subscription = newInnerStream.subscribe(async (value) => {
-      await this.right.emit({ value });
+    this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
+      if (!stream.isCancelled.value) {
+        await this.right.emit({ value });
+      }
     });
 
     // Handle inner stream errors
     newInnerStream.isFailed.then((error) => {
       emission.error = error;
       emission.isFailed = true;
-      subscription.unsubscribe();
+      this.innerStreamSubscription.unsubscribe();
       this.removeInnerStream(newInnerStream);
     });
 
     // Handle inner stream completion
     newInnerStream.isStopped.then(() => {
-      subscription.unsubscribe();
+      this.innerStreamSubscription.unsubscribe();
       this.removeInnerStream(newInnerStream);
     }).catch((error) => {
       emission.error = error;
@@ -78,7 +101,7 @@ export class SwitchMapOperator extends AbstractOperator {
 
     // Ensure only the latest inner stream remains active
     if (this.activeInnerStream !== newInnerStream) {
-      subscription.unsubscribe();
+      this.innerStreamSubscription.unsubscribe();
       this.removeInnerStream(newInnerStream);
       emission.isPhantom = true; // Indicate that this emission is ignored
     }
@@ -92,6 +115,13 @@ export class SwitchMapOperator extends AbstractOperator {
   private removeInnerStream(innerStream: AbstractStream) {
     if (this.activeInnerStream === innerStream) {
       this.activeInnerStream = undefined;
+    }
+  }
+
+  private async stopInnerStream() {
+    if (this.activeInnerStream) {
+      this.activeInnerStream.terminate();
+      this.removeInnerStream(this.activeInnerStream);
     }
   }
 }
