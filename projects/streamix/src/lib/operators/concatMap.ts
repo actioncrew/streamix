@@ -14,14 +14,8 @@ export class ConcatMapOperator extends AbstractOperator {
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
 
-    let streamSink = stream as StreamSink;
-    if (!(streamSink instanceof StreamSink)) {
-      streamSink = new StreamSink(streamSink);
-    }
-    if (this.left === undefined) {
-      const [left, right] = streamSink.split(this, streamSink);
-      this.left = left; this.right = right;
-    }
+    const streamSink = stream instanceof StreamSink ? stream : new StreamSink(stream);
+    if (!this.left) [this.left, this.right] = streamSink.split(this, streamSink);
 
     this.queue.push(emission);
     await this.processQueue(this.right);
