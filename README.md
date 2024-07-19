@@ -1,27 +1,25 @@
 # Streamix
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.0.1.
 
-## Development server
+  [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
+  [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
+  [![npm downloads](https://img.shields.io/npm/dm/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
+  [![min+zipped](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+Streamix is a lightweight and alternative implementation of reactive programming concept. It provides similar interface of RxJS operators, but uses slightly changed concept of streams and emissions. It provides basic functionality for creating, subscribing to, and combining asynchronous data streams. But what is the gain?
 
-## Code scaffolding
+Today's developer is a hardened warrior, battling the asynchronous dragons of user interactions, network requests, and the ever-present threat of a lagging UI. Synchronous programming? That quaint notion is about as useful as a dial-up modem in the age of gigabit internet. 
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+We all know the mantra: "Async/await is the new king!" But let's be honest, sometimes you just need a simple, reliable solution for your own quirky project. You reach for your trusty synchronous code, a comforting blanket in a world of unpredictable promises and callback hell. But alas! It just doesn't quite fit the asynchronous puzzle.
 
-## Build
+The trend towards asynchronous programming is accepted as Streamix foundation. Let's describe its building blocks shortly:
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+A Stream is a sequence of values that can be observed. Streams can emit values either synchronously or asynchronously.
 
-## Running unit tests
+An Emission represents a value emitted by a Stream. Emissions can carry additional metadata, such as whether the emission is cancelled or if there was an error.
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+Operators are components that can be applied to the stream data. They can be used to transform, filter, and combine streams of data.
 
-## Running end-to-end tests
+A Subject is a special type of Stream that allows manually dispatch emissions. Subjects can be used to share a single execution path among multiple subscribers.
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
-
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Streamix is ideal for those who need a straightforward way to handle asynchronous data without the complexity of more advanced libraries. It is intended as a lightweight alternative to RxJS for simpler use cases.
