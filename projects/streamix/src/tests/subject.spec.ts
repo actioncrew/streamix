@@ -64,7 +64,7 @@ describe('Subject', () => {
     });
 
     subject.next('value1');
-    subject.cancel();
+    subject.terminate();
     subject.next('value2');
 
     subject.isStopped.then(() => {

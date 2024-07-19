@@ -51,12 +51,12 @@ export class ConcatStream extends AbstractStream {
     });
   }
 
-  override async cancel(): Promise<void> {
+  override async terminate(): Promise<void> {
     this.currentSubscription?.unsubscribe();
     for (const source of this.sources) {
-      await source.cancel();
+      await source.terminate();
     }
-    return super.cancel();
+    return super.terminate();
   }
 }
 

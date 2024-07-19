@@ -3,33 +3,31 @@ import { AbstractStream } from '../abstractions/stream';
 import { Promisified } from '../utils/promisified';
 
 export class Subject extends AbstractStream {
-  private emissionQueue: Emission[] = [];
-  private emissionAvailable = new Promisified<boolean>(false);
+  protected emissionQueue: Emission[] = [];
+  protected emissionAvailable = new Promisified<boolean>(false);
 
   override async run(): Promise<void> {
     try {
-      while (!this.isStopped.value && !this.isUnsubscribed.value) {
-        await Promise.race([this.isUnsubscribed.promise, this.emissionAvailable.promise]);
+      while (true) {
+        await Promise.race([this.awaitCompletion(), this.awaitTermination(), this.emissionAvailable.promise]);
 
-        if (this.isStopped.value || this.isUnsubscribed.value) break;
+        if (this.emissionAvailable.value) {
+          this.emissionAvailable.reset();
 
-        this.emissionAvailable.reset();
+          do {
+            if (this.shouldTerminate()) {
+              this.emissionQueue = [];
+              break;
+            }
 
-        while (this.emissionQueue.length > 0) {
-          if (this.isCancelled.value || this.isUnsubscribed.value) {
-            this.emissionQueue = []; // Clear the queue
-            this.isStopped.resolve(true);
-            break;
-          }
+            if (this.shouldComplete() && this.emissionQueue.length === 0) {
+              break;
+            }
 
-          const emission = this.emissionQueue.shift()!;
-          await super.emit(emission);
-
-          if (this.isStopRequested.value && this.emissionQueue.length === 0) {
-            this.isStopped.resolve(true);
-            break;
-          }
-        }
+            const emission = this.emissionQueue.shift()!;
+            await super.emit(emission);
+          } while (this.emissionQueue.length > 0);
+        } else { break; }
       }
     } catch (error: any) {
       console.warn(`Error in Subject ${this.constructor.name} run:`, error);
