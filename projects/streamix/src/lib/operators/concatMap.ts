@@ -40,7 +40,7 @@ export class ConcatMapOperator extends AbstractOperator {
       this.stopRightStream();
     });
 
-    this.outerStream.isStopped.then(() => {
+    this.outerStream.isStopRequested.then(() => {
       this.stopCurrentInnerStream();
       this.stopLeftStream();
       this.stopRightStream();
