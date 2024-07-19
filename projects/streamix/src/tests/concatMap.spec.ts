@@ -77,7 +77,7 @@ describe('ConcatMapOperator', () => {
 
       override async run(): Promise<void> {
         await this.emit({value: this.value});
-        this.isStopped.resolve(true);
+        await this.complete();
       }
     }
 
@@ -123,7 +123,7 @@ describe('ConcatMapOperator', () => {
         for (const value of this.values) {
           await this.emit({ value });
         }
-        this.isStopped.resolve(true);
+        await this.complete();
       }
     }
 
