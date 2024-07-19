@@ -77,12 +77,14 @@ describe('ConcatMapOperator', () => {
 
       override async run(): Promise<void> {
         await this.emit({value: this.value});
-        this.isStopped.resolve(true);
+        this.isStopRequested.resolve(true);
       }
     }
 
     class MockStream extends AbstractStream {
-      override async run(): Promise<void> {}
+      override async run(): Promise<void> {
+        this.isStopRequested.resolve(true);
+      }
     }
 
     const operator = new ConcatMapOperator(value => new MockInnerStream(value));
@@ -123,12 +125,14 @@ describe('ConcatMapOperator', () => {
         for (const value of this.values) {
           await this.emit({ value });
         }
-        this.isStopped.resolve(true);
+        this.isStopRequested.resolve(true);
       }
     }
 
     class MockStream extends AbstractStream {
-      override async run(): Promise<void> {}
+      override async run(): Promise<void> {
+        this.isStopRequested.resolve(true);
+      }
     }
 
     const outerEmissions = ['outer1', 'outer2'];
