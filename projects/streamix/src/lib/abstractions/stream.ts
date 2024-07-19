@@ -17,16 +17,18 @@ export class AbstractStream {
   protected subscribers: ((value: any) => any)[] = [];
 
   async emit(emission: Emission): Promise<void> {
-    if (this.isCancelled.value) {
-      emission.isCancelled = true;
-      return;
-    }
-
     try {
-      if (!emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
-        await Promise.all(this.subscribers.map(subscriber => subscriber(emission.value)));
-        emission.isComplete = true;
+      let currentEmission: Emission = emission;
+
+      if (this.isCancelled.value) {
+        currentEmission.isCancelled = true;
       }
+
+      if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
+        await Promise.all(this.subscribers.map(subscriber => subscriber(currentEmission.value)));
+      }
+
+      currentEmission.isComplete = true;
     } catch (error: any) {
       console.error(`Error in stream ${this.constructor.name}: `, error);
       emission.isFailed = true;
@@ -128,22 +130,18 @@ export class StreamSink extends AbstractStream {
 
   override async emit(emission: Emission): Promise<void> {
     try {
+      let currentEmission: Emission = emission;
 
       if (this.source.isCancelled.value) {
-        emission.isCancelled = true;
-        return;
+        currentEmission.isCancelled = true;
       }
 
-      let currentEmission: Emission = emission;
-      let promise = this.head?.process(currentEmission, this) ?? Promise.resolve(currentEmission);
+      currentEmission = await (this.head?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
 
-      currentEmission = await promise;
-
-      if (currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed) {
-        return;
+      if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
+        await Promise.all(this.subscribers.map(subscriber => subscriber(currentEmission.value)));
       }
 
-      await Promise.all(this.subscribers.map(subscriber => subscriber(currentEmission.value)));
       currentEmission.isComplete = true;
     } catch (error: any) {
       console.error(`Error in stream ${this.constructor.name}: `, error);
