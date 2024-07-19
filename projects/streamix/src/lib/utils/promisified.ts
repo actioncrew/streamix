@@ -48,4 +48,12 @@ export class Promisified<T> {
   then<U = void>(callback: (value?: T) => U | PromiseLike<U>): Promise<U> {
     return this._promise.then(callback);
   }
+
+  static all(promises: Array<Promisified<any>>): Promise<any[]> {
+    return Promise.all(promises.map(p => p.promise));
+  }
+
+  static race(promises: Array<Promisified<any>>): Promise<any> {
+    return Promise.race(promises.map(p => p.promise));
+  }
 }
