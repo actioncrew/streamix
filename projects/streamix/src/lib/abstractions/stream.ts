@@ -38,9 +38,25 @@ export class AbstractStream {
     }
   }
 
-  cancel(): Promise<void> {
+  shouldTerminate() {
+    return this.isCancelled.value || this.isFailed.value;
+  }
+
+  awaitTermination() {
+    return Promise.race([this.isCancelled.promise, this.isFailed.promise]);
+  }
+
+  terminate(): Promise<void> {
     this.isCancelled.resolve(true);
     return this.isStopped.then(() => Promise.resolve());
+  }
+
+  shouldComplete() {
+    return this.isAutoComplete.value || this.isUnsubscribed.value || this.isStopRequested.value;
+  }
+
+  awaitCompletion() {
+    return Promise.race([this.isAutoComplete.promise, this.isUnsubscribed.promise, this.isStopRequested.promise]);
   }
 
   complete(): Promise<void> {
