@@ -91,7 +91,7 @@
 //     });
 
 //     // Cancel the main stream immediately
-//     mainStream.cancel();
+//     mainStream.terminate();
 
 //     combinedStream.isStopped.then(() => {
 //       expect(results).toEqual([]);
@@ -112,7 +112,7 @@
 //     });
 
 //     // Cancel the other stream immediately
-//     otherStream.cancel();
+//     otherStream.terminate();
 
 //     combinedStream.isStopped.then(() => {
 //       expect(results).toEqual([]);

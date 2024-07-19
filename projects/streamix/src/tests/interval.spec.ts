@@ -49,7 +49,7 @@ describe('IntervalStream', () => {
       emittedValues.push(emission.value);
     });
 
-    intervalStream.cancel();
+    intervalStream.terminate();
 
     const previousLength = emittedValues.length;
     await new Promise((resolve) => setTimeout(resolve, intervalMs * 2)); // Wait for potential additional emissions

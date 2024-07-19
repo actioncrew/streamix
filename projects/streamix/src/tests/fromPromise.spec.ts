@@ -76,7 +76,7 @@ describe('FromPromiseStream', () => {
       emittedValues.push(emission.value);
     });
 
-    stream.cancel(); // Cancel before running
+    stream.terminate(); // Cancel before running
 
     expect(emittedValues).toEqual([]);
   });
