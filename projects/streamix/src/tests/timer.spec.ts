@@ -47,7 +47,7 @@ describe('TimerStream', () => {
       emittedValues.push(emission.value);
     });
 
-    timerStream.cancel();
+    timerStream.terminate();
 
     const previousLength = emittedValues.length;
     await new Promise((resolve) => setTimeout(resolve, intervalMs * 2)); // Wait for potential additional emissions
