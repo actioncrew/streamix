@@ -22,7 +22,7 @@ export class ConcatMapOperator extends AbstractOperator {
           this.outerStream.awaitTermination()
         ]);
 
-        this.processingPromise && await this.processingPromise;
+        await this.processingPromise;
       }
     });
 
