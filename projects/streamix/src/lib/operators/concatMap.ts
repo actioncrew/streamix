@@ -27,7 +27,7 @@ export class ConcatMapOperator extends AbstractOperator {
   private async processQueue(stream: AbstractStream): Promise<void> {
     while (this.queue.length > 0) {
       const emission = this.queue.shift()!;
-      if(!stream.isCancelled.value && !stream.isUnsubscribed.value) {
+      if(!stream.shouldComplete() && !stream.shouldTerminate()) {
         const innerStream = this.project(emission.value);
 
         try {
@@ -46,7 +46,7 @@ export class ConcatMapOperator extends AbstractOperator {
   private async processInnerStream(emission: Emission, innerStream: AbstractStream, stream: AbstractStream): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const subscription = innerStream.subscribe(async (value) => {
-        if(!stream.isCancelled.value && !stream.isUnsubscribed.value) {
+        if(!stream.shouldComplete() && !stream.shouldTerminate()) {
           await stream.emit({ value }).catch(reject);
         }
       });
