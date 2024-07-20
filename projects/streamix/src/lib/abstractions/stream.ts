@@ -167,45 +167,23 @@ export class StreamSink extends AbstractStream {
   }
 
   split(operator: AbstractOperator, stream: AbstractStream) {
-    let subscribers: ((value: any) => any)[] = [];
+    let subscribers = this.source.subscribers.slice();
+    const callback = () => {};
+    this.source.subscribers = [callback];
+    
     this.left = new StreamSink(new Proxy(this.source, {
       get: (target: AbstractStream, prop: string, receiver: any) => {
-        if (prop === 'subscribers') {
-          // Return a custom value or handle the subscribers property
-          return subscribers;
-        }
         return Reflect.get(target, prop, receiver);
       },
       set: (target: AbstractStream, prop: string, value: any, receiver: any) => {
-        if (prop === 'subscribers') {
-          // Handle setting the subscribers property
-          subscribers = value;
-          return true;
-        }
         return Reflect.set(target, prop, value, receiver);
       }
     }));
 
     this.left.head = this.head; this.left.tail = operator;
-    const callback = () => {}; this.left.subscribers.push(callback);
 
     this.right = new StreamSink(stream);
-    this.right.subscribe(callback); //starting stream
-    this.right.subscribers = new Proxy(this.subscribers, {
-      get: (target: any[], prop: string, receiver: any) => {
-        if (prop === 'subscribers') {
-          return this.subscribers;
-        }
-
-        return Reflect.get(target, prop, receiver);
-      },
-      set: (target: any[], prop: string, value: any, receiver: any) => {
-        if (prop === 'subscribers') {
-          this.subscribers = value;
-          return true;
-        }
-        return Reflect.set(target, prop, value, receiver);
-    }});
+    subscribers.forEach(subscriber => this.right.subscribe(subscriber));
 
     this.right.unsubscribe = new Proxy(this.unsubscribe, {
       apply: (targetUnsubscribe, thisArg, argumentsList: any) => {
