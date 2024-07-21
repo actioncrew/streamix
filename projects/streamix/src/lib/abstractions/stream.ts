@@ -171,18 +171,12 @@ export class StreamSink extends AbstractStream {
     const callback = () => {};
     this.source.subscribers = [callback];
     
-    this.left = new StreamSink(new Proxy(this.source, {
-      get: (target: AbstractStream, prop: string, receiver: any) => {
-        return Reflect.get(target, prop, receiver);
-      },
-      set: (target: AbstractStream, prop: string, value: any, receiver: any) => {
-        return Reflect.set(target, prop, value, receiver);
-      }
-    }));
-
+    this.left = new StreamSink(this.source);
     this.left.head = this.head; this.left.tail = operator;
 
     this.right = new StreamSink(stream);
+    this.right.head = operator.next; this.right.tail = this.tail;
+    
     subscribers.forEach(subscriber => this.right.subscribe(subscriber));
 
     this.right.unsubscribe = new Proxy(this.unsubscribe, {
@@ -193,8 +187,6 @@ export class StreamSink extends AbstractStream {
         }
       }
     });
-
-    this.right.head = operator.next; this.right.tail = this.tail;
 
     this.isSplitted = true;
     return [this.left, this.right];
