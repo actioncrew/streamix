@@ -171,10 +171,10 @@ export class StreamSink extends AbstractStream {
     const callback = () => {};
     this.source.subscribers = [callback];
     
-    this.left = new StreamSink(this.source);
+    this.left = this;
     this.left.head = this.head; this.left.tail = operator;
 
-    this.right = new StreamSink(stream);
+    this.right = stream instanceof StreamSink ? stream : new StreamSink(stream);
     this.right.head = operator.next; this.right.tail = this.tail;
     
     subscribers.forEach(subscriber => this.right.subscribe(subscriber));
