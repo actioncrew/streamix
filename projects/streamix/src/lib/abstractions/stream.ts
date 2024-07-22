@@ -100,13 +100,10 @@ export class AbstractStream {
 
 export class StreamSink extends AbstractStream {
   protected source: AbstractStream;
+  protected next?: StreamSink;
+
   protected head?: AbstractOperator;
   protected tail?: AbstractOperator;
-
-  protected right?: StreamSink;
-  protected left?: StreamSink;
-
-  isSplitted: boolean = false;
 
   constructor(source: AbstractStream) {
     super();
@@ -167,28 +164,26 @@ export class StreamSink extends AbstractStream {
   }
 
   split(operator: AbstractOperator, stream: AbstractStream) {
-    let subscribers = this.source.subscribers.slice();
+    let subscribers = this.subscribers.slice();
     const callback = () => {};
-    this.source.subscribers = [callback];
-    
-    this.left = this;
-    this.left.head = this.head; this.left.tail = operator;
+    this.subscribers = [callback];
 
-    this.right = stream instanceof StreamSink ? stream : new StreamSink(stream);
-    this.right.head = operator.next; this.right.tail = this.tail;
-    
-    subscribers.forEach(subscriber => this.right.subscribe(subscriber));
+    this.tail = operator;
 
-    this.right.unsubscribe = new Proxy(this.unsubscribe, {
+    this.next = stream instanceof StreamSink ? stream : new StreamSink(stream);
+    this.next.head = operator.next; this.next.tail = this.tail;
+
+    subscribers.forEach(subscriber => this.next!.subscribe(subscriber));
+
+    this.next.unsubscribe = new Proxy(this.unsubscribe, {
       apply: (targetUnsubscribe, thisArg, argumentsList: any) => {
         targetUnsubscribe.apply(thisArg, argumentsList);
         if (this.subscribers.length === 0) {
-          this.left!.unsubscribe(callback)
+          this.unsubscribe(callback)
         }
       }
     });
 
-    this.isSplitted = true;
-    return [this.left, this.right];
+    return this.next;
   }
 }

@@ -7,8 +7,8 @@ export class ConcatMapOperator extends AbstractOperator {
   private processingPromise: Promise<void> | null = null;
   private queue: Emission[] = [];
 
-  private left?: StreamSink;
-  private right?: StreamSink;
+  private innerSink?: StreamSink;
+  private outerSink?: StreamSink;
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -48,8 +48,8 @@ export class ConcatMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    const streamSink = stream instanceof StreamSink ? stream : new StreamSink(stream);
-    if (!this.left) [this.left, this.right] = streamSink.split(this, this.outerStream);
+    if (!this.innerSink) this.innerSink = stream instanceof StreamSink ? stream : new StreamSink(stream);
+    if (!this.outerSink) this.outerSink = this.innerSink.split(this, this.outerStream);
 
     try {
       this.queue.push(emission);
@@ -71,7 +71,7 @@ export class ConcatMapOperator extends AbstractOperator {
   private async processQueue(): Promise<void> {
     while (this.queue.length > 0 && !this.currentInnerStream) {
       const emission = this.queue.shift()!;
-      await this.processEmission(emission, this.right!);
+      await this.processEmission(emission, this.outerSink!);
     }
   }
 
@@ -137,14 +137,14 @@ export class ConcatMapOperator extends AbstractOperator {
   }
 
   private async stopLeftStream() {
-    if (this.left) {
-      await this.left.complete();
+    if (this.innerSink) {
+      await this.innerSink.complete();
     }
   }
 
   private async stopRightStream() {
-    if (this.right) {
-      await this.right.complete();
+    if (this.outerSink) {
+      await this.outerSink.complete();
     }
   }
 
