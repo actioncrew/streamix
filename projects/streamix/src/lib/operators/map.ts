@@ -10,20 +10,19 @@ export class MapOperator extends AbstractOperator {
     this.transform = transform;
   }
 
-  async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
-      request.isCancelled = true;
-      return request;
+      emission.isCancelled = true;
+      return emission;
     }
 
     try {
-      request.value = this.transform(request.value);
-      return this.next?.process(request, stream) ?? Promise.resolve(request);
+      emission.value = this.transform(emission.value);
+      return emission;
     } catch(error) {
-      request.error = error;
-      request.isFailed = true;
-      stream.isFailed.resolve(error);
-      return request;
+      emission.error = error;
+      emission.isFailed = true;
+      return emission;
     }
   }
 }
