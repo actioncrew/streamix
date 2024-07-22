@@ -16,26 +16,27 @@ export class WithLatestFromOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
-    }
-
-    stream.isStopped.then(() => {
-      this.subscription.unsubscribe();
-    });
 
     try {
-      const latestValue = await this.latestValue.value;
+      const latestValue = await Promise.race([
+        this.latestValue.value,
+        stream.awaitTermination(),
+        this.otherStream.awaitTermination()
+      ]);
+
+      if (stream.shouldTerminate() || this.otherStream.shouldTerminate()) {
+        emission.isCancelled = true;
+        this.subscription.unsubscribe();
+        return emission;
+      }
+
       emission.value = [emission.value, latestValue];
     } catch (error) {
       emission.error = error;
       emission.isFailed = true;
-      stream.isFailed.resolve(true);
-      stream.isStopped.resolve(true);
     }
 
-    return this.next?.process(emission, stream) ?? Promise.resolve(emission);
+    return emission;
   }
 }
 
