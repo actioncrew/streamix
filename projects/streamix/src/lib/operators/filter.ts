@@ -18,12 +18,7 @@ export class FilterOperator extends AbstractOperator {
     }
 
     request.isPhantom = !this.predicate(request.value);
-
-    if(!request.isPhantom) {
-      return this.next?.process(request, stream) ?? Promise.resolve(request);
-    } else {
-      return request;
-    }
+    return request;
   }
 }
 

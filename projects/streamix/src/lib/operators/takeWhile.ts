@@ -23,7 +23,7 @@ export class TakeWhileOperator extends AbstractOperator {
       return Promise.resolve(emission);
     }
 
-    return this.next?.process(emission, stream) ?? Promise.resolve(emission);
+    return emission;
   }
 }
 

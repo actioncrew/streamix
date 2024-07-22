@@ -23,14 +23,11 @@ export class ScanOperator extends AbstractOperator {
     try {
       this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!);
       emission.value = this.accumulatedValue;
-
-      return this.next?.process(emission, stream) ?? Promise.resolve(emission);
+      return emission;
     } catch (error) {
       emission.isFailed = true;
       emission.error = error;
-      stream.isFailed.resolve(error);
-      stream.isStopped.resolve(true);
-      return Promise.resolve(emission);
+      return emission;
     }
   }
 }

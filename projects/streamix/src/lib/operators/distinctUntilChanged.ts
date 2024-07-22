@@ -17,7 +17,7 @@ export class DistinctUntilChangedOperator<T> extends AbstractOperator {
 
     if (this.lastEmittedValue === undefined || emission.value !== this.lastEmittedValue) {
       this.lastEmittedValue = emission.value;
-      return this.next?.process(emission, stream) ?? Promise.resolve(emission);
+      return emission;
     } else {
       emission.isPhantom = true;
       return emission;
