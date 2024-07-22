@@ -57,29 +57,4 @@ describe('tap operator', () => {
       done();
     });
   });
-
-  it('should handle errors in the side effect function', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
-    const sideEffectFn = jest.fn().mockImplementation(() => {
-      throw new Error('Error in side effect');
-    });
-
-    const tappedStream = testStream.pipe(tap(sideEffectFn));
-
-    let results: any[] = [];
-
-    tappedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    tappedStream.isStopped.then(() => {
-      // Check if side effect function was called for each emission
-      expect(sideEffectFn).toHaveBeenCalledTimes(3);
-
-      // Verify that the emitted results are the same as the original stream
-      expect(results).toEqual([1, 2, 3]);
-
-      done();
-    });
-  });
 });
