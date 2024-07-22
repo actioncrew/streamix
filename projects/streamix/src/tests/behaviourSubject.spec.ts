@@ -1,4 +1,4 @@
-import { BehaviorSubject, Emission } from '../lib';
+import { BehaviorSubject } from '../lib';
 
 describe('BehaviorSubject', () => {
   it('should emit the current value to new subscribers immediately', async () => {
@@ -6,8 +6,8 @@ describe('BehaviorSubject', () => {
     const behaviorSubject = new BehaviorSubject(initialValue);
 
     const emittedValues: any[] = [];
-    const subscription = behaviorSubject.subscribe((emission: Emission) => {
-      emittedValues.push(emission.value);
+    const subscription = behaviorSubject.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     behaviorSubject.next('value1');
