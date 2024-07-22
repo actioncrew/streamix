@@ -2,14 +2,14 @@ import { AbstractStream } from '../abstractions/stream';
 import { PromisifiedCounter } from '../utils';
 
 export class FromEventStream extends AbstractStream {
-  private element: HTMLElement;
+  private target: EventTarget; // This will support both HTMLElement and window
   private eventName: string;
   private eventCounter: PromisifiedCounter;
   private stopped = false;
 
-  constructor(element: HTMLElement, eventName: string) {
+  constructor(target: EventTarget, eventName: string) {
     super();
-    this.element = element;
+    this.target = target;
     this.eventName = eventName;
     this.eventCounter = new PromisifiedCounter(0);
   }
@@ -23,11 +23,11 @@ export class FromEventStream extends AbstractStream {
       };
 
       // Add event listener
-      this.element.addEventListener(this.eventName, listener);
+      this.target.addEventListener(this.eventName, listener);
 
       // Unsubscribe function
       const unsubscribe = () => {
-        this.element.removeEventListener(this.eventName, listener);
+        this.target.removeEventListener(this.eventName, listener);
         resolve();
       };
 
@@ -36,7 +36,8 @@ export class FromEventStream extends AbstractStream {
           unsubscribe();
           resolve();
         }
-      })
+      });
+
       // Handle termination conditions
       let promise = Promise.race([
         this.isStopRequested.promise,
@@ -52,6 +53,6 @@ export class FromEventStream extends AbstractStream {
   }
 }
 
-export function fromEvent(element: HTMLElement, eventName: string) {
-  return new FromEventStream(element, eventName);
+export function fromEvent(target: EventTarget, eventName: string) {
+  return new FromEventStream(target, eventName);
 }
