@@ -96,6 +96,8 @@ export class AppComponent implements AfterViewInit {
   private resizeCanvas() {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
+    this.ctx.fillStyle = 'black';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   private setupAnimation() {
