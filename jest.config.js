@@ -3,4 +3,5 @@ module.exports = {
   preset: 'jest-preset-angular',
   setupFilesAfterEnv: ['./setup-jest.ts'],
   testTimeout: 30000,
+  testEnvironment: 'jsdom'
 };
