@@ -12,14 +12,14 @@ export class ConcatStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    try {
-      for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length; this.currentSourceIndex++) {
-        if (this.isCancelled.value || this.isUnsubscribed.value) { break; }
-        await this.runCurrentSource();
-      }
+
+    for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length && !this.shouldComplete(); this.currentSourceIndex++) {
+      if (this.isCancelled.value || this.isUnsubscribed.value) { break; }
+      await this.runCurrentSource();
+    }
+
+    if(!this.shouldComplete()) {
       this.isAutoComplete.resolve(true);
-    } catch(error) {
-      this.isFailed.resolve(error);
     }
   }
 
