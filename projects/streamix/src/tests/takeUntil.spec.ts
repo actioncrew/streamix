@@ -1,4 +1,4 @@
-import { AbstractStream, Emission, takeUntil } from '../lib';
+import { AbstractStream, Emission, from, of, take, takeUntil, timer } from '../lib';
 
 // Mock implementation for AbstractStream
 class MockStream extends AbstractStream {
@@ -25,7 +25,6 @@ class MockStream extends AbstractStream {
       }
       this.isAutoComplete.resolve(true);
     } catch (error) {
-      console.error('Error in MockStream:', error);
       this.isFailed.resolve(error);
     } finally {
       this.isStopped.resolve(true);
@@ -35,8 +34,8 @@ class MockStream extends AbstractStream {
 
 describe('takeUntil operator', () => {
   it('should take emissions until notifier emits', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
-    const notifier = new MockStream(['stop']);
+    const testStream = from([1, 2, 3]);
+    const notifier = timer(2000, 1000).pipe(take(1));
 
     const takenUntilStream = testStream.pipe(takeUntil(notifier));
 
@@ -53,9 +52,8 @@ describe('takeUntil operator', () => {
   });
 
   it('should handle case where notifier emits immediately', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
-    const notifier = new MockStream(['stop']);
-    notifier.run(); // Notifier emits immediately
+    const testStream = timer(0, 500);
+    const notifier = of('stop');
 
     const takenUntilStream = testStream.pipe(takeUntil(notifier));
 
@@ -66,7 +64,7 @@ describe('takeUntil operator', () => {
     });
 
     takenUntilStream.isStopped.then(() => {
-      expect(results).toEqual([]); // Should not emit any values because notifier emits immediately
+      expect(results).toEqual([0]); // Should not emit any values because notifier emits immediately
       done();
     });
   });

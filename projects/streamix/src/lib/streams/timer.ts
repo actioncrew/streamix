@@ -25,14 +25,24 @@ export class TimerStream extends AbstractStream {
         });
       }, this.delayMs);
 
+       // Listen for the stop request
+       this.isStopRequested.then(() => {
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = null;
+        }
+        resolve();
+      });
+
       this.unsubscribe = () => {
         if (this.intervalId) {
           clearInterval(this.intervalId);
           this.intervalId = null;
-          resolve();
         }
-        this.isStopRequested.resolve(true);
-        this.isUnsubscribed.resolve(true);
+        resolve();
+        if(this.isUnsubscribed.value === true) {
+          this.isStopRequested.resolve(true);
+        }
       };
     });
   }
