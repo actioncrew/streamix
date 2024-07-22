@@ -64,13 +64,14 @@ describe('OfStream', () => {
     const ofStream = new OfStream(value);
 
     let isComplete = false;
-    ofStream.isAutoComplete.promise.then(() => {
+
+    const subscription = ofStream.subscribe(() => {});
+
+    await ofStream.isAutoComplete.then(() => {
       isComplete = true;
     });
 
-    const subscription = ofStream.subscribe(() => {});
     subscription.unsubscribe();
-
     expect(isComplete).toBe(true);
   });
 });

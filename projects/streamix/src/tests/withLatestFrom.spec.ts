@@ -1,122 +1,148 @@
-// import { AbstractStream, Emission, withLatestFrom } from '../lib';
+import { AbstractStream, Emission, withLatestFrom } from '../lib';
 
-// // Mock implementation for AbstractStream
-// class MockStream extends AbstractStream {
-//   private values: any[];
-//   private index: number;
+// Mock implementation for AbstractStream
+class MockStream extends AbstractStream {
+  private values: any[];
+  private index: number;
 
-//   constructor(values: any[]) {
-//     super();
-//     this.values = values;
-//     this.index = 0;
-//   }
+  constructor(values: any[]) {
+    super();
+    this.values = values;
+    this.index = 0;
+  }
 
-//   override async run(): Promise<void> {
-//     try {
-//       while (this.index < this.values.length && !this.isStopRequested.value) {
-//         let emission = { value: this.values[this.index] } as Emission;
-//         await this.emit(emission);
+  override async run(): Promise<void> {
+    try {
+      while (this.index < this.values.length && !this.isStopRequested.value) {
+        let emission = { value: this.values[this.index] } as Emission;
+        await this.emit(emission);
 
-//         if (emission.isFailed) {
-//           throw emission.error;
-//         }
+        if (emission.isFailed) {
+          throw emission.error;
+        }
 
-//         this.index++;
-//       }
-//       this.isAutoComplete.resolve(true);
-//     } catch (error) {
-//       console.error('Error in MockStream:', error);
-//       this.isFailed.resolve(error);
-//     } finally {
-//       this.isStopped.resolve(true);
-//     }
-//   }
-// }
+        this.index++;
+      }
+      this.isAutoComplete.resolve(true);
+    } catch (error) {
+      console.error('Error in MockStream:', error);
+      this.isFailed.resolve(error);
+    }
+  }
+}
 
-// describe('withLatestFrom operator', () => {
-//   it('should combine emissions with latest value from other stream', (done) => {
-//     const mainStream = new MockStream([1, 2, 3]);
-//     const otherStream = new MockStream(['A', 'B', 'C']);
+describe('withLatestFrom operator', () => {
+  it('should combine emissions with latest value from other stream', (done) => {
+    const mainStream = new MockStream([1, 2, 3]);
+    const otherStream = new MockStream(['A', 'B', 'C', 'D', 'E']);
 
-//     const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
+    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
 
-//     let results: any[] = [];
+    let results: any[] = [];
 
-//     combinedStream.subscribe((value) => {
-//       results.push(value);
-//     });
+    combinedStream.subscribe((value) => {
+      results.push(value);
+    });
 
-//     combinedStream.isStopped.then(() => {
-//       expect(results).toEqual([
-//         [1, 'A'],
-//         [2, 'B'],
-//         [3, 'C']
-//       ]);
-//       done();
-//     });
-//   });
+    combinedStream.isStopped.then(() => {
+      expect(results).toEqual([
+        [1, expect.any(String)],
+        [2, expect.any(String)],
+        [3, expect.any(String)]
+      ]);
 
-//   it('should handle cases where other stream emits after main stream', (done) => {
-//     const mainStream = new MockStream([1, 2, 3]);
-//     const otherStream = new MockStream(['A', 'B', 'C']);
+      expect(results[0][1]).toBe('A');
+      expect(['A', 'B', 'C', 'D', 'E']).toContain(results[1][1]);
+      expect(['A', 'B', 'C', 'D', 'E']).toContain(results[2][1]);
+      done();
+    });
+  });
 
-//     const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
+  it('should handle cases where other stream contains one value', (done) => {
+    const mainStream = new MockStream([1, 2, 3]);
+    const otherStream = new MockStream(['A']);
 
-//     let results: any[] = [];
+    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
 
-//     combinedStream.subscribe((value) => {
-//       results.push(value);
-//     });
+    let results: any[] = [];
 
-//     combinedStream.isStopped.then(() => {
-//       expect(results).toEqual([
-//         [1, 'C'], // Main stream emits 1 first, then other stream emits 'C'
-//         [2, 'C'], // Main stream emits 2, other stream still emits 'C'
-//         [3, 'C']  // Main stream emits 3, other stream still emits 'C'
-//       ]);
-//       done();
-//     });
-//   });
+    combinedStream.subscribe((value) => {
+      results.push(value);
+    });
 
-//   it('should handle cancellation of the main stream', (done) => {
-//     const mainStream = new MockStream([1, 2, 3]);
-//     const otherStream = new MockStream(['A', 'B', 'C']);
+    combinedStream.isStopped.then(() => {
+      expect(results).toEqual([
+        [1, 'A'],
+        [2, 'A'],
+        [3, 'A']
+      ]);
+      done();
+    });
+  });
 
-//     const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
+  it('should handle cases where other stream emits multiple times before main stream', (done) => {
+    const mainStream = new MockStream([1, 2, 3]);
+    const otherStream = new MockStream(['A', 'B', 'C', 'D']);
 
-//     let results: any[] = [];
+    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
 
-//     combinedStream.subscribe((value) => {
-//       results.push(value);
-//     });
+    let results: any[] = [];
 
-//     // Cancel the main stream immediately
-//     mainStream.terminate();
+    otherStream.isStopped.promise.then(() => {
+      combinedStream.subscribe((value) => {
+        results.push(value);
+      });
+    });
 
-//     combinedStream.isStopped.then(() => {
-//       expect(results).toEqual([]);
-//       done();
-//     });
-//   });
+    combinedStream.isStopped.then(() => {
+      expect(results).toEqual([
+        [1, 'D'], // Other stream emits up to 'D', then main stream emits 1
+        [2, 'D'], // Main stream emits 2, other stream still emits 'D'
+        [3, 'D']  // Main stream emits 3, other stream still emits 'D'
+      ]);
+      done();
+    });
+  });
 
-//   it('should handle cancellation of the other stream', (done) => {
-//     const mainStream = new MockStream([1, 2, 3]);
-//     const otherStream = new MockStream(['A', 'B', 'C']);
+  it('should handle cancellation of the main stream', (done) => {
+    const mainStream = new MockStream([1, 2, 3]);
+    const otherStream = new MockStream(['A', 'B', 'C']);
 
-//     const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
+    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
 
-//     let results: any[] = [];
+    let results: any[] = [];
 
-//     combinedStream.subscribe((value) => {
-//       results.push(value);
-//     });
+    combinedStream.subscribe((value) => {
+      results.push(value);
+    });
 
-//     // Cancel the other stream immediately
-//     otherStream.terminate();
+    // Cancel the main stream immediately
+    mainStream.terminate();
 
-//     combinedStream.isStopped.then(() => {
-//       expect(results).toEqual([]);
-//       done();
-//     });
-//   });
-// });
+    combinedStream.isStopped.then(() => {
+      expect(results).toEqual([]);
+      done();
+    });
+  });
+
+  it('should handle cancellation of the other stream', (done) => {
+    const mainStream = new MockStream([1, 2, 3]);
+    const otherStream = new MockStream(['A', 'B', 'C']);
+
+    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
+
+    let results: any[] = [];
+
+    combinedStream.subscribe((value) => {
+      results.push(value);
+    });
+
+    // Cancel the other stream immediately
+    otherStream.terminate();
+
+    combinedStream.isStopped.then(() => {
+      expect(results).toEqual([]);
+      done();
+    });
+  });
+});
