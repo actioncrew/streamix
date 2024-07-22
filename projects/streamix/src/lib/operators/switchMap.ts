@@ -6,8 +6,8 @@ export class SwitchMapOperator extends AbstractOperator {
   private outerStream: AbstractStream;
   private innerStreamSubscription?: any;
 
-  private left!: StreamSink;
-  private right!: StreamSink;
+  private innerSink?: StreamSink;
+  private outerSink?: StreamSink;
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -37,19 +37,19 @@ export class SwitchMapOperator extends AbstractOperator {
 
   private async cleanup() {
     await this.stopInnerStream();
-    if (this.left) {
-      this.left.complete();
+    if (this.innerSink) {
+      this.innerSink.complete();
     }
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    const streamSink = stream instanceof StreamSink ? stream : new StreamSink(stream);
-    if (!this.left) [this.left, this.right] = streamSink.split(this, this.outerStream);
+    if (!this.innerSink) { this.innerSink = stream instanceof StreamSink ? stream : new StreamSink(stream); }
+    if (!this.outerSink) { this.outerSink = this.innerSink.split(this, this.outerStream); }
 
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
       await this.stopInnerStream();
-      this.left.complete();
+      this.innerSink.complete();
       return emission;
     }
 
@@ -77,7 +77,7 @@ export class SwitchMapOperator extends AbstractOperator {
     // Subscribe to the new inner stream and handle emissions
     this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
       if (!stream.isCancelled.value) {
-        await this.right.emit({ value });
+        await this.outerSink!.emit({ value });
       }
     });
 

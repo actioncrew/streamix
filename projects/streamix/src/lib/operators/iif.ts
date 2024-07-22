@@ -3,9 +3,10 @@ import { AbstractOperator } from '../abstractions/operator';
 import { AbstractStream, StreamSink } from '../abstractions/stream';
 
 export class IifOperator extends AbstractOperator {
-  private left!: StreamSink;
-  private right!: StreamSink;
-  private outerStream!: AbstractStream;
+  private outerStream: AbstractStream;
+
+  private innerSink?: StreamSink;
+  private outerSink?: StreamSink;
 
   constructor(
     private readonly condition: (emission: Emission) => boolean,
@@ -30,8 +31,8 @@ export class IifOperator extends AbstractOperator {
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
 
-    const streamSink = stream instanceof StreamSink ? stream : new StreamSink(stream);
-    if (!this.left) [this.left, this.right] = streamSink.split(this, streamSink);
+    if (!this.innerSink) { this.innerSink = stream instanceof StreamSink ? stream : new StreamSink(stream); }
+    if (!this.outerSink) { this.outerSink = this.innerSink.split(this, this.outerStream); }
 
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
@@ -41,7 +42,7 @@ export class IifOperator extends AbstractOperator {
     const innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
 
     const subscription = innerStream.subscribe(async (value) => {
-      await this.right.emit({value});
+      await this.outerSink!.emit({value});
     });
 
     Promise.race([innerStream.isUnsubscribed.promise || innerStream.isAutoComplete.promise ||
