@@ -1,4 +1,4 @@
-import { AbstractStream, distinctUntilChanged } from '../lib';
+import { AbstractStream, distinctUntilChanged, Emission } from '../lib';
 
 // Mock implementations for testing
 class TestStream extends AbstractStream {
@@ -12,14 +12,18 @@ class TestStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    try {
-      while (this.index < this.values.length && !this.isStopRequested.value) {
-        await this.emit({ value: this.values[this.index] });
-        this.index++;
+    while (this.index < this.values.length && !this.isStopRequested.value) {
+      let emission = { value: this.values[this.index] } as Emission;
+      await this.emit(emission);
+
+      if (emission.isFailed) {
+        throw emission.error;
       }
+
+      this.index++;
+    }
+    if(!this.isStopRequested.value) {
       this.isAutoComplete.resolve(true);
-    } catch (error) {
-      this.isFailed.resolve(error);
     }
   }
 }
