@@ -28,22 +28,16 @@ export class MergeMapOperator extends AbstractOperator {
 
     // Handle events for the outer stream
     this.outerStream.isCancelled.then(() => {
-      this.stopInnerStreams();
-      this.stopLeftStream();
-      this.stopRightStream();
+      this.stopAllStreams();
     });
 
     this.outerStream.isFailed.then((error) => {
       console.error('Outer stream failed:', error);
-      this.stopInnerStreams();
-      this.stopLeftStream();
-      this.stopRightStream();
+      this.stopAllStreams();
     });
 
     this.outerStream.isStopped.then(() => {
-      this.stopInnerStreams();
-      this.stopLeftStream();
-      this.stopRightStream();
+      this.stopAllStreams();
     });
   }
 
@@ -84,8 +78,6 @@ export class MergeMapOperator extends AbstractOperator {
       innerStream.isCancelled.then(() => {
         emission.isCancelled = true;
         subscription.unsubscribe();
-        this.stopLeftStream();
-        this.stopRightStream();
         handleCompletion();
       });
 
@@ -93,22 +85,16 @@ export class MergeMapOperator extends AbstractOperator {
         emission.error = error;
         emission.isFailed = true;
         subscription.unsubscribe();
-        this.stopLeftStream();
-        this.stopRightStream();
         handleCompletion();
       });
 
       innerStream.isStopped.then(() => {
         subscription.unsubscribe();
         emission.isComplete = true;
-        this.stopLeftStream();
-        this.stopRightStream();
         handleCompletion();
       }).catch((error) => {
         emission.error = error;
         emission.isFailed = true;
-        this.stopLeftStream();
-        this.stopRightStream();
         handleCompletion();
       });
     });
@@ -117,9 +103,7 @@ export class MergeMapOperator extends AbstractOperator {
 
     this.counter.subscribe(() => {
       if (stream.shouldComplete() || stream.shouldTerminate()) {
-        this.stopInnerStreams();
-        this.stopLeftStream();
-        this.stopRightStream();
+        this.stopAllStreams();
       }
     });
 
@@ -138,11 +122,13 @@ export class MergeMapOperator extends AbstractOperator {
     }
   }
 
-  private async stopInnerStreams() {
+  private async stopAllStreams() {
     await Promise.all(this.activeInnerStreams.map(async (stream) => {
       await stream.complete();
     }));
     this.activeInnerStreams = [];
+    await this.stopLeftStream();
+    await this.stopRightStream();
   }
 
   private async stopLeftStream() {
@@ -160,9 +146,7 @@ export class MergeMapOperator extends AbstractOperator {
   private async checkAndStopStream(stream: AbstractStream, emission: Emission): Promise<boolean> {
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
-      await this.stopInnerStreams();
-      await this.stopLeftStream();
-      await this.stopRightStream();
+      await this.stopAllStreams();
       return true;
     }
     return false;

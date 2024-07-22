@@ -90,8 +90,6 @@ class TestStream extends AbstractStream {
     } catch (error) {
       console.error('Error in TestStream:', error);
       // Handle errors appropriately in your testing environment
-    } finally {
-      this.isStopped.resolve(true);
     }
   }
 }
