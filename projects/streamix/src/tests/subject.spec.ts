@@ -1,12 +1,12 @@
-import { Emission, Subject } from '../lib';
+import { Subject } from '../lib';
 
 describe('Subject', () => {
   it('should emit values to subscribers', async () => {
     const subject = new Subject();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe((emission: Emission) => {
-      emittedValues.push(emission.value);
+    const subscription = subject.subscribe(value => {
+      emittedValues.push(value);
     });
 
     subject.next('value1');
@@ -22,8 +22,8 @@ describe('Subject', () => {
     const subject = new Subject();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe((emission: Emission) => {
-      emittedValues.push(emission.value);
+    const subscription = subject.subscribe(value => {
+      emittedValues.push(value);
     });
 
 
@@ -41,8 +41,8 @@ describe('Subject', () => {
     const subject = new Subject();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe((emission: Emission) => {
-      emittedValues.push(emission.value);
+    const subscription = subject.subscribe(value => {
+      emittedValues.push(value);
     });
 
     subject.next('value1');
@@ -59,8 +59,8 @@ describe('Subject', () => {
     const subject = new Subject();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe((emission: Emission) => {
-      emittedValues.push(emission.value);
+    const subscription = subject.subscribe(value => {
+      emittedValues.push(value);
     });
 
     subject.next('value1');
@@ -77,8 +77,8 @@ describe('Subject', () => {
     const subject = new Subject();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe((emission: Emission) => {
-      emittedValues.push(emission.value);
+    const subscription = subject.subscribe(value => {
+      emittedValues.push(value);
     });
 
     subject.isStopped.resolve(true);
