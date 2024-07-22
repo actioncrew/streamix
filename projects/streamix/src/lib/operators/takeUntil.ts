@@ -12,34 +12,22 @@ export class TakeUntilOperator extends AbstractOperator {
     this.notifier = notifier;
   }
 
-  subscribeToNotifier(stream: AbstractStream) {
-    this.subscription = this.notifier.subscribe(() => {
-      if (this.subscription) {
-        this.subscription.unsubscribe();
-        stream.isStopRequested.resolve(true);
-      }
-    });
-  }
-
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
+      this.subscription?.unsubscribe();
       return emission;
     }
 
     if (!this.subscription) {
-      this.subscribeToNotifier(stream);
+      this.subscription = this.notifier.subscribe(() => {
+        stream.isStopRequested.resolve(true);
+        this.subscription!.unsubscribe();
+      });
     }
 
-    stream.isStopped.then(() => {
+    if(stream.isStopRequested.value) {
       emission.isPhantom = true;
-      return emission;
-    });
-
-    if (!stream.isStopped.value) {
-      if (this.next) {
-        this.next.process(emission, stream);
-      }
     }
     return emission;
   }
