@@ -4,9 +4,11 @@ import { AbstractStream } from '../abstractions/stream';
 
 export class DistinctUntilChangedOperator<T> extends AbstractOperator {
   private lastEmittedValue: T | undefined;
+  private comparator?: (previous: T, current: T) => boolean;
 
-  constructor() {
+  constructor(comparator?: (previous: T, current: T) => boolean) {
     super();
+    this.comparator = comparator;
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<any> {
@@ -15,8 +17,11 @@ export class DistinctUntilChangedOperator<T> extends AbstractOperator {
       return emission;
     }
 
-    if (this.lastEmittedValue === undefined || emission.value !== this.lastEmittedValue) {
-      this.lastEmittedValue = emission.value;
+    const currentValue = emission.value;
+
+    if (this.lastEmittedValue === undefined ||
+        (this.comparator ? !this.comparator(this.lastEmittedValue, currentValue) : this.lastEmittedValue !== currentValue)) {
+      this.lastEmittedValue = currentValue;
       return emission;
     } else {
       emission.isPhantom = true;
@@ -25,6 +30,6 @@ export class DistinctUntilChangedOperator<T> extends AbstractOperator {
   }
 }
 
-export function distinctUntilChanged<T>() {
-  return new DistinctUntilChangedOperator<T>();
+export function distinctUntilChanged<T>(comparator?: (previous: T, current: T) => boolean) {
+  return new DistinctUntilChangedOperator<T>(comparator);
 }
