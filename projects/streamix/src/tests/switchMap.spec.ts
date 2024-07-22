@@ -27,7 +27,6 @@ class MockStream extends AbstractStream {
       }
     }
     this.isAutoComplete.resolve(true);
-    this.isStopped.resolve(true);
   }
 }
 

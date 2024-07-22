@@ -25,8 +25,6 @@ class MockStream extends AbstractStream {
       this.isAutoComplete.resolve(true);
     } catch (error) {
       this.isFailed.resolve(true);
-    } finally {
-      this.isStopped.resolve(true);
     }
   }
 }
