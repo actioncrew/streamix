@@ -33,8 +33,6 @@ export class AbstractStream {
       console.error(`Error in stream ${this.constructor.name}: `, error);
       emission.isFailed = true;
       emission.error = error;
-      this.isFailed.resolve(error);
-      this.isStopped.resolve(true);
     }
   }
 
