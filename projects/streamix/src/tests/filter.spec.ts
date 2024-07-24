@@ -81,15 +81,10 @@ class TestStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    try {
-      while (this.index < this.values.length && !this.isStopRequested.value) {
-        await this.emit({ value: this.values[this.index] });
-        this.index++;
-      }
-      this.isAutoComplete.resolve(true);
-    } catch (error) {
-      console.error('Error in TestStream:', error);
-      // Handle errors appropriately in your testing environment
+    while (this.index < this.values.length && !this.isStopRequested.value) {
+      await this.emit({ value: this.values[this.index] });
+      this.index++;
     }
+    this.isAutoComplete.resolve(true);
   }
 }

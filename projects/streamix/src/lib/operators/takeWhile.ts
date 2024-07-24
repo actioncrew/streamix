@@ -5,7 +5,7 @@ import { AbstractOperator } from '../abstractions/operator';
 export class TakeWhileOperator extends AbstractOperator {
   private readonly predicate: (value: any) => boolean;
 
-  constructor(predicate: (value: any) => boolean) {
+  constructor(predicate: (value: any, index?: number) => boolean) {
     super();
     this.predicate = predicate;
   }
@@ -27,6 +27,6 @@ export class TakeWhileOperator extends AbstractOperator {
   }
 }
 
-export function takeWhile(predicate: (value: any) => boolean) {
+export function takeWhile(predicate: (value: any, index?: number) => boolean) {
   return new TakeWhileOperator(predicate);
 }
