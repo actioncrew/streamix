@@ -34,13 +34,14 @@ export class Subject extends AbstractStream {
     }
   }
 
-  next(value: any): void {
+  next(value?: any): void {
     if (this.isStopped.value) {
       console.warn('Cannot push value to a stopped Subject.');
       return;
     }
 
     if (!this.isStopRequested.value && !this.isCancelled.value) {
+      value = value === undefined ? null : value;
       this.emissionQueue.push({ value });
       this.emissionAvailable.resolve(true);
     }
