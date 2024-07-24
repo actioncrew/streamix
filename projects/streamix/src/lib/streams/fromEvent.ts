@@ -15,9 +15,11 @@ export class FromEventStream extends AbstractStream {
 
     queueMicrotask(() => {
       const listener = async (event: Event) => {
-        this.eventCounter.increment();
-        await this.emit({ value: event });
-        this.eventCounter.decrement();
+        if (this.isRunning.value) {
+          this.eventCounter.increment();
+          await this.emit({ value: event });
+          this.eventCounter.decrement();
+        }
       };
 
       // Add event listener
@@ -37,7 +39,7 @@ export class FromEventStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    return Promise.race([this.awaitCompletion(), this.awaitTermination()]).then(() => {
+    await Promise.race([this.awaitCompletion(), this.awaitTermination()]).then(() => {
       this.stopped = true;
     });
   }
