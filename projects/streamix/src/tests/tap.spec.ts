@@ -1,4 +1,4 @@
-import { AbstractStream, Emission, tap } from '../lib';
+import { AbstractStream, catchError, Emission, endWith, finalize, startWith, tap } from '../lib';
 
 // Mock implementation for AbstractStream
 class MockStream extends AbstractStream {
@@ -33,7 +33,7 @@ describe('tap operator', () => {
     const testStream = new MockStream([1, 2, 3]);
     const sideEffectFn = jest.fn();
 
-    const tappedStream = testStream.pipe(tap(sideEffectFn));
+    const tappedStream = testStream.pipe(tap(sideEffectFn), startWith(0), endWith(4), catchError(console.log), finalize(() => console.log("hurra")));
 
     let results: any[] = [];
 
@@ -44,7 +44,7 @@ describe('tap operator', () => {
     tappedStream.isStopped.then(() => {
       console.log(tappedStream);
       // Check if side effect function was called for each emission
-      expect(sideEffectFn).toHaveBeenCalledTimes(3);
+      expect(sideEffectFn).toHaveBeenCalledTimes(5);
 
       // Verify that the side effect function received the correct values
       expect(sideEffectFn).toHaveBeenCalledWith(1);
@@ -52,7 +52,7 @@ describe('tap operator', () => {
       expect(sideEffectFn).toHaveBeenCalledWith(3);
 
       // Ensure that the emitted results are the same as the original stream
-      expect(results).toEqual([1, 2, 3]);
+      expect(results).toEqual([0, 1, 2, 3, 4]);
 
       done();
     });

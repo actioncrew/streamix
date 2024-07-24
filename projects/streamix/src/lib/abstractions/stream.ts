@@ -1,5 +1,11 @@
+import { CatchErrorHook } from '../hooks/catchError';
+import { EndWithHook } from '../hooks/endWith';
+import { FinalizeHook } from '../hooks/finalize';
+import { StartWithHook } from '../hooks/startWith';
+import { NoopHook } from './../hooks/noop';
 import { Promisified } from './../utils/promisified';
 import { Emission } from './emission';
+import { AbstractHook } from './hook';
 import { AbstractOperator } from './operator';
 import { Subscription } from './subscription';
 
@@ -14,7 +20,12 @@ export class AbstractStream {
   isUnsubscribed = new Promisified<boolean>(false);
   isRunning = new Promisified<boolean>(false);
 
-  protected subscribers: ((value: any) => any)[] = [];
+  protected subscribers: (((value: any) => any) | void)[] = [];
+
+  protected onStart = new NoopHook();
+  protected onComplete = new NoopHook();
+  protected onStop = new NoopHook();
+  protected onError = new NoopHook();
 
   async emit(emission: Emission): Promise<void> {
     try {
@@ -25,12 +36,12 @@ export class AbstractStream {
       }
 
       if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
-        await Promise.all(this.subscribers.map(subscriber => subscriber(currentEmission.value)));
+        await Promise.all(this.subscribers.map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()));
       }
 
       currentEmission.isComplete = true;
     } catch (error: any) {
-      console.error(`Error in stream ${this.constructor.name}: `, error);
+      console.warn(`Error in stream ${this.constructor.name}: `, error);
       emission.isFailed = true;
       emission.error = error;
     }
@@ -62,8 +73,10 @@ export class AbstractStream {
     return this.isStopped.then(() => Promise.resolve());
   }
 
-  pipe(...operators: AbstractOperator[]): AbstractStream {
-    return new StreamSink(this).pipe(...operators);
+  pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
+    const sink = new StreamSink(this);
+    sink.pipe(...operators);
+    return sink;
   }
 
   run(): Promise<void> {
@@ -78,21 +91,39 @@ export class AbstractStream {
     }
   }
 
-  subscribe(callback: (value: any) => any): Subscription {
+  subscribe(callback: void | ((value: any) => any)): Subscription {
     this.subscribers.push(callback);
 
-    // Start or resume the stream
-    if(this.subscribers.length == 1 && this.isRunning.value === false) {
-      this.isRunning.resolve(true);
-      queueMicrotask(() => this.run()
-        .catch((error) => this.isFailed.resolve(error))
-        .finally(() => {
+    if (this.subscribers.length === 1 && this.isRunning.value === false) {
+      queueMicrotask(async () => {
+        try {
+          this.isRunning.resolve(true);
+
+          // Emit start value if defined
+          await this.onStart.process(this);
+
+          // Run the actual stream logic
+          await this.run();
+
+          // Emit end value if defined
+          await this.onComplete.process(this);
+        } catch (error) {
+          // Handle error if catchError defined
+          await this.onError.process(this, { error });
+          if (this.onError instanceof NoopHook) {
+            this.isFailed.resolve(error);
+          }
+        } finally {
+          // Handle finalize callback
+          await this.onStop.process(this);
+
           this.isStopped.resolve(true);
           this.isRunning.reset();
-        }))
+        }
+      });
     }
 
-    return { unsubscribe: () => this.unsubscribe(callback) };
+    return { unsubscribe: () => callback instanceof Function ? this.unsubscribe(callback) : Function.prototype };
   }
 }
 
@@ -124,15 +155,30 @@ export class StreamSink extends AbstractStream {
     });
   }
 
-  override pipe(...operators: AbstractOperator[]): AbstractStream {
+  override pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
 
     for (const operator of operators) {
-      if (!this.head) {
-        this.head = operator;
-        this.tail = operator;
-      } else {
-        this.tail!.next = operator;
-        this.tail = operator;
+      if (operator instanceof AbstractOperator) {
+        if (!this.head) {
+          this.head = operator;
+          this.tail = operator;
+        } else {
+          this.tail!.next = operator;
+          this.tail = operator;
+        }
+      }
+      else {
+        if (operator instanceof StartWithHook) {
+          this.onStart = operator;
+        } else if (operator instanceof EndWithHook) {
+          this.onComplete = operator;
+        } else if (operator instanceof CatchErrorHook) {
+          this.onError = operator;
+        } else if (operator instanceof FinalizeHook) {
+          this.onStop = operator;
+        } else {
+          throw new Error("Unknown hook");
+        }
       }
     }
 
@@ -150,12 +196,12 @@ export class StreamSink extends AbstractStream {
       currentEmission = await (this.head?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
 
       if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
-        await Promise.all(this.subscribers.map(subscriber => subscriber(currentEmission.value)));
+        await Promise.all(this.subscribers.map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()));
       }
 
       currentEmission.isComplete = true;
     } catch (error: any) {
-      console.error(`Error in stream ${this.constructor.name}: `, error);
+      console.warn(`Error in stream ${this.constructor.name}: `, error);
       emission.isFailed = true;
       emission.error = error;
     }

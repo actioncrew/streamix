@@ -12,15 +12,12 @@ class MockStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    try {
-      while (this.index < this.values.length && !this.isStopRequested.value) {
-        await this.emit({ value: this.values[this.index] });
-        this.index++;
-      }
-      this.isAutoComplete.resolve(true);
-    } catch (error) {
-      console.error('Error in MockStream:', error);
+    while (this.index < this.values.length && !this.isStopRequested.value) {
+      await this.emit({ value: this.values[this.index] });
+      this.index++;
     }
+    this.isAutoComplete.resolve(true);
+
   }
 }
 

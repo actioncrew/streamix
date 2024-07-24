@@ -34,7 +34,7 @@ export class ConcatMapOperator extends AbstractOperator {
     });
 
     this.outerStream.isFailed.then((error) => {
-      console.error('Outer stream failed:', error);
+      console.warn('Outer stream failed:', error);
       this.stopCurrentInnerStream();
       this.stopLeftStream();
       this.stopRightStream();
