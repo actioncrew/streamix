@@ -69,6 +69,12 @@ export class AbstractStream {
     return this.isStopped.then(() => Promise.resolve());
   }
 
+  pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
+    const sink = new StreamSink(this);
+    sink.pipe(...operators);
+    return sink;
+  }
+
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
   }
@@ -145,7 +151,7 @@ export class StreamSink extends AbstractStream {
     });
   }
 
-  pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
+  override pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
 
     for (const operator of operators) {
       if (operator instanceof AbstractOperator) {
