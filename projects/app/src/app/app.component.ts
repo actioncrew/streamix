@@ -1,15 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { interval, scan, tap, timer, withLatestFrom } from 'streamix';
+import { fromEvent, interval, map, startWith, Subject, switchMap, takeUntil, tap, timer, withLatestFrom } from 'streamix';
 
 @Component({
   selector: 'app-caption',
   template: `
     <div class="caption">
-    {{ displayedCaption }}
-    <span *ngIf="showCursor" class="cursor">_</span>
-  </div>
+      {{ displayedCaption }}
+      <span *ngIf="showCursor" class="cursor">_</span>
+    </div>
   `,
   styles: `
     .caption {
@@ -17,16 +17,16 @@ import { interval, scan, tap, timer, withLatestFrom } from 'streamix';
       font-size: 48px;
       color: #0f0;
       text-align: center;
-      position: relative; /* Ensure the cursor is positioned relative to the caption container */
+      position: relative;
       background: transparent;
     }
 
     .cursor {
-      position: absolute; /* Position the cursor absolutely within the caption container */
-      right: 0; /* Align to the right edge of the caption container */
-      top: 0; /* Align to the top edge of the caption container */
-      transform: translateX(100%); /* Position it after the text */
-      animation: blink 0.5s step-start infinite; /* Blink animation */
+      position: absolute;
+      right: 0;
+      top: 0;
+      transform: translateX(100%);
+      animation: blink 0.5s step-start infinite;
     }
 
     @keyframes blink {
@@ -50,7 +50,7 @@ export class CaptionComponent implements OnInit {
 
   startTypingEffect() {
     let currentIndex = 0;
-    const typeInterval = 200; // Adjust typing speed here
+    const typeInterval = 200;
 
     timer(1800, typeInterval).subscribe(() => {
       if (currentIndex < this.caption.length) {
@@ -74,62 +74,72 @@ export class CaptionComponent implements OnInit {
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent implements AfterViewInit, OnDestroy {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private fontSize = 10;
   private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
+  private destroy$ = new Subject();
 
   ngAfterViewInit() {
     this.canvas = document.querySelector('canvas') as HTMLCanvasElement;
     this.ctx = this.canvas.getContext('2d')!;
-    this.resizeCanvas();
     this.setupAnimation();
-    window.addEventListener('resize', this.resizeCanvas.bind(this));
   }
 
   ngOnDestroy() {
-    window.removeEventListener('resize', this.resizeCanvas.bind(this));
-  }
-
-  private resizeCanvas() {
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    this.ctx.fillStyle = 'black';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private setupAnimation() {
-    const columns = Math.floor(this.canvas.width / this.fontSize);
+    const resize$ = fromEvent(window, 'resize').pipe(
+      startWith(this.getCanvasSize()),
+      map(() => this.getCanvasSize())
+    );
 
-    const initializeDrops = (): number[] => Array.from({ length: columns }, () => 0);
+    const columns$ = resize$.pipe(
+      map(({ width }) => Math.floor(width / this.fontSize))
+    );
 
-    const drops$ = interval(33).pipe(
-      scan((acc) => {
-        return acc.map((drop: number, index: number) => {
-          const y = drop * this.fontSize;
-          const shouldReset = y > this.canvas.height && Math.random() > 0.95;
-          return shouldReset ? 0 : drop + 1;
-        });
-      }, initializeDrops())
+    const drops$ = columns$.pipe(
+      map(columns => Array.from({ length: columns }, () => 0))
     );
 
     const draw$ = interval(33).pipe(
       withLatestFrom(drops$),
       tap(([_, drops]) => {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Background with some transparency
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        drops.forEach((drop: number, index: number) => {
+        drops.forEach((drop: any, index: number) => {
           const text = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
           const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
-          this.ctx.fillStyle = color; // Apply random color from the palette
+          this.ctx.fillStyle = color;
           this.ctx.fillText(text, index * this.fontSize, drop * this.fontSize);
+
+          drops[index] = drop * this.fontSize > this.canvas.height && Math.random() > 0.95 ? 0 : drop + 1;
         });
       })
     );
 
-    draw$.subscribe((() => {}));
+    resize$.pipe(
+      tap(({ width, height }) => {
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx.fillStyle = 'black';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      }),
+      switchMap(() => draw$),
+      takeUntil(this.destroy$)
+    ).subscribe();
+  }
+
+  private getCanvasSize() {
+    return {
+      width: window.innerWidth,
+      height: window.innerHeight
+    };
   }
 }

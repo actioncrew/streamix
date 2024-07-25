@@ -5,7 +5,36 @@ import { AbstractHook } from './hook';
 import { AbstractOperator } from './operator';
 import { Subscription } from './subscription';
 
-export class AbstractStream {
+export interface IStream {
+  isAutoComplete: Promisified<boolean>;
+  isCancelled: Promisified<boolean>;
+  isStopRequested: Promisified<boolean>;
+  isFailed: Promisified<any>;
+  isStopped: Promisified<boolean>;
+  isUnsubscribed: Promisified<boolean>;
+  isRunning: Promisified<boolean>;
+
+  subscribers: (((value: any) => any) | void)[];
+
+  onStart?: AbstractHook;
+  onComplete?: AbstractHook;
+  onStop?: AbstractHook;
+  onError?: AbstractHook;
+
+  emit(emission: Emission): Promise<void>;
+  shouldTerminate(): boolean;
+  awaitTermination(): Promise<boolean>;
+  terminate(): Promise<void>;
+  shouldComplete(): boolean;
+  awaitCompletion(): Promise<boolean>;
+  complete(): Promise<void>;
+  pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink;
+  run(): Promise<void>;
+  subscribe(callback: void | ((value: any) => any)): Subscription;
+  unsubscribe(callback: (value: any) => any): void;
+}
+
+export class AbstractStream implements IStream {
 
   isAutoComplete = new Promisified<boolean>(false);
   isCancelled = new Promisified<boolean>(false);
@@ -16,12 +45,12 @@ export class AbstractStream {
   isUnsubscribed = new Promisified<boolean>(false);
   isRunning = new Promisified<boolean>(false);
 
-  protected subscribers: (((value: any) => any) | void)[] = [];
+  subscribers: (((value: any) => any) | void)[] = [];
 
-  protected onStart?: AbstractHook | undefined;
-  protected onComplete?: AbstractHook | undefined;
-  protected onStop?: AbstractHook | undefined;
-  protected onError?: AbstractHook | undefined;
+  onStart?: AbstractHook | undefined;
+  onComplete?: AbstractHook | undefined;
+  onStop?: AbstractHook | undefined;
+  onError?: AbstractHook | undefined;
 
   async emit(emission: Emission): Promise<void> {
     try {
@@ -79,7 +108,7 @@ export class AbstractStream {
     throw new Error('Method is not implemented.');
   }
 
-  protected unsubscribe(callback: (value: any) => any): void {
+  unsubscribe(callback: (value: any) => any): void {
     this.subscribers = this.subscribers.filter(subscriber => subscriber !== callback);
     if (this.subscribers.length === 0) {
       this.isStopRequested.resolve(true);
@@ -123,35 +152,77 @@ export class AbstractStream {
   }
 }
 
-export class StreamSink extends AbstractStream {
-  protected source: AbstractStream;
+export class StreamSink implements IStream {
+  protected source: any;
   protected next?: StreamSink;
 
   protected head?: AbstractOperator;
   protected tail?: AbstractOperator;
 
   constructor(source: AbstractStream) {
-    super();
     this.source = source;
     // Proxy all other properties and methods from source
     return new Proxy(this, {
-      get: (target, prop) => {
-        if (!(prop in this.source)) {
-          return (this as any)[prop];
-        } else if (prop in this && prop !== 'run') {
-          return (this as any)[prop];
+      get: (target: any, prop: string | symbol) => {
+        if (Reflect.has(target, prop)) {
+          return target[prop];
+        }
+        return this.source[prop];
+      },
+      set: (target: any, prop: string | symbol, value: any) => {
+        if (Reflect.has(target, prop)) {
+          target[prop] = value;
         } else {
-          return (this.source as any)[prop];
+          this.source[prop] = value;
+        }
+        return true;
+      },
+      defineProperty: (target: any, prop: string | symbol, descriptor: PropertyDescriptor) => {
+        if (Reflect.has(target, prop)) {
+          Reflect.defineProperty(target, prop, descriptor);
+        } else {
+          Reflect.defineProperty(this.source, prop, descriptor);
+        }
+        return true;
+      },
+      deleteProperty: (target: any, prop: string | symbol) => {
+        if (Reflect.has(target, prop)) {
+          return Reflect.deleteProperty(target, prop);
+        } else {
+          return Reflect.deleteProperty(this.source, prop);
         }
       },
-      set: (target, prop, value) => {
-        (this as any)[prop] = value;
-        return true;
-      }
     });
   }
 
-  override pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
+  isAutoComplete!: Promisified<boolean>;
+  isCancelled!: Promisified<boolean>;
+  isStopRequested!: Promisified<boolean>;
+  isFailed!: Promisified<any>;
+  isStopped!: Promisified<boolean>;
+  isUnsubscribed!: Promisified<boolean>;
+  isRunning!: Promisified<boolean>;
+  subscribers!: (void | ((value: any) => any))[];
+  
+  onStart!: AbstractHook | undefined;
+  onComplete!: AbstractHook | undefined;
+  onStop!: AbstractHook | undefined;
+  onError!: AbstractHook | undefined;
+
+  shouldTerminate!: () => boolean;
+  awaitTermination!: () => Promise<boolean>;
+  terminate!: () => Promise<void>;
+
+  shouldComplete!: () => boolean;
+  awaitCompletion!: () => Promise<boolean>;
+  complete!: () => Promise<void>;
+
+  run!:() => Promise<void>;
+
+  subscribe!: (callback: void | ((value: any) => any)) => Subscription;
+  unsubscribe!: (callback: (value: any) => any) => void;
+
+  pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
 
     for (const operator of operators) {
       if (operator instanceof AbstractOperator) {
@@ -181,7 +252,7 @@ export class StreamSink extends AbstractStream {
     return this;
   }
 
-  override async emit(emission: Emission): Promise<void> {
+  async emit(emission: Emission): Promise<void> {
     try {
       let currentEmission: Emission = emission;
 
