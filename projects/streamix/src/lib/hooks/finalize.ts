@@ -1,13 +1,12 @@
 import { AbstractHook, AbstractStream } from '../abstractions';
 
 
-export class FinalizeHook extends AbstractHook {
+export class FinalizeHook implements AbstractHook {
 
   constructor(private callback: () => (void | Promise<void>)) {
-    super();
   }
 
-  override async process(stream: AbstractStream, params?: any): Promise<void> {
+  async process(stream: AbstractStream, params?: any): Promise<void> {
     return this.callback();
   }
 }
