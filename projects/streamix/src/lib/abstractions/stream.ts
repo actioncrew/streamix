@@ -100,7 +100,7 @@ export class AbstractStream {
         } catch (error) {
           // Handle error if catchError defined
           await this.onError?.process(this, { error });
-          if (this.onError instanceof NoopHook) {
+          if (this.onError === undefined) {
             this.isFailed.resolve(error);
           }
         } finally {
