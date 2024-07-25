@@ -1,8 +1,4 @@
-import { CatchErrorHook } from '../hooks/catchError';
-import { EndWithHook } from '../hooks/endWith';
-import { FinalizeHook } from '../hooks/finalize';
-import { StartWithHook } from '../hooks/startWith';
-import { NoopHook } from './../hooks/noop';
+import { CatchErrorHook, EndWithHook, FinalizeHook, StartWithHook } from '../hooks';
 import { Promisified } from './../utils/promisified';
 import { Emission } from './emission';
 import { AbstractHook } from './hook';
@@ -22,10 +18,10 @@ export class AbstractStream {
 
   protected subscribers: (((value: any) => any) | void)[] = [];
 
-  protected onStart = new NoopHook();
-  protected onComplete = new NoopHook();
-  protected onStop = new NoopHook();
-  protected onError = new NoopHook();
+  protected onStart?: AbstractHook | undefined;
+  protected onComplete?: AbstractHook | undefined;
+  protected onStop?: AbstractHook | undefined;
+  protected onError?: AbstractHook | undefined;
 
   async emit(emission: Emission): Promise<void> {
     try {
@@ -94,22 +90,22 @@ export class AbstractStream {
           this.isRunning.resolve(true);
 
           // Emit start value if defined
-          await this.onStart.process(this);
+          await this.onStart?.process(this);
 
           // Run the actual stream logic
           await this.run();
 
           // Emit end value if defined
-          await this.onComplete.process(this);
+          await this.onComplete?.process(this);
         } catch (error) {
           // Handle error if catchError defined
-          await this.onError.process(this, { error });
+          await this.onError?.process(this, { error });
           if (this.onError instanceof NoopHook) {
             this.isFailed.resolve(error);
           }
         } finally {
           // Handle finalize callback
-          await this.onStop.process(this);
+          await this.onStop?.process(this);
 
           this.isStopped.resolve(true);
           this.isRunning.reset();
