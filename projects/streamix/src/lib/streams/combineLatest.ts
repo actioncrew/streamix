@@ -44,7 +44,7 @@ export class CombineLatestStream extends AbstractStream {
     });
   }
 
-  protected override unsubscribe = () => {
+  override unsubscribe = () => {
     this.isStopRequested.resolve(true);
     this.isUnsubscribed.resolve(true);
     this.sources.forEach(source => { source.isStopRequested.resolve(true); source.isUnsubscribed.resolve(true); });
