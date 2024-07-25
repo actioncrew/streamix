@@ -1,10 +1,9 @@
-import { AbstractStream } from '../abstractions';
-import { AbstractHook } from '../abstractions/hook';
+import { AbstractHook, AbstractStream } from '../abstractions';
 
 
 export class CatchErrorHook extends AbstractHook {
 
-  constructor(private handler: (error?: any) => void | Promise<void>) {
+  constructor(public handler: (error?: any) => void | Promise<void>) {
     super();
   }
 

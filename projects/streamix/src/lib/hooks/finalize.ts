@@ -1,5 +1,4 @@
-import { AbstractStream } from '../abstractions';
-import { AbstractHook } from '../abstractions/hook';
+import { AbstractHook, AbstractStream } from '../abstractions';
 
 
 export class FinalizeHook extends AbstractHook {
