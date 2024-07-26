@@ -249,10 +249,13 @@ export class StreamSink implements IStream {
     let original = head.next;
     let cloned = clonedHead;
 
-    while (original && original !== tail) {
+    while (original) {
       const clonedOperator = original.clone();
       cloned.next = clonedOperator;
       cloned = clonedOperator;
+      if (original === tail) {
+        break;
+      }
       original = original.next;
     }
 
