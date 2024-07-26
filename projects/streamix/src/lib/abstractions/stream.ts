@@ -200,26 +200,32 @@ export class AbstractStream {
   }
 
   split(operator: AbstractOperator, stream: AbstractStream) {
-    let subscribers = this.subscribers.slice();
+
+    let current: AbstractStream | undefined = this;
+    while(current?.nextStream !== undefined) {
+      current = current.nextStream;
+    }
+
+    let subscribers = current.subscribers.slice();
     const callback = () => {};
-    this.subscribers = [callback];
+    current.subscribers = [callback];
 
-    this.nextStream = stream;
-    this.nextStream.head = operator.next; this.nextStream.tail = operator.next ? this.tail : undefined;
+    let next = stream;
+    next.head = operator.next; next.tail = operator.next ? current.tail : undefined;
 
-    this.tail = operator;
+    subscribers.forEach(subscriber => next.subscribe(subscriber));
 
-    subscribers.forEach(subscriber => this.nextStream!.subscribe(subscriber));
-
-    this.nextStream.unsubscribe = new Proxy(this.unsubscribe, {
+    next.unsubscribe = new Proxy(current.unsubscribe, {
       apply: (targetUnsubscribe, thisArg, argumentsList: any) => {
         targetUnsubscribe.apply(thisArg, argumentsList);
-        if (this.subscribers.length === 0) {
-          this.unsubscribe(callback)
+        if (next.subscribers.length === 0) {
+          current.unsubscribe(callback)
         }
       }
     });
 
-    return this.nextStream;
+    current.tail = operator;
+    current.nextStream = next;
+    return next;
   }
 }
