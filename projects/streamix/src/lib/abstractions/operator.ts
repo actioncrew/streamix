@@ -15,4 +15,11 @@ export abstract class AbstractOperator {
       return request;
     }
   }
+
+  clone(): AbstractOperator {
+    const clonedOperator = Object.create(Object.getPrototypeOf(this));
+    Object.assign(clonedOperator, this);
+    clonedOperator.next = undefined; // Do not copy the next reference to avoid recursive copy
+    return clonedOperator;
+  }
 }
