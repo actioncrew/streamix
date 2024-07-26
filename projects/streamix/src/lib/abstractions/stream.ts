@@ -99,9 +99,12 @@ export class AbstractStream implements IStream {
   }
 
   pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
-    const sink = new StreamSink(this);
-    sink.pipe(...operators);
-    return sink;
+    // Create a new sink based on the current one
+    const newSink = new StreamSink(this);
+    // Apply operators and hooks to the new sink
+    newSink.applyOperators(...operators);
+
+    return newSink;
   }
 
   run(): Promise<void> {
@@ -154,15 +157,16 @@ export class AbstractStream implements IStream {
 
 export class StreamSink implements IStream {
   protected source: any;
-  protected next?: StreamSink;
+  protected next: StreamSink | undefined = undefined;
 
-  protected head?: AbstractOperator;
-  protected tail?: AbstractOperator;
+  protected head: AbstractOperator | undefined = undefined;
+  protected tail: AbstractOperator | undefined = undefined;
 
   constructor(source: AbstractStream) {
     this.source = source;
+    
     // Proxy all other properties and methods from source
-    return new Proxy(this, {
+    let proxy = new Proxy(this, {
       get: (target: any, prop: string | symbol) => {
         if (Reflect.has(target, prop)) {
           return target[prop];
@@ -191,8 +195,11 @@ export class StreamSink implements IStream {
         } else {
           return Reflect.deleteProperty(this.source, prop);
         }
-      },
+      }
     });
+
+    this.source.emit = this.emit.bind(proxy);
+    return proxy;
   }
 
   isAutoComplete!: Promisified<boolean>;
@@ -223,7 +230,37 @@ export class StreamSink implements IStream {
   unsubscribe!: (callback: (value: any) => any) => void;
 
   pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
+    const newSink = new StreamSink(this.source);
+    newSink.next = this.next;
 
+    // Clone the current operator chain to the new sink
+    if (this.head) {
+      const [head, tail] = this.cloneOperatorChain(this.head, this.tail);
+      newSink.head = head; newSink.tail = tail;
+    }
+    
+    // Apply operators to the new sink
+    newSink.applyOperators(...operators);
+    return newSink;
+  }
+  
+  private cloneOperatorChain(head: AbstractOperator, tail?: AbstractOperator): [AbstractOperator, AbstractOperator] {
+    const clonedHead = head.clone();
+    let original = head.next;
+    let cloned = clonedHead;
+
+    while (original && original !== tail) {
+      const clonedOperator = original.clone();
+      cloned.next = clonedOperator;
+      cloned = clonedOperator;
+      original = original.next;
+    }
+
+    return [clonedHead, cloned];
+  }
+
+  applyOperators(...operators: (AbstractOperator | AbstractHook)[]) {
+  
     for (const operator of operators) {
       if (operator instanceof AbstractOperator) {
         if (!this.head) {
@@ -233,22 +270,18 @@ export class StreamSink implements IStream {
           this.tail!.next = operator;
           this.tail = operator;
         }
-      }
-      else {
-        if (operator instanceof StartWithHook) {
-          this.onStart = operator;
-        } else if (operator instanceof EndWithHook) {
-          this.onComplete = operator;
-        } else if (operator instanceof CatchErrorHook) {
-          this.onError = operator;
-        } else if (operator instanceof FinalizeHook) {
-          this.onStop = operator;
-        } else {
-          throw new Error("Unknown hook");
-        }
+      } else if (operator instanceof StartWithHook) {
+        this.onStart = operator;
+      } else if (operator instanceof EndWithHook) {
+        this.onComplete = operator;
+      } else if (operator instanceof CatchErrorHook) {
+        this.onError = operator;
+      } else if (operator instanceof FinalizeHook) {
+        this.onStop = operator;
+      } else {
+        throw new Error("Unknown hook");
       }
     }
-
     return this;
   }
 
@@ -256,7 +289,7 @@ export class StreamSink implements IStream {
     try {
       let currentEmission: Emission = emission;
 
-      if (this.source.isCancelled.value) {
+      if (this.isCancelled.value) {
         currentEmission.isCancelled = true;
       }
 
@@ -275,26 +308,32 @@ export class StreamSink implements IStream {
   }
 
   split(operator: AbstractOperator, stream: AbstractStream) {
-    let subscribers = this.subscribers.slice();
+    
+    let current: StreamSink | undefined = this;
+    while(current.next !== undefined) {
+      current = current.next;
+    }
+
+    let subscribers = current.subscribers.slice();
     const callback = () => {};
-    this.subscribers = [callback];
+    current.subscribers = [callback];
 
-    this.tail = operator;
+    let next = stream instanceof StreamSink ? stream : new StreamSink(stream);
+    next.head = operator.next; next.tail = current.tail;
 
-    this.next = stream instanceof StreamSink ? stream : new StreamSink(stream);
-    this.next.head = operator.next; this.next.tail = this.tail;
+    subscribers.forEach(subscriber => next.subscribe(subscriber));
 
-    subscribers.forEach(subscriber => this.next!.subscribe(subscriber));
-
-    this.next.unsubscribe = new Proxy(this.unsubscribe, {
+    next.unsubscribe = new Proxy(this.unsubscribe, {
       apply: (targetUnsubscribe, thisArg, argumentsList: any) => {
         targetUnsubscribe.apply(thisArg, argumentsList);
-        if (this.subscribers.length === 0) {
-          this.unsubscribe(callback)
+        if (next.subscribers.length === 0) {
+          current.unsubscribe(callback)
         }
       }
     });
 
-    return this.next;
+    current.tail = operator;
+    current.next = next;
+    return next;
   }
 }
