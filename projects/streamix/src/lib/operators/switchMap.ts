@@ -1,4 +1,4 @@
-import { AbstractOperator, AbstractStream, Emission, StreamSink } from '../abstractions';
+import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
 
 export class SwitchMapOperator extends AbstractOperator {
   private readonly project: (value: any) => AbstractStream;
@@ -6,8 +6,7 @@ export class SwitchMapOperator extends AbstractOperator {
   private outerStream: AbstractStream;
   private innerStreamSubscription?: any;
 
-  private innerSink?: StreamSink;
-  private outerSink?: StreamSink;
+  private outerSink?: AbstractStream;
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -37,19 +36,16 @@ export class SwitchMapOperator extends AbstractOperator {
 
   private async cleanup() {
     await this.stopInnerStream();
-    if (this.innerSink) {
-      this.innerSink.complete();
-    }
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.innerSink) { this.innerSink = stream instanceof StreamSink ? stream : new StreamSink(stream); }
-    if (!this.outerSink) { this.outerSink = this.innerSink.split(this, this.outerStream); }
+    if (!this.outerSink) {
+      this.outerSink = stream.split(this, this.outerStream);
+    }
 
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
       await this.stopInnerStream();
-      this.innerSink.complete();
       return emission;
     }
 
@@ -67,12 +63,20 @@ export class SwitchMapOperator extends AbstractOperator {
     }
 
     const newInnerStream = this.project(emission.value);
-    this.activeInnerStream = newInnerStream;
+
+    if (this.activeInnerStream === newInnerStream) {
+      // If the new inner stream is the same as the current one, do not unsubscribe
+      emission.isPhantom = true;
+      return emission;
+    }
 
     // Unsubscribe from the previous inner stream if it exists
-    if (this.innerStreamSubscription) {
-      this.innerStreamSubscription.unsubscribe();
+    if (this.activeInnerStream) {
+      await this.stopInnerStream();
     }
+
+    // Set the new inner stream as active
+    this.activeInnerStream = newInnerStream;
 
     // Subscribe to the new inner stream and handle emissions
     this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
@@ -85,26 +89,17 @@ export class SwitchMapOperator extends AbstractOperator {
     newInnerStream.isFailed.then((error) => {
       emission.error = error;
       emission.isFailed = true;
-      this.innerStreamSubscription.unsubscribe();
       this.removeInnerStream(newInnerStream);
     });
 
     // Handle inner stream completion
     newInnerStream.isStopped.then(() => {
-      this.innerStreamSubscription.unsubscribe();
       this.removeInnerStream(newInnerStream);
     }).catch((error) => {
       emission.error = error;
       emission.isFailed = true;
       this.removeInnerStream(newInnerStream);
     });
-
-    // Ensure only the latest inner stream remains active
-    if (this.activeInnerStream !== newInnerStream) {
-      this.innerStreamSubscription.unsubscribe();
-      this.removeInnerStream(newInnerStream);
-      emission.isPhantom = true; // Indicate that this emission is ignored
-    }
 
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {

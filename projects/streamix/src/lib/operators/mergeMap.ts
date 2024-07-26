@@ -1,4 +1,4 @@
-import { AbstractOperator, AbstractStream, Emission, StreamSink } from '../abstractions';
+import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
 import { PromisifiedCounter } from '../utils/counter';
 
 export class MergeMapOperator extends AbstractOperator {
@@ -7,8 +7,8 @@ export class MergeMapOperator extends AbstractOperator {
   private activeInnerStreams: AbstractStream[] = [];
   private processingPromises: Promise<void>[] = [];
 
-  private innerSink?: StreamSink;
-  private outerSink?: StreamSink;
+  private innerSink?: AbstractStream;
+  private outerSink?: AbstractStream;
   private counter = new PromisifiedCounter(0);
 
   constructor(project: (value: any) => AbstractStream) {
@@ -42,7 +42,7 @@ export class MergeMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.innerSink) { this.innerSink = stream instanceof StreamSink ? stream : new StreamSink(stream); }
+    if (!this.innerSink) { this.innerSink = stream; }
     if (!this.outerSink) { this.outerSink = this.innerSink.split(this, this.outerStream); }
 
     try {
