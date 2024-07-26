@@ -114,7 +114,7 @@ describe('withLatestFrom operator', () => {
     });
 
     // Cancel the main stream immediately
-    mainStream.terminate();
+    combinedStream.terminate();
 
     combinedStream.isStopped.then(() => {
       expect(results).toEqual([]);
