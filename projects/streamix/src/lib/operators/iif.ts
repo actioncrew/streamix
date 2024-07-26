@@ -1,12 +1,12 @@
 import { Emission } from '../abstractions/emission';
 import { AbstractOperator } from '../abstractions/operator';
-import { AbstractStream, StreamSink } from '../abstractions/stream';
+import { AbstractStream } from '../abstractions/stream';
 
 export class IifOperator extends AbstractOperator {
   private outerStream: AbstractStream;
 
-  private innerSink?: StreamSink;
-  private outerSink?: StreamSink;
+  private innerSink?: AbstractStream;
+  private outerSink?: AbstractStream;
 
   constructor(
     private readonly condition: (emission: Emission) => boolean,
@@ -31,7 +31,7 @@ export class IifOperator extends AbstractOperator {
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
 
-    if (!this.innerSink) { this.innerSink = stream instanceof StreamSink ? stream : new StreamSink(stream); }
+    if (!this.innerSink) { this.innerSink = stream; }
     if (!this.outerSink) { this.outerSink = this.innerSink.split(this, this.outerStream); }
 
     if (stream.isCancelled.value) {

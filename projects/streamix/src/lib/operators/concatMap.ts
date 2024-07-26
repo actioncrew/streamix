@@ -1,4 +1,4 @@
-import { AbstractOperator, AbstractStream, Emission, StreamSink } from '../abstractions';
+import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
 
 export class ConcatMapOperator extends AbstractOperator {
   private readonly project: (value: any) => AbstractStream;
@@ -7,8 +7,8 @@ export class ConcatMapOperator extends AbstractOperator {
   private processingPromise: Promise<void> | null = null;
   private queue: Emission[] = [];
 
-  private innerSink?: StreamSink;
-  private outerSink?: StreamSink;
+  private innerSink?: AbstractStream;
+  private outerSink?: AbstractStream;
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -48,8 +48,8 @@ export class ConcatMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.innerSink) this.innerSink = stream instanceof StreamSink ? stream : new StreamSink(stream);
-    if (!this.outerSink) this.outerSink = this.innerSink.split(this, this.outerStream);
+    if (!this.innerSink) { this.innerSink = stream; }
+    if (!this.outerSink) { this.outerSink = this.innerSink.split(this, this.outerStream); }
 
     try {
       this.queue.push(emission);

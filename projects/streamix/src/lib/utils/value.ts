@@ -6,7 +6,7 @@ export class PromisifiedValue<T> {
 
   constructor() {
     this._promise = new Promise<T>((resolve) => {
-      this._resolve = resolve;
+      this._resolve = (value) => resolve(value);
     });
   }
 

@@ -5,36 +5,7 @@ import { AbstractHook } from './hook';
 import { AbstractOperator } from './operator';
 import { Subscription } from './subscription';
 
-export interface IStream {
-  isAutoComplete: Promisified<boolean>;
-  isCancelled: Promisified<boolean>;
-  isStopRequested: Promisified<boolean>;
-  isFailed: Promisified<any>;
-  isStopped: Promisified<boolean>;
-  isUnsubscribed: Promisified<boolean>;
-  isRunning: Promisified<boolean>;
-
-  subscribers: (((value: any) => any) | void)[];
-
-  onStart?: AbstractHook;
-  onComplete?: AbstractHook;
-  onStop?: AbstractHook;
-  onError?: AbstractHook;
-
-  emit(emission: Emission): Promise<void>;
-  shouldTerminate(): boolean;
-  awaitTermination(): Promise<boolean>;
-  terminate(): Promise<void>;
-  shouldComplete(): boolean;
-  awaitCompletion(): Promise<boolean>;
-  complete(): Promise<void>;
-  pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink;
-  run(): Promise<void>;
-  subscribe(callback: void | ((value: any) => any)): Subscription;
-  unsubscribe(callback: (value: any) => any): void;
-}
-
-export class AbstractStream implements IStream {
+export class AbstractStream {
 
   isAutoComplete = new Promisified<boolean>(false);
   isCancelled = new Promisified<boolean>(false);
@@ -52,24 +23,8 @@ export class AbstractStream implements IStream {
   onStop?: AbstractHook | undefined;
   onError?: AbstractHook | undefined;
 
-  async emit(emission: Emission): Promise<void> {
-    try {
-      let currentEmission: Emission = emission;
-
-      if (this.isCancelled.value) {
-        currentEmission.isCancelled = true;
-      }
-
-      if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
-        await Promise.all(this.subscribers.map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()));
-      }
-
-      currentEmission.isComplete = true;
-    } catch (error: any) {
-      console.warn(`Error in stream ${this.constructor.name}: `, error);
-      emission.isFailed = true;
-      emission.error = error;
-    }
+  run(): Promise<void> {
+    throw new Error('Method is not implemented.');
   }
 
   shouldTerminate() {
@@ -98,19 +53,6 @@ export class AbstractStream implements IStream {
     return this.isStopped.then(() => Promise.resolve());
   }
 
-  pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
-    // Create a new sink based on the current one
-    const newSink = new StreamSink(this);
-    // Apply operators and hooks to the new sink
-    newSink.applyOperators(...operators);
-
-    return newSink;
-  }
-
-  run(): Promise<void> {
-    throw new Error('Method is not implemented.');
-  }
-
   unsubscribe(callback: (value: any) => any): void {
     this.subscribers = this.subscribers.filter(subscriber => subscriber !== callback);
     if (this.subscribers.length === 0) {
@@ -125,14 +67,14 @@ export class AbstractStream implements IStream {
     if (this.subscribers.length === 1 && this.isRunning.value === false) {
       queueMicrotask(async () => {
         try {
-          this.isRunning.resolve(true);
-
+          
           // Emit start value if defined
           await this.onStart?.process(this);
 
           // Run the actual stream logic
-          await this.run();
-
+          const runner = this.run();
+          this.isRunning.resolve(true);
+          await runner;
           // Emit end value if defined
           await this.onComplete?.process(this);
         } catch (error) {
@@ -153,95 +95,42 @@ export class AbstractStream implements IStream {
 
     return { unsubscribe: () => callback instanceof Function ? this.unsubscribe(callback) : Function.prototype };
   }
-}
 
-export class StreamSink implements IStream {
-  protected source: any;
-  protected next: StreamSink | undefined = undefined;
+  protected nextStream: AbstractStream | undefined = undefined;
 
   protected head: AbstractOperator | undefined = undefined;
   protected tail: AbstractOperator | undefined = undefined;
 
-  constructor(source: AbstractStream) {
-    this.source = source;
+  pipe(...operators: (AbstractOperator | AbstractHook)[]): AbstractStream {
+    const stream = Object.create(Object.getPrototypeOf(this));
+    Object.assign(stream, this);
     
-    // Proxy all other properties and methods from source
-    let proxy = new Proxy(this, {
-      get: (target: any, prop: string | symbol) => {
-        if (Reflect.has(target, prop)) {
-          return target[prop];
-        }
-        return this.source[prop];
-      },
-      set: (target: any, prop: string | symbol, value: any) => {
-        if (Reflect.has(target, prop)) {
-          target[prop] = value;
-        } else {
-          this.source[prop] = value;
-        }
-        return true;
-      },
-      defineProperty: (target: any, prop: string | symbol, descriptor: PropertyDescriptor) => {
-        if (Reflect.has(target, prop)) {
-          Reflect.defineProperty(target, prop, descriptor);
-        } else {
-          Reflect.defineProperty(this.source, prop, descriptor);
-        }
-        return true;
-      },
-      deleteProperty: (target: any, prop: string | symbol) => {
-        if (Reflect.has(target, prop)) {
-          return Reflect.deleteProperty(target, prop);
-        } else {
-          return Reflect.deleteProperty(this.source, prop);
-        }
-      }
-    });
+    stream.isAutoComplete = new Promisified<boolean>(false);
+    stream.isCancelled = new Promisified<boolean>(false);
+    stream.isStopRequested = new Promisified<boolean>(false);
 
-    this.source.emit = this.emit.bind(proxy);
-    return proxy;
-  }
+    stream.isFailed = new Promisified<any>(undefined);
+    stream.isStopped = new Promisified<boolean>(false);
+    stream.isUnsubscribed = new Promisified<boolean>(false);
+    stream.isRunning = new Promisified<boolean>(false);
 
-  isAutoComplete!: Promisified<boolean>;
-  isCancelled!: Promisified<boolean>;
-  isStopRequested!: Promisified<boolean>;
-  isFailed!: Promisified<any>;
-  isStopped!: Promisified<boolean>;
-  isUnsubscribed!: Promisified<boolean>;
-  isRunning!: Promisified<boolean>;
-  subscribers!: (void | ((value: any) => any))[];
-  
-  onStart!: AbstractHook | undefined;
-  onComplete!: AbstractHook | undefined;
-  onStop!: AbstractHook | undefined;
-  onError!: AbstractHook | undefined;
+    stream.subscribers = [];
 
-  shouldTerminate!: () => boolean;
-  awaitTermination!: () => Promise<boolean>;
-  terminate!: () => Promise<void>;
-
-  shouldComplete!: () => boolean;
-  awaitCompletion!: () => Promise<boolean>;
-  complete!: () => Promise<void>;
-
-  run!:() => Promise<void>;
-
-  subscribe!: (callback: void | ((value: any) => any)) => Subscription;
-  unsubscribe!: (callback: (value: any) => any) => void;
-
-  pipe(...operators: (AbstractOperator | AbstractHook)[]): StreamSink {
-    const newSink = new StreamSink(this.source);
-    newSink.next = this.next;
-
+    stream.nextStream = this.nextStream;
+    stream.onStart = this.onStart;
+    stream.onComplete = this.onComplete;
+    stream.onStop = this.onStop;
+    stream.onError = this.onError;
+    
     // Clone the current operator chain to the new sink
     if (this.head) {
       const [head, tail] = this.cloneOperatorChain(this.head, this.tail);
-      newSink.head = head; newSink.tail = tail;
+      stream.head = head; stream.tail = tail;
     }
     
     // Apply operators to the new sink
-    newSink.applyOperators(...operators);
-    return newSink;
+    stream.applyOperators(...operators);
+    return stream;
   }
   
   private cloneOperatorChain(head: AbstractOperator, tail?: AbstractOperator): [AbstractOperator, AbstractOperator] {
@@ -312,21 +201,21 @@ export class StreamSink implements IStream {
 
   split(operator: AbstractOperator, stream: AbstractStream) {
     
-    let current: StreamSink | undefined = this;
-    while(current.next !== undefined) {
-      current = current.next;
+    let current: AbstractStream | undefined = this;
+    while(current?.nextStream !== undefined) {
+      current = current.nextStream;
     }
 
     let subscribers = current.subscribers.slice();
     const callback = () => {};
-    current.subscribers = [callback];
+    current.subscribers = []; current.subscribe(callback);
 
-    let next = stream instanceof StreamSink ? stream : new StreamSink(stream);
+    let next = stream;
     next.head = operator.next; next.tail = current.tail;
 
     subscribers.forEach(subscriber => next.subscribe(subscriber));
 
-    next.unsubscribe = new Proxy(this.unsubscribe, {
+    next.unsubscribe = new Proxy(current.unsubscribe, {
       apply: (targetUnsubscribe, thisArg, argumentsList: any) => {
         targetUnsubscribe.apply(thisArg, argumentsList);
         if (next.subscribers.length === 0) {
@@ -336,7 +225,7 @@ export class StreamSink implements IStream {
     });
 
     current.tail = operator;
-    current.next = next;
+    current.nextStream = next;
     return next;
   }
 }
