@@ -67,7 +67,7 @@ export class AbstractStream {
     if (this.subscribers.length === 1 && this.isRunning.value === false) {
       queueMicrotask(async () => {
         try {
-          
+
           // Emit start value if defined
           await this.onStart?.process(this);
 
@@ -104,7 +104,7 @@ export class AbstractStream {
   pipe(...operators: (AbstractOperator | AbstractHook)[]): AbstractStream {
     const stream = Object.create(Object.getPrototypeOf(this));
     Object.assign(stream, this);
-    
+
     stream.isAutoComplete = new Promisified<boolean>(false);
     stream.isCancelled = new Promisified<boolean>(false);
     stream.isStopRequested = new Promisified<boolean>(false);
@@ -121,18 +121,18 @@ export class AbstractStream {
     stream.onComplete = this.onComplete;
     stream.onStop = this.onStop;
     stream.onError = this.onError;
-    
+
     // Clone the current operator chain to the new sink
     if (this.head) {
       const [head, tail] = this.cloneOperatorChain(this.head, this.tail);
       stream.head = head; stream.tail = tail;
     }
-    
+
     // Apply operators to the new sink
     stream.applyOperators(...operators);
     return stream;
   }
-  
+
   private cloneOperatorChain(head: AbstractOperator, tail?: AbstractOperator): [AbstractOperator, AbstractOperator] {
     const clonedHead = head.clone();
     let original = head.next;
@@ -152,7 +152,7 @@ export class AbstractStream {
   }
 
   applyOperators(...operators: (AbstractOperator | AbstractHook)[]) {
-  
+
     for (const operator of operators) {
       if (operator instanceof AbstractOperator) {
         if (!this.head) {
@@ -200,32 +200,26 @@ export class AbstractStream {
   }
 
   split(operator: AbstractOperator, stream: AbstractStream) {
-    
-    let current: AbstractStream | undefined = this;
-    while(current?.nextStream !== undefined) {
-      current = current.nextStream;
-    }
-
-    let subscribers = current.subscribers.slice();
+    let subscribers = this.subscribers.slice();
     const callback = () => {};
-    current.subscribers = []; current.subscribe(callback);
+    this.subscribers = [callback];
 
-    let next = stream;
-    next.head = operator.next; next.tail = current.tail;
+    this.nextStream = stream;
+    this.nextStream.head = operator.next; this.nextStream.tail = operator.next ? this.tail : undefined;
 
-    subscribers.forEach(subscriber => next.subscribe(subscriber));
+    this.tail = operator;
 
-    next.unsubscribe = new Proxy(current.unsubscribe, {
+    subscribers.forEach(subscriber => this.nextStream!.subscribe(subscriber));
+
+    this.nextStream.unsubscribe = new Proxy(this.unsubscribe, {
       apply: (targetUnsubscribe, thisArg, argumentsList: any) => {
         targetUnsubscribe.apply(thisArg, argumentsList);
-        if (next.subscribers.length === 0) {
-          current.unsubscribe(callback)
+        if (this.subscribers.length === 0) {
+          this.unsubscribe(callback)
         }
       }
     });
 
-    current.tail = operator;
-    current.nextStream = next;
-    return next;
+    return this.nextStream;
   }
 }

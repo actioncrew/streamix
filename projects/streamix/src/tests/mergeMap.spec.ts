@@ -29,7 +29,7 @@ class MockStream extends AbstractStream {
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {
-    const testStream = new MockStream([1,2,3]);
+    const testStream = new MockStream([1, 2, 3]);
 
     const project = (value: number) => new MockStream([value * 2, value * 4]);
 
