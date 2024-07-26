@@ -208,7 +208,12 @@ export class AbstractStream {
 
     let subscribers = current.subscribers.slice();
     const callback = () => {};
-    current.subscribers = [callback];
+
+    if (current.isRunning.value) {
+      current.subscribers = [callback];
+    } else {
+      current.subscribers = []; current.subscribe(callback);
+    }
 
     let next = stream;
     next.head = operator.next; next.tail = operator.next ? current.tail : undefined;
