@@ -32,7 +32,7 @@ export class FromEventStream extends AbstractStream {
 
     this.target.addEventListener(this.eventName, this.listener);
     
-    super.subscribe(callback);
+    return  super.subscribe(callback);
   }
 }
 
