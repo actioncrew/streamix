@@ -222,7 +222,7 @@ export class AbstractStream {
 
     const originalUnsubscribe = next.unsubscribe.bind(this);
     next.unsubscribe = function (callbackMethod: (value: any) => any) {
-      originalUnsubscribe.unsubscribe(callbackMethod);
+      originalUnsubscribe(callbackMethod);
       if (next.subscribers.length === 0) {
         current.unsubscribe(callback);
       }
