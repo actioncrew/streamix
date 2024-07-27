@@ -67,14 +67,14 @@ export class AbstractStream {
     if (this.subscribers.length === 1 && this.isRunning.value === false) {
       queueMicrotask(async () => {
         try {
-
+          this.isRunning.resolve(true);
+          
           // Emit start value if defined
           await this.onStart?.process(this);
 
           // Run the actual stream logic
-          const runner = this.run();
-          this.isRunning.resolve(true);
-          await runner;
+          await this.run();
+          
           // Emit end value if defined
           await this.onComplete?.process(this);
         } catch (error) {
