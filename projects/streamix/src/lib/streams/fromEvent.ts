@@ -1,4 +1,4 @@
-import { AbstractStream } from '../abstractions/stream';
+import { AbstractStream, Subscription } from '../abstractions';
 import { PromisifiedCounter } from '../utils';
 
 export class FromEventStream extends AbstractStream {
@@ -15,6 +15,13 @@ export class FromEventStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
+    
+    await Promise.race([this.awaitCompletion(), this.awaitTermination()]).then(() => {
+      this.target.removeEventListener(this.eventName, this.listener);
+    });
+  }
+
+  override subscribe(callback: void | ((value: any) => any)): Subscription {
     this.listener = async (event: Event) => {
       if (this.isRunning.value) {
         this.eventCounter.increment();
@@ -25,9 +32,7 @@ export class FromEventStream extends AbstractStream {
 
     this.target.addEventListener(this.eventName, this.listener);
     
-    await Promise.race([this.awaitCompletion(), this.awaitTermination()]).then(() => {
-      this.target.removeEventListener(this.eventName, this.listener);
-    });
+    super.subscribe(callback);
   }
 }
 
