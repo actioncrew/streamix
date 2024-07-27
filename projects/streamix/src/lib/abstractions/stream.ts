@@ -220,14 +220,13 @@ export class AbstractStream {
 
     subscribers.forEach(subscriber => next.subscribe(subscriber));
 
-    next.unsubscribe = new Proxy(current.unsubscribe, {
-      apply: (targetUnsubscribe, thisArg, argumentsList: any) => {
-        targetUnsubscribe.apply(thisArg, argumentsList);
-        if (next.subscribers.length === 0) {
-          current.unsubscribe(callback)
-        }
+    const originalUnsubscribe = next.unsubscribe.bind(this);
+    next.unsubscribe = function (callbackMethod: (value: any) => any) {
+      originalUnsubscribe.unsubscribe(callbackMethod);
+      if (next.subscribers.length === 0) {
+        current.unsubscribe(callback);
       }
-    });
+    };
 
     current.tail = operator;
     current.nextStream = next;
