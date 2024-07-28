@@ -16,6 +16,9 @@ export abstract class AbstractOperator {
     }
   }
 
+  cancel(): void {
+  }
+  
   clone(): AbstractOperator {
     const clonedOperator = Object.create(Object.getPrototypeOf(this));
     Object.assign(clonedOperator, this);
