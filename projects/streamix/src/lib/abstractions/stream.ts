@@ -96,10 +96,10 @@ export class AbstractStream {
     return { unsubscribe: () => callback instanceof Function ? this.unsubscribe(callback) : Function.prototype };
   }
 
-  protected nextStream: AbstractStream | undefined = undefined;
+  nextStream: AbstractStream | undefined = undefined;
 
-  protected head: AbstractOperator | undefined = undefined;
-  protected tail: AbstractOperator | undefined = undefined;
+  head: AbstractOperator | undefined = undefined;
+  tail: AbstractOperator | undefined = undefined;
 
   pipe(...operators: (AbstractOperator | AbstractHook)[]): AbstractStream {
     const stream = Object.create(Object.getPrototypeOf(this));
