@@ -15,7 +15,7 @@ export abstract class AbstractOperator {
         return request;
       }
     } else {
-      await this.cancelChain(stream.head);
+      await this.cancelChain(stream.head!);
       emission.isCancelled = true;
       return emission;
     }
