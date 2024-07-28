@@ -7,16 +7,28 @@ export abstract class AbstractOperator {
   abstract handle(emission: Emission, stream: AbstractStream): Promise<Emission>;
 
   async process(emission: Emission, stream: AbstractStream): Promise<Emission> {
-
-    const request = await this.handle(emission, stream);
-    if (this.next) {
-      return this.next.process(request, stream);
+    if (stream.isCancelled.value === false) {
+      const request = await this.handle(emission, stream);
+      if (this.next) {
+        return this.next.process(request, stream);
+      } else {
+        return request;
+      }
     } else {
-      return request;
+      await this.cancelChain(stream.head);
+      emission.isCancelled = true;
+      return emission;
     }
   }
 
-  cancel(): void {
+  async cancel(): Promise<void> {
+  }
+
+  async cancelChain(operator: AbstractOperator) : Promise<void> {
+    await operator.cancel();
+    if (operator.next) {
+      await this.cancelChain(operator.next);
+    }
   }
   
   clone(): AbstractOperator {
