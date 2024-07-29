@@ -1,36 +1,36 @@
-import { Subscription } from '../abstractions';
-import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
-import { AbstractStream } from '../abstractions/stream';
+import { AbstractOperator, AbstractStream, Emission, Subscription } from '../abstractions';
 import { PromisifiedValue } from '../utils/value';
 
 export class WithLatestFromOperator extends AbstractOperator {
-  private latestValue = new PromisifiedValue();
-  private subscription: Subscription;
+  private latestValues: PromisifiedValue<any>[] = [];
+  private subscriptions: Subscription[] = [];
+  private streams: AbstractStream[];
 
-  constructor(readonly otherStream: AbstractStream) {
+  constructor(...streams: AbstractStream[]) {
     super();
-    this.subscription = otherStream.subscribe((value) => {
-      this.latestValue.value = value;
+    this.streams = streams;
+    this.streams.forEach((stream) => {
+      const latestValue = new PromisifiedValue();
+      this.latestValues.push(latestValue);
+      this.subscriptions.push(stream.subscribe((value) => {
+        latestValue.value = value;
+      }));
     });
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-
     try {
-      const latestValue = await Promise.race([
-        this.latestValue.value,
-        stream.awaitTermination(),
-        this.otherStream.awaitTermination()
+      const latestValuesPromise = Promise.all(this.latestValues.map(async (value) => await value.value));
+      const terminationPromise = stream.awaitTermination();
+
+      const [latestValues, isTerminated] = await Promise.race([
+        latestValuesPromise.then(values => [values, false] as any),
+        terminationPromise.then(() => [undefined, true] as any)
       ]);
 
-      if (stream.shouldTerminate() || this.otherStream.shouldTerminate()) {
-        emission.isCancelled = true;
-        this.subscription.unsubscribe();
-        return emission;
+      if (!isTerminated) {
+        emission.value = [emission.value, ...latestValues];
       }
-
-      emission.value = [emission.value, latestValue];
     } catch (error) {
       emission.error = error;
       emission.isFailed = true;
@@ -40,6 +40,6 @@ export class WithLatestFromOperator extends AbstractOperator {
   }
 }
 
-export function withLatestFrom(otherStream: AbstractStream) {
-  return new WithLatestFromOperator(otherStream);
+export function withLatestFrom(...streams: AbstractStream[]) {
+  return new WithLatestFromOperator(...streams);
 }
