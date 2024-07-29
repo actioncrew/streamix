@@ -32,7 +32,7 @@ export class IifOperator extends AbstractOperator {
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
 
     if (!this.innerSink) { this.innerSink = stream; }
-    if (!this.outerSink) { this.outerSink = this.innerSink.split(this, this.outerStream); }
+    if (!this.outerSink) { this.outerSink = this.innerSink.join(this, this.outerStream); }
 
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
