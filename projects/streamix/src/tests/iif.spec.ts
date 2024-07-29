@@ -37,7 +37,7 @@ class MockEmission implements Emission {
 
 class MockOperator extends AbstractOperator {
   async handle(emission: Emission, stream: AbstractStream): Promise<any> {
-    return Promise.resolve(emission);
+    return emission
   }
 }
 
