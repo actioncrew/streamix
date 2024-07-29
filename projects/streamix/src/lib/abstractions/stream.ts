@@ -199,7 +199,7 @@ export class AbstractStream {
     }
   }
 
-  join(operator: AbstractOperator, stream: AbstractStream) {
+  combine(operator: AbstractOperator, stream: AbstractStream) {
 
     let current: AbstractStream | undefined = this;
     while(current?.nextStream !== undefined) {
