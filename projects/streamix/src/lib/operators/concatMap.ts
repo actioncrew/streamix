@@ -7,8 +7,8 @@ export class ConcatMapOperator extends AbstractOperator {
   private processingPromise: Promise<void> | null = null;
   private queue: Emission[] = [];
 
-  private innerSink?: AbstractStream;
-  private outerSink?: AbstractStream;
+  private input?: AbstractStream;
+  private output?: AbstractStream;
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -29,27 +29,27 @@ export class ConcatMapOperator extends AbstractOperator {
     // Handle events for the outer stream
     this.outerStream.isCancelled.then(() => {
       this.stopCurrentInnerStream();
-      this.stopLeftStream();
-      this.stopRightStream();
+      this.stopInputStream();
+      this.stopOutputStream();
     });
 
     this.outerStream.isFailed.then((error) => {
       console.warn('Outer stream failed:', error);
       this.stopCurrentInnerStream();
-      this.stopLeftStream();
-      this.stopRightStream();
+      this.stopInputStream();
+      this.stopOutputStream();
     });
 
     this.outerStream.isStopRequested.then(() => {
       this.stopCurrentInnerStream();
-      this.stopLeftStream();
-      this.stopRightStream();
+      this.stopInputStream();
+      this.stopOutputStream();
     });
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.innerSink) { this.innerSink = stream; }
-    if (!this.outerSink) { this.outerSink = this.innerSink.combine(this, this.outerStream); }
+    if (!this.input) { this.input = stream; }
+    if (!this.output) { this.output = stream.combine(this, this.outerStream); }
 
     try {
       this.queue.push(emission);
@@ -71,7 +71,7 @@ export class ConcatMapOperator extends AbstractOperator {
   private async processQueue(): Promise<void> {
     while (this.queue.length > 0 && !this.currentInnerStream) {
       const emission = this.queue.shift()!;
-      await this.processEmission(emission, this.outerSink!);
+      await this.processEmission(emission, this.output!);
     }
   }
 
@@ -99,8 +99,8 @@ export class ConcatMapOperator extends AbstractOperator {
       innerStream.isCancelled.then(() => {
         emission.isCancelled = true;
         subscription.unsubscribe();
-        this.stopLeftStream();
-        this.stopRightStream();
+        this.stopInputStream();
+        this.stopOutputStream();
         handleCompletion();
       });
 
@@ -108,22 +108,22 @@ export class ConcatMapOperator extends AbstractOperator {
         emission.error = error;
         emission.isFailed = true;
         subscription.unsubscribe();
-        this.stopLeftStream();
-        this.stopRightStream();
+        this.stopInputStream();
+        this.stopOutputStream();
         handleCompletion();
       });
 
       innerStream.isStopped.then(() => {
         subscription.unsubscribe();
         emission.isComplete = true;
-        this.stopLeftStream();
-        this.stopRightStream();
+        this.stopInputStream();
+        this.stopOutputStream();
         handleCompletion();
       }).catch((error) => {
         emission.error = error;
         emission.isFailed = true;
-        this.stopLeftStream();
-        this.stopRightStream();
+        this.stopInputStream();
+        this.stopOutputStream();
         handleCompletion();
       });
     });
@@ -136,15 +136,15 @@ export class ConcatMapOperator extends AbstractOperator {
     }
   }
 
-  private async stopLeftStream() {
-    if (this.innerSink) {
-      await this.innerSink.complete();
+  private async stopInputStream() {
+    if (this.input) {
+      await this.input.complete();
     }
   }
 
-  private async stopRightStream() {
-    if (this.outerSink) {
-      await this.outerSink.complete();
+  private async stopOutputStream() {
+    if (this.output) {
+      await this.output.complete();
     }
   }
 
@@ -152,8 +152,8 @@ export class ConcatMapOperator extends AbstractOperator {
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
       await this.stopCurrentInnerStream();
-      await this.stopLeftStream();
-      await this.stopRightStream();
+      await this.stopInputStream();
+      await this.stopOutputStream();
       return true;
     }
     return false;

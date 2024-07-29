@@ -5,8 +5,8 @@ import { AbstractStream } from '../abstractions/stream';
 export class IifOperator extends AbstractOperator {
   private outerStream: AbstractStream;
 
-  private innerSink?: AbstractStream;
-  private outerSink?: AbstractStream;
+  private input?: AbstractStream;
+  private output?: AbstractStream;
 
   constructor(
     private readonly condition: (emission: Emission) => boolean,
@@ -31,13 +31,13 @@ export class IifOperator extends AbstractOperator {
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
 
-    if (!this.innerSink) { this.innerSink = stream; }
-    if (!this.outerSink) { this.outerSink = this.innerSink.combine(this, this.outerStream); }
+    if (!this.input) { this.input = stream; }
+    if (!this.output) { this.output = stream.combine(this, this.outerStream); }
 
     const innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
 
     const subscription = innerStream.subscribe(async (value) => {
-      await this.outerSink!.emit({value});
+      await this.output!.emit({value});
     });
 
     Promise.race([innerStream.isUnsubscribed.promise || innerStream.isAutoComplete.promise ||

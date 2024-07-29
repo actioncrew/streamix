@@ -6,7 +6,7 @@ export class SwitchMapOperator extends AbstractOperator {
   private outerStream: AbstractStream;
   private innerStreamSubscription?: any;
 
-  private outerSink?: AbstractStream;
+  private output?: AbstractStream;
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -39,8 +39,8 @@ export class SwitchMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.outerSink) {
-      this.outerSink = stream.combine(this, this.outerStream);
+    if (!this.output) {
+      this.output = stream.combine(this, this.outerStream);
     }
 
     if (stream.isCancelled.value) {
@@ -76,7 +76,7 @@ export class SwitchMapOperator extends AbstractOperator {
     // Subscribe to the new inner stream and handle emissions
     this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
       if (!stream.isCancelled.value) {
-        await this.outerSink!.emit({ value });
+        await this.output!.emit({ value });
       }
     });
 
