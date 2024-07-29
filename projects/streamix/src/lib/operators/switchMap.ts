@@ -40,7 +40,7 @@ export class SwitchMapOperator extends AbstractOperator {
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (!this.outerSink) {
-      this.outerSink = stream.split(this, this.outerStream);
+      this.outerSink = stream.join(this, this.outerStream);
     }
 
     if (stream.isCancelled.value) {

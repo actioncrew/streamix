@@ -62,19 +62,19 @@ export class AbstractStream {
   }
 
   subscribe(callback: void | ((value: any) => any)): Subscription {
-    this.subscribers.push(callback);
+    this.subscribers.push(callback ?? (() => {}));
 
     if (this.subscribers.length === 1 && this.isRunning.value === false) {
       queueMicrotask(async () => {
         try {
           this.isRunning.resolve(true);
-          
+
           // Emit start value if defined
           await this.onStart?.process(this);
 
           // Run the actual stream logic
           await this.run();
-          
+
           // Emit end value if defined
           await this.onComplete?.process(this);
         } catch (error) {
@@ -199,7 +199,7 @@ export class AbstractStream {
     }
   }
 
-  split(operator: AbstractOperator, stream: AbstractStream) {
+  join(operator: AbstractOperator, stream: AbstractStream) {
 
     let current: AbstractStream | undefined = this;
     while(current?.nextStream !== undefined) {
