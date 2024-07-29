@@ -1,12 +1,11 @@
-import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
+import { AbstractOperator, AbstractStream, Emission, Subscription } from '../abstractions';
 
 export class SwitchMapOperator extends AbstractOperator {
-  private readonly project: (value: any) => AbstractStream;
+  private project: (value: any) => AbstractStream;
   private activeInnerStream?: AbstractStream;
   private outerStream: AbstractStream;
-  private innerStreamSubscription?: any;
-
   private output?: AbstractStream;
+  private innerStreamSubscription?: Subscription;
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -16,20 +15,17 @@ export class SwitchMapOperator extends AbstractOperator {
   }
 
   private initializeOuterStream() {
-    Object.assign(this.outerStream, {
-      run: async () => {
-        await Promise.race([
-          this.outerStream.awaitCompletion(),
-          this.outerStream.awaitTermination()
-        ]);
-        if (this.activeInnerStream) {
-          await this.activeInnerStream.awaitCompletion();
-        }
-        await this.cleanup();
+    this.outerStream.run = async () => {
+      await Promise.race([
+        this.outerStream.awaitCompletion(),
+        this.outerStream.awaitTermination()
+      ]);
+      if (this.activeInnerStream) {
+        await this.activeInnerStream.awaitCompletion();
       }
-    });
+      await this.cleanup();
+    };
 
-    // Listen to the outer stream's events
     this.outerStream.isCancelled.then(() => this.cleanup());
     this.outerStream.isStopped.then(() => this.cleanup());
   }
@@ -39,9 +35,7 @@ export class SwitchMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.output) {
-      this.output = stream.combine(this, this.outerStream);
-    }
+    this.output = this.output || stream.combine(this, this.outerStream);
 
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
@@ -52,7 +46,7 @@ export class SwitchMapOperator extends AbstractOperator {
     try {
       return await this.processEmission(emission, stream);
     } catch (error) {
-      return Promise.reject(error); // Reject the outer promise on error
+      return Promise.reject(error);
     }
   }
 
@@ -60,34 +54,25 @@ export class SwitchMapOperator extends AbstractOperator {
     const newInnerStream = this.project(emission.value);
 
     if (this.activeInnerStream === newInnerStream) {
-      // If the new inner stream is the same as the current one, do not unsubscribe
       emission.isPhantom = true;
       return emission;
     }
 
-    // Unsubscribe from the previous inner stream if it exists
-    if (this.activeInnerStream) {
-      await this.stopInnerStream();
-    }
-
-    // Set the new inner stream as active
+    await this.stopInnerStream();
     this.activeInnerStream = newInnerStream;
 
-    // Subscribe to the new inner stream and handle emissions
     this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
       if (!stream.isCancelled.value) {
         await this.output!.emit({ value });
       }
     });
 
-    // Handle inner stream errors
     newInnerStream.isFailed.then((error) => {
       emission.error = error;
       emission.isFailed = true;
       this.removeInnerStream(newInnerStream);
     });
 
-    // Handle inner stream completion
     newInnerStream.isStopped.then(() => {
       this.removeInnerStream(newInnerStream);
     }).catch((error) => {
@@ -110,12 +95,11 @@ export class SwitchMapOperator extends AbstractOperator {
 
   private async stopInnerStream() {
     if (this.activeInnerStream) {
+      this.innerStreamSubscription?.unsubscribe();
       this.activeInnerStream.terminate();
       this.removeInnerStream(this.activeInnerStream);
     }
   }
 }
 
-export function switchMap(project: (value: any) => AbstractStream) {
-  return new SwitchMapOperator(project);
-}
+export const switchMap = (project: (value: any) => AbstractStream) => new SwitchMapOperator(project);

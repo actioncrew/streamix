@@ -11,14 +11,14 @@ export class FilterOperator extends AbstractOperator {
     this.predicate = predicate;
   }
 
-  async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     try {
-      request.isPhantom = !this.predicate(request.value);
-      return request;
+      emission.isPhantom = !this.predicate(emission.value);
+      return emission;
     } catch (error) {
-      request.isFailed = true;
-      request.error = error;
-      return request;
+      emission.isFailed = true;
+      emission.error = error;
+      return emission;
     }
   }
 }

@@ -8,11 +8,11 @@ export abstract class AbstractOperator {
 
   async process(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value === false) {
-      const request = await this.handle(emission, stream);
+      emission = await this.handle(emission, stream);
       if (this.next) {
-        return this.next.process(request, stream);
+        return this.next.process(emission, stream);
       } else {
-        return request;
+        return emission;
       }
     } else {
       await this.cancelChain(stream.head!);
@@ -30,7 +30,7 @@ export abstract class AbstractOperator {
       await this.cancelChain(operator.next);
     }
   }
-  
+
   clone(): AbstractOperator {
     const clonedOperator = Object.create(Object.getPrototypeOf(this));
     Object.assign(clonedOperator, this);
