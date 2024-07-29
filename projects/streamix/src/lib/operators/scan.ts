@@ -15,11 +15,6 @@ export class ScanOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
-    }
-
     try {
       this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!);
       emission.value = this.accumulatedValue;

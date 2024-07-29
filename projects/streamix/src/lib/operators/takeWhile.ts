@@ -11,11 +11,6 @@ export class TakeWhileOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
-    }
-
     const shouldContinue = this.predicate(emission.value);
     if (!shouldContinue) {
       emission.isPhantom = true;

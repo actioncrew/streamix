@@ -11,10 +11,6 @@ export class SkipOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
-    }
     if (this.count <= 0) {
       return emission;
     } else {

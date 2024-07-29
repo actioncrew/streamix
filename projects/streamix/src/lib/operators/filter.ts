@@ -12,13 +12,14 @@ export class FilterOperator extends AbstractOperator {
   }
 
   async handle(request: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      request.isCancelled = true;
+    try {
+      request.isPhantom = !this.predicate(request.value);
+      return request;
+    } catch (error) {
+      request.isFailed = true;
+      request.error = error;
       return request;
     }
-
-    request.isPhantom = !this.predicate(request.value);
-    return request;
   }
 }
 

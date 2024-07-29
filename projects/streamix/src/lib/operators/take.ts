@@ -12,10 +12,6 @@ export class TakeOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
-    }
     if (this.emittedCount < this.count) {
       this.emittedCount++;
 
