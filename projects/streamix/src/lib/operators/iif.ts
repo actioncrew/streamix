@@ -40,9 +40,7 @@ export class IifOperator extends AbstractOperator {
       await this.output!.emit({value});
     });
 
-    Promise.race([innerStream.isUnsubscribed.promise || innerStream.isAutoComplete.promise ||
-      innerStream.isFailed.promise || innerStream.isCancelled.promise ||
-      innerStream.isStopRequested.promise]).then((error) => {
+    Promise.race([innerStream.awaitCompletion(), innerStream.awaitTermination()]).then((error) => {
       subscription.unsubscribe();
     });
 
