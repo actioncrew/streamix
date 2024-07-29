@@ -11,11 +11,6 @@ export class MapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
-    }
-
     try {
       emission.value = this.transform(emission.value);
       return emission;

@@ -57,11 +57,6 @@ export class SwitchMapOperator extends AbstractOperator {
   }
 
   private async processEmission(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
-      emission.isCancelled = true;
-      return emission;
-    }
-
     const newInnerStream = this.project(emission.value);
 
     if (this.activeInnerStream === newInnerStream) {
