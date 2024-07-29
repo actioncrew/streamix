@@ -3,10 +3,9 @@ import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
 export class ConcatMapOperator extends AbstractOperator {
   private readonly project: (value: any) => AbstractStream;
   private outerStream: AbstractStream;
-  private currentInnerStream: AbstractStream | null = null;
+  private innerStream: AbstractStream | null = null;
   private processingPromise: Promise<void> | null = null;
   private queue: Emission[] = [];
-
   private input?: AbstractStream;
   private output?: AbstractStream;
 
@@ -14,146 +13,90 @@ export class ConcatMapOperator extends AbstractOperator {
     super();
     this.project = project;
     this.outerStream = new AbstractStream();
+    this.initializeOuterStream();
+  }
 
-    Object.assign(this.outerStream, {
-      run: async () => {
-        await Promise.race([
-          this.outerStream.awaitCompletion(),
-          this.outerStream.awaitTermination()
-        ]);
+  private initializeOuterStream() {
+    this.outerStream.run = async () => {
+      await Promise.race([
+        this.outerStream.awaitCompletion(),
+        this.outerStream.awaitTermination()
+      ]);
+      await this.processingPromise;
+    };
 
-        await this.processingPromise;
-      }
-    });
+    const cleanup = () => {
+      this.stopStreams(this.innerStream, this.input, this.output);
+    };
 
-    // Handle events for the outer stream
-    this.outerStream.isCancelled.then(() => {
-      this.stopCurrentInnerStream();
-      this.stopInputStream();
-      this.stopOutputStream();
-    });
-
-    this.outerStream.isFailed.then((error) => {
-      console.warn('Outer stream failed:', error);
-      this.stopCurrentInnerStream();
-      this.stopInputStream();
-      this.stopOutputStream();
-    });
-
-    this.outerStream.isStopRequested.then(() => {
-      this.stopCurrentInnerStream();
-      this.stopInputStream();
-      this.stopOutputStream();
-    });
+    this.outerStream.isCancelled.then(cleanup);
+    this.outerStream.isFailed.then(cleanup);
+    this.outerStream.isStopRequested.then(cleanup);
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.input) { this.input = stream; }
-    if (!this.output) { this.output = stream.combine(this, this.outerStream); }
+    this.input = this.input || stream;
+    this.output = this.output || stream.combine(this, this.outerStream);
 
-    try {
-      this.queue.push(emission);
+    this.queue.push(emission);
+    this.processingPromise = this.processingPromise || this.processQueue();
+    await this.processingPromise;
+    this.processingPromise = null;
 
-      if(!this.processingPromise) {
-        this.processingPromise = this.processQueue();
-        await this.processingPromise;
-        this.processingPromise = null;
-      }
-
-      return emission;
-    } catch (error) {
-      emission.error = error;
-      emission.isFailed = true;
-      return emission;
-    }
+    return emission;
   }
 
   private async processQueue(): Promise<void> {
-    while (this.queue.length > 0 && !this.currentInnerStream) {
-      const emission = this.queue.shift()!;
-      await this.processEmission(emission, this.output!);
+    while (this.queue.length > 0 && !this.innerStream) {
+      await this.processEmission(this.queue.shift()!, this.output!);
     }
   }
 
   private async processEmission(emission: Emission, stream: AbstractStream): Promise<void> {
-    if (await this.checkAndStopStream(stream, emission)) {
-      return;
-    }
+    if (await this.checkAndStopStream(stream, emission)) return;
 
-    const innerStream = this.project(emission.value);
-    this.currentInnerStream = innerStream;
+    this.innerStream = this.project(emission.value);
+    await this.handleInnerStream(emission, stream);
+  }
 
+  private async handleInnerStream(emission: Emission, stream: AbstractStream): Promise<void> {
     return new Promise<void>((resolve) => {
       const handleCompletion = () => {
-        this.currentInnerStream = null;
+        this.innerStream = null;
         resolve();
         this.processQueue();
       };
 
-      const subscription = innerStream.subscribe(async (value) => {
-        if (!stream.shouldTerminate()) {
-          await stream.emit({ value });
-        }
-      });
+      const subscription = this.innerStream!.subscribe(
+        async (value) => {
+          if (!stream.shouldTerminate()) await stream.emit({ value });
+        });
+      this.innerStream!.isFailed.then((error) => this.handleStreamError(emission, error, handleCompletion));
 
-      innerStream.isCancelled.then(() => {
-        emission.isCancelled = true;
-        subscription.unsubscribe();
-        this.stopInputStream();
-        this.stopOutputStream();
-        handleCompletion();
-      });
-
-      innerStream.isFailed.then((error) => {
-        emission.error = error;
-        emission.isFailed = true;
-        subscription.unsubscribe();
-        this.stopInputStream();
-        this.stopOutputStream();
-        handleCompletion();
-      });
-
-      innerStream.isStopped.then(() => {
+      this.innerStream!.isStopped.then(() => {
         subscription.unsubscribe();
         emission.isComplete = true;
-        this.stopInputStream();
-        this.stopOutputStream();
+        this.stopStreams(this.input, this.output);
         handleCompletion();
-      }).catch((error) => {
-        emission.error = error;
-        emission.isFailed = true;
-        this.stopInputStream();
-        this.stopOutputStream();
-        handleCompletion();
-      });
+      }).catch((error) => this.handleStreamError(emission, error, handleCompletion));
     });
   }
 
-  private async stopCurrentInnerStream() {
-    if (this.currentInnerStream) {
-      await this.currentInnerStream.complete();
-      this.currentInnerStream = null;
-    }
+  private handleStreamError(emission: Emission, error: any, callback: () => void) {
+    emission.error = error;
+    emission.isFailed = true;
+    this.stopStreams(this.input, this.output);
+    callback();
   }
 
-  private async stopInputStream() {
-    if (this.input) {
-      await this.input.complete();
-    }
-  }
-
-  private async stopOutputStream() {
-    if (this.output) {
-      await this.output.complete();
-    }
+  private async stopStreams(...streams: (AbstractStream | null | undefined)[]) {
+    await Promise.all(streams.filter(Boolean).map(stream => stream!.complete()));
   }
 
   private async checkAndStopStream(stream: AbstractStream, emission: Emission): Promise<boolean> {
     if (stream.isCancelled.value) {
       emission.isCancelled = true;
-      await this.stopCurrentInnerStream();
-      await this.stopInputStream();
-      await this.stopOutputStream();
+      await this.stopStreams(this.innerStream, this.input, this.output);
       return true;
     }
     return false;

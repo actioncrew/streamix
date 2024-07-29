@@ -19,20 +19,16 @@ export class IifOperator extends AbstractOperator {
     Object.assign(this.outerStream, {
       run: () => {
         return Promise.race([
-          this.outerStream.isUnsubscribed.promise,
-          this.outerStream.isAutoComplete.promise,
-          this.outerStream.isFailed.promise,
-          this.outerStream.isCancelled.promise,
-          this.outerStream.isStopRequested.promise
+          this.outerStream.awaitCompletion(),
+          this.outerStream.awaitTermination()
         ]);
       }
     });
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-
-    if (!this.input) { this.input = stream; }
-    if (!this.output) { this.output = stream.combine(this, this.outerStream); }
+    this.input = this.input || stream;
+    this.output = this.output || stream.combine(this, this.outerStream);
 
     const innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
 

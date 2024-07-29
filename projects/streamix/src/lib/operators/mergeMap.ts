@@ -42,8 +42,8 @@ export class MergeMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.input) { this.input = stream; }
-    if (!this.output) { this.output = stream.combine(this, this.outerStream); }
+    this.input = this.input || stream;
+    this.output = this.output || stream.combine(this, this.outerStream);
 
     try {
       return await this.processEmission(emission, this.output!);
