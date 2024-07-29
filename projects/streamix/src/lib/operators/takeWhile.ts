@@ -15,7 +15,7 @@ export class TakeWhileOperator extends AbstractOperator {
     if (!shouldContinue) {
       emission.isPhantom = true;
       stream.isStopRequested.resolve(true);
-      return Promise.resolve(emission);
+      return emission
     }
 
     return emission;
