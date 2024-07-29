@@ -1,19 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import {
-  fromEvent,
-  interval,
-  map,
-  startWith,
-  Subject,
-  Subscription,
-  switchMap,
-  takeUntil,
-  tap,
-  timer,
-  withLatestFrom,
-} from 'streamix';
+import { fromEvent, interval, map, startWith, Subject, switchMap, takeUntil, tap, timer, withLatestFrom } from 'streamix';
 
 @Component({
   selector: 'app-caption',
@@ -93,7 +81,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
   private destroy$ = new Subject<void>();
-  private subscription!: Subscription;
 
   ngAfterViewInit() {
     this.canvas = document.querySelector('canvas') as HTMLCanvasElement;

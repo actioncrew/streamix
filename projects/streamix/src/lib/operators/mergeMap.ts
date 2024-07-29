@@ -7,8 +7,8 @@ export class MergeMapOperator extends AbstractOperator {
   private activeInnerStreams: AbstractStream[] = [];
   private processingPromises: Promise<void>[] = [];
 
-  private innerSink?: AbstractStream;
-  private outerSink?: AbstractStream;
+  private input?: AbstractStream;
+  private output?: AbstractStream;
   private counter = new PromisifiedCounter(0);
 
   constructor(project: (value: any) => AbstractStream) {
@@ -42,11 +42,11 @@ export class MergeMapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (!this.innerSink) { this.innerSink = stream; }
-    if (!this.outerSink) { this.outerSink = this.innerSink.combine(this, this.outerStream); }
+    if (!this.input) { this.input = stream; }
+    if (!this.output) { this.output = stream.combine(this, this.outerStream); }
 
     try {
-      return await this.processEmission(emission, this.outerSink!);
+      return await this.processEmission(emission, this.output!);
     } catch (error) {
       emission.error = error;
       emission.isFailed = true;
@@ -127,19 +127,19 @@ export class MergeMapOperator extends AbstractOperator {
       await stream.complete();
     }));
     this.activeInnerStreams = [];
-    await this.stopLeftStream();
-    await this.stopRightStream();
+    await this.stopInputStream();
+    await this.stopOutputStream();
   }
 
-  private async stopLeftStream() {
-    if (this.innerSink) {
-      await this.innerSink.complete();
+  private async stopInputStream() {
+    if (this.input) {
+      await this.input.complete();
     }
   }
 
-  private async stopRightStream() {
-    if (this.outerSink) {
-      await this.outerSink.complete();
+  private async stopOutputStream() {
+    if (this.output) {
+      await this.output.complete();
     }
   }
 
