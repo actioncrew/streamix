@@ -3,3 +3,4 @@ export * from './converters';
 export * from './operators';
 export * from './streams';
 export * from './hooks';
+export * from './utils';
