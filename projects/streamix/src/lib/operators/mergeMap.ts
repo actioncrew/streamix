@@ -45,13 +45,7 @@ export class MergeMapOperator extends AbstractOperator {
     this.input = this.input || stream;
     this.output = this.output || stream.combine(this, this.outerStream);
 
-    try {
-      return await this.processEmission(emission, this.output!);
-    } catch (error) {
-      emission.error = error;
-      emission.isFailed = true;
-      return emission;
-    }
+    return this.processEmission(emission, this.output!);
   }
 
   private async processEmission(emission: Emission, stream: AbstractStream): Promise<Emission> {

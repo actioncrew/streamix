@@ -12,14 +12,8 @@ export class FilterOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    try {
-      emission.isPhantom = !this.predicate(emission.value);
-      return emission;
-    } catch (error) {
-      emission.isFailed = true;
-      emission.error = error;
-      return emission;
-    }
+    emission.isPhantom = !this.predicate(emission.value);
+    return emission;
   }
 }
 

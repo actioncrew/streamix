@@ -11,14 +11,7 @@ export class TapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    try {
-      this.tapFunction(emission.value);
-    } catch (error: any) {
-      emission.isFailed = true;
-      emission.error = error;
-      return emission;
-    }
-
+    this.tapFunction(emission.value);
     return emission;
   }
 }
