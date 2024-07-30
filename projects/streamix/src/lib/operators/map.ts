@@ -11,14 +11,8 @@ export class MapOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    try {
-      emission.value = this.transform(emission.value);
-      return emission;
-    } catch(error) {
-      emission.error = error;
-      emission.isFailed = true;
-      return emission;
-    }
+    emission.value = this.transform(emission.value);
+    return emission;
   }
 }
 

@@ -12,23 +12,16 @@ export class DistinctUntilChangedOperator<T> extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<any> {
-    try {
-      const currentValue = emission.value;
+    const currentValue = emission.value;
 
-      if (this.lastEmittedValue === undefined ||
-          (this.comparator ? !this.comparator(this.lastEmittedValue, currentValue) : this.lastEmittedValue !== currentValue)) {
-        this.lastEmittedValue = currentValue;
-        return emission;
-      } else {
-        emission.isPhantom = true;
-        return emission;
-      }
-    } catch (error) {
-      emission.isFailed = true;
-      emission.error = error;
+    if (this.lastEmittedValue === undefined ||
+        (this.comparator ? !this.comparator(this.lastEmittedValue, currentValue) : this.lastEmittedValue !== currentValue)) {
+      this.lastEmittedValue = currentValue;
+      return emission;
+    } else {
+      emission.isPhantom = true;
       return emission;
     }
-
   }
 }
 
