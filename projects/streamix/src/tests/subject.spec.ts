@@ -2,7 +2,7 @@ import { Subject } from '../lib';
 
 describe('Subject', () => {
   it('should emit values to subscribers', async () => {
-    const subject = new Subject();
+    const subject = new Subject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -19,7 +19,7 @@ describe('Subject', () => {
   });
 
   it('should not emit values after unsubscribed', async () => {
-    const subject = new Subject();
+    const subject = new Subject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -38,7 +38,7 @@ describe('Subject', () => {
   });
 
   it('should not emit values after stopped', async () => {
-    const subject = new Subject();
+    const subject = new Subject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -56,7 +56,7 @@ describe('Subject', () => {
   });
 
   it('should clear emission queue on cancel', async () => {
-    const subject = new Subject();
+    const subject = new Subject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -74,7 +74,7 @@ describe('Subject', () => {
   });
 
   it('should not allow pushing values to a stopped Subject', async () => {
-    const subject = new Subject();
+    const subject = new Subject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
