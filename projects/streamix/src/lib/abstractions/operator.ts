@@ -8,7 +8,12 @@ export abstract class AbstractOperator {
 
   async process(emission: Emission, stream: AbstractStream): Promise<Emission> {
     if (stream.isCancelled.value === false) {
-      emission = await this.handle(emission, stream);
+      try {
+        emission = await this.handle(emission, stream);
+      } catch (error) {
+        emission.isFailed = true;
+        emission.error = error;
+      }
       if (this.next) {
         return this.next.process(emission, stream);
       } else {
