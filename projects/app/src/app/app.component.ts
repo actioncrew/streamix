@@ -1,7 +1,18 @@
+import {
+  fromEvent,
+  interval,
+  map,
+  startWith,
+  Subject,
+  switchMap,
+  takeUntil,
+  tap,
+  timer,
+  withLatestFrom,
+} from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { fromEvent, interval, map, startWith, Subject, switchMap, takeUntil, tap, timer, withLatestFrom } from 'streamix';
 
 @Component({
   selector: 'app-caption',
