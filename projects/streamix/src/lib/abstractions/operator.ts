@@ -14,7 +14,7 @@ export abstract class AbstractOperator {
         emission.isFailed = true;
         emission.error = error;
       }
-      if (this.next) {
+      if (this.next && !emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
         return this.next.process(emission, stream);
       } else {
         return emission;
