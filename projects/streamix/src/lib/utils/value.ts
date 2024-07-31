@@ -28,3 +28,40 @@ export class PromisifiedValue<T> {
     return this._hasValue;
   }
 }
+
+function promisifiedValue<T>() {
+  let _value: T | undefined;
+  let _hasValue = false;
+  let _resolve!: (value: T | PromiseLike<T>) => void;
+
+  const _promise = new Promise<T>((resolve) => {
+    _resolve = (value) => resolve(value);
+  });
+
+  function innerFunction(): Promise<T> {
+    return _hasValue ? Promise.resolve(_value as T) : _promise;
+  }
+
+  Object.defineProperty(innerFunction, 'value', {
+    get: function () {
+      return _hasValue ? Promise.resolve(_value as T) : _promise;
+    },
+    set: function (newValue: T) {
+      if (!_hasValue) {
+        _value = newValue;
+        _hasValue = true;
+        _resolve(newValue);
+      } else {
+        _value = newValue;
+      }
+    }
+  });
+
+  Object.defineProperty(innerFunction, 'hasValue', {
+    get: function () {
+      return _hasValue;
+    }
+  });
+
+  return innerFunctionq;
+}
