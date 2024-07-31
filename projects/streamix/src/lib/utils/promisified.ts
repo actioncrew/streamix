@@ -88,17 +88,8 @@ function promisified<T>(initialValue: T) {
     _reject(reason);
   };
 
-  Object.defineProperty(innerFunction, 'value', {
-    get: function () {
-      return _value;
-    }
-  });
-
-  Object.defineProperty(innerFunction, 'promise', {
-    get: function () {
-      return _promise;
-    }
-  });
+  innerFunction.value = _value;
+  innerFunction.promise = _promise;
 
   innerFunction.reset = function () {
     _promise = new Promise<T>((resolve, reject) => {
