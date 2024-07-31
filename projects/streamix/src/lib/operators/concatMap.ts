@@ -61,10 +61,15 @@ export class ConcatMapOperator extends AbstractOperator {
 
   private async handleInnerStream(emission: Emission, stream: AbstractStream): Promise<void> {
     return new Promise<void>((resolve) => {
-      const handleCompletion = () => {
-        this.innerStream = null;
-        resolve();
-        this.processQueue();
+      const handleCompletion = async () => {
+        if (this.input?.isStopped.value && this.innerStream?.isStopped.value) {
+          await this.output?.complete();
+          resolve(); // Resolve the promise after cleaning up output and when no further processing is needed
+        } else {
+          this.innerStream = null; // Nullify innerStream after cleanup check
+          await this.processQueue(); // Continue processing the queue if streams are not stopped
+          resolve(); // Resolve the promise after queue processing
+        }
       };
 
       const subscription = this.innerStream!.subscribe(
@@ -76,7 +81,6 @@ export class ConcatMapOperator extends AbstractOperator {
       this.innerStream!.isStopped.then(() => {
         subscription.unsubscribe();
         emission.isComplete = true;
-        this.stopStreams(this.input, this.output);
         handleCompletion();
       }).catch((error) => this.handleStreamError(emission, error, handleCompletion));
     });

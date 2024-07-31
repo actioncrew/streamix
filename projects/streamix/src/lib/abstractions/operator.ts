@@ -20,19 +20,8 @@ export abstract class AbstractOperator {
         return emission;
       }
     } else {
-      await this.cancelChain(stream.head!);
       emission.isCancelled = true;
       return emission;
-    }
-  }
-
-  async cancel(): Promise<void> {
-  }
-
-  async cancelChain(operator: AbstractOperator) : Promise<void> {
-    await operator.cancel();
-    if (operator.next) {
-      await this.cancelChain(operator.next);
     }
   }
 
