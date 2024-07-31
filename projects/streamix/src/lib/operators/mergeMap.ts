@@ -147,6 +147,4 @@ export class MergeMapOperator extends AbstractOperator {
   }
 }
 
-export function mergeMap(project: (value: any) => AbstractStream) {
-  return new MergeMapOperator(project);
-}
+export const mergeMap = (project: (value: any) => AbstractStream) => new MergeMapOperator(project);

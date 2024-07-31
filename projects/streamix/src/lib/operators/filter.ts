@@ -17,7 +17,6 @@ export class FilterOperator extends AbstractOperator {
   }
 }
 
-export function filter(predicate: (value: any) => boolean) {
-  return new FilterOperator(predicate);
-}
+export const filter = (predicate: (value: any) => boolean) => new FilterOperator(predicate);
+
 

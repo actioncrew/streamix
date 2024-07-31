@@ -33,6 +33,4 @@ export class DelayOperator extends AbstractOperator {
   }
 }
 
-export function delay(delayTime: number) {
-  return new DelayOperator(delayTime);
-}
+export const delay = (delayTime: number) => new DelayOperator(delayTime);

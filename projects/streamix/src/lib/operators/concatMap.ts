@@ -103,6 +103,4 @@ export class ConcatMapOperator extends AbstractOperator {
   }
 }
 
-export function concatMap(project: (value: any) => AbstractStream) {
-  return new ConcatMapOperator(project);
-}
+export const concatMap = (project: (value: any) => AbstractStream) => new ConcatMapOperator(project);

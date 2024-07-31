@@ -48,6 +48,4 @@ export class IifOperator extends AbstractOperator {
   }
 }
 
-export function iif(condition: (emission: Emission) => boolean, trueStream: AbstractStream, falseStream: AbstractStream) {
-  return new IifOperator(condition, trueStream, falseStream);
-}
+export const iif = (condition: (emission: Emission) => boolean, trueStream: AbstractStream, falseStream: AbstractStream) => new IifOperator(condition, trueStream, falseStream);

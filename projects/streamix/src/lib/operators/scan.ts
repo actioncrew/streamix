@@ -21,6 +21,5 @@ export class ScanOperator extends AbstractOperator {
   }
 }
 
-export function scan(accumulator: (acc: any, value: any) => any, seed: any) {
-  return new ScanOperator(accumulator, seed);
-}
+export const scan = (accumulator: (acc: any, value: any) => any, seed: any) => new ScanOperator(accumulator, seed);
+

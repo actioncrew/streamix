@@ -21,6 +21,5 @@ export class SkipOperator extends AbstractOperator {
   }
 }
 
-export function skip(count: number) {
-  return new SkipOperator(count);
-}
+export const skip = (count: number) => new SkipOperator(count);
+

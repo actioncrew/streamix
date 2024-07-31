@@ -26,6 +26,5 @@ export class TakeOperator extends AbstractOperator {
   }
 }
 
-export function take(count: number) {
-  return new TakeOperator(count);
-}
+export const take = (count: number) => new TakeOperator(count);
+
