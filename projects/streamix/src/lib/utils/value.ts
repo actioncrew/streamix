@@ -63,5 +63,5 @@ function promisifiedValue<T>() {
     }
   });
 
-  return innerFunctionq;
+  return innerFunction;
 }
