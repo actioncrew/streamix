@@ -33,35 +33,43 @@ function promisifiedValue<T>() {
   let _value: T | undefined;
   let _hasValue = false;
   let _resolve!: (value: T | PromiseLike<T>) => void;
-
-  const _promise = new Promise<T>((resolve) => {
-    _resolve = (value) => resolve(value);
+  let _promise = new Promise<T>((resolve) => {
+    _resolve = resolve;
   });
 
-  function innerFunction(): Promise<T> {
+  async function innerFunction(): Promise<T> {
     return _hasValue ? Promise.resolve(_value as T) : _promise;
   }
 
-  Object.defineProperty(innerFunction, 'value', {
-    get: function () {
-      return _hasValue ? Promise.resolve(_value as T) : _promise;
-    },
-    set: function (newValue: T) {
-      if (!_hasValue) {
-        _value = newValue;
-        _hasValue = true;
-        _resolve(newValue);
-      } else {
-        _value = newValue;
-      }
+  innerFunction.resolve = function (newValue: T): void {
+    if (!_hasValue) {
+      _value = newValue;
+      _hasValue = true;
+      _resolve(newValue);
+    } else {
+      _value = newValue;
     }
-  });
+  };
 
-  Object.defineProperty(innerFunction, 'hasValue', {
-    get: function () {
-      return _hasValue;
-    }
-  });
+  innerFunction.reset = function (): void {
+    _value = undefined;
+    _hasValue = false;
+    _promise = new Promise<T>((resolve) => {
+      _resolve = resolve;
+    });
+  };
+
+  innerFunction.getValue = function (): T | undefined {
+    return _value;
+  };
+
+  innerFunction.setValue = function (newValue: T): void {
+    innerFunction.resolve(newValue);
+  };
+
+  innerFunction.hasValue = function (): boolean {
+    return _hasValue;
+  };
 
   return innerFunction;
 }
