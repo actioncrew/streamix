@@ -50,7 +50,7 @@ export class AbstractStream {
 
   complete(): Promise<void> {
     this.isStopRequested.resolve(true);
-    return this.isStopped.then(() => Promise.resolve());
+    return this.isRunning.value ? this.isStopped.then(() => Promise.resolve()) : Promise.resolve();
   }
 
   unsubscribe(callback: (value: any) => any): void {
