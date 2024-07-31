@@ -25,6 +25,5 @@ export class DistinctUntilChangedOperator<T> extends AbstractOperator {
   }
 }
 
-export function distinctUntilChanged<T>(comparator?: (previous: T, current: T) => boolean) {
-  return new DistinctUntilChangedOperator<T>(comparator);
-}
+export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) => boolean) => new DistinctUntilChangedOperator<T>(comparator);
+

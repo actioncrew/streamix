@@ -33,6 +33,4 @@ export class TakeUntilOperator extends AbstractOperator {
   }
 }
 
-export function takeUntil(notifier: AbstractStream) {
-  return new TakeUntilOperator(notifier);
-}
+export const takeUntil = (notifier: AbstractStream) => new TakeUntilOperator(notifier);

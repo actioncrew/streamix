@@ -40,6 +40,4 @@ export class WithLatestFromOperator extends AbstractOperator {
   }
 }
 
-export function withLatestFrom(...streams: AbstractStream[]) {
-  return new WithLatestFromOperator(...streams);
-}
+export const withLatestFrom = (...streams: AbstractStream[]) => new WithLatestFromOperator(...streams);

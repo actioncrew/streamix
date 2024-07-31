@@ -16,6 +16,5 @@ export class TapOperator extends AbstractOperator {
   }
 }
 
-export function tap(tapFunction: (value: any) => void) {
-  return new TapOperator(tapFunction);
-}
+export const tap = (tapFunction: (value: any) => void) => new TapOperator(tapFunction);
+

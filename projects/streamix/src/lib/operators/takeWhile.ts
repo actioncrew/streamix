@@ -22,6 +22,4 @@ export class TakeWhileOperator extends AbstractOperator {
   }
 }
 
-export function takeWhile(predicate: (value: any, index?: number) => boolean) {
-  return new TakeWhileOperator(predicate);
-}
+export const takeWhile = (predicate: (value: any, index?: number) => boolean) => new TakeWhileOperator(predicate);

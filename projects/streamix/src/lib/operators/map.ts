@@ -16,6 +16,4 @@ export class MapOperator extends AbstractOperator {
   }
 }
 
-export function map(transform: (value: any) => any) {
-  return new MapOperator(transform);
-}
+export const map = (transform: (value: any) => any) => new MapOperator(transform);
