@@ -112,11 +112,11 @@ function promisified<T>(initialValue: T) {
     return _promise.then(callback);
   };
 
-  innerFunction.all = function (promises: Array<ReturnType<typeof createPromisified<any>>>): Promise<any[]> {
+  innerFunction.all = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any[]> {
     return Promise.all(promises.map(p => p.promise));
   };
 
-  innerFunction.race = function (promises: Array<ReturnType<typeof createPromisified<any>>>): Promise<any> {
+  innerFunction.race = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any> {
     return Promise.race(promises.map(p => p.promise));
   };
 
