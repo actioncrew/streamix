@@ -78,16 +78,10 @@ export function promisified<T>(initialValue: T) {
   };
 
   const fn = function () {
-    return fn.promise;
+    return _value;
   };
 
   Object.defineProperties(fn, {
-    value: {
-      get() {
-        return _value;
-      },
-      enumerable: true
-    },
     promise: {
       get() {
         if (!_promise) {
