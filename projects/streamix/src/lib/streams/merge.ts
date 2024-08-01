@@ -11,7 +11,7 @@ export class MergeStream extends AbstractStream {
   override async run(): Promise<void> {
     const subscriptions = this.sources.map(source => source.subscribe((value: any) => {
       // Emit the merged value
-      this.emit({ value });
+      this.emit({ value }, this.head!);
     }));
 
     return Promise.all(subscriptions).then(() => {

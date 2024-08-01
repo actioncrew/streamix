@@ -17,10 +17,10 @@ export class TimerStream extends AbstractStream {
   override async run(): Promise<void> {
     return new Promise<void>((resolve) => {
       setTimeout(() => {
-        this.emit({ value: this.value }).then(() => {
+        this.emit({ value: this.value }, this.head!).then(() => {
           this.intervalId = setInterval(() => {
             this.value++;
-            this.emit({ value: this.value });
+            this.emit({ value: this.value }, this.head!);
           }, this.intervalMs);
         });
       }, this.delayMs);

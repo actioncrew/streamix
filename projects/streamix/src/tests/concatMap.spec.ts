@@ -76,7 +76,7 @@ describe('ConcatMapOperator', () => {
       }
 
       override async run(): Promise<void> {
-        await this.emit({value: this.value});
+        await this.emit({value: this.value}, this.head!);
         this.isAutoComplete.resolve(true);
       }
     }
@@ -123,7 +123,7 @@ describe('ConcatMapOperator', () => {
 
       override async run(): Promise<void> {
         for (const value of this.values) {
-          await this.emit({ value });
+          await this.emit({ value }, this.head!);
         }
         this.isAutoComplete.resolve(true);
       }
@@ -185,7 +185,7 @@ class MyInnerStream extends AbstractStream {
   override async run(): Promise<void> {
     // Simulate inner stream behavior (emission, completion, error)
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
-    this.emit({ value: this.value }); // Emit the projected value
+    this.emit({ value: this.value }, this.head!); // Emit the projected value
   }
 }
 
@@ -193,7 +193,7 @@ class MyInnerStream extends AbstractStream {
 class MyRealStream extends AbstractStream {
   override async run(): Promise<void> {
     // Simulate your real stream behavior (emitting values)
-    this.emit({ value: 'streamValue1' });
+    this.emit({ value: 'streamValue1' }, this.head!);
   }
 }
 

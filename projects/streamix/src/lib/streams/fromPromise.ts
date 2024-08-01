@@ -16,7 +16,7 @@ export class FromPromiseStream extends AbstractStream {
     }
 
     const value = await this.promise;
-    return super.emit({ value }).then(() => {
+    return super.emit({ value }, this.head!).then(() => {
       this.isAutoComplete.resolve(true);
     });
   }
@@ -25,7 +25,7 @@ export class FromPromiseStream extends AbstractStream {
     if (this.error) {
       return Promise.reject(this.error);
     }
-    return super.emit(emission);
+    return super.emit(emission, this.head!);
   }
 }
 

@@ -24,7 +24,7 @@ export class FromEventStream extends AbstractStream {
     this.listener = async (event: Event) => {
       if (this.isRunning()) {
         this.eventCounter.increment();
-        await this.emit({ value: event });
+        await this.emit({ value: event }, this.head!);
         this.eventCounter.decrement();
       }
     };

@@ -63,7 +63,7 @@ export class SwitchMapOperator extends AbstractOperator {
 
     this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
       if (!stream.isCancelled()) {
-        await this.output!.emit({ value });
+        await this.output!.emit({ value }, this.next!);
       }
     });
 

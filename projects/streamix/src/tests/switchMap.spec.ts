@@ -15,7 +15,7 @@ class MockStream extends AbstractStream {
     while (this.index < this.values.length && !this.isStopRequested()) {
       try {
         let emission = { value: this.values[this.index] } as Emission;
-        await this.emit(emission);
+        await this.emit(emission, this.head!);
 
         if (emission.isFailed) {
           throw emission.error;

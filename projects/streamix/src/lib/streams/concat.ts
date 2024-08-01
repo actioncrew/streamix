@@ -35,7 +35,7 @@ export class ConcatStream extends AbstractStream {
         }
 
         try {
-          await this.emit({ value });
+          await this.emit({ value }, this.head!);
         } catch (error) {
           reject(error);
         }

@@ -78,7 +78,7 @@ export class ConcatMapOperator extends AbstractOperator {
       };
 
       const subscription = this.innerStream!.subscribe(async (value) => {
-        if (!stream.shouldTerminate()) await stream.emit({ value });
+        if (!stream.shouldTerminate()) await stream.emit({ value }, this.next!);
       });
 
       this.innerStream!.isFailed.then((error) => this.handleStreamError(emission, error, handleCompletion));

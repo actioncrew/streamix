@@ -65,7 +65,7 @@ export class MergeMapOperator extends AbstractOperator {
 
       const subscription = innerStream.subscribe(async (value) => {
         if (!stream.shouldTerminate()) {
-          await stream.emit({ value });
+          await stream.emit({ value }, this.next!);
         }
       });
 

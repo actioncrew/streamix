@@ -2,31 +2,44 @@ import { Emission } from '../abstractions';
 import { AbstractStream } from '../abstractions/stream';
 
 export class FromStream extends AbstractStream {
-  private readonly values: any[];
-  private index: number = 0;
+  private readonly iterator: IterableIterator<any>;
+  private done: boolean = false;
 
-  constructor(values: any[]) {
+  constructor(iterator: IterableIterator<any>) {
     super();
-    this.values = values;
+    this.iterator = iterator;
   }
 
   override async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.emit(emission);
+    try {
+      while (!this.done && !this.isStopRequested()) {
+        const { value, done } = this.iterator.next();
+        if (done) {
+          this.done = true;
+          if (!this.isStopRequested()) {
+            this.isAutoComplete.resolve(true);
+          }
+        } else {
+          let emission = { value } as Emission;
+          await this.emit(emission, this.head!);
 
-      if (emission.isFailed) {
-        throw emission.error;
+          if (emission.isFailed) {
+            throw emission.error;
+          }
+        }
       }
-
-      this.index++;
-    }
-    if(!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+    } catch (error) {
+      this.isFailed.resolve(error);
     }
   }
 }
 
-export function from(values: any[]) {
-  return new FromStream(values);
+export function from(input: any[] | IterableIterator<any>) {
+  if (Array.isArray(input)) {
+    return new FromStream(input[Symbol.iterator]()); // Convert array to iterator
+  } else if (typeof input[Symbol.iterator] === 'function') {
+    return new FromStream(input as IterableIterator<any>);
+  } else {
+    throw new TypeError('Input must be an array or an iterable iterator');
+  }
 }
