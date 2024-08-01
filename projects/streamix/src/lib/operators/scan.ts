@@ -1,8 +1,8 @@
-import { AbstractStream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
+import { Operator } from '../abstractions/operator';
 
-export class ScanOperator extends AbstractOperator {
+export class ScanOperator extends Operator {
   private readonly accumulator: (acc: any, value: any) => any;
   private readonly seed: any;
   private accumulatedValue: any;
@@ -14,7 +14,7 @@ export class ScanOperator extends AbstractOperator {
     this.accumulatedValue = seed;
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!);
     emission.value = this.accumulatedValue;
     return emission;

@@ -1,12 +1,12 @@
-import { AbstractOperator, AbstractStream, Emission, Subscription } from '../abstractions';
+import { Emission, Operator, Stream, Subscription } from '../abstractions';
 import { promisifiedValue } from '../utils';
 
-export class WithLatestFromOperator extends AbstractOperator {
+export class WithLatestFromOperator extends Operator {
   private latestValues: ReturnType<typeof promisifiedValue<any>>[] = [];
   private subscriptions: Subscription[] = [];
-  private streams: AbstractStream[];
+  private streams: Stream[];
 
-  constructor(...streams: AbstractStream[]) {
+  constructor(...streams: Stream[]) {
     super();
     this.streams = streams;
     this.streams.forEach((stream) => {
@@ -18,7 +18,7 @@ export class WithLatestFromOperator extends AbstractOperator {
     });
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     const latestValuesPromise = Promise.all(this.latestValues.map(async (value) => await value()));
     const terminationPromise = stream.awaitTermination();
     const terminationPromises = Promise.race(this.streams.map(stream => stream.awaitTermination()))
@@ -40,4 +40,4 @@ export class WithLatestFromOperator extends AbstractOperator {
   }
 }
 
-export const withLatestFrom = (...streams: AbstractStream[]) => new WithLatestFromOperator(...streams);
+export const withLatestFrom = (...streams: Stream[]) => new WithLatestFromOperator(...streams);

@@ -1,6 +1,6 @@
-import { AbstractStream } from '../abstractions/stream';
+import { Stream } from '../abstractions/stream';
 
-export class TimerStream extends AbstractStream {
+export class TimerStream extends Stream {
   private delayMs: number;
   private intervalId: any | null;
   private intervalMs: number;

@@ -1,6 +1,6 @@
-import { AbstractStream } from '../abstractions/stream';
+import { Stream } from '../abstractions/stream';
 
-export class OfStream extends AbstractStream {
+export class OfStream extends Stream {
   private readonly value: any;
   private emitted: boolean = false;
 

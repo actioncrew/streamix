@@ -1,7 +1,7 @@
 import { Emission } from '../abstractions';
-import { AbstractStream } from '../abstractions/stream';
+import { Stream } from '../abstractions/stream';
 
-export class FromStream extends AbstractStream {
+export class FromStream extends Stream {
   private readonly iterator: IterableIterator<any>;
   private done: boolean = false;
 

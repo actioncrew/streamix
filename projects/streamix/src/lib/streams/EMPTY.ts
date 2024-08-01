@@ -1,6 +1,6 @@
-import { AbstractStream } from '../abstractions/stream';
+import { Stream } from '../abstractions/stream';
 
-export class EmptyStream extends AbstractStream {
+export class EmptyStream extends Stream {
   constructor() {
     super();
   }

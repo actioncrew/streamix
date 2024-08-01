@@ -1,8 +1,8 @@
-import { AbstractStream, Emission, Hook } from '../abstractions';
-import { AbstractOperator } from '../abstractions/operator';
+import { Emission, Hook, Stream } from '../abstractions';
+import { Operator } from '../abstractions/operator';
 
 
-export class StartWithOperator extends AbstractOperator implements Hook {
+export class StartWithOperator extends Operator implements Hook {
 
   private hasEmitted = false;
 
@@ -16,7 +16,7 @@ export class StartWithOperator extends AbstractOperator implements Hook {
     }
   }
 
-  override async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  override async handle(emission: Emission, stream: Stream): Promise<Emission> {
     return emission;
   }
 }

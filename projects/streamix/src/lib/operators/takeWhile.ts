@@ -1,8 +1,8 @@
-import { AbstractStream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
+import { Operator } from '../abstractions/operator';
 
-export class TakeWhileOperator extends AbstractOperator {
+export class TakeWhileOperator extends Operator {
   private readonly predicate: (value: any) => boolean;
 
   constructor(predicate: (value: any, index?: number) => boolean) {
@@ -10,7 +10,7 @@ export class TakeWhileOperator extends AbstractOperator {
     this.predicate = predicate;
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     const shouldContinue = this.predicate(emission.value);
     if (!shouldContinue) {
       emission.isPhantom = true;

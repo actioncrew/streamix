@@ -1,7 +1,7 @@
-import { AbstractStream, Emission, takeWhile } from '../lib';
+import { Emission, Stream, takeWhile } from '../lib';
 
 // Mock implementation for AbstractStream
-class MockStream extends AbstractStream {
+class MockStream extends Stream {
   private values: any[];
   private index: number;
 

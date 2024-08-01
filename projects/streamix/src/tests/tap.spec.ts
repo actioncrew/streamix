@@ -1,7 +1,7 @@
-import { AbstractStream, catchError, Emission, endWith, finalize, startWith, tap } from '../lib';
+import { catchError, Emission, endWith, finalize, startWith, Stream, tap } from '../lib';
 
 // Mock implementation for AbstractStream
-class MockStream extends AbstractStream {
+class MockStream extends Stream {
   private values: any[];
   private index: number;
 

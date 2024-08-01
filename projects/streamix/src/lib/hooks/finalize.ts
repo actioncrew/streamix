@@ -1,8 +1,8 @@
-import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
+import { Emission, Operator, Stream } from '../abstractions';
 import { Hook } from '../abstractions/hook';
 
 
-export class FinalizeOperator extends AbstractOperator implements Hook {
+export class FinalizeOperator extends Operator implements Hook {
 
   constructor(private callbackMethod: () => (void | Promise<void>)) {
     super();
@@ -12,7 +12,7 @@ export class FinalizeOperator extends AbstractOperator implements Hook {
     return this.callbackMethod();
   }
 
-  override async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  override async handle(emission: Emission, stream: Stream): Promise<Emission> {
     return emission;
   }
 }

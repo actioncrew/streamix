@@ -1,4 +1,4 @@
-import { AbstractStream, delay } from '../lib';
+import { delay, Stream } from '../lib';
 
 describe('DelayOperator', () => {
   it('should delay each value by the specified time', (done) => {
@@ -66,7 +66,7 @@ describe('DelayOperator', () => {
 });
 
 // Assuming you have a TestStream implementation for testing purposes
-class TestStream extends AbstractStream {
+class TestStream extends Stream {
   private index: number;
   private values: any[];
 

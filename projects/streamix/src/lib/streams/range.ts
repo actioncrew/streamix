@@ -1,7 +1,7 @@
 import { Emission } from '../abstractions';
-import { AbstractStream } from '../abstractions/stream';
+import { Stream } from '../abstractions/stream';
 
-export class RangeStream extends AbstractStream {
+export class RangeStream extends Stream {
   private current: number;
   private end: number;
   private step: number;

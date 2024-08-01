@@ -1,7 +1,7 @@
 import { Emission } from '../abstractions/emission';
-import { AbstractStream } from '../abstractions/stream';
+import { Stream } from '../abstractions/stream';
 
-export class FromPromiseStream extends AbstractStream {
+export class FromPromiseStream extends Stream {
   private readonly promise: Promise<any>;
   private error?: Error;
 

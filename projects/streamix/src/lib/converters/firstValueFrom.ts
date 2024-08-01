@@ -1,8 +1,8 @@
-import { AbstractConverter } from '../abstractions/converter';
-import { AbstractStream } from '../abstractions/stream';
+import { Converter } from '../abstractions/converter';
+import { Stream } from '../abstractions/stream';
 
-export class FirstValueFromConverter extends AbstractConverter<AbstractStream, Promise<any>> {
-  async convert(stream: AbstractStream): Promise<any> {
+export class FirstValueFromConverter extends Converter<Stream, Promise<any>> {
+  async convert(stream: Stream): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       let hasEmitted = false;
 
@@ -21,6 +21,6 @@ export class FirstValueFromConverter extends AbstractConverter<AbstractStream, P
   }
 }
 
-export function firstValueFrom(stream: AbstractStream) {
+export function firstValueFrom(stream: Stream) {
   return new FirstValueFromConverter().convert(stream);
 }

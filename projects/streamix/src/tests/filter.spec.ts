@@ -1,4 +1,4 @@
-import { AbstractStream, filter } from '../lib';
+import { filter, Stream } from '../lib';
 
 describe('FilterOperator', () => {
   it('should allow values that pass the predicate', (done) => {
@@ -70,7 +70,7 @@ describe('FilterOperator', () => {
 });
 
 // Assuming you have a TestStream implementation for testing purposes
-class TestStream extends AbstractStream {
+class TestStream extends Stream {
   private index: number;
   private values: any[];
 
