@@ -5,6 +5,8 @@ export class ConcatMapOperator extends AbstractOperator {
   private outerStream: AbstractStream;
   private innerStream: AbstractStream | null = null;
   private processingPromise: Promise<void> | null = null;
+  private executionNumber: number = 0;
+  private emissionNumber: number = 0;
   private queue: Emission[] = [];
   private input?: AbstractStream;
   private output?: AbstractStream;
@@ -38,6 +40,7 @@ export class ConcatMapOperator extends AbstractOperator {
     this.input = this.input || stream;
     this.output = this.output || stream.combine(this, this.outerStream);
 
+    this.emissionNumber++;
     this.queue.push(emission);
     this.processingPromise = this.processingPromise || this.processQueue();
     await this.processingPromise;
@@ -62,23 +65,26 @@ export class ConcatMapOperator extends AbstractOperator {
   private async handleInnerStream(emission: Emission, stream: AbstractStream): Promise<void> {
     return new Promise<void>((resolve) => {
       const handleCompletion = async () => {
-        if (this.input?.isStopped.value && this.innerStream?.isStopped.value) {
+        this.executionNumber--; // Decrement the counter when the innerStream completes
+
+        if (this.executionNumber === this.emissionNumber && this.innerStream?.isStopped.value && this.input?.isStopped.value) {
           await this.output?.complete();
-          resolve(); // Resolve the promise after cleaning up output and when no further processing is needed
+          resolve();
         } else {
-          this.innerStream = null; // Nullify innerStream after cleanup check
-          await this.processQueue(); // Continue processing the queue if streams are not stopped
-          resolve(); // Resolve the promise after queue processing
+          this.innerStream = null;
+          await this.processQueue();
+          resolve();
         }
       };
 
-      const subscription = this.innerStream!.subscribe(
-        async (value) => {
-          if (!stream.shouldTerminate()) await stream.emit({ value });
-        });
+      const subscription = this.innerStream!.subscribe(async (value) => {
+        if (!stream.shouldTerminate()) await stream.emit({ value });
+      });
+
       this.innerStream!.isFailed.then((error) => this.handleStreamError(emission, error, handleCompletion));
 
       this.innerStream!.isStopped.then(() => {
+        this.executionNumber++;
         subscription.unsubscribe();
         emission.isComplete = true;
         handleCompletion();

@@ -1,4 +1,4 @@
-import { AbstractStream, ConcatMapOperator } from '../lib';
+import { AbstractStream, ConcatMapOperator, Emission } from '../lib';
 
 describe('ConcatMapOperator', () => {
   let project: (value: any) => AbstractStream;
@@ -67,6 +67,109 @@ describe('ConcatMapOperator', () => {
     } catch (error: any) {
       expect(error.message).toEqual('Inner Stream Error'); // Check for specific error object
     };
+  });
+
+  it('should complete inner stream before processing next emission', async () => {
+    class MockInnerStream extends AbstractStream {
+      constructor(private value: string) {
+        super();
+      }
+
+      override async run(): Promise<void> {
+        await this.emit({value: this.value});
+        this.isAutoComplete.resolve(true);
+      }
+    }
+
+    class MockStream extends AbstractStream {
+      override async run(): Promise<void> {
+        this.isAutoComplete.resolve(true);
+      }
+    }
+
+    const operator = new ConcatMapOperator(value => new MockInnerStream(value));
+    const emissions = [
+      'data1',
+      'data2',
+      'data3',
+      'data4',
+      'data5',
+    ];
+
+    let processedOrder: any[] = [];
+    const mockStream = new MockStream();
+    const mockNext = {
+      process: async (emission: Emission, stream: AbstractStream) => {
+        processedOrder.push(emission.value);
+        return emission;
+      },
+    };
+
+    operator.next = mockNext as any;
+
+    for (const emission of emissions) {
+      await operator.handle({value: emission}, mockStream);
+    }
+
+    expect(processedOrder).toEqual(['data1', 'data2', 'data3', 'data4', 'data5']);
+  });
+
+
+  it('should handle multiple emissions from outer stream and inner stream', async () => {
+    class MockInnerStream extends AbstractStream {
+      constructor(private values: string[]) {
+        super();
+      }
+
+      override async run(): Promise<void> {
+        for (const value of this.values) {
+          await this.emit({ value });
+        }
+        this.isAutoComplete.resolve(true);
+      }
+    }
+
+    class MockStream extends AbstractStream {
+      override async run(): Promise<void> {
+        this.isAutoComplete.resolve(true);
+      }
+    }
+
+    const outerEmissions = ['outer1', 'outer2'];
+    const innerValues1 = ['inner1a', 'inner1b', 'inner1c'];
+    const innerValues2 = ['inner2a', 'inner2b', 'inner2c'];
+
+    const projectFunction = (value: any) => {
+      if (value === 'outer1') {
+        return new MockInnerStream(innerValues1);
+      } else if (value === 'outer2') {
+        return new MockInnerStream(innerValues2);
+      } else {
+        return new MockInnerStream([]);
+      }
+    };
+
+    const results: any[] = [];
+    const operator = new ConcatMapOperator(projectFunction);
+    const mockStream = new MockStream();
+    const mockNext = {
+      process: async (emission: Emission, stream: AbstractStream) => {
+        results.push(emission.value);
+        return emission;
+      },
+    };
+
+    operator.next = mockNext as any;
+
+    for (const emission of outerEmissions) {
+      await operator.handle({value: emission}, mockStream);
+    }
+
+    expect(results.length).toEqual(6);
+    expect(results).toEqual([
+      'inner1a', 'inner1b', 'inner1c',
+      'inner2a', 'inner2b', 'inner2c'
+    ]);
   });
 });
 
