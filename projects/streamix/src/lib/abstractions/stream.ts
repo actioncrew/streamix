@@ -2,7 +2,7 @@ import { CatchErrorOperator, EndWithOperator, FinalizeOperator, StartWithOperato
 import { ReduceOperator } from '../operators';
 import { promisified } from '../utils';
 import { Emission } from './emission';
-import { AbstractHook } from './hook';
+import { hook } from './hook';
 import { AbstractOperator } from './operator';
 import { Subscription } from './subscription';
 
@@ -19,10 +19,10 @@ export class AbstractStream {
 
   subscribers: (((value: any) => any) | void)[] = [];
 
-  onStart = new AbstractHook();
-  onComplete = new AbstractHook();
-  onStop = new AbstractHook();
-  onError = new AbstractHook();
+  onStart = hook();
+  onComplete = hook();
+  onStop = hook();
+  onError = hook();
 
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
@@ -102,7 +102,7 @@ export class AbstractStream {
   head: AbstractOperator | undefined = undefined;
   tail: AbstractOperator | undefined = undefined;
 
-  pipe(...operators: (AbstractOperator | AbstractHook)[]): AbstractStream {
+  pipe(...operators: AbstractOperator[]): AbstractStream {
     const stream = Object.create(Object.getPrototypeOf(this));
     Object.assign(stream, this);
 
@@ -152,7 +152,7 @@ export class AbstractStream {
     return [clonedHead, cloned];
   }
 
-  applyOperators(...operators: (AbstractOperator | AbstractHook)[]) {
+  applyOperators(...operators: AbstractOperator[]) {
 
     for (const operator of operators) {
       if (operator instanceof AbstractOperator) {
