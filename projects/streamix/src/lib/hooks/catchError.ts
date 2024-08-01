@@ -1,13 +1,14 @@
-import { AbstractHook, AbstractStream } from '../abstractions';
+import { AbstractHook } from '../abstractions/hook';
 
 
-export class CatchErrorHook implements AbstractHook {
+export class CatchErrorHook extends AbstractHook {
 
   constructor(public handler: (error?: any) => void | Promise<void>) {
+    super();
   }
 
-  async process(stream: AbstractStream, params?: any): Promise<void> {
-    return this.handler(params.error);
+  override async process({ stream, error }: any): Promise<void> {
+    return this.handler(error);
   }
 }
 
