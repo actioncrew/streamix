@@ -70,22 +70,22 @@ export class AbstractStream {
       queueMicrotask(async () => {
         try {
           // Emit start value if defined
-          await this.onStart?.process(this);
+          await this.onStart?.process({ stream: this });
 
           // Run the actual stream logic
           await this.run();
 
           // Emit end value if defined
-          await this.onComplete?.process(this);
+          await this.onComplete?.process({ stream: this });
         } catch (error) {
           // Handle error if catchError defined
-          await this.onError?.process(this, { error });
+          await this.onError?.process({ stream: this, error });
           if (this.onError === undefined) {
             this.isFailed.resolve(error);
           }
         } finally {
           // Handle finalize callback
-          await this.onStop?.process(this);
+          await this.onStop?.process({ stream: this });
 
           this.isStopped.resolve(true);
           this.isRunning.reset();

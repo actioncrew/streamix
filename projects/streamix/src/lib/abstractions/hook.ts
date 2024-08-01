@@ -1,8 +1,18 @@
-import { AbstractStream } from './stream';
+export class AbstractHook {
+  callbacks: ((params?: any) => void | Promise<void>)[] = [];
 
-export abstract class AbstractHook {
-  async process(stream: AbstractStream, params?: any): Promise<void> {
-    throw new Error("Not implemented");
+  async process(params?: any): Promise<void> {
+    for (const callback of this.callbacks) {
+      await callback(params);
+    }
+  }
+
+  chain(callback: (params?: any) => void | Promise<void>): void {
+    this.callbacks.push(callback);
+  }
+
+  clear(): void {
+    this.callbacks = [];
   }
 }
 

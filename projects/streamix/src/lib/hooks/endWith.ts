@@ -1,14 +1,14 @@
-import { AbstractHook, AbstractStream } from '../abstractions';
+import { AbstractHook } from '../abstractions/hook';
 
 
-export class EndWithHook implements AbstractHook {
+export class EndWithHook extends AbstractHook {
   private hasEmitted = false;
 
   constructor(private value: any) {
-
+    super();
   }
 
-  async process(stream: AbstractStream): Promise<void> {
+  override async process({ stream } : any): Promise<void> {
     if(!this.hasEmitted) {
       return stream.emit({ value: this.value }, stream.head!);
     }
