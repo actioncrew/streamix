@@ -1,6 +1,6 @@
+import { finalize, map, range, Stream } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { finalize, from, map, mergeMap, Observable, range, reduce } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -77,40 +77,38 @@ export class AppComponent implements OnInit {
       return [r, g, b];
     }
 
-    function drawFractal(): Observable<any> {
+    function drawFractal(): Stream {
       const imageData = ctx.createImageData(width, height);
       const data = imageData.data;
 
       return range(0, width * height).pipe(
-        mergeMap(i => {
+        map(i => {
           const px = i % width;
           const py = Math.floor(i / width);
+          const rgb = { r: 0, g: 0, b: 0 };
 
-          return from(Array(subSampling * subSampling).keys()).pipe(
-            map(subPixel => {
-              const subX = subPixel % subSampling;
-              const subY = Math.floor(subPixel / subSampling);
-              const x0 = (px + (subX / subSampling) - centerX) / zoom;
-              const y0 = (py + (subY / subSampling) - centerY) / zoom;
+          for (let subPixelY = 0; subPixelY < subSampling; subPixelY++) {
+            for (let subPixelX = 0; subPixelX < subSampling; subPixelX++) {
+              const x0 = (px + (subPixelX / subSampling) - centerX) / zoom;
+              const y0 = (py + (subPixelY / subSampling) - centerY) / zoom;
               const iteration = mandelbrot(x0, y0, maxIterations);
               const color = getColor(iteration, maxIterations);
-              return hslToRgb(color);
-            }),
-            reduce((acc, [r, g, b]) => {
-              acc.r += r;
-              acc.g += g;
-              acc.b += b;
-              return acc;
-            }, { r: 0, g: 0, b: 0 }),
-            map(({ r, g, b }) => {
-              const numSubPixels = subSampling * subSampling;
-              const index = i * 4;
-              data[index] = r / numSubPixels;
-              data[index + 1] = g / numSubPixels;
-              data[index + 2] = b / numSubPixels;
-              data[index + 3] = 255;
-            })
-          );
+              const [r, g, b] = hslToRgb(color);
+
+              rgb.r += r;
+              rgb.g += g;
+              rgb.b += b;
+            }
+          }
+
+          const numSubPixels = subSampling * subSampling;
+          const index = i * 4;
+          data[index] = rgb.r / numSubPixels;
+          data[index + 1] = rgb.g / numSubPixels;
+          data[index + 2] = rgb.b / numSubPixels;
+          data[index + 3] = 255;
+
+          return null; // No return value needed for this approach
         }),
         finalize(() => ctx.putImageData(imageData, 0, 0))
       );
