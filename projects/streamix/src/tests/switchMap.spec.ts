@@ -12,7 +12,7 @@ class MockStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested.value) {
+    while (this.index < this.values.length && !this.isStopRequested()) {
       try {
         let emission = { value: this.values[this.index] } as Emission;
         await this.emit(emission);

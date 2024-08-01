@@ -10,11 +10,11 @@ export class OfStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    if (!this.emitted && !this.isUnsubscribed.value && !this.isCancelled.value) {
+    if (!this.emitted && !this.isUnsubscribed() && !this.isCancelled()) {
       await super.emit({ value: this.value });
       this.emitted = true;
     }
-    if(!this.isUnsubscribed.value && !this.isCancelled.value) {
+    if(!this.isUnsubscribed() && !this.isCancelled()) {
       this.isAutoComplete.resolve(true);
     }
   }

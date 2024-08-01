@@ -1,5 +1,5 @@
 import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
-import { PromisifiedCounter } from '../utils/counter';
+import { promisifiedCounter } from '../utils';
 
 export class MergeMapOperator extends AbstractOperator {
   private readonly project: (value: any) => AbstractStream;
@@ -9,7 +9,7 @@ export class MergeMapOperator extends AbstractOperator {
 
   private input?: AbstractStream;
   private output?: AbstractStream;
-  private counter = new PromisifiedCounter(0);
+  private counter = promisifiedCounter(0);
 
   constructor(project: (value: any) => AbstractStream) {
     super();
@@ -138,7 +138,7 @@ export class MergeMapOperator extends AbstractOperator {
   }
 
   private async checkAndStopStream(stream: AbstractStream, emission: Emission): Promise<boolean> {
-    if (stream.isCancelled.value) {
+    if (stream.isCancelled()) {
       emission.isCancelled = true;
       await this.stopAllStreams();
       return true;

@@ -37,7 +37,7 @@ export class SwitchMapOperator extends AbstractOperator {
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
     this.output = this.output || stream.combine(this, this.outerStream);
 
-    if (stream.isCancelled.value) {
+    if (stream.isCancelled()) {
       emission.isCancelled = true;
       await this.stopInnerStream();
       return emission;
@@ -62,7 +62,7 @@ export class SwitchMapOperator extends AbstractOperator {
     this.activeInnerStream = newInnerStream;
 
     this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
-      if (!stream.isCancelled.value) {
+      if (!stream.isCancelled()) {
         await this.output!.emit({ value });
       }
     });

@@ -14,7 +14,7 @@ export class ConcatStream extends AbstractStream {
   override async run(): Promise<void> {
 
     for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length && !this.shouldComplete(); this.currentSourceIndex++) {
-      if (this.isCancelled.value || this.isUnsubscribed.value) { break; }
+      if (this.isCancelled() || this.isUnsubscribed()) { break; }
       await this.runCurrentSource();
     }
 
@@ -28,7 +28,7 @@ export class ConcatStream extends AbstractStream {
 
     return new Promise<void>((resolve, reject) => {
       this.currentSubscription = currentSource.subscribe(async (value: any) => {
-        if (this.isCancelled.value) {
+        if (this.isCancelled()) {
           this.currentSubscription?.unsubscribe();
           resolve();
           return;

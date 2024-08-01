@@ -1,8 +1,8 @@
 import { AbstractOperator, AbstractStream, Emission, Subscription } from '../abstractions';
-import { PromisifiedValue } from '../utils/value';
+import { promisifiedValue } from '../utils';
 
 export class WithLatestFromOperator extends AbstractOperator {
-  private latestValues: PromisifiedValue<any>[] = [];
+  private latestValues: ReturnType<typeof promisifiedValue<any>>[] = [];
   private subscriptions: Subscription[] = [];
   private streams: AbstractStream[];
 
@@ -10,16 +10,16 @@ export class WithLatestFromOperator extends AbstractOperator {
     super();
     this.streams = streams;
     this.streams.forEach((stream) => {
-      const latestValue = new PromisifiedValue();
+      const latestValue = promisifiedValue();
       this.latestValues.push(latestValue);
       this.subscriptions.push(stream.subscribe((value) => {
-        latestValue.value = value;
+        latestValue.set(value);
       }));
     });
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    const latestValuesPromise = Promise.all(this.latestValues.map(async (value) => await value.value));
+    const latestValuesPromise = Promise.all(this.latestValues.map(async (value) => await value()));
     const terminationPromise = stream.awaitTermination();
     const terminationPromises = Promise.race(this.streams.map(stream => stream.awaitTermination()))
 
