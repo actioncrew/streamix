@@ -77,8 +77,16 @@ export function promisified<T>(initialValue: T) {
     _promise = undefined; // Reset the promise
   };
 
+  // Define the function and cast it to include the properties
   const fn = function () {
     return _value;
+  } as {
+    (): T;
+    promise: Promise<T>;
+    resolve: (value: T) => void;
+    reject: (reason?: any) => void;
+    reset: () => void;
+    then: (onFulfilled: (value: T) => void, onRejected?: (reason: any) => void) => Promise<void>;
   };
 
   Object.defineProperties(fn, {
@@ -124,4 +132,3 @@ promisified.all = function (promises: Array<ReturnType<typeof promisified<any>>>
 promisified.race = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any> {
   return Promise.race(promises.map(p => p.promise));
 };
-
