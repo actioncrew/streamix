@@ -1,4 +1,4 @@
-export function promisified<T>(initialValue: T) {
+export function promisified1<T>(initialValue: T) {
   let _value = initialValue;
   let _default = initialValue;
   let _resolve!: (value: T) => void;
@@ -45,6 +45,84 @@ export function promisified<T>(initialValue: T) {
   return innerFunction;
 }
 
+export function promisified<T>(initialValue: T) {
+  let _value: T = initialValue;
+  let _resolve: ((value: T) => void) | undefined;
+  let _reject: ((reason?: any) => void) | undefined;
+  let _promise: Promise<T> | undefined;
+
+  const resolve = (value: T) => {
+    if (_resolve) {
+      _value = value;
+      _resolve(value);
+      _resolve = undefined;
+      _reject = undefined;
+    } else {
+      throw new Error('Promise already settled');
+    }
+  };
+
+  const reject = (reason?: any) => {
+    if (_reject) {
+      _reject(reason);
+      _resolve = undefined;
+      _reject = undefined;
+    } else {
+      throw new Error('Promise already settled');
+    }
+  };
+
+  const reset = () => {
+    _value = initialValue;
+    _promise = undefined; // Reset the promise
+  };
+
+  const fn = function () {
+    return fn.promise;
+  };
+
+  Object.defineProperties(fn, {
+    value: {
+      get() {
+        return _value;
+      },
+      enumerable: true
+    },
+    promise: {
+      get() {
+        if (!_promise) {
+          _promise = new Promise<T>((resolve, reject) => {
+            _resolve = resolve;
+            _reject = reject;
+          });
+        }
+        return _promise;
+      },
+      enumerable: true
+    },
+    resolve: {
+      value: resolve,
+      enumerable: true
+    },
+    reject: {
+      value: reject,
+      enumerable: true
+    },
+    reset: {
+      value: reset,
+      enumerable: true
+    },
+    then: {
+      value: function (onFulfilled: (value: T) => void, onRejected?: (reason: any) => void) {
+        return fn.promise.then(onFulfilled, onRejected);
+      },
+      enumerable: true
+    }
+  });
+
+  return fn;
+}
+        
 promisified.all = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any[]> {
   return Promise.all(promises.map(p => p.promise));
 };
