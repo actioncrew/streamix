@@ -1,3 +1,3 @@
-export abstract class AbstractConverter<T, R> {
+export abstract class Converter<T, R> {
   abstract convert(stream: T): R;
 }

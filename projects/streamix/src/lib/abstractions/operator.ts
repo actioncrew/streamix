@@ -1,12 +1,12 @@
 import { Emission } from './emission';
-import { AbstractStream } from './stream';
+import { Stream } from './stream';
 
-export abstract class AbstractOperator {
-  next?: AbstractOperator;
+export abstract class Operator {
+  next?: Operator;
 
-  abstract handle(emission: Emission, stream: AbstractStream): Promise<Emission>;
+  abstract handle(emission: Emission, stream: Stream): Promise<Emission>;
 
-  async process(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async process(emission: Emission, stream: Stream): Promise<Emission> {
     if (stream.isCancelled() === false) {
       try {
         emission = await this.handle(emission, stream);
@@ -25,7 +25,7 @@ export abstract class AbstractOperator {
     }
   }
 
-  clone(): AbstractOperator {
+  clone(): Operator {
     const clonedOperator = Object.create(Object.getPrototypeOf(this));
     Object.assign(clonedOperator, this);
     clonedOperator.next = undefined; // Do not copy the next reference to avoid recursive copy

@@ -1,10 +1,10 @@
-import { AbstractConverter } from '../abstractions/converter';
-import { AbstractStream } from '../abstractions/stream';
+import { Converter } from '../abstractions/converter';
+import { Stream } from '../abstractions/stream';
 
-export class LastValueFromConverter extends AbstractConverter<AbstractStream, Promise<any>> {
+export class LastValueFromConverter extends Converter<Stream, Promise<any>> {
   promise: Promise<boolean> | undefined;
 
-  async convert(stream: AbstractStream): Promise<any> {
+  async convert(stream: Stream): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       let hasEmitted = false;
       let lastValue = undefined;
@@ -30,6 +30,6 @@ export class LastValueFromConverter extends AbstractConverter<AbstractStream, Pr
   }
 }
 
-export function lastValueFrom(stream: AbstractStream) {
+export function lastValueFrom(stream: Stream) {
   return new LastValueFromConverter().convert(stream);
 }

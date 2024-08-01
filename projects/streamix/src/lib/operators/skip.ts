@@ -1,8 +1,8 @@
-import { AbstractStream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
+import { Operator } from '../abstractions/operator';
 
-export class SkipOperator extends AbstractOperator {
+export class SkipOperator extends Operator {
   private count: number;
 
   constructor(count: number) {
@@ -10,7 +10,7 @@ export class SkipOperator extends AbstractOperator {
     this.count = count;
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     if (this.count <= 0) {
       return emission;
     } else {

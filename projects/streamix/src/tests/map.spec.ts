@@ -1,7 +1,7 @@
-import { AbstractStream, map } from '../lib';
+import { map, Stream } from '../lib';
 
 // Mock implementation for AbstractStream
-class MockStream extends AbstractStream {
+class MockStream extends Stream {
   private values: any[];
   private index: number;
 

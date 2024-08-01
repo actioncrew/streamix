@@ -1,6 +1,6 @@
-import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
+import { Emission, Operator, Stream } from '../abstractions';
 
-export class DelayOperator extends AbstractOperator {
+export class DelayOperator extends Operator {
   private readonly delayTime: number;
   private promiseQueue: Promise<Emission> | undefined;
 
@@ -9,7 +9,7 @@ export class DelayOperator extends AbstractOperator {
     this.delayTime = delayTime;
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     // Queue up the promise for delay
     this.promiseQueue = this.promiseQueue ?? Promise.resolve(emission);
     this.promiseQueue = this.promiseQueue.then(async (currentEmission) => {

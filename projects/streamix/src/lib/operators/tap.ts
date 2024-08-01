@@ -1,8 +1,8 @@
-import { AbstractStream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
+import { Operator } from '../abstractions/operator';
 
-export class TapOperator extends AbstractOperator {
+export class TapOperator extends Operator {
   private readonly tapFunction: (value: any) => void;
 
   constructor(tapFunction: (value: any) => void) {
@@ -10,7 +10,7 @@ export class TapOperator extends AbstractOperator {
     this.tapFunction = tapFunction;
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.tapFunction(emission.value);
     return emission;
   }

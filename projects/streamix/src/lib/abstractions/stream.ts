@@ -3,10 +3,10 @@ import { ReduceOperator } from '../operators';
 import { promisified } from '../utils';
 import { Emission } from './emission';
 import { hook } from './hook';
-import { AbstractOperator } from './operator';
+import { Operator } from './operator';
 import { Subscription } from './subscription';
 
-export class AbstractStream {
+export class Stream {
 
   isAutoComplete = promisified<boolean>(false);
   isCancelled = promisified<boolean>(false);
@@ -97,12 +97,12 @@ export class AbstractStream {
     return { unsubscribe: () => callback instanceof Function ? this.unsubscribe(callback) : Function.prototype };
   }
 
-  nextStream: AbstractStream | undefined = undefined;
+  nextStream: Stream | undefined = undefined;
 
-  head: AbstractOperator | undefined = undefined;
-  tail: AbstractOperator | undefined = undefined;
+  head: Operator | undefined = undefined;
+  tail: Operator | undefined = undefined;
 
-  pipe(...operators: AbstractOperator[]): AbstractStream {
+  pipe(...operators: Operator[]): Stream {
     const stream = Object.create(Object.getPrototypeOf(this));
     Object.assign(stream, this);
 
@@ -134,7 +134,7 @@ export class AbstractStream {
     return stream;
   }
 
-  private cloneOperatorChain(head: AbstractOperator, tail?: AbstractOperator): [AbstractOperator, AbstractOperator] {
+  private cloneOperatorChain(head: Operator, tail?: Operator): [Operator, Operator] {
     const clonedHead = head.clone();
     let original = head.next;
     let cloned = clonedHead;
@@ -152,10 +152,10 @@ export class AbstractStream {
     return [clonedHead, cloned];
   }
 
-  applyOperators(...operators: AbstractOperator[]) {
+  applyOperators(...operators: Operator[]) {
 
     for (const operator of operators) {
-      if (operator instanceof AbstractOperator) {
+      if (operator instanceof Operator) {
         if (!this.head) {
           this.head = operator;
           this.tail = operator;
@@ -180,7 +180,7 @@ export class AbstractStream {
     return this;
   }
 
-  async emit(emission: Emission, next: AbstractOperator): Promise<void> {
+  async emit(emission: Emission, next: Operator): Promise<void> {
     try {
       let currentEmission: Emission = emission;
 
@@ -202,9 +202,9 @@ export class AbstractStream {
     }
   }
 
-  combine(operator: AbstractOperator, stream: AbstractStream) {
+  combine(operator: Operator, stream: Stream) {
 
-    let current: AbstractStream | undefined = this;
+    let current: Stream | undefined = this;
     while(current?.nextStream !== undefined) {
       current = current.nextStream;
     }

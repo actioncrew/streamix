@@ -1,7 +1,7 @@
-import { AbstractStream, Subscription } from '../abstractions';
+import { Stream, Subscription } from '../abstractions';
 import { promisifiedCounter } from '../utils';
 
-export class FromEventStream extends AbstractStream {
+export class FromEventStream extends Stream {
   private target: EventTarget;
   private eventName: string;
   private eventCounter = promisifiedCounter(0);

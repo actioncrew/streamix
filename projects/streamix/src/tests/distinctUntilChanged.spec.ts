@@ -1,7 +1,7 @@
-import { AbstractStream, distinctUntilChanged, Emission } from '../lib';
+import { distinctUntilChanged, Emission, Stream } from '../lib';
 
 // Mock implementations for testing
-class TestStream extends AbstractStream {
+class TestStream extends Stream {
   private index: number;
   private values: any[];
 

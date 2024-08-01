@@ -1,20 +1,20 @@
-import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
+import { Emission, Operator, Stream } from '../abstractions';
 import { promisifiedCounter } from '../utils';
 
-export class MergeMapOperator extends AbstractOperator {
-  private readonly project: (value: any) => AbstractStream;
-  private outerStream: AbstractStream;
-  private activeInnerStreams: AbstractStream[] = [];
+export class MergeMapOperator extends Operator {
+  private readonly project: (value: any) => Stream;
+  private outerStream: Stream;
+  private activeInnerStreams: Stream[] = [];
   private processingPromises: Promise<void>[] = [];
 
-  private input?: AbstractStream;
-  private output?: AbstractStream;
+  private input?: Stream;
+  private output?: Stream;
   private counter = promisifiedCounter(0);
 
-  constructor(project: (value: any) => AbstractStream) {
+  constructor(project: (value: any) => Stream) {
     super();
     this.project = project;
-    this.outerStream = new AbstractStream();
+    this.outerStream = new Stream();
 
     Object.assign(this.outerStream, {
       run: async () => {
@@ -41,14 +41,14 @@ export class MergeMapOperator extends AbstractOperator {
     });
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.input = this.input || stream;
     this.output = this.output || stream.combine(this, this.outerStream);
 
     return this.processEmission(emission, this.output!);
   }
 
-  private async processEmission(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  private async processEmission(emission: Emission, stream: Stream): Promise<Emission> {
     if (await this.checkAndStopStream(stream, emission)) {
       return emission;
     }
@@ -108,7 +108,7 @@ export class MergeMapOperator extends AbstractOperator {
     });
   }
 
-  private removeInnerStream(innerStream: AbstractStream) {
+  private removeInnerStream(innerStream: Stream) {
     const index = this.activeInnerStreams.indexOf(innerStream);
     if (index !== -1) {
       this.activeInnerStreams.splice(index, 1);
@@ -137,7 +137,7 @@ export class MergeMapOperator extends AbstractOperator {
     }
   }
 
-  private async checkAndStopStream(stream: AbstractStream, emission: Emission): Promise<boolean> {
+  private async checkAndStopStream(stream: Stream, emission: Emission): Promise<boolean> {
     if (stream.isCancelled()) {
       emission.isCancelled = true;
       await this.stopAllStreams();
@@ -147,4 +147,4 @@ export class MergeMapOperator extends AbstractOperator {
   }
 }
 
-export const mergeMap = (project: (value: any) => AbstractStream) => new MergeMapOperator(project);
+export const mergeMap = (project: (value: any) => Stream) => new MergeMapOperator(project);

@@ -1,20 +1,20 @@
-import { AbstractOperator, AbstractStream, Emission } from '../abstractions';
+import { Emission, Operator, Stream } from '../abstractions';
 
-export class ConcatMapOperator extends AbstractOperator {
-  private readonly project: (value: any) => AbstractStream;
-  private outerStream: AbstractStream;
-  private innerStream: AbstractStream | null = null;
+export class ConcatMapOperator extends Operator {
+  private readonly project: (value: any) => Stream;
+  private outerStream: Stream;
+  private innerStream: Stream | null = null;
   private processingPromise: Promise<void> | null = null;
   private executionNumber: number = 0;
   private emissionNumber: number = 0;
   private queue: Emission[] = [];
-  private input?: AbstractStream;
-  private output?: AbstractStream;
+  private input?: Stream;
+  private output?: Stream;
 
-  constructor(project: (value: any) => AbstractStream) {
+  constructor(project: (value: any) => Stream) {
     super();
     this.project = project;
-    this.outerStream = new AbstractStream();
+    this.outerStream = new Stream();
     this.initializeOuterStream();
   }
 
@@ -36,7 +36,7 @@ export class ConcatMapOperator extends AbstractOperator {
     this.outerStream.isStopRequested.then(cleanup);
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.input = this.input || stream;
     this.output = this.output || stream.combine(this, this.outerStream);
 
@@ -55,14 +55,14 @@ export class ConcatMapOperator extends AbstractOperator {
     }
   }
 
-  private async processEmission(emission: Emission, stream: AbstractStream): Promise<void> {
+  private async processEmission(emission: Emission, stream: Stream): Promise<void> {
     if (await this.checkAndStopStream(stream, emission)) return;
 
     this.innerStream = this.project(emission.value);
     await this.handleInnerStream(emission, stream);
   }
 
-  private async handleInnerStream(emission: Emission, stream: AbstractStream): Promise<void> {
+  private async handleInnerStream(emission: Emission, stream: Stream): Promise<void> {
     return new Promise<void>((resolve) => {
       const handleCompletion = async () => {
         this.executionNumber--; // Decrement the counter when the innerStream completes
@@ -99,11 +99,11 @@ export class ConcatMapOperator extends AbstractOperator {
     callback();
   }
 
-  private async stopStreams(...streams: (AbstractStream | null | undefined)[]) {
+  private async stopStreams(...streams: (Stream | null | undefined)[]) {
     await Promise.all(streams.filter(Boolean).map(stream => stream!.complete()));
   }
 
-  private async checkAndStopStream(stream: AbstractStream, emission: Emission): Promise<boolean> {
+  private async checkAndStopStream(stream: Stream, emission: Emission): Promise<boolean> {
     if (stream.isCancelled()) {
       emission.isCancelled = true;
       await this.stopStreams(this.innerStream, this.input, this.output);
@@ -113,4 +113,4 @@ export class ConcatMapOperator extends AbstractOperator {
   }
 }
 
-export const concatMap = (project: (value: any) => AbstractStream) => new ConcatMapOperator(project);
+export const concatMap = (project: (value: any) => Stream) => new ConcatMapOperator(project);

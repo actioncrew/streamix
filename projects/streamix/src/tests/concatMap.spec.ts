@@ -1,8 +1,8 @@
-import { AbstractStream, ConcatMapOperator, Emission } from '../lib';
+import { ConcatMapOperator, Emission, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
-  let project: (value: any) => AbstractStream;
-  let mockStream: AbstractStream; // Assuming AbstractStream defines basic functionalities
+  let project: (value: any) => Stream;
+  let mockStream: Stream; // Assuming AbstractStream defines basic functionalities
 
   beforeEach(() => {
     project = (value: any) => {
@@ -70,7 +70,7 @@ describe('ConcatMapOperator', () => {
   });
 
   it('should complete inner stream before processing next emission', async () => {
-    class MockInnerStream extends AbstractStream {
+    class MockInnerStream extends Stream {
       constructor(private value: string) {
         super();
       }
@@ -81,7 +81,7 @@ describe('ConcatMapOperator', () => {
       }
     }
 
-    class MockStream extends AbstractStream {
+    class MockStream extends Stream {
       override async run(): Promise<void> {
         this.isAutoComplete.resolve(true);
       }
@@ -99,7 +99,7 @@ describe('ConcatMapOperator', () => {
     let processedOrder: any[] = [];
     const mockStream = new MockStream();
     const mockNext = {
-      process: async (emission: Emission, stream: AbstractStream) => {
+      process: async (emission: Emission, stream: Stream) => {
         processedOrder.push(emission.value);
         return emission;
       },
@@ -116,7 +116,7 @@ describe('ConcatMapOperator', () => {
 
 
   it('should handle multiple emissions from outer stream and inner stream', async () => {
-    class MockInnerStream extends AbstractStream {
+    class MockInnerStream extends Stream {
       constructor(private values: string[]) {
         super();
       }
@@ -129,7 +129,7 @@ describe('ConcatMapOperator', () => {
       }
     }
 
-    class MockStream extends AbstractStream {
+    class MockStream extends Stream {
       override async run(): Promise<void> {
         this.isAutoComplete.resolve(true);
       }
@@ -153,7 +153,7 @@ describe('ConcatMapOperator', () => {
     const operator = new ConcatMapOperator(projectFunction);
     const mockStream = new MockStream();
     const mockNext = {
-      process: async (emission: Emission, stream: AbstractStream) => {
+      process: async (emission: Emission, stream: Stream) => {
         results.push(emission.value);
         return emission;
       },
@@ -174,7 +174,7 @@ describe('ConcatMapOperator', () => {
 });
 
 // Example Inner Stream Implementation (Replace with your actual implementation)
-class MyInnerStream extends AbstractStream {
+class MyInnerStream extends Stream {
   private value: any;
 
   constructor(value: any) {
@@ -190,7 +190,7 @@ class MyInnerStream extends AbstractStream {
 }
 
 // Example Real Stream Implementation (Replace with your actual implementation)
-class MyRealStream extends AbstractStream {
+class MyRealStream extends Stream {
   override async run(): Promise<void> {
     // Simulate your real stream behavior (emitting values)
     this.emit({ value: 'streamValue1' }, this.head!);
@@ -198,7 +198,7 @@ class MyRealStream extends AbstractStream {
 }
 
 // Example Error Inner Stream Implementation (Replace with your actual implementation)
-class ErrorInnerStream extends AbstractStream {
+class ErrorInnerStream extends Stream {
   private value: any;
 
   constructor(value: any) {

@@ -1,20 +1,20 @@
 import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
-import { AbstractStream } from '../abstractions/stream';
+import { Operator } from '../abstractions/operator';
+import { Stream } from '../abstractions/stream';
 
-export class IifOperator extends AbstractOperator {
-  private outerStream: AbstractStream;
+export class IifOperator extends Operator {
+  private outerStream: Stream;
 
-  private input?: AbstractStream;
-  private output?: AbstractStream;
+  private input?: Stream;
+  private output?: Stream;
 
   constructor(
     private readonly condition: (emission: Emission) => boolean,
-    private readonly trueStream: AbstractStream,
-    private readonly falseStream: AbstractStream
+    private readonly trueStream: Stream,
+    private readonly falseStream: Stream
   ) {
     super();
-    this.outerStream = new AbstractStream();
+    this.outerStream = new Stream();
 
     Object.assign(this.outerStream, {
       run: () => {
@@ -26,7 +26,7 @@ export class IifOperator extends AbstractOperator {
     });
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.input = this.input || stream;
     this.output = this.output || stream.combine(this, this.outerStream);
 
@@ -48,4 +48,4 @@ export class IifOperator extends AbstractOperator {
   }
 }
 
-export const iif = (condition: (emission: Emission) => boolean, trueStream: AbstractStream, falseStream: AbstractStream) => new IifOperator(condition, trueStream, falseStream);
+export const iif = (condition: (emission: Emission) => boolean, trueStream: Stream, falseStream: Stream) => new IifOperator(condition, trueStream, falseStream);

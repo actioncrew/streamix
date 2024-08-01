@@ -1,9 +1,9 @@
-import { AbstractStream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
+import { Operator } from '../abstractions/operator';
 import { Hook } from './../abstractions/hook';
 
-export class ReduceOperator extends AbstractOperator implements Hook {
+export class ReduceOperator extends Operator implements Hook {
   private readonly accumulator: (acc: any, value: any) => any;
   private readonly seed: any;
   private accumulatedValue: any;
@@ -19,7 +19,7 @@ export class ReduceOperator extends AbstractOperator implements Hook {
     await stream.emit({ value: this.accumulatedValue }, this.next!);
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!);
     emission.isPhantom = true;
     return emission;

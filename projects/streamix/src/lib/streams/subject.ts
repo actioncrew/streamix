@@ -1,8 +1,8 @@
 import { Emission } from '../abstractions/emission';
-import { AbstractStream } from '../abstractions/stream';
+import { Stream } from '../abstractions/stream';
 import { promisified } from '../utils';
 
-export class Subject<T = void> extends AbstractStream {
+export class Subject<T = void> extends Stream {
   protected emissionQueue: Emission[] = [];
   protected emissionAvailable = promisified<boolean>(false);
 

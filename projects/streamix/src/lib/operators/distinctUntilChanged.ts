@@ -1,8 +1,8 @@
 import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
-import { AbstractStream } from '../abstractions/stream';
+import { Operator } from '../abstractions/operator';
+import { Stream } from '../abstractions/stream';
 
-export class DistinctUntilChangedOperator<T> extends AbstractOperator {
+export class DistinctUntilChangedOperator<T> extends Operator {
   private lastEmittedValue: T | undefined;
   private comparator?: (previous: T, current: T) => boolean;
 
@@ -11,7 +11,7 @@ export class DistinctUntilChangedOperator<T> extends AbstractOperator {
     this.comparator = comparator;
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<any> {
+  async handle(emission: Emission, stream: Stream): Promise<any> {
     const currentValue = emission.value;
 
     if (this.lastEmittedValue === undefined ||

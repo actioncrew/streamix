@@ -1,8 +1,8 @@
-import { AbstractStream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { AbstractOperator } from '../abstractions/operator';
+import { Operator } from '../abstractions/operator';
 
-export class MapOperator extends AbstractOperator {
+export class MapOperator extends Operator {
   private readonly transform: (value: any) => any;
 
   constructor(transform: (value: any) => any) {
@@ -10,7 +10,7 @@ export class MapOperator extends AbstractOperator {
     this.transform = transform;
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     emission.value = this.transform(emission.value);
     return emission;
   }

@@ -1,7 +1,7 @@
-import { AbstractOperator, AbstractStream, Emission, iif } from '../lib';
+import { Emission, iif, Operator, Stream } from '../lib';
 
 // Mock implementations for testing
-class MockStream extends AbstractStream {
+class MockStream extends Stream {
   private values: any[];
   private index: number;
 
@@ -35,8 +35,8 @@ class MockEmission implements Emission {
   }
 }
 
-class MockOperator extends AbstractOperator {
-  async handle(emission: Emission, stream: AbstractStream): Promise<any> {
+class MockOperator extends Operator {
+  async handle(emission: Emission, stream: Stream): Promise<any> {
     return emission
   }
 }

@@ -1,7 +1,7 @@
-import { AbstractStream, concat, ConcatStream } from '../lib';
+import { concat, ConcatStream, Stream } from '../lib';
 
 // Mock AbstractStream for testing purposes
-class MockStream extends AbstractStream {
+class MockStream extends Stream {
   private readonly values: any[];
   private currentIndex: number = 0;
 

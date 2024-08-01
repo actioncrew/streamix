@@ -1,16 +1,16 @@
-import { AbstractOperator, AbstractStream, Emission, Subscription } from '../abstractions';
+import { Emission, Operator, Stream, Subscription } from '../abstractions';
 
-export class SwitchMapOperator extends AbstractOperator {
-  private project: (value: any) => AbstractStream;
-  private activeInnerStream?: AbstractStream;
-  private outerStream: AbstractStream;
-  private output?: AbstractStream;
+export class SwitchMapOperator extends Operator {
+  private project: (value: any) => Stream;
+  private activeInnerStream?: Stream;
+  private outerStream: Stream;
+  private output?: Stream;
   private innerStreamSubscription?: Subscription;
 
-  constructor(project: (value: any) => AbstractStream) {
+  constructor(project: (value: any) => Stream) {
     super();
     this.project = project;
-    this.outerStream = new AbstractStream();
+    this.outerStream = new Stream();
     this.initializeOuterStream();
   }
 
@@ -34,7 +34,7 @@ export class SwitchMapOperator extends AbstractOperator {
     await this.stopInnerStream();
   }
 
-  async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.output = this.output || stream.combine(this, this.outerStream);
 
     if (stream.isCancelled()) {
@@ -50,7 +50,7 @@ export class SwitchMapOperator extends AbstractOperator {
     }
   }
 
-  private async processEmission(emission: Emission, stream: AbstractStream): Promise<Emission> {
+  private async processEmission(emission: Emission, stream: Stream): Promise<Emission> {
     const newInnerStream = this.project(emission.value);
 
     if (this.activeInnerStream === newInnerStream) {
@@ -87,7 +87,7 @@ export class SwitchMapOperator extends AbstractOperator {
     });
   }
 
-  private removeInnerStream(innerStream: AbstractStream) {
+  private removeInnerStream(innerStream: Stream) {
     if (this.activeInnerStream === innerStream) {
       this.activeInnerStream = undefined;
     }
@@ -102,4 +102,4 @@ export class SwitchMapOperator extends AbstractOperator {
   }
 }
 
-export const switchMap = (project: (value: any) => AbstractStream) => new SwitchMapOperator(project);
+export const switchMap = (project: (value: any) => Stream) => new SwitchMapOperator(project);

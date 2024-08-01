@@ -1,4 +1,4 @@
-import { AbstractStream, finalize, from, map, mergeMap, range, reduce } from '@actioncrew/streamix';
+import { finalize, from, map, mergeMap, range, reduce, Stream } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
@@ -75,7 +75,7 @@ export class AppComponent implements OnInit {
       return [r, g, b];
     }
 
-    function drawFractal(): AbstractStream {
+    function drawFractal(): Stream {
       const imageData = ctx.createImageData(width, height);
       const data = imageData.data;
 

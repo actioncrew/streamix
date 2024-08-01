@@ -1,7 +1,7 @@
-import { AbstractStream, Emission, mergeMap } from '../lib';
+import { Emission, mergeMap, Stream } from '../lib';
 
 // Mock AbstractStream implementation for testing purposes
-class MockStream extends AbstractStream {
+class MockStream extends Stream {
   private values: any[];
   private index: number;
 

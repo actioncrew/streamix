@@ -1,7 +1,7 @@
-import { AbstractStream, MergeStream } from '../lib';
+import { MergeStream, Stream } from '../lib';
 
 // MockStream class to simulate a stream with predefined values
-class MockStream extends AbstractStream {
+class MockStream extends Stream {
   private values: any[];
 
   constructor(values: any[]) {
