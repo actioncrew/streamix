@@ -1,3 +1,7 @@
+export interface Hook {
+  callback: (params?: any) => void | Promise<void>;
+}
+
 export class AbstractHook {
   callbacks: ((params?: any) => void | Promise<void>)[] = [];
 
