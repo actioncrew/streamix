@@ -1,18 +1,34 @@
-body, html, .container {
+html, body {
   margin: 0;
   padding: 0;
+  height: 100vh; /* Use vh for viewport height */
+  width: 100vw; /* Use vw for viewport width */
+  overflow: hidden;
+}
+
+.container {
+  position: absolute; /* Use absolute positioning for full control */
+  top: 0;
+  left: 0;
   height: 100vh;
   width: 100vw;
   display: flex;
   justify-content: center;
   align-items: center;
   background: transparent;
-  overflow: hidden;
 }
 
 canvas {
   position: absolute;
   top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
   z-index: -1;
+}
+
+app-caption {
+  position: relative;
+  z-index: 1; /* Make sure it's above the canvas */
+  /* Add max-height or overflow: hidden if content might exceed height */
 }

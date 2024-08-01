@@ -1,6 +1,6 @@
-import { finalize, from, map, mergeMap, range, reduce, Stream } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { finalize, from, map, mergeMap, Observable, range, reduce } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -15,6 +15,8 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     const canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
     const ctx = canvas.getContext('2d')!;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
     // Parameters
     const width = canvas.width;
@@ -75,7 +77,7 @@ export class AppComponent implements OnInit {
       return [r, g, b];
     }
 
-    function drawFractal(): Stream {
+    function drawFractal(): Observable<any> {
       const imageData = ctx.createImageData(width, height);
       const data = imageData.data;
 
