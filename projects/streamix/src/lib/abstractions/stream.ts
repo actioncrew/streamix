@@ -1,4 +1,5 @@
-import { CatchErrorHook, EndWithHook, FinalizeHook, StartWithHook } from '../hooks';
+import { CatchErrorOperator, EndWithOperator, FinalizeOperator, StartWithOperator } from '../hooks';
+import { ReduceOperator } from '../operators';
 import { promisified } from '../utils';
 import { Emission } from './emission';
 import { AbstractHook } from './hook';
@@ -18,10 +19,10 @@ export class AbstractStream {
 
   subscribers: (((value: any) => any) | void)[] = [];
 
-  onStart?: AbstractHook | undefined;
-  onComplete?: AbstractHook | undefined;
-  onStop?: AbstractHook | undefined;
-  onError?: AbstractHook | undefined;
+  onStart = new AbstractHook();
+  onComplete = new AbstractHook();
+  onStop = new AbstractHook();
+  onError = new AbstractHook();
 
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
@@ -162,16 +163,18 @@ export class AbstractStream {
           this.tail!.next = operator;
           this.tail = operator;
         }
-      } else if (operator instanceof StartWithHook) {
-        this.onStart = operator;
-      } else if (operator instanceof EndWithHook) {
-        this.onComplete = operator;
-      } else if (operator instanceof CatchErrorHook) {
-        this.onError = operator;
-      } else if (operator instanceof FinalizeHook) {
-        this.onStop = operator;
-      } else {
-        throw new Error("Unknown hook");
+      }
+
+      if (operator instanceof StartWithOperator) {
+        this.onStart.chain(operator.callback.bind(operator));
+      } else if (operator instanceof EndWithOperator) {
+        this.onComplete.chain(operator.callback.bind(operator));
+      } else if (operator instanceof CatchErrorOperator) {
+        this.onError.chain(operator.callback.bind(operator));
+      } else if (operator instanceof FinalizeOperator) {
+        this.onStop.chain(operator.callback.bind(operator));
+      } else if (operator instanceof ReduceOperator) {
+        this.onComplete.chain(operator.callback.bind(operator));
       }
     }
     return this;
