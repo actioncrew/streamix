@@ -32,7 +32,7 @@ export class AbstractStream {
   }
 
   awaitTermination() {
-    return Promise.race([this.isCancelled.promise, this.isFailed.promise]);
+    return promisified.race([this.isCancelled, this.isFailed]);
   }
 
   terminate(): Promise<void> {
@@ -45,7 +45,7 @@ export class AbstractStream {
   }
 
   awaitCompletion() {
-    return Promise.race([this.isAutoComplete.promise, this.isUnsubscribed.promise, this.isStopRequested.promise]);
+    return promisified.race([this.isAutoComplete, this.isUnsubscribed, this.isStopRequested]);
   }
 
   complete(): Promise<void> {
