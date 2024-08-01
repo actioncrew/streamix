@@ -1,21 +1,20 @@
 import { AbstractStream, Subscription } from '../abstractions';
-import { PromisifiedCounter } from '../utils';
+import { promisifiedCounter } from '../utils';
 
 export class FromEventStream extends AbstractStream {
   private target: EventTarget;
   private eventName: string;
-  private eventCounter: PromisifiedCounter;
+  private eventCounter = promisifiedCounter(0);
   private listener!: (event: Event) => void;
 
   constructor(target: EventTarget, eventName: string) {
     super();
     this.target = target;
     this.eventName = eventName;
-    this.eventCounter = new PromisifiedCounter(0);
   }
 
   override async run(): Promise<void> {
-    
+
     await Promise.race([this.awaitCompletion(), this.awaitTermination()]).then(() => {
       this.target.removeEventListener(this.eventName, this.listener);
     });
@@ -23,7 +22,7 @@ export class FromEventStream extends AbstractStream {
 
   override subscribe(callback: void | ((value: any) => any)): Subscription {
     this.listener = async (event: Event) => {
-      if (this.isRunning.value) {
+      if (this.isRunning()) {
         this.eventCounter.increment();
         await this.emit({ value: event });
         this.eventCounter.decrement();
@@ -31,7 +30,7 @@ export class FromEventStream extends AbstractStream {
     };
 
     this.target.addEventListener(this.eventName, this.listener);
-    
+
     return  super.subscribe(callback);
   }
 }

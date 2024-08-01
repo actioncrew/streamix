@@ -14,7 +14,7 @@ describe('EmptyStream', () => {
       expect(emittedValues).toHaveLength(0);
 
       // Ensure the stream is auto-completed
-      expect(emptyStream.isAutoComplete.value).toBe(true);
+      expect(emptyStream.isAutoComplete()).toBe(true);
 
       subscription.unsubscribe();
     })
@@ -33,7 +33,7 @@ describe('EMPTY constant', () => {
       expect(emittedValues).toHaveLength(0);
 
       // Ensure the stream is auto-completed
-      expect(EMPTY.isAutoComplete.value).toBe(true);
+      expect(EMPTY.isAutoComplete()).toBe(true);
 
       subscription.unsubscribe();
     })

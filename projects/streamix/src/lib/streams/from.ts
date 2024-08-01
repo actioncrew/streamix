@@ -11,7 +11,7 @@ export class FromStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested.value) {
+    while (this.index < this.values.length && !this.isStopRequested()) {
       let emission = { value: this.values[this.index] } as Emission;
       await this.emit(emission);
 
@@ -21,7 +21,7 @@ export class FromStream extends AbstractStream {
 
       this.index++;
     }
-    if(!this.isStopRequested.value) {
+    if(!this.isStopRequested()) {
       this.isAutoComplete.resolve(true);
     }
   }

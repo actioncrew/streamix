@@ -67,7 +67,7 @@ export class ConcatMapOperator extends AbstractOperator {
       const handleCompletion = async () => {
         this.executionNumber--; // Decrement the counter when the innerStream completes
 
-        if (this.executionNumber === this.emissionNumber && this.innerStream?.isStopped.value && this.input?.isStopped.value) {
+        if (this.executionNumber === this.emissionNumber && this.innerStream?.isStopped() && this.input?.isStopped()) {
           await this.output?.complete();
           resolve();
         } else {
@@ -104,7 +104,7 @@ export class ConcatMapOperator extends AbstractOperator {
   }
 
   private async checkAndStopStream(stream: AbstractStream, emission: Emission): Promise<boolean> {
-    if (stream.isCancelled.value) {
+    if (stream.isCancelled()) {
       emission.isCancelled = true;
       await this.stopStreams(this.innerStream, this.input, this.output);
       return true;

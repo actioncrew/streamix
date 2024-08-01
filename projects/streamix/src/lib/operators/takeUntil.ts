@@ -13,7 +13,7 @@ export class TakeUntilOperator extends AbstractOperator {
   }
 
   async handle(emission: Emission, stream: AbstractStream): Promise<Emission> {
-    if (stream.isCancelled.value) {
+    if (stream.isCancelled()) {
       emission.isCancelled = true;
       this.subscription?.unsubscribe();
       return emission;
@@ -26,7 +26,7 @@ export class TakeUntilOperator extends AbstractOperator {
       });
     }
 
-    if(stream.isStopRequested.value) {
+    if(stream.isStopRequested()) {
       emission.isPhantom = true;
     }
     return emission;

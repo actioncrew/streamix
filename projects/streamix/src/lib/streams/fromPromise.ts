@@ -11,7 +11,7 @@ export class FromPromiseStream extends AbstractStream {
   }
 
   override async run(): Promise<void> {
-    if (this.isUnsubscribed.value || this.isAutoComplete.value) {
+    if (this.isUnsubscribed() || this.isAutoComplete()) {
       return Promise.resolve();
     }
 

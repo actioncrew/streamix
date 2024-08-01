@@ -1,5 +1,5 @@
 import { CatchErrorHook, EndWithHook, FinalizeHook, StartWithHook } from '../hooks';
-import { Promisified } from './../utils/promisified';
+import { promisified } from '../utils';
 import { Emission } from './emission';
 import { AbstractHook } from './hook';
 import { AbstractOperator } from './operator';
@@ -7,14 +7,14 @@ import { Subscription } from './subscription';
 
 export class AbstractStream {
 
-  isAutoComplete = new Promisified<boolean>(false);
-  isCancelled = new Promisified<boolean>(false);
-  isStopRequested = new Promisified<boolean>(false);
+  isAutoComplete = promisified<boolean>(false);
+  isCancelled = promisified<boolean>(false);
+  isStopRequested = promisified<boolean>(false);
 
-  isFailed = new Promisified<any>(undefined);
-  isStopped = new Promisified<boolean>(false);
-  isUnsubscribed = new Promisified<boolean>(false);
-  isRunning = new Promisified<boolean>(false);
+  isFailed = promisified<any>(undefined);
+  isStopped = promisified<boolean>(false);
+  isUnsubscribed = promisified<boolean>(false);
+  isRunning = promisified<boolean>(false);
 
   subscribers: (((value: any) => any) | void)[] = [];
 
@@ -28,7 +28,7 @@ export class AbstractStream {
   }
 
   shouldTerminate() {
-    return this.isCancelled.value || this.isFailed.value;
+    return this.isCancelled() || this.isFailed();
   }
 
   awaitTermination() {
@@ -41,7 +41,7 @@ export class AbstractStream {
   }
 
   shouldComplete() {
-    return this.isAutoComplete.value || this.isUnsubscribed.value || this.isStopRequested.value;
+    return this.isAutoComplete() || this.isUnsubscribed() || this.isStopRequested();
   }
 
   awaitCompletion() {
@@ -50,7 +50,7 @@ export class AbstractStream {
 
   complete(): Promise<void> {
     this.isStopRequested.resolve(true);
-    return this.isRunning.value ? this.isStopped.then(() => Promise.resolve()) : Promise.resolve();
+    return this.isRunning() ? this.isStopped.then(() => Promise.resolve()) : Promise.resolve();
   }
 
   unsubscribe(callback: (value: any) => any): void {
@@ -64,7 +64,7 @@ export class AbstractStream {
   subscribe(callback: void | ((value: any) => any)): Subscription {
     this.subscribers.push(callback ?? (() => {}));
 
-    if (this.subscribers.length === 1 && this.isRunning.value === false) {
+    if (this.subscribers.length === 1 && this.isRunning() === false) {
       queueMicrotask(async () => {
         try {
           this.isRunning.resolve(true);
@@ -105,14 +105,14 @@ export class AbstractStream {
     const stream = Object.create(Object.getPrototypeOf(this));
     Object.assign(stream, this);
 
-    stream.isAutoComplete = new Promisified<boolean>(false);
-    stream.isCancelled = new Promisified<boolean>(false);
-    stream.isStopRequested = new Promisified<boolean>(false);
+    stream.isAutoComplete = promisified<boolean>(false);
+    stream.isCancelled = promisified<boolean>(false);
+    stream.isStopRequested = promisified<boolean>(false);
 
-    stream.isFailed = new Promisified<any>(undefined);
-    stream.isStopped = new Promisified<boolean>(false);
-    stream.isUnsubscribed = new Promisified<boolean>(false);
-    stream.isRunning = new Promisified<boolean>(false);
+    stream.isFailed = promisified<any>(undefined);
+    stream.isStopped = promisified<boolean>(false);
+    stream.isUnsubscribed = promisified<boolean>(false);
+    stream.isRunning = promisified<boolean>(false);
 
     stream.subscribers = [];
 
@@ -181,7 +181,7 @@ export class AbstractStream {
     try {
       let currentEmission: Emission = emission;
 
-      if (this.isCancelled.value) {
+      if (this.isCancelled()) {
         currentEmission.isCancelled = true;
       }
 
@@ -209,7 +209,7 @@ export class AbstractStream {
     let subscribers = current.subscribers.slice();
     const callback = () => {};
 
-    if (current.isRunning.value) {
+    if (current.isRunning()) {
       current.subscribers = [callback];
     } else {
       current.subscribers = []; current.subscribe(callback);

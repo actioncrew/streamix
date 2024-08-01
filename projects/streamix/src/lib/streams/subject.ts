@@ -1,17 +1,17 @@
 import { Emission } from '../abstractions/emission';
 import { AbstractStream } from '../abstractions/stream';
-import { Promisified } from '../utils/promisified';
+import { promisified } from '../utils';
 
 export class Subject<T = void> extends AbstractStream {
   protected emissionQueue: Emission[] = [];
-  protected emissionAvailable = new Promisified<boolean>(false);
+  protected emissionAvailable = promisified<boolean>(false);
 
   override async run(): Promise<void> {
     try {
       while (true) {
         await Promise.race([this.awaitCompletion(), this.awaitTermination(), this.emissionAvailable.promise]);
 
-        if (this.emissionAvailable.value) {
+        if (this.emissionAvailable()) {
           this.emissionAvailable.reset();
 
           do {
@@ -35,12 +35,12 @@ export class Subject<T = void> extends AbstractStream {
   }
 
   next(value?: T): void {
-    if (this.isStopped.value) {
+    if (this.isStopped()) {
       console.warn('Cannot push value to a stopped Subject.');
       return;
     }
 
-    if (!this.isStopRequested.value && !this.isCancelled.value) {
+    if (!this.isStopRequested() && !this.isCancelled()) {
       this.emissionQueue.push({ value });
       this.emissionAvailable.resolve(true);
     }

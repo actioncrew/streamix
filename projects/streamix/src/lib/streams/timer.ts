@@ -40,7 +40,7 @@ export class TimerStream extends AbstractStream {
           this.intervalId = null;
         }
         resolve();
-        if(this.isUnsubscribed.value === true) {
+        if(this.isUnsubscribed() === true) {
           this.isStopRequested.resolve(true);
         }
       };
