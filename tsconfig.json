@@ -19,8 +19,8 @@
     "target": "ES2022",
     "paths": {
       "@actioncrew/streamix": [
-        "./projects/streamix/src/lib/",
-        "./dist/streamix/"
+        "./projects/streamix/src/lib/index.ts",
+        "./dist/streamix/index.d.ts"
       ]
     },
     "module": "ES2022",

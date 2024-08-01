@@ -10,7 +10,7 @@ export class EndWithHook implements AbstractHook {
 
   async process(stream: AbstractStream): Promise<void> {
     if(!this.hasEmitted) {
-      return stream.emit({ value: this.value });
+      return stream.emit({ value: this.value }, stream.head!);
     }
   }
 }

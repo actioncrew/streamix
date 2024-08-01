@@ -5,6 +5,7 @@ export * from './filter';
 export * from './iif';
 export * from './map';
 export * from './mergeMap';
+export * from './reduce';
 export * from './scan';
 export * from './skip';
 export * from './switchMap';

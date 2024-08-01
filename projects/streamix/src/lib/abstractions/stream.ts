@@ -177,7 +177,7 @@ export class AbstractStream {
     return this;
   }
 
-  async emit(emission: Emission): Promise<void> {
+  async emit(emission: Emission, next: AbstractOperator): Promise<void> {
     try {
       let currentEmission: Emission = emission;
 
@@ -185,7 +185,7 @@ export class AbstractStream {
         currentEmission.isCancelled = true;
       }
 
-      currentEmission = await (this.head?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
+      currentEmission = await (next?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
 
       if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
         await Promise.all(this.subscribers.map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()));

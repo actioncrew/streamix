@@ -25,7 +25,7 @@ export class Subject<T = void> extends AbstractStream {
             }
 
             const emission = this.emissionQueue.shift()!;
-            await super.emit(emission);
+            await super.emit(emission, this.head!);
           } while (this.emissionQueue.length > 0);
         } else { break; }
       }

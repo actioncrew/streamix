@@ -31,7 +31,7 @@ export class CombineLatestStream extends AbstractStream {
           this.values[index].value = value;
 
           if (this.remaining === 0) {
-            this.emit({ value: this.values.map(({ value }) => value) });
+            this.emit({ value: this.values.map(({ value }) => value) }, this.head!);
           }
         }));
       });

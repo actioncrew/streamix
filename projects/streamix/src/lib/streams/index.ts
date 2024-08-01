@@ -8,5 +8,6 @@ export * from './fromPromise';
 export * from './interval';
 export * from './merge';
 export * from './of';
+export * from './range';
 export * from './subject';
 export * from './timer';

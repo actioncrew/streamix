@@ -82,7 +82,7 @@ class TestStream extends AbstractStream {
 
   override async run(): Promise<void> {
     while (this.index < this.values.length && !this.isStopRequested()) {
-      await this.emit({ value: this.values[this.index] });
+      await this.emit({ value: this.values[this.index] }, this.head!);
       this.index++;
     }
     this.isAutoComplete.resolve(true);

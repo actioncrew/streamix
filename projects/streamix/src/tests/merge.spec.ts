@@ -11,7 +11,7 @@ class MockStream extends AbstractStream {
 
   override async run(): Promise<void> {
     for (const value of this.values) {
-      await this.emit({ value });
+      await this.emit({ value }, this.head!);
     }
     this.isAutoComplete.resolve(true);
   }
