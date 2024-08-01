@@ -65,10 +65,10 @@ export class AbstractStream {
     this.subscribers.push(callback ?? (() => {}));
 
     if (this.subscribers.length === 1 && this.isRunning() === false) {
+      this.isRunning.resolve(true);
+
       queueMicrotask(async () => {
         try {
-          this.isRunning.resolve(true);
-
           // Emit start value if defined
           await this.onStart?.process(this);
 
