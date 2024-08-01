@@ -5,6 +5,9 @@ export function promisified<T>(initialValue: T) {
   let _promise: Promise<T> | undefined;
 
   const resolve = (value: T) => {
+    if (!_promise) {
+      createPromise(); // Ensure the promise is instantiated
+    }
     if (_resolve) {
       _value = value;
       _resolve(value);
@@ -16,6 +19,9 @@ export function promisified<T>(initialValue: T) {
   };
 
   const reject = (reason?: any) => {
+    if (!_promise) {
+      createPromise(); // Ensure the promise is instantiated
+    }
     if (_reject) {
       _reject(reason);
       _resolve = undefined;
@@ -30,7 +36,13 @@ export function promisified<T>(initialValue: T) {
     _promise = undefined; // Reset the promise
   };
 
-  // Define the function and cast it to include the properties
+  const createPromise = () => {
+    _promise = new Promise<T>((resolve, reject) => {
+      _resolve = resolve;
+      _reject = reject;
+    });
+  };
+
   const fn = function () {
     return _value;
   } as {
@@ -46,10 +58,7 @@ export function promisified<T>(initialValue: T) {
     promise: {
       get() {
         if (!_promise) {
-          _promise = new Promise<T>((resolve, reject) => {
-            _resolve = resolve;
-            _reject = reject;
-          });
+          createPromise(); // Ensure the promise is instantiated
         }
         return _promise;
       },
