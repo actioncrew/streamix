@@ -116,7 +116,7 @@ export function promisified<T>(initialValue: T) {
 
   return fn;
 }
-        
+
 promisified.all = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any[]> {
   return Promise.all(promises.map(p => p.promise));
 };
@@ -124,3 +124,4 @@ promisified.all = function (promises: Array<ReturnType<typeof promisified<any>>>
 promisified.race = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any> {
   return Promise.race(promises.map(p => p.promise));
 };
+
