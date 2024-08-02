@@ -46,6 +46,7 @@ export class ConcatMapOperator extends Operator {
     await this.processingPromise;
     this.processingPromise = null;
 
+    emission.isPhantom = true;
     return emission;
   }
 
