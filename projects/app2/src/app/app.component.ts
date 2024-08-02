@@ -1,4 +1,4 @@
-import { finalize, map, range, Stream } from '@actioncrew/streamix';
+import { delay, finalize, map, mergeMap, range, reduce, scan, Stream, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
@@ -12,108 +12,142 @@ import { RouterOutlet } from '@angular/router';
 export class AppComponent implements OnInit {
   title = 'app2';
 
+  canvas!: HTMLCanvasElement;
+  ctx!: CanvasRenderingContext2D;
+
+  width!: number;
+  height!: number;
+  maxIterations!: number;
+  zoom!: number;
+  centerX!: number;
+  centerY!: number;
+  panX!: number;
+  panY!: number;
+  subSampling!: number;
+
+  constructor() {
+  }
+
   ngOnInit(): void {
-    const canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
-    const ctx = canvas.getContext('2d')!;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
+    this.ctx = this.canvas.getContext('2d')!;
 
-    // Parameters
-    const width = canvas.width;
-    const height = canvas.height;
-    const maxIterations = 200;
-    const zoom = 250;  // Zoom level
-    const centerX = width / 2;  // Centering X-coordinate
-    const centerY = height / 2; // Centering Y-coordinate
-    const panX = 2;    // Horizontal panning
-    const panY = 1.5;  // Vertical panning
-    const subSampling = 4; // Number of sub-pixels for anti-aliasing
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
 
-    function mandelbrot(cx: number, cy: number, maxIterations: number) {
-      let x = 0, y = 0;
-      let iteration = 0;
+    this.width = this.canvas.width;
+    this.height = this.canvas.height;
+    this.maxIterations = 100;
+    this.zoom = 250;
+    this.centerX = this.width / 2;
+    this.centerY = this.height / 2;
+    this.panX = 0.5;
+    this.panY = 0;
+    this.subSampling = 2;
 
-      while (x*x + y*y <= 4 && iteration < maxIterations) {
-        const xNew = x*x - y*y + cx;
-        y = 2*x*y + cy;
-        x = xNew;
-        iteration++;
-      }
+    this.showProgressOverlay();
+    this.drawFractal().subscribe(() => {
+      this.hideProgressOverlay();
+    });
+  }
 
-      return iteration;
+  showProgressOverlay() {
+    document.getElementById('progress-overlay')!.classList.remove('hidden');
+  }
+
+  hideProgressOverlay() {
+    document.getElementById('progress-overlay')!.classList.add('hidden');
+  }
+
+  updateProgressBar(progress: number) {
+    const progressBar = document.getElementById('progress');
+    const progressText = document.getElementById('progress-text');
+    progressBar!.style.width = `${progress}%`;
+    progressText!.textContent = `Processing... ${Math.round(progress)}%`;
+  }
+
+  mandelbrot(cx: number, cy: number): number {
+    let x = 0, y = 0;
+    for (let i = 0; i < this.maxIterations; i++) {
+      const x2 = x * x, y2 = y * y;
+      if (x2 + y2 > 4) return i;
+      y = 2 * x * y + cy;
+      x = x2 - y2 + cx;
+    }
+    return this.maxIterations;
+  }
+
+  getColor(iteration: number): [number, number, number] {
+    if (iteration === this.maxIterations) return [0, 0, 0]; // Black for points in the set
+    const hue = (iteration / 50) % 1;
+    const saturation = 1;
+    const value = iteration < this.maxIterations ? 1 : 0;
+    let r, g, b;
+
+    const i = Math.floor(hue * 6);
+    const f = hue * 6 - i;
+    const p = value * (1 - saturation);
+    const q = value * (1 - f * saturation);
+    const t = value * (1 - (1 - f) * saturation);
+
+    switch (i % 6) {
+      case 0: r = value, g = t, b = p; break;
+      case 1: r = q, g = value, b = p; break;
+      case 2: r = p, g = value, b = t; break;
+      case 3: r = p, g = q, b = value; break;
+      case 4: r = t, g = p, b = value; break;
+      case 5: r = value, g = p, b = q; break;
     }
 
-    function getColor(iteration: number, maxIterations: number) {
-      const ratio = iteration / maxIterations;
-      const hue = Math.floor(360 * ratio);
-      return `hsl(${hue}, 100%, 50%)`;
-    }
+    return [Math.round(r! * 255), Math.round(g! * 255), Math.round(b! * 255)];
+  }
 
-    function hslToRgb(hsl: string) {
-      const [hue, saturation, lightness] = hsl.match(/\d+/g)!.map(Number);
-      const chroma = (1 - Math.abs(2 * lightness / 100 - 1)) * (saturation / 100);
-      const x = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
-      const m = lightness / 100 - chroma / 2;
-      let r = 0, g = 0, b = 0;
+  drawFractal(): Stream {
+    const imageData = this.ctx.createImageData(this.width, this.height);
+    const data = imageData.data;
 
-      if (hue >= 0 && hue < 60) {
-        r = chroma; g = x; b = 0;
-      } else if (hue >= 60 && hue < 120) {
-        r = x; g = chroma; b = 0;
-      } else if (hue >= 120 && hue < 180) {
-        r = 0; g = chroma; b = x;
-      } else if (hue >= 180 && hue < 240) {
-        r = 0; g = x; b = chroma;
-      } else if (hue >= 240 && hue < 300) {
-        r = x; g = 0; b = chroma;
-      } else if (hue >= 300 && hue < 360) {
-        r = chroma; g = 0; b = x;
-      }
-
-      r = Math.floor((r + m) * 255);
-      g = Math.floor((g + m) * 255);
-      b = Math.floor((b + m) * 255);
-
-      return [r, g, b];
-    }
-
-    function drawFractal(): Stream {
-      const imageData = ctx.createImageData(width, height);
-      const data = imageData.data;
-
-      return range(0, width * height).pipe(
-        map(i => {
-          const px = i % width;
-          const py = Math.floor(i / width);
-          const rgb = { r: 0, g: 0, b: 0 };
-
-          for (let subPixelY = 0; subPixelY < subSampling; subPixelY++) {
-            for (let subPixelX = 0; subPixelX < subSampling; subPixelX++) {
-              const x0 = (px + (subPixelX / subSampling) - centerX) / zoom;
-              const y0 = (py + (subPixelY / subSampling) - centerY) / zoom;
-              const iteration = mandelbrot(x0, y0, maxIterations);
-              const color = getColor(iteration, maxIterations);
-              const [r, g, b] = hslToRgb(color);
-
-              rgb.r += r;
-              rgb.g += g;
-              rgb.b += b;
-            }
-          }
-
-          const numSubPixels = subSampling * subSampling;
-          const index = i * 4;
-          data[index] = rgb.r / numSubPixels;
-          data[index + 1] = rgb.g / numSubPixels;
-          data[index + 2] = rgb.b / numSubPixels;
-          data[index + 3] = 255;
-
-          return null; // No return value needed for this approach
-        }),
-        finalize(() => ctx.putImageData(imageData, 0, 0))
-      );
-    }
-
-    drawFractal().subscribe();
+    return range(0, this.width * this.height).pipe(
+      mergeMap(i => {
+        const px = i % this.width;
+        const py = Math.floor(i / this.width);
+        // Process sub-pixels and calculate average color
+        return range(0, this.subSampling * this.subSampling).pipe(
+          map(() => {
+            const subPixelX = Math.random() / this.subSampling;
+            const subPixelY = Math.random() / this.subSampling;
+            const x0 = (px + subPixelX - this.centerX) / this.zoom - this.panX;
+            const y0 = (py + subPixelY - this.centerY) / this.zoom - this.panY;
+            const iteration = this.mandelbrot(x0, y0);
+            return this.getColor(iteration);
+          }),
+          reduce((acc, rgb) => {
+            acc[0] += rgb[0];
+            acc[1] += rgb[1];
+            acc[2] += rgb[2];
+            return acc;
+          }, [0, 0, 0]),
+          map(total => ({
+            i,
+            r: total[0] / (this.subSampling * this.subSampling),
+            g: total[1] / (this.subSampling * this.subSampling),
+            b: total[2] / (this.subSampling * this.subSampling)
+          })),
+          delay(0)
+        );
+      }),
+      scan((acc, _, index) => {
+        const progress = ((index! + 1) / (this.width * this.height)) * 100;
+        this.updateProgressBar(progress);
+        return acc;
+      }, 0),
+      tap(({ i, r, g, b }) => {
+        const index = i * 4;
+        data[index] = r;
+        data[index + 1] = g;
+        data[index + 2] = b;
+        data[index + 3] = 255;
+      }),
+      finalize(() => this.ctx.putImageData(imageData, 0, 0))
+    );
   }
 }

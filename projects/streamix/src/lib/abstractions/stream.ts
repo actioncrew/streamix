@@ -6,7 +6,7 @@ import { hook } from './hook';
 import { Operator } from './operator';
 import { Subscription } from './subscription';
 
-export class Stream {
+export class Stream<T = any> {
 
   isAutoComplete = promisified<boolean>(false);
   isCancelled = promisified<boolean>(false);
@@ -17,7 +17,7 @@ export class Stream {
   isUnsubscribed = promisified<boolean>(false);
   isRunning = promisified<boolean>(false);
 
-  subscribers: (((value: any) => any) | void)[] = [];
+  subscribers: (((value: T) => any) | void)[] = [];
 
   onStart = hook();
   onComplete = hook();
@@ -54,7 +54,7 @@ export class Stream {
     return this.isRunning() ? this.isStopped.then(() => Promise.resolve()) : Promise.resolve();
   }
 
-  unsubscribe(callback: (value: any) => any): void {
+  unsubscribe(callback: (value: T) => any): void {
     this.subscribers = this.subscribers.filter(subscriber => subscriber !== callback);
     if (this.subscribers.length === 0) {
       this.isStopRequested.resolve(true);
@@ -62,7 +62,7 @@ export class Stream {
     }
   }
 
-  subscribe(callback: void | ((value: any) => any)): Subscription {
+  subscribe(callback: void | ((value: T) => any)): Subscription {
     this.subscribers.push(callback ?? (() => {}));
 
     if (this.subscribers.length === 1 && this.isRunning() === false) {
@@ -97,12 +97,12 @@ export class Stream {
     return { unsubscribe: () => callback instanceof Function ? this.unsubscribe(callback) : Function.prototype };
   }
 
-  nextStream: Stream | undefined = undefined;
+  nextStream: Stream<T> | undefined = undefined;
 
   head: Operator | undefined = undefined;
   tail: Operator | undefined = undefined;
 
-  pipe(...operators: Operator[]): Stream {
+  pipe(...operators: Operator[]): Stream<T> {
     const stream = Object.create(Object.getPrototypeOf(this));
     Object.assign(stream, this);
 
@@ -202,9 +202,9 @@ export class Stream {
     }
   }
 
-  combine(operator: Operator, stream: Stream) {
+  combine(operator: Operator, stream: Stream<T>) {
 
-    let current: Stream | undefined = this;
+    let current: Stream<T> | undefined = this;
     while(current?.nextStream !== undefined) {
       current = current.nextStream;
     }
