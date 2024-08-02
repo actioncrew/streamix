@@ -1,4 +1,4 @@
-import { delay, finalize, map, mergeMap, range, reduce, scan, Stream, tap } from '@actioncrew/streamix';
+import { concatMap, delay, finalize, map, of, range, reduce, scan, Stream, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
@@ -32,13 +32,13 @@ export class AppComponent implements OnInit {
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
     this.ctx = this.canvas.getContext('2d')!;
 
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+    this.canvas.width = 100;
+    this.canvas.height = 100;
 
     this.width = this.canvas.width;
     this.height = this.canvas.height;
-    this.maxIterations = 100;
-    this.zoom = 250;
+    this.maxIterations = 20;
+    this.zoom = 50;
     this.centerX = this.width / 2;
     this.centerY = this.height / 2;
     this.panX = 0.5;
@@ -46,9 +46,7 @@ export class AppComponent implements OnInit {
     this.subSampling = 2;
 
     this.showProgressOverlay();
-    this.drawFractal().subscribe(() => {
-      this.hideProgressOverlay();
-    });
+    this.drawFractal().subscribe();
   }
 
   showProgressOverlay() {
@@ -107,18 +105,19 @@ export class AppComponent implements OnInit {
     const data = imageData.data;
 
     return range(0, this.width * this.height).pipe(
-      mergeMap(i => {
+      concatMap(i => {
+        console.log(i);
         const px = i % this.width;
         const py = Math.floor(i / this.width);
         // Process sub-pixels and calculate average color
         return range(0, this.subSampling * this.subSampling).pipe(
-          map(() => {
+          concatMap(() => {
             const subPixelX = Math.random() / this.subSampling;
             const subPixelY = Math.random() / this.subSampling;
             const x0 = (px + subPixelX - this.centerX) / this.zoom - this.panX;
             const y0 = (py + subPixelY - this.centerY) / this.zoom - this.panY;
             const iteration = this.mandelbrot(x0, y0);
-            return this.getColor(iteration);
+            return of(this.getColor(iteration));
           }),
           reduce((acc, rgb) => {
             acc[0] += rgb[0];
@@ -147,7 +146,10 @@ export class AppComponent implements OnInit {
         this.updateProgressBar(progress);
         return acc;
       }, 0),
-      finalize(() => this.ctx.putImageData(imageData, 0, 0))
+      finalize(() => {
+        this.ctx.putImageData(imageData, 0, 0);
+        this.hideProgressOverlay();
+      })
     );
   }
 }
