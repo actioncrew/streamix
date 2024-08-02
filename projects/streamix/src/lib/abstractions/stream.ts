@@ -121,57 +121,6 @@ export class Stream<T = any> {
   tail: Operator | undefined = undefined;
 
   pipe(...operators: Operator[]): Stream<T> {
-    const stream = Object.create(Object.getPrototypeOf(this));
-    Object.assign(stream, this);
-
-    stream.isAutoComplete = promisified<boolean>(false);
-    stream.isCancelled = promisified<boolean>(false);
-    stream.isStopRequested = promisified<boolean>(false);
-
-    stream.isFailed = promisified<any>(undefined);
-    stream.isStopped = promisified<boolean>(false);
-    stream.isUnsubscribed = promisified<boolean>(false);
-    stream.isRunning = promisified<boolean>(false);
-
-    stream.subscribers = [];
-
-    stream.nextStream = this.nextStream;
-    stream.onStart = this.onStart;
-    stream.onComplete = this.onComplete;
-    stream.onStop = this.onStop;
-    stream.onError = this.onError;
-
-    // Clone the current operator chain to the new sink
-    if (this.head) {
-      const [head, tail] = this.cloneOperatorChain(this.head, this.tail);
-      stream.head = head; stream.tail = tail;
-    }
-
-    // Apply operators to the new sink
-    stream.applyOperators(...operators);
-    return stream;
-  }
-
-  private cloneOperatorChain(head: Operator, tail?: Operator): [Operator, Operator] {
-    const clonedHead = head.clone();
-    let original = head.next;
-    let cloned = clonedHead;
-
-    while (original) {
-      const clonedOperator = original.clone();
-      cloned.next = clonedOperator;
-      cloned = clonedOperator;
-      if (original === tail) {
-        break;
-      }
-      original = original.next;
-    }
-
-    return [clonedHead, cloned];
-  }
-
-  applyOperators(...operators: Operator[]) {
-
     for (const operator of operators) {
       if (operator instanceof Operator) {
         if (!this.head) {
