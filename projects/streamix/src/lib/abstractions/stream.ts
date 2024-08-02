@@ -70,7 +70,7 @@ export class Stream<T = any> {
       this.isRunning.resolve(true);
 
       // Queue microtask to ensure parent subscription happens before running the logic
-      queueMicrotask(() => {
+      queueMicrotask(async () => {
         try {
           if (this.parent) {
             queueMicrotask(() => {
@@ -134,7 +134,7 @@ export class Stream<T = any> {
 
         if ('outerStream' in operator) {
           operator.outerStream.parent = currentStream;
-          currentStream = operator.outerStream;
+          currentStream = operator.outerStream as Stream<T>;
         }
       }
 
