@@ -150,7 +150,7 @@ export class Stream<T = any> {
         this.onComplete.chain(operator.callback.bind(operator));
       }
     }
-    return this;
+    return currentStream;
   }
 
   async emit(emission: Emission, next: Operator): Promise<void> {
