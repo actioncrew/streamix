@@ -63,13 +63,21 @@ export class Stream<T = any> {
   }
 
   subscribe(callback: void | ((value: T) => any)): Subscription {
-    this.subscribers.push(callback ?? (() => {}));
+    const boundCallback = callback ?? (() => {});
+    this.subscribers.push(boundCallback);
 
     if (this.subscribers.length === 1 && this.isRunning() === false) {
       this.isRunning.resolve(true);
 
-      queueMicrotask(async () => {
+      // Queue microtask to ensure parent subscription happens before running the logic
+      queueMicrotask(() => {
         try {
+          if (this.parent) {
+            queueMicrotask(() => {
+              this.parent.subscribe();
+            });
+          }
+        
           // Emit start value if defined
           await this.onStart?.process({ stream: this });
 
@@ -94,10 +102,20 @@ export class Stream<T = any> {
       });
     }
 
-    return { unsubscribe: () => callback instanceof Function ? this.unsubscribe(callback) : Function.prototype };
+    return {
+      unsubscribe: () => {
+        if (boundCallback instanceof Function) {
+          this.unsubscribe(boundCallback);
+        }
+        // Unsubscribe from the parent stream
+        if (this.parent) {
+          this.parent.unsubscribe(boundCallback);
+        }
+      }
+    };
   }
 
-  nextStream: Stream<T> | undefined = undefined;
+  parent: Stream<T> | undefined = undefined;
 
   head: Operator | undefined = undefined;
   tail: Operator | undefined = undefined;
@@ -200,39 +218,5 @@ export class Stream<T = any> {
       emission.isFailed = true;
       emission.error = error;
     }
-  }
-
-  combine(operator: Operator, stream: Stream<T>) {
-
-    let current: Stream<T> | undefined = this;
-    while(current?.nextStream !== undefined) {
-      current = current.nextStream;
-    }
-
-    let subscribers = current.subscribers.slice();
-    const callback = () => {};
-
-    if (current.isRunning()) {
-      current.subscribers = [callback];
-    } else {
-      current.subscribers = []; current.subscribe(callback);
-    }
-
-    let next = stream;
-    next.head = operator.next; next.tail = operator.next ? current.tail : undefined;
-
-    subscribers.forEach(subscriber => next.subscribe(subscriber));
-
-    const originalUnsubscribe = next.unsubscribe.bind(this);
-    next.unsubscribe = function (callbackMethod: (value: any) => any) {
-      originalUnsubscribe(callbackMethod);
-      if (next.subscribers.length === 0) {
-        current.unsubscribe(callback);
-      }
-    };
-
-    current.tail = operator;
-    current.nextStream = next;
-    return next;
   }
 }
