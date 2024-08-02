@@ -121,14 +121,20 @@ export class Stream<T = any> {
   tail: Operator | undefined = undefined;
 
   pipe(...operators: Operator[]): Stream<T> {
+    let currentStream = this as Stream<T>;
     for (const operator of operators) {
       if (operator instanceof Operator) {
-        if (!this.head) {
-          this.head = operator;
-          this.tail = operator;
+        if (!currentStream.head) {
+          currentStream.head = operator;
+          currentStream.tail = operator;
         } else {
-          this.tail!.next = operator;
-          this.tail = operator;
+          currentStream.tail!.next = operator;
+          currentStream.tail = operator;
+        }
+
+        if ('outerStream' in operator) {
+          operator.outerStream.parent = currentStream;
+          currentStream = operator.outerStream;
         }
       }
 
