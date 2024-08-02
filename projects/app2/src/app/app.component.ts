@@ -1,4 +1,4 @@
-import { concatMap, delay, finalize, map, of, range, reduce, scan, Stream, tap } from '@actioncrew/streamix';
+import { concatMap, delay, finalize, map, range, reduce, scan, Stream, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
@@ -111,13 +111,13 @@ export class AppComponent implements OnInit {
         const py = Math.floor(i / this.width);
         // Process sub-pixels and calculate average color
         return range(0, this.subSampling * this.subSampling).pipe(
-          concatMap(() => {
+          map(() => {
             const subPixelX = Math.random() / this.subSampling;
             const subPixelY = Math.random() / this.subSampling;
             const x0 = (px + subPixelX - this.centerX) / this.zoom - this.panX;
             const y0 = (py + subPixelY - this.centerY) / this.zoom - this.panY;
             const iteration = this.mandelbrot(x0, y0);
-            return of(this.getColor(iteration));
+            return this.getColor(iteration);
           }),
           reduce((acc, rgb) => {
             acc[0] += rgb[0];
