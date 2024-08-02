@@ -74,7 +74,7 @@ export class Stream<T = any> {
         try {
           if (this.parent) {
             queueMicrotask(() => {
-              this.parent.subscribe();
+              this.parent!.subscribe();
             });
           }
         
@@ -132,7 +132,7 @@ export class Stream<T = any> {
           currentStream.tail = operator;
         }
 
-        if ('outerStream' in operator) {
+        if ('outerStream' in operator && operator.outerStream instanceof Stream) {
           operator.outerStream.parent = currentStream;
           currentStream = operator.outerStream as Stream<T>;
         }
@@ -152,7 +152,11 @@ export class Stream<T = any> {
     }
     return currentStream;
   }
-
+  
+  combine(operator: Operator, stream: Stream<T>) {
+    return stream;
+  }
+  
   async emit(emission: Emission, next: Operator): Promise<void> {
     try {
       let currentEmission: Emission = emission;
