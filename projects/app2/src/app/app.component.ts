@@ -135,11 +135,6 @@ export class AppComponent implements OnInit {
           delay(0)
         );
       }),
-      scan((acc, _, index) => {
-        const progress = ((index! + 1) / (this.width * this.height)) * 100;
-        this.updateProgressBar(progress);
-        return acc;
-      }, 0),
       tap(({ i, r, g, b }) => {
         const index = i * 4;
         data[index] = r;
@@ -147,6 +142,11 @@ export class AppComponent implements OnInit {
         data[index + 2] = b;
         data[index + 3] = 255;
       }),
+      scan((acc, _, index) => {
+        const progress = ((index! + 1) / (this.width * this.height)) * 100;
+        this.updateProgressBar(progress);
+        return acc;
+      }, 0),
       finalize(() => this.ctx.putImageData(imageData, 0, 0))
     );
   }
