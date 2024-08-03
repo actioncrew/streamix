@@ -125,17 +125,7 @@ export class Stream<T = any> {
     let currentStream = self as Stream<T>;
 
     for (const operator of operators) {
-      if (operator instanceof StartWithOperator) {
-        self.onStart.chain(operator.callback.bind(operator));
-      } else if (operator instanceof EndWithOperator) {
-        self.onComplete.chain(operator.callback.bind(operator));
-      } else if (operator instanceof CatchErrorOperator) {
-        self.onError.chain(operator.callback.bind(operator));
-      } else if (operator instanceof FinalizeOperator) {
-        self.onStop.chain(operator.callback.bind(operator));
-      } else if (operator instanceof ReduceOperator) {
-        self.onComplete.chain(operator.callback.bind(operator));
-      } else if (operator instanceof Operator) {
+      if (operator instanceof Operator) {
         if (!currentStream.head) {
           currentStream.head = operator;
           currentStream.tail = operator;
@@ -148,6 +138,18 @@ export class Stream<T = any> {
           operator.outerStream.parent = currentStream;
           currentStream = operator.outerStream as Stream<T>;
         }
+      }
+
+      if (operator instanceof StartWithOperator) {
+        currentStream.onStart.chain(operator.callback.bind(operator));
+      } else if (operator instanceof EndWithOperator) {
+        currentStream.onComplete.chain(operator.callback.bind(operator));
+      } else if (operator instanceof CatchErrorOperator) {
+        currentStream.onError.chain(operator.callback.jbind(operator));
+      } else if (operator instanceof FinalizeOperator) {
+        currentStream.onStop.chain(operator.callback.bind(operator));
+      } else if (operator instanceof ReduceOperator) {
+        currentStream.onComplete.chain(operator.callback.bind(operator));
       }
     }
 
