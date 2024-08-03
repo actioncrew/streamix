@@ -97,9 +97,9 @@ export class Stream<T = any> {
 
       // Use a macrotask to subscribe to the parent stream after the child stream has started running
       if (this.parent) {
-        setTimeout(() => {
+        queueMicrotask(() => {
           this.parent.subscribe();
-        }, 0);
+        });
       }
     }
 
