@@ -77,7 +77,7 @@ export class ConcatMapOperator extends Operator {
 
       const subscription = this.innerStream!.subscribe(async (value) => {
         if (!stream.shouldTerminate() && !stream.shouldComplete()) {
-          await stream.emit({ value }, this.next!);
+          await stream.emit({ value }, stream.head!);
         }
       });
 
