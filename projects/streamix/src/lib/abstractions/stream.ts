@@ -72,21 +72,18 @@ export class Stream<T = any> {
       // Queue microtask to ensure parent subscription happens before running the logic
       queueMicrotask(async () => {
         try {
+          // Use a macrotask to subscribe to the parent stream after the child stream has started running
+          if (this.parent) {
+            setTimeout(() => {
+              this.parent.subscribe();
+            }, 0);
+          }
+          
           // Emit start value if defined
           await this.onStart?.process({ stream: this });
 
           // Start the actual stream logic without waiting for it to complete
-          const runPromise = this.run();
-
-          // Subscribe to the parent stream after the child stream has started running
-          if (this.parent) {
-            queueMicrotask(() => {
-              this.parent.subscribe();
-            });
-          }
-
-          // Wait for the run logic to complete
-          await runPromise;
+          await this.run();
 
           // Emit end value if defined
           await this.onComplete?.process({ stream: this });
