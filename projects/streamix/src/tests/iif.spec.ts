@@ -1,4 +1,4 @@
-import { Emission, iif, Operator, Stream } from '../lib';
+import { Emission, iif, Stream } from '../lib';
 
 // Mock implementations for testing
 class MockStream extends Stream {
@@ -18,26 +18,6 @@ class MockStream extends Stream {
     }
     this.isAutoComplete.resolve(true);
 
-  }
-}
-
-class MockEmission implements Emission {
-  value: any;
-  isPhantom: boolean;
-  isCancelled: boolean;
-  isFailed: boolean;
-
-  constructor(value: any) {
-    this.value = value;
-    this.isPhantom = false;
-    this.isCancelled = false;
-    this.isFailed = false;
-  }
-}
-
-class MockOperator extends Operator {
-  async handle(emission: Emission, stream: Stream): Promise<any> {
-    return emission
   }
 }
 
