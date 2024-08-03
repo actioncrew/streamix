@@ -54,12 +54,17 @@ export class Stream<T = any> {
     return this.isRunning() ? this.isStopped.then(() => Promise.resolve()) : Promise.resolve();
   }
 
+  unsubscribe(callback: (value: T) => any): void {
+    this.subscribers = this.subscribers.filter(subscriber => subscriber !== callback);
+    if (this.subscribers.length === 0) {
+      this.isStopRequested.resolve(true);
+      this.isUnsubscribed.resolve(true);
+    }
+  }
+  
   // Protected method to handle the unsubscribe chain
   protected unsubscribeChain(stream: Stream<T>, callback: ((value: T) => any) | void): void {
-    const index = stream.subscribers.indexOf(callback);
-    if (index > -1) {
-      stream.subscribers.splice(index, 1);
-    }
+    stream.unsubscribe(callback);
 
     // If no more subscribers, unsubscribe from the parent
     if (stream.subscribers.length === 0 && stream.parent) {
