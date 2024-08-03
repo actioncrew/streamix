@@ -62,53 +62,53 @@ export class Stream<T = any> {
     }
   }
 
-  subscribe(callback: void | ((value: T) => any)): Subscription {
+  // Protected method to handle the subscription chain
+  protected subscribeChain(stream: Stream<T>, callback: ((value: T) => any) | void): void {
     const boundCallback = callback ?? (() => {});
-    this.subscribers.push(boundCallback);
+    stream.subscribers.push(boundCallback);
 
-    if (this.subscribers.length === 1 && this.isRunning() === false) {
-      this.isRunning.resolve(true);
+    if (stream.subscribers.length === 1 && stream.isRunning() === false) {
+      stream.isRunning.resolve(true);
 
-      // Queue microtask to ensure parent subscription happens before running the logic
       queueMicrotask(async () => {
         try {
+          // Subscribe to the parent stream chain first
+          if (stream.parent) {
+            stream.subscribeChain(stream.parent, boundCallback);
+          }
+
           // Emit start value if defined
-          await this.onStart?.process({ stream: this });
+          await stream.onStart?.process({ stream });
 
           // Start the actual stream logic without waiting for it to complete
-          await this.run();
+          await stream.run();
 
           // Emit end value if defined
-          await this.onComplete?.process({ stream: this });
+          await stream.onComplete?.process({ stream });
         } catch (error) {
           // Handle error if catchError defined
-          await this.onError?.process({ stream: this, error });
-          if (this.onError === undefined) {
-            this.isFailed.resolve(error);
+          await stream.onError?.process({ stream, error });
+          if (stream.onError === undefined) {
+            stream.isFailed.resolve(error);
           }
         } finally {
           // Handle finalize callback
-          await this.onStop?.process({ stream: this });
+          await stream.onStop?.process({ stream });
 
-          this.isStopped.resolve(true);
-          this.isRunning.reset();
+          stream.isStopped.resolve(true);
+          stream.isRunning.reset();
         }
       });
     }
+  }
 
-    // Function to subscribe to the chain from the child to the current stream
-    const subscribeChain = (stream: this) => {
-      let current: this | undefined = stream;
-      while (current) {
-        current.subscribe();
-        current = current.parent;
-      }
-    };
-    
-    subscribeChain(this.child);
+  // Public method to subscribe
+  subscribe(callback: ((value: T) => any) | void): Subscription {
+    this.subscribeChain(this.child, callback);
 
     return {
       unsubscribe: () => {
+        const boundCallback = callback ?? (() => {});
         if (boundCallback instanceof Function) {
           this.unsubscribe(boundCallback);
         }
