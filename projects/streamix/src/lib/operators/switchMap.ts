@@ -57,7 +57,7 @@ export class SwitchMapOperator extends Operator {
     }
 
     try {
-      return await this.processEmission(emission, stream);
+      return await this.processEmission(emission, this.output);
     } catch (error) {
       return Promise.reject(error);
     }
@@ -75,8 +75,8 @@ export class SwitchMapOperator extends Operator {
     this.activeInnerStream = newInnerStream;
 
     this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
-      if (!stream.isCancelled()) {
-        await this.output!.emit({ value }, this.next!);
+      if (!stream.shouldTerminate() && !stream.shouldComplete()) {
+        await stream.emit({ value }, stream.head!);
       }
     });
 

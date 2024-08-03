@@ -70,7 +70,7 @@ export class MergeMapOperator extends Operator {
 
       const subscription = innerStream.subscribe(async (value) => {
         if (!stream.shouldTerminate() && !stream.shouldComplete()) {
-          await stream.emit({ value }, this.next!);
+          await stream.emit({ value }, stream.head!);
         }
       });
 

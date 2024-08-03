@@ -33,7 +33,7 @@ export class IifOperator extends Operator {
     const innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
 
     const subscription = innerStream.subscribe(async (value) => {
-      await this.output!.emit({value}, this.next!);
+      await this.output!.emit({value}, this.output?.head!);
     });
 
     Promise.race([innerStream.awaitCompletion(), innerStream.awaitTermination()]).then((error) => {
