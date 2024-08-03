@@ -23,19 +23,32 @@ export class SwitchMapOperator extends Operator {
       if (this.activeInnerStream) {
         await this.activeInnerStream.awaitCompletion();
       }
-      await this.cleanup();
     };
 
     this.outerStream.isCancelled.then(() => this.cleanup());
+    this.outerStream.isFailed.then(() => this.cleanup());
     this.outerStream.isStopped.then(() => this.cleanup());
   }
 
   private async cleanup() {
     await this.stopInnerStream();
+    if (this.output && !this.output.isStopped()) {
+      await this.output.complete();
+    }
   }
 
   async handle(emission: Emission, stream: Stream): Promise<Emission> {
-    this.output = this.output || stream.combine(this, this.outerStream);
+    if(!this.output) {
+      this.output = this.outerStream;
+      stream.combine(this, this.outerStream);
+
+      stream.isStopped.then(async () => {
+        if (this.activeInnerStream) {
+          await this.activeInnerStream.awaitCompletion();
+        }
+        await this.cleanup();
+      });
+    }
 
     if (stream.isCancelled()) {
       emission.isCancelled = true;

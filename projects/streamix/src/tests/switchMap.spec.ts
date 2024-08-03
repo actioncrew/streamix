@@ -26,7 +26,9 @@ class MockStream extends Stream {
         this.index++;
       }
     }
-    this.isAutoComplete.resolve(true);
+    if(!this.isStopRequested()) {
+      this.isAutoComplete.resolve(true);
+    }
   }
 }
 
