@@ -117,18 +117,18 @@ export class Stream<T = any> {
 
   // Public method to subscribe
   subscribe(callback: ((value: T) => any) | void): Subscription {
-    this.subscribeChain(this.child, callback);
+    this.subscribeChain(this.child!, callback);
 
     return {
       unsubscribe: () => {
         const boundCallback = callback ?? (() => {});
-        this.unsubscribeChain(this.child, boundCallback);
+        this.unsubscribeChain(this.child!, boundCallback);
       }
     };
   }
 
   parent: Stream<T> | undefined = undefined;
-  child: Stream<T> | undefined = undefined;
+  child: Stream<T> | undefined = this;
   
   head: Operator | undefined = undefined;
   tail: Operator | undefined = undefined;
@@ -158,7 +158,7 @@ export class Stream<T = any> {
       } else if (operator instanceof EndWithOperator) {
         currentStream.onComplete.chain(operator.callback.bind(operator));
       } else if (operator instanceof CatchErrorOperator) {
-        currentStream.onError.chain(operator.callback.jbind(operator));
+        currentStream.onError.chain(operator.callback.bind(operator));
       } else if (operator instanceof FinalizeOperator) {
         currentStream.onStop.chain(operator.callback.bind(operator));
       } else if (operator instanceof ReduceOperator) {
