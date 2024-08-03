@@ -27,13 +27,9 @@ export class ConcatMapOperator extends Operator {
       await this.processingPromise;
     };
 
-    const cleanup = () => {
-      this.stopStreams(this.innerStream, this.input, this.output);
-    };
-
-    this.outerStream.isCancelled.then(cleanup);
-    this.outerStream.isFailed.then(cleanup);
-    this.outerStream.isStopRequested.then(cleanup);
+    this.outerStream.isCancelled.then(() => this.cleanup());
+    this.outerStream.isFailed.then(() => this.cleanup());
+    this.outerStream.isStopRequested.then(() => this.cleanup());
   }
 
   async handle(emission: Emission, stream: Stream): Promise<Emission> {
@@ -68,7 +64,8 @@ export class ConcatMapOperator extends Operator {
       const handleCompletion = async () => {
         this.executionNumber--; // Decrement the counter when the innerStream completes
 
-        if (this.executionNumber === this.emissionNumber && this.innerStream?.isStopped() && this.input?.isStopped()) {
+        if (this.executionNumber === this.emissionNumber) {
+          await this.input?.complete();
           await this.output?.complete();
           resolve();
         } else {
@@ -79,7 +76,9 @@ export class ConcatMapOperator extends Operator {
       };
 
       const subscription = this.innerStream!.subscribe(async (value) => {
-        if (!stream.shouldTerminate()) await stream.emit({ value }, this.next!);
+        if (!stream.shouldTerminate() && !stream.shouldComplete()) {
+          await stream.emit({ value }, this.next!);
+        }
       });
 
       this.innerStream!.isFailed.then((error) => this.handleStreamError(emission, error, handleCompletion));
@@ -98,6 +97,10 @@ export class ConcatMapOperator extends Operator {
     emission.isFailed = true;
     this.stopStreams(this.input, this.output);
     callback();
+  }
+
+  private async cleanup() {
+    await this.stopStreams(this.innerStream, this.input, this.output);
   }
 
   private async stopStreams(...streams: (Stream | null | undefined)[]) {
