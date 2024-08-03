@@ -68,7 +68,7 @@ export class Stream<T = any> {
 
     if (this.subscribers.length === 1 && this.isRunning() === false) {
       this.isRunning.resolve(true);
-      
+
       // Queue microtask to ensure parent subscription happens before running the logic
       queueMicrotask(async () => {
         try {
@@ -94,12 +94,13 @@ export class Stream<T = any> {
           this.isRunning.reset();
         }
       });
-
-      // Subscribe to the parent stream after the child stream has started running
-      if (this.parent) {
-        this.parent.subscribe();
-      }
     }
+
+    // Subscribe to the parent stream after the child stream has started running
+    if (this.parent) {
+      this.parent.subscribe();
+    }
+
 
     return {
       unsubscribe: () => {
@@ -151,11 +152,11 @@ export class Stream<T = any> {
     }
     return currentStream;
   }
-  
+
   combine(operator: Operator, stream: Stream<T>) {
     return stream;
   }
-  
+
   async emit(emission: Emission, next: Operator): Promise<void> {
     try {
       let currentEmission: Emission = emission;
