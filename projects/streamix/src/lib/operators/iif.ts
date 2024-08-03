@@ -38,6 +38,8 @@ export class IifOperator extends Operator {
 
     Promise.race([innerStream.awaitCompletion(), innerStream.awaitTermination()]).then((error) => {
       subscription.unsubscribe();
+      this.output?.complete();
+      this.input?.complete();
     });
 
     emission.isPhantom = true;
