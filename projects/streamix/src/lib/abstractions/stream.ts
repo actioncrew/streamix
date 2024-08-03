@@ -96,11 +96,16 @@ export class Stream<T = any> {
       });
     }
 
-    // Subscribe to the parent stream after the child stream has started running
-    if (this.parent) {
-      this.parent.subscribe();
-    }
-
+    // Function to subscribe to the chain from the child to the current stream
+    const subscribeChain = (stream: this) => {
+      let current: this | undefined = stream;
+      while (current) {
+        current.subscribe();
+        current = current.parent;
+      }
+    };
+    
+    subscribeChain(this.child);
 
     return {
       unsubscribe: () => {
@@ -116,7 +121,8 @@ export class Stream<T = any> {
   }
 
   parent: Stream<T> | undefined = undefined;
-
+  child: Stream<T> | undefined = undefined;
+  
   head: Operator | undefined = undefined;
   tail: Operator | undefined = undefined;
 
@@ -153,7 +159,8 @@ export class Stream<T = any> {
       }
     }
 
-    return currentStream;
+    self.child = currentStream;
+    return self;
   }
 
   clone(stream: Stream<T>) {
