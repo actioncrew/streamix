@@ -2,24 +2,24 @@ export function promisifiedCounter(initialValue: number = 0) {
   let count = initialValue;
   let listener: (() => void) | null = null;
   let unsubscribeMethod: (() => void) | null = null;
+  const waitForPromises: { target: number; resolve: () => void }[] = [];
 
-  async function innerFunction(): Promise<number> {
+  function innerFunction(): number {
     return count;
   }
 
-  innerFunction.increment = async function (): Promise<void> {
+  innerFunction.increment = function (): void {
     count++;
+    notifyListener();
+    checkWaitFor();
   };
 
-  innerFunction.decrement = async function (): Promise<void> {
+  innerFunction.decrement = function (): void {
     count--;
     if (count <= 0) {
       notifyListener();
     }
-  };
-
-  innerFunction.getCount = async function (): Promise<number> {
-    return count;
+    checkWaitFor();
   };
 
   innerFunction.subscribe = function (newListener: () => void): () => void {
@@ -42,10 +42,27 @@ export function promisifiedCounter(initialValue: number = 0) {
     }
   };
 
+  innerFunction.waitFor = function (target: number): Promise<void> {
+    if (count === target) {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve) => {
+      waitForPromises.push({ target, resolve });
+      checkWaitFor();
+    });
+  };
+
   function notifyListener() {
     if (listener) {
       listener();
     }
+  }
+
+  function checkWaitFor() {
+    const satisfied = waitForPromises.filter(promiseObj => count === promiseObj.target);
+    waitForPromises.length = 0;
+    satisfied.forEach(promiseObj => promiseObj.resolve());
   }
 
   return innerFunction;

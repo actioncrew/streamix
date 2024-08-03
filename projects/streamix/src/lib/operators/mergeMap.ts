@@ -42,8 +42,12 @@ export class MergeMapOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Stream): Promise<Emission> {
-    this.input = this.input || stream;
     this.output = this.output || stream.combine(this, this.outerStream);
+
+    if (!this.input) {
+      this.input = stream;
+      this.input.isStopped.then(() => this.counter.waitFor(0).then(() => this.output?.complete()));
+    }
 
     return this.processEmission(emission, this.output!);
   }
@@ -60,11 +64,12 @@ export class MergeMapOperator extends Operator {
     const processingPromise = new Promise<void>((resolve) => {
       const handleCompletion = () => {
         this.removeInnerStream(innerStream);
+        this.counter.decrement();
         resolve();
       };
 
       const subscription = innerStream.subscribe(async (value) => {
-        if (!stream.shouldTerminate()) {
+        if (!stream.shouldTerminate() && !stream.shouldComplete()) {
           await stream.emit({ value }, this.next!);
         }
       });
@@ -95,10 +100,8 @@ export class MergeMapOperator extends Operator {
 
     this.processingPromises.push(processingPromise);
 
-    this.counter.subscribe(() => {
-      if (stream.shouldComplete() || stream.shouldTerminate()) {
-        this.stopAllStreams();
-      }
+    Promise.race([stream.awaitCompletion(), stream.awaitTermination()]).then(() => {
+      this.stopAllStreams();
     });
 
     emission.isPhantom = true;
@@ -112,7 +115,6 @@ export class MergeMapOperator extends Operator {
     const index = this.activeInnerStreams.indexOf(innerStream);
     if (index !== -1) {
       this.activeInnerStreams.splice(index, 1);
-      this.counter.decrement();
     }
   }
 
