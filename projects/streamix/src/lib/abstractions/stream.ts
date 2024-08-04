@@ -124,8 +124,7 @@ export class Stream<T = any> {
     };
   }
 
-  parent: Stream<T> | undefined = undefined;
-  child: Stream<T> | undefined = this;
+  next: Stream<T> | undefined = undefined;
   
   head: Operator | undefined = undefined;
   tail: Operator | undefined = undefined;
@@ -145,8 +144,7 @@ export class Stream<T = any> {
         }
 
         if ('outerStream' in operator && operator.outerStream instanceof Stream) {
-          operator.outerStream.parent = currentStream;
-          currentStream = operator.outerStream as Stream<T>;
+          currentStream = currentStream.combine(outerStream as Stream<T>);
         }
       }
 
@@ -235,5 +233,32 @@ export class Stream<T = any> {
       emission.isFailed = true;
       emission.error = error;
     }
+  }
+
+  combine(operator: AbstractOperator, stream: AbstractStream) {
+
+    let current: AbstractStream | undefined = this;
+    while(current?.next !== undefined) {
+      current = current.next;
+    }
+
+    let subscribers = current.subscribers.slice();
+    const callback = () => {};
+
+    current.sunscribers.push(callback);
+    
+    let next = stream;
+    next.subscribers = subscribers;
+
+    const originalUnsubscribe = next.unsubscribe.bind(next);
+    next.unsubscribe = function (callbackMethod: (value: any) => any) {
+      originalUnsubscribe(callbackMethod);
+      if (next.subscribers.length === 0) {
+        current.unsubscribe(callback);
+      }
+    };
+    
+    current.next = next;
+    return next;
   }
 }
