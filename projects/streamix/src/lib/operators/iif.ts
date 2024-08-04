@@ -28,7 +28,7 @@ export class IifOperator extends Operator {
 
   async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.input = this.input || stream;
-    this.output = this.output || stream.combine(this, this.outerStream);
+    this.output = this.output || stream.combine(this.outerStream);
 
     const innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
 

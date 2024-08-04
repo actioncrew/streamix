@@ -31,7 +31,7 @@ export class FromEventStream extends Stream {
 
     this.target.addEventListener(this.eventName, this.listener);
 
-    return  super.subscribe(callback);
+    return super.subscribe(callback);
   }
 }
 

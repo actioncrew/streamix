@@ -40,7 +40,7 @@ export class SwitchMapOperator extends Operator {
   async handle(emission: Emission, stream: Stream): Promise<Emission> {
     if(!this.output) {
       this.output = this.outerStream;
-      stream.combine(this, this.outerStream);
+      stream.combine(this.outerStream);
 
       stream.isStopped.then(async () => {
         if (this.activeInnerStream) {

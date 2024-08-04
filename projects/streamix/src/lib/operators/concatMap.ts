@@ -34,7 +34,7 @@ export class ConcatMapOperator extends Operator {
 
   async handle(emission: Emission, stream: Stream): Promise<Emission> {
     this.input = this.input || stream;
-    this.output = this.output || stream.combine(this, this.outerStream);
+    this.output = this.output || stream.combine(this.outerStream);
 
     this.emissionNumber++;
     this.queue.push(emission);

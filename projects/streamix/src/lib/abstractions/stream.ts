@@ -63,42 +63,51 @@ export class Stream<T = any> {
   }
 
   // Protected method to handle the subscription chain
-  subscribe(stream: Stream<T>, callback: ((value: T) => any) | void): void {
+  subscribe(callback: ((value: T) => any) | void): Subscription {
     const boundCallback = callback ?? (() => {});
-    stream.subscribers.push(boundCallback);
+    this.subscribers.push(boundCallback);
 
-    if (stream.subscribers.length === 1 && stream.isRunning() === false) {
-      stream.isRunning.resolve(true);
+    if (this.subscribers.length === 1 && this.isRunning() === false) {
+      this.isRunning.resolve(true);
 
       queueMicrotask(async () => {
         try {
           // Emit start value if defined
-          await stream.onStart?.process({ stream });
+          await this.onStart?.process({ stream: this });
 
           // Start the actual stream logic without waiting for it to complete
-          await stream.run();
+          await this.run();
 
           // Emit end value if defined
-          await stream.onComplete?.process({ stream });
+          await this.onComplete?.process({ stream: this });
         } catch (error) {
           // Handle error if catchError defined
-          await stream.onError?.process({ stream, error });
-          if (stream.onError === undefined) {
-            stream.isFailed.resolve(error);
+          await this.onError?.process({ stream: this, error });
+          if (this.onError === undefined) {
+            this.isFailed.resolve(error);
           }
         } finally {
           // Handle finalize callback
-          await stream.onStop?.process({ stream });
+          await this.onStop?.process({ stream: this });
 
-          stream.isStopped.resolve(true);
-          stream.isRunning.reset();
+          this.isStopped.resolve(true);
+          this.isRunning.reset();
         }
       });
     }
+
+    return {
+      unsubscribe: () => {
+          this.subscribers = this.subscribers.filter(cb => cb !== boundCallback);
+          if (this.subscribers.length === 0) {
+              this.complete();
+          }
+      }
+    };
   }
 
-  next: Stream<T> | undefined = undefined;
-  
+  nextStream: Stream<T> | undefined = undefined;
+
   head: Operator | undefined = undefined;
   tail: Operator | undefined = undefined;
 
@@ -117,7 +126,7 @@ export class Stream<T = any> {
         }
 
         if ('outerStream' in operator && operator.outerStream instanceof Stream) {
-          currentStream = currentStream.combine(outerStream as Stream<T>);
+          currentStream = currentStream.combine(operator.outerStream as Stream<T>);
         }
       }
 
@@ -134,8 +143,26 @@ export class Stream<T = any> {
       }
     }
 
-    self.child = currentStream;
+    // Share subscribers between main stream and deepest child stream
+    self !== currentStream && this.shareSubscribers(self, currentStream);
     return self;
+  }
+
+  private shareSubscribers(mainStream: Stream<T>, deepestStream: Stream<T>) {
+    const originalMainSubscribe = mainStream.subscribe.bind(mainStream);
+    const originalDeepSubscribe = deepestStream.subscribe.bind(deepestStream);
+    const callback = () => {};
+    mainStream.subscribe = (callbackMethod: (value: any) => void): Subscription => {
+      const deepSub = originalDeepSubscribe(callbackMethod);
+      const mainSub = originalMainSubscribe(callback);
+
+      return {
+        unsubscribe: () => {
+          mainSub.unsubscribe();
+          deepSub.unsubscribe();
+        }
+      };
+    };
   }
 
   clone(stream: Stream<T>) {
@@ -152,8 +179,6 @@ export class Stream<T = any> {
     result.isRunning = promisified<boolean>(false);
 
     result.subscribers = [];
-
-    result.parent = this.parent;
 
     // Clone the current operator chain to the new sink
     if (this.head) {
@@ -204,33 +229,50 @@ export class Stream<T = any> {
     }
   }
 
-  combine(operator: Operator, stream: Stream<T>) {
-
+  combine(stream: Stream<T>): Stream<T> {
     let current: Stream<T> | undefined = this;
-    while(current?.next !== undefined) {
-      current = current.next;
+    while (current?.nextStream !== undefined) {
+        current = current.nextStream;
     }
-    
-    const callback = () => {};
-    let next = stream;
+
+    const next = stream;
+
+    // Store the original subscribe and unsubscribe methods
+    const originalSubscribe = next.subscribe.bind(next);
+    const originalUnsubscribe = next.unsubscribe.bind(next);
 
     // Patch the subscribe method of the next stream
-    const originalSubscribe = next.subscribe.bind(next);
-    next.subscribe = (callbackMethod: (value: any) => void) => {
-      originalSubscribe(callbackMethod);
-      current!.subscribe(callback);
+    next.subscribe = (callbackMethod: (value: T) => any) => {
+        // Subscribe to the current stream with a no-op callback if needed
+        let currentSubscription: Subscription = { unsubscribe: () => {} };
+        if (current !== this) {
+            currentSubscription = current!.subscribe(() => {});
+        }
+
+        // Subscribe to the next stream with the actual callback
+        const nextSubscription = originalSubscribe(callbackMethod);
+
+        // Return a composite subscription
+        return {
+            unsubscribe: () => {
+                // Unsubscribe from the next stream
+                nextSubscription.unsubscribe();
+
+                // Unsubscribe from the current stream
+                currentSubscription.unsubscribe();
+            }
+        };
     };
 
     // Patch the unsubscribe method of the next stream
-    const originalUnsubscribe = next.unsubscribe.bind(next);
     next.unsubscribe = (callbackMethod: (value: any) => void) => {
-      originalUnsubscribe(callbackMethod);
-      if (next.subscribers.length === 0) {
-        current!.unsubscribe(callback);
-      }
+        originalUnsubscribe(callbackMethod);
+        if (next.subscribers.length === 0) {
+            current!.unsubscribe(() => {});
+        }
     };
-    
-    current.next = next;
+
+    current.nextStream = next;
     return next;
   }
 }

@@ -106,7 +106,6 @@ export class AppComponent implements OnInit {
 
     return range(0, this.width * this.height).pipe(
       concatMap(i => {
-        console.log(i);
         const px = i % this.width;
         const py = Math.floor(i / this.width);
         // Process sub-pixels and calculate average color
@@ -131,7 +130,7 @@ export class AppComponent implements OnInit {
             g: total[1] / (this.subSampling * this.subSampling),
             b: total[2] / (this.subSampling * this.subSampling)
           })),
-          delay(0)
+          delay(0),
         );
       }),
       tap(({ i, r, g, b }) => {
