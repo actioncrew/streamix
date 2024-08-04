@@ -237,17 +237,20 @@ export class Stream<T = any> {
     while(current?.next !== undefined) {
       current = current.next;
     }
-
-    let subscribers = current.subscribers.slice();
-    const callback = () => {};
-
-    current.sunscribers.push(callback);
     
+    const callback = () => {};
     let next = stream;
-    next.subscribers = subscribers;
 
+    // Patch the subscribe method of the next stream
+    const originalSubscribe = next.subscribe.bind(next);
+    next.subscribe = (callbackMethod: (value: any) => void) => {
+      originalSubscribe(callbackMethod);
+      current.subscribe(callback);
+    };
+
+    // Patch the unsubscribe method of the next stream
     const originalUnsubscribe = next.unsubscribe.bind(next);
-    next.unsubscribe = function (callbackMethod: (value: any) => any) {
+    next.unsubscribe = (callbackMethod: (value: any) => void) => {
       originalUnsubscribe(callbackMethod);
       if (next.subscribers.length === 0) {
         current.unsubscribe(callback);
