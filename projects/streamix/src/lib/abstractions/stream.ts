@@ -204,9 +204,9 @@ export class Stream<T = any> {
     }
   }
 
-  combine(operator: AbstractOperator, stream: AbstractStream) {
+  combine(operator: Operator, stream: Stream<T>) {
 
-    let current: AbstractStream | undefined = this;
+    let current: Stream<T> | undefined = this;
     while(current?.next !== undefined) {
       current = current.next;
     }
@@ -218,7 +218,7 @@ export class Stream<T = any> {
     const originalSubscribe = next.subscribe.bind(next);
     next.subscribe = (callbackMethod: (value: any) => void) => {
       originalSubscribe(callbackMethod);
-      current.subscribe(callback);
+      current!.subscribe(callback);
     };
 
     // Patch the unsubscribe method of the next stream
@@ -226,7 +226,7 @@ export class Stream<T = any> {
     next.unsubscribe = (callbackMethod: (value: any) => void) => {
       originalUnsubscribe(callbackMethod);
       if (next.subscribers.length === 0) {
-        current.unsubscribe(callback);
+        current!.unsubscribe(callback);
       }
     };
     
