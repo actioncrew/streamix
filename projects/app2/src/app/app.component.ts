@@ -152,6 +152,6 @@ export class AppComponent implements OnInit {
         this.hideProgressOverlay();
       })
     );
-    this.fractal$.subscribe();
+    return this.fractal$;
   }
 }
