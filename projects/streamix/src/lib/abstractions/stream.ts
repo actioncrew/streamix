@@ -63,17 +63,12 @@ export class Stream<T = any> {
   }
   
   // Protected method to handle the unsubscribe chain
-  protected unsubscribeChain(stream: Stream<T>, callback: ((value: T) => any) | void): void {
+  protected unsubscribeStream(stream: Stream<T>, callback: ((value: T) => any) | void): void {
     stream.unsubscribe(callback);
-
-    // If no more subscribers, unsubscribe from the parent
-    if (stream.subscribers.length === 0 && stream.parent) {
-      stream.unsubscribeChain(stream.parent, callback);
-    }
   }
 
   // Protected method to handle the subscription chain
-  protected subscribeChain(stream: Stream<T>, callback: ((value: T) => any) | void): void {
+  protected subscribeStream(stream: Stream<T>, callback: ((value: T) => any) | void): void {
     const boundCallback = callback ?? (() => {});
     stream.subscribers.push(boundCallback);
 
@@ -114,12 +109,16 @@ export class Stream<T = any> {
 
   // Public method to subscribe
   subscribe(callback: ((value: T) => any) | void): Subscription {
-    this.subscribeChain(this.child!, callback);
+    let current: AbstractStream | undefined = this;
+    while(current?.next !== undefined) {
+      current = current.next;
+    }
+    
+    current.subscribeStream(current, callback);
 
     return {
       unsubscribe: () => {
-        const boundCallback = callback ?? (() => {});
-        this.unsubscribeChain(this.child!, boundCallback);
+        current.unsubscribeStream(current, callback);
       }
     };
   }
