@@ -60,11 +60,11 @@ export class ConcatMapOperator extends Operator {
   }
 
   private async handleInnerStream(emission: Emission, stream: Stream): Promise<void> {
+
     return new Promise<void>((resolve) => {
       const handleCompletion = async () => {
-        this.executionNumber--; // Decrement the counter when the innerStream completes
 
-        if (this.executionNumber === this.emissionNumber) {
+        if (this.executionNumber === this.emissionNumber && this.input?.isStopped() && this.innerStream?.isStopped()) {
           await this.input?.complete();
           await this.output?.complete();
           resolve();
