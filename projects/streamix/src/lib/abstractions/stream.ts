@@ -61,14 +61,9 @@ export class Stream<T = any> {
       this.isUnsubscribed.resolve(true);
     }
   }
-  
-  // Protected method to handle the unsubscribe chain
-  protected unsubscribeStream(stream: Stream<T>, callback: ((value: T) => any) | void): void {
-    stream.unsubscribe(callback);
-  }
 
   // Protected method to handle the subscription chain
-  protected subscribeStream(stream: Stream<T>, callback: ((value: T) => any) | void): void {
+  subscribe(stream: Stream<T>, callback: ((value: T) => any) | void): void {
     const boundCallback = callback ?? (() => {});
     stream.subscribers.push(boundCallback);
 
@@ -77,11 +72,6 @@ export class Stream<T = any> {
 
       queueMicrotask(async () => {
         try {
-          // Subscribe to the parent stream chain first
-          if (stream.parent) {
-            stream.subscribeChain(stream.parent, boundCallback);
-          }
-
           // Emit start value if defined
           await stream.onStart?.process({ stream });
 
@@ -105,22 +95,6 @@ export class Stream<T = any> {
         }
       });
     }
-  }
-
-  // Public method to subscribe
-  subscribe(callback: ((value: T) => any) | void): Subscription {
-    let current: AbstractStream | undefined = this;
-    while(current?.next !== undefined) {
-      current = current.next;
-    }
-    
-    current.subscribeStream(current, callback);
-
-    return {
-      unsubscribe: () => {
-        current.unsubscribeStream(current, callback);
-      }
-    };
   }
 
   next: Stream<T> | undefined = undefined;
