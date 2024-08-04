@@ -25,6 +25,8 @@ export class AppComponent implements OnInit {
   panY!: number;
   subSampling!: number;
 
+  fractal$!: Stream;
+
   constructor() {
   }
 
@@ -104,7 +106,7 @@ export class AppComponent implements OnInit {
     const imageData = this.ctx.createImageData(this.width, this.height);
     const data = imageData.data;
 
-    return range(0, this.width * this.height).pipe(
+    this.fractal$ = range(0, this.width * this.height).pipe(
       concatMap(i => {
         const px = i % this.width;
         const py = Math.floor(i / this.width);
@@ -150,5 +152,6 @@ export class AppComponent implements OnInit {
         this.hideProgressOverlay();
       })
     );
+    this.fractal$.subscribe();
   }
 }
