@@ -34,10 +34,7 @@ export class ConcatMapOperator extends Operator {
   async handle(emission: Emission, stream: Stream): Promise<Emission> {
     if (!this.input) {
       this.input = stream;
-      this.input.isStopped.then(async () => {
-        this.inputCompleted = true;
-        await this.checkCompletion();
-      });
+      this.input.isStopped.then(() => this.innerStream?.isStopped.promise).then(() => this.cleanup());
     }
     this.output = this.output || stream.combine(this.outerStream);
 
