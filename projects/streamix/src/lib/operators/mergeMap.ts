@@ -42,7 +42,7 @@ export class MergeMapOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Stream): Promise<Emission> {
-    this.output = this.output || stream.combine(this, this.outerStream);
+    this.output = this.output || stream.combine(this.outerStream);
 
     if (!this.input) {
       this.input = stream;
