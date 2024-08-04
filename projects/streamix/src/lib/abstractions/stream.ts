@@ -209,10 +209,6 @@ export class Stream<T = any> {
     return [clonedHead, cloned];
   }
 
-  combine(operator: Operator, stream: Stream<T>) {
-    return stream;
-  }
-
   async emit(emission: Emission, next: Operator): Promise<void> {
     try {
       let currentEmission: Emission = emission;
