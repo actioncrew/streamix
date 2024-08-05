@@ -92,13 +92,6 @@ export class ConcatMapOperator extends Operator {
     callback();
   }
 
-  private async checkCompletion() {
-    if (this.inputCompleted) {
-      await this.innerStream?.isStopped.promise;
-      await this.cleanup();
-    }
-  }
-
   private async cleanup() {
     await this.stopStreams(this.innerStream, this.input, this.output);
   }
