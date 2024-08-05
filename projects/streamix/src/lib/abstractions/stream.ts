@@ -1,9 +1,8 @@
-import { CatchErrorOperator, EndWithOperator, FinalizeOperator, StartWithOperator } from '../hooks';
-import { ReduceOperator } from '../operators';
 import { promisified } from '../utils';
 import { Emission } from './emission';
 import { hook } from './hook';
 import { Operator } from './operator';
+import { Pipeline } from './pipeline';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
@@ -113,62 +112,12 @@ export class Stream<T = any> {
   tail: Operator | undefined = undefined;
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    let self = this.clone(this);
-    let currentStream = self as Subscribable<T>;
-
-    for (const operator of operators) {
-      if (operator instanceof Operator) {
-        if (!currentStream.head) {
-          currentStream.head = operator;
-          currentStream.tail = operator;
-        } else {
-          currentStream.tail!.next = operator;
-          currentStream.tail = operator;
-        }
-
-        if ('outerStream' in operator && operator.outerStream instanceof Stream) {
-          currentStream = operator.outerStream as Subscribable<T>;
-        }
-      }
-
-      if (operator instanceof StartWithOperator) {
-        currentStream.onStart.chain(operator.callback.bind(operator));
-      } else if (operator instanceof EndWithOperator) {
-        currentStream.onComplete.chain(operator.callback.bind(operator));
-      } else if (operator instanceof CatchErrorOperator) {
-        currentStream.onError.chain(operator.callback.bind(operator));
-      } else if (operator instanceof FinalizeOperator) {
-        currentStream.onStop.chain(operator.callback.bind(operator));
-      } else if (operator instanceof ReduceOperator) {
-        currentStream.onComplete.chain(operator.callback.bind(operator));
-      }
-    }
-
-    // Share subscribers between main stream and deepest child stream
-    self !== currentStream && this.shareSubscribers(self, currentStream);
-    return self;
+    return new Pipeline(this, ...operators);
   }
 
-  private shareSubscribers(mainStream: Subscribable<T>, deepestStream: Subscribable<T>) {
-    const originalMainSubscribe = mainStream.subscribe.bind(mainStream);
-    const originalDeepSubscribe = deepestStream.subscribe.bind(deepestStream);
-    const callback = () => {};
-    mainStream.subscribe = (callbackMethod: (value: any) => void): Subscription => {
-      const deepSub = originalDeepSubscribe(callbackMethod);
-      const mainSub = originalMainSubscribe(callback);
-
-      return {
-        unsubscribe: () => {
-          mainSub.unsubscribe();
-          deepSub.unsubscribe();
-        }
-      };
-    };
-  }
-
-  clone(stream: Subscribable<T>) {
-    const result = Object.create(Object.getPrototypeOf(stream));
-    Object.assign(result, stream);
+  clone() {
+    const result = Object.create(Object.getPrototypeOf(this));
+    Object.assign(result, this);
 
     result.isAutoComplete = promisified<boolean>(false);
     result.isCancelled = promisified<boolean>(false);
@@ -179,7 +128,12 @@ export class Stream<T = any> {
     result.isUnsubscribed = promisified<boolean>(false);
     result.isRunning = promisified<boolean>(false);
 
-    result.subscribers = [];
+    result.subscribers = this.subscribers.slice();
+
+    result.onStart = hook();
+    result.onComplete = hook();
+    result.onStop = hook();
+    result.onError = hook();
 
     // Clone the current operator chain to the new sink
     if (this.head) {
