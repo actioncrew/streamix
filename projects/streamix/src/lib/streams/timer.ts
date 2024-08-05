@@ -1,10 +1,12 @@
 import { Stream } from '../abstractions/stream';
+import { Subscription } from '../abstractions/subscription';
 
-export class TimerStream extends Stream {
+export class TimerStream<T = any> extends Stream<T> {
   private delayMs: number;
-  private intervalId: any | null;
+  private intervalId: any;
   private intervalMs: number;
   private value: number;
+  private resolvePromise: ((value: void | PromiseLike<void>) => void) | null = null;
 
   constructor(delayMs: number, intervalMs: number) {
     super();
@@ -16,6 +18,8 @@ export class TimerStream extends Stream {
 
   override async run(): Promise<void> {
     return new Promise<void>((resolve) => {
+      this.resolvePromise = resolve;
+
       setTimeout(() => {
         this.emit({ value: this.value }, this.head!).then(() => {
           this.intervalId = setInterval(() => {
@@ -25,26 +29,39 @@ export class TimerStream extends Stream {
         });
       }, this.delayMs);
 
-       // Listen for the stop request
-       this.isStopRequested.then(() => {
+      // Listen for the stop request
+      this.isStopRequested.then(() => {
         if (this.intervalId) {
           clearInterval(this.intervalId);
           this.intervalId = null;
         }
-        resolve();
+        if (this.resolvePromise) {
+          this.resolvePromise();
+          this.resolvePromise = null;
+        }
       });
-
-      this.unsubscribe = () => {
-        if (this.intervalId) {
-          clearInterval(this.intervalId);
-          this.intervalId = null;
-        }
-        resolve();
-        if(this.isUnsubscribed() === true) {
-          this.isStopRequested.resolve(true);
-        }
-      };
     });
+  }
+
+  override subscribe(callback: (value: T) => any): Subscription {
+    let subscription = super.subscribe(callback);
+
+    // Return a subscription object with an unsubscribe method
+    return {
+      unsubscribe: () => {
+        subscription.unsubscribe();
+        if (this.subscribers.length === 0) {
+          if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+          }
+          if (this.resolvePromise) {
+            this.resolvePromise();
+            this.resolvePromise = null;
+          }
+        }
+      }
+    };
   }
 }
 
