@@ -104,8 +104,8 @@ describe('ConcatMapOperator', () => {
         return emission;
       },
     };
-
-    operator.next = mockNext as any;
+    mockStream.nextStream = (operator as any).outerStream;
+    mockStream.nextStream!.head = mockNext as any;
 
     for (const emission of emissions) {
       await operator.handle({value: emission}, mockStream);
@@ -159,7 +159,8 @@ describe('ConcatMapOperator', () => {
       },
     };
 
-    operator.next = mockNext as any;
+    mockStream.nextStream = (operator as any).outerStream;
+    mockStream.nextStream!.head = mockNext as any;
 
     for (const emission of outerEmissions) {
       await operator.handle({value: emission}, mockStream);
