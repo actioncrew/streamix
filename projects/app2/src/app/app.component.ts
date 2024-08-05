@@ -26,9 +26,7 @@ export class AppComponent implements OnInit {
   subSampling!: number;
 
   fractal$!: Subscribable;
-
-  constructor() {
-  }
+  average$!: Subscribable;
 
   ngOnInit(): void {
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
@@ -111,7 +109,7 @@ export class AppComponent implements OnInit {
         const px = i % this.width;
         const py = Math.floor(i / this.width);
         // Process sub-pixels and calculate average color
-        return range(0, this.subSampling * this.subSampling).pipe(
+        return this.average$ = range(0, this.subSampling * this.subSampling).pipe(
           map(() => {
             const subPixelX = Math.random() / this.subSampling;
             const subPixelY = Math.random() / this.subSampling;
