@@ -2,7 +2,13 @@ export interface Hook {
   callback: (params?: any) => void | Promise<void>;
 }
 
-export function hook() {
+export interface HookType {
+  process(params?: any): Promise<void>;
+  chain(callback: (params?: any) => void | Promise<void>): void;
+  clear(): void;
+}
+
+export function hook(): HookType {
   const callbacks: ((params?: any) => void | Promise<void>)[] = [];
 
   async function process(params?: any): Promise<void> {
