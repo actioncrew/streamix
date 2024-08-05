@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
@@ -15,7 +15,7 @@ export class ScanOperator extends Operator {
     this.accumulatedValue = seed;
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!, this.index++);
     emission.value = this.accumulatedValue;
     return emission;

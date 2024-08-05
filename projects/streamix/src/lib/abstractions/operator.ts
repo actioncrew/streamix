@@ -1,12 +1,12 @@
 import { Emission } from './emission';
-import { Stream } from './stream';
+import { Subscribable } from './subscribable';
 
 export abstract class Operator {
   next?: Operator;
 
-  abstract handle(emission: Emission, stream: Stream): Promise<Emission>;
+  abstract handle(emission: Emission, stream: Subscribable): Promise<Emission>;
 
-  async process(emission: Emission, stream: Stream): Promise<Emission> {
+  async process(emission: Emission, stream: Subscribable): Promise<Emission> {
     if (stream.isCancelled() === false) {
       try {
         emission = await this.handle(emission, stream);

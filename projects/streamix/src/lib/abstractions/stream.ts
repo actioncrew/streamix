@@ -4,6 +4,7 @@ import { promisified } from '../utils';
 import { Emission } from './emission';
 import { hook } from './hook';
 import { Operator } from './operator';
+import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
 export class Stream<T = any> {
@@ -106,14 +107,14 @@ export class Stream<T = any> {
     };
   }
 
-  nextStream: Stream<T> | undefined = undefined;
+  nextStream: Subscribable<T> | undefined = undefined;
 
   head: Operator | undefined = undefined;
   tail: Operator | undefined = undefined;
 
-  pipe(...operators: Operator[]): Stream<T> {
+  pipe(...operators: Operator[]): Subscribable<T> {
     let self = this.clone(this);
-    let currentStream = self as Stream<T>;
+    let currentStream = self as Subscribable<T>;
 
     for (const operator of operators) {
       if (operator instanceof Operator) {
@@ -126,7 +127,7 @@ export class Stream<T = any> {
         }
 
         if ('outerStream' in operator && operator.outerStream instanceof Stream) {
-          currentStream = currentStream.combine(operator.outerStream as Stream<T>);
+          currentStream = operator.outerStream as Subscribable<T>;
         }
       }
 
@@ -148,7 +149,7 @@ export class Stream<T = any> {
     return self;
   }
 
-  private shareSubscribers(mainStream: Stream<T>, deepestStream: Stream<T>) {
+  private shareSubscribers(mainStream: Subscribable<T>, deepestStream: Subscribable<T>) {
     const originalMainSubscribe = mainStream.subscribe.bind(mainStream);
     const originalDeepSubscribe = deepestStream.subscribe.bind(deepestStream);
     const callback = () => {};
@@ -165,7 +166,7 @@ export class Stream<T = any> {
     };
   }
 
-  clone(stream: Stream<T>) {
+  clone(stream: Subscribable<T>) {
     const result = Object.create(Object.getPrototypeOf(stream));
     Object.assign(result, stream);
 
@@ -227,52 +228,5 @@ export class Stream<T = any> {
       emission.isFailed = true;
       emission.error = error;
     }
-  }
-
-  combine(stream: Stream<T>): Stream<T> {
-    let current: Stream<T> | undefined = this;
-    while (current?.nextStream !== undefined) {
-        current = current.nextStream;
-    }
-
-    const next = stream;
-
-    // Store the original subscribe and unsubscribe methods
-    const originalSubscribe = next.subscribe.bind(next);
-    const originalUnsubscribe = next.unsubscribe.bind(next);
-
-    // Patch the subscribe method of the next stream
-    next.subscribe = (callbackMethod: (value: T) => any) => {
-        // Subscribe to the current stream with a no-op callback if needed
-        let currentSubscription: Subscription = { unsubscribe: () => {} };
-        if (current !== this) {
-            currentSubscription = current!.subscribe(() => {});
-        }
-
-        // Subscribe to the next stream with the actual callback
-        const nextSubscription = originalSubscribe(callbackMethod);
-
-        // Return a composite subscription
-        return {
-            unsubscribe: () => {
-                // Unsubscribe from the next stream
-                nextSubscription.unsubscribe();
-
-                // Unsubscribe from the current stream
-                currentSubscription.unsubscribe();
-            }
-        };
-    };
-
-    // Patch the unsubscribe method of the next stream
-    next.unsubscribe = (callbackMethod: (value: any) => void) => {
-        originalUnsubscribe(callbackMethod);
-        if (next.subscribers.length === 0) {
-            current!.unsubscribe(() => {});
-        }
-    };
-
-    current.nextStream = next;
-    return next;
   }
 }

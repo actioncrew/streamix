@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
@@ -10,7 +10,7 @@ export class MapOperator extends Operator {
     this.transform = transform;
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     emission.value = this.transform(emission.value);
     return emission;
   }

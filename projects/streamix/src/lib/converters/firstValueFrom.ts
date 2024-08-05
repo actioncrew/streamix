@@ -1,8 +1,8 @@
 import { Converter } from '../abstractions/converter';
-import { Stream } from '../abstractions/stream';
+import { Subscribable } from '../abstractions/subscribable';
 
-export class FirstValueFromConverter extends Converter<Stream, Promise<any>> {
-  async convert(stream: Stream): Promise<any> {
+export class FirstValueFromConverter extends Converter<Subscribable, Promise<any>> {
+  async convert(stream: Subscribable): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       let hasEmitted = false;
 
@@ -21,6 +21,6 @@ export class FirstValueFromConverter extends Converter<Stream, Promise<any>> {
   }
 }
 
-export function firstValueFrom(stream: Stream) {
+export function firstValueFrom(stream: Subscribable) {
   return new FirstValueFromConverter().convert(stream);
 }
