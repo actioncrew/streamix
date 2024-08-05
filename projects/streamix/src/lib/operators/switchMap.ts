@@ -1,13 +1,13 @@
-import { Emission, Operator, Stream, Subscription } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 
 export class SwitchMapOperator extends Operator {
-  private project: (value: any) => Stream;
-  private activeInnerStream?: Stream;
+  private project: (value: any) => Subscribable;
+  private activeInnerStream?: Subscribable;
   private outerStream: Stream;
-  private output?: Stream;
+  private output?: Subscribable;
   private innerStreamSubscription?: Subscription;
 
-  constructor(project: (value: any) => Stream) {
+  constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
     this.outerStream = new Stream();
@@ -37,10 +37,9 @@ export class SwitchMapOperator extends Operator {
     }
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     if(!this.output) {
       this.output = this.outerStream;
-      stream.combine(this.outerStream);
 
       stream.isStopped.then(async () => {
         if (this.activeInnerStream) {
@@ -63,7 +62,7 @@ export class SwitchMapOperator extends Operator {
     }
   }
 
-  private async processEmission(emission: Emission, stream: Stream): Promise<Emission> {
+  private async processEmission(emission: Emission, stream: Subscribable): Promise<Emission> {
     const newInnerStream = this.project(emission.value);
 
     if (this.activeInnerStream === newInnerStream) {
@@ -100,7 +99,7 @@ export class SwitchMapOperator extends Operator {
     });
   }
 
-  private removeInnerStream(innerStream: Stream) {
+  private removeInnerStream(innerStream: Subscribable) {
     if (this.activeInnerStream === innerStream) {
       this.activeInnerStream = undefined;
     }
@@ -115,4 +114,4 @@ export class SwitchMapOperator extends Operator {
   }
 }
 
-export const switchMap = (project: (value: any) => Stream) => new SwitchMapOperator(project);
+export const switchMap = (project: (value: any) => Subscribable) => new SwitchMapOperator(project);

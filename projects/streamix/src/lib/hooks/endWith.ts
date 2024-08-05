@@ -1,4 +1,4 @@
-import { Emission, Operator, Stream } from '../abstractions';
+import { Emission, Operator, Subscribable } from '../abstractions';
 import { Hook } from '../abstractions/hook';
 
 
@@ -16,7 +16,7 @@ export class EndWithOperator extends Operator implements Hook {
     }
   }
 
-  override async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     return emission;
   }
 }

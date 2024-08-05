@@ -1,17 +1,17 @@
-import { Emission, Operator, Stream } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { promisifiedCounter } from '../utils';
 
 export class MergeMapOperator extends Operator {
-  private readonly project: (value: any) => Stream;
-  private outerStream: Stream;
-  private activeInnerStreams: Stream[] = [];
+  private readonly project: (value: any) => Subscribable;
+  private outerStream: Subscribable;
+  private activeInnerStreams: Subscribable[] = [];
   private processingPromises: Promise<void>[] = [];
 
-  private input?: Stream;
-  private output?: Stream;
+  private input?: Subscribable;
+  private output?: Subscribable;
   private counter = promisifiedCounter(0);
 
-  constructor(project: (value: any) => Stream) {
+  constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
     this.outerStream = new Stream();
@@ -41,8 +41,8 @@ export class MergeMapOperator extends Operator {
     });
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
-    this.output = this.output || stream.combine(this.outerStream);
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
+    this.output = this.output || this.outerStream;
 
     if (!this.input) {
       this.input = stream;
@@ -52,7 +52,7 @@ export class MergeMapOperator extends Operator {
     return this.processEmission(emission, this.output!);
   }
 
-  private async processEmission(emission: Emission, stream: Stream): Promise<Emission> {
+  private async processEmission(emission: Emission, stream: Subscribable): Promise<Emission> {
     if (await this.checkAndStopStream(stream, emission)) {
       return emission;
     }
@@ -111,7 +111,7 @@ export class MergeMapOperator extends Operator {
     });
   }
 
-  private removeInnerStream(innerStream: Stream) {
+  private removeInnerStream(innerStream: Subscribable) {
     const index = this.activeInnerStreams.indexOf(innerStream);
     if (index !== -1) {
       this.activeInnerStreams.splice(index, 1);
@@ -139,7 +139,7 @@ export class MergeMapOperator extends Operator {
     }
   }
 
-  private async checkAndStopStream(stream: Stream, emission: Emission): Promise<boolean> {
+  private async checkAndStopStream(stream: Subscribable, emission: Emission): Promise<boolean> {
     if (stream.isCancelled()) {
       emission.isCancelled = true;
       await this.stopAllStreams();
@@ -149,4 +149,4 @@ export class MergeMapOperator extends Operator {
   }
 }
 
-export const mergeMap = (project: (value: any) => Stream) => new MergeMapOperator(project);
+export const mergeMap = (project: (value: any) => Subscribable) => new MergeMapOperator(project);

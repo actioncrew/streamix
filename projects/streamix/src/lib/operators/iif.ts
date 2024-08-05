@@ -1,17 +1,17 @@
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
-import { Stream } from '../abstractions/stream';
 
 export class IifOperator extends Operator {
   private outerStream: Stream;
 
-  private input?: Stream;
-  private output?: Stream;
+  private input?: Subscribable;
+  private output?: Subscribable;
 
   constructor(
     private readonly condition: (emission: Emission) => boolean,
-    private readonly trueStream: Stream,
-    private readonly falseStream: Stream
+    private readonly trueStream: Subscribable,
+    private readonly falseStream: Subscribable
   ) {
     super();
     this.outerStream = new Stream();
@@ -26,9 +26,9 @@ export class IifOperator extends Operator {
     });
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     this.input = this.input || stream;
-    this.output = this.output || stream.combine(this.outerStream);
+    this.output = this.output || this.outerStream;
 
     const innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
 
@@ -50,4 +50,4 @@ export class IifOperator extends Operator {
   }
 }
 
-export const iif = (condition: (emission: Emission) => boolean, trueStream: Stream, falseStream: Stream) => new IifOperator(condition, trueStream, falseStream);
+export const iif = (condition: (emission: Emission) => boolean, trueStream: Subscribable, falseStream: Subscribable) => new IifOperator(condition, trueStream, falseStream);

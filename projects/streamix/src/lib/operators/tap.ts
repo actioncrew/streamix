@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
@@ -10,7 +10,7 @@ export class TapOperator extends Operator {
     this.tapFunction = tapFunction;
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     this.tapFunction(emission.value);
     return emission;
   }

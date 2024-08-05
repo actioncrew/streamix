@@ -4,3 +4,4 @@ export * from './operator';
 export * from './stream';
 export * from './subscription';
 export * from './hook';
+export * from './subscribable'

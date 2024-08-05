@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
@@ -11,7 +11,7 @@ export class TakeOperator extends Operator {
     this.count = count;
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     if (this.emittedCount < this.count) {
       this.emittedCount++;
 

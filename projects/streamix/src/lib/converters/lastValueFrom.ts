@@ -1,10 +1,10 @@
 import { Converter } from '../abstractions/converter';
-import { Stream } from '../abstractions/stream';
+import { Subscribable } from '../abstractions/subscribable';
 
-export class LastValueFromConverter extends Converter<Stream, Promise<any>> {
+export class LastValueFromConverter extends Converter<Subscribable, Promise<any>> {
   promise: Promise<boolean> | undefined;
 
-  async convert(stream: Stream): Promise<any> {
+  async convert(stream: Subscribable): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       let hasEmitted = false;
       let lastValue = undefined;
@@ -19,7 +19,7 @@ export class LastValueFromConverter extends Converter<Stream, Promise<any>> {
           if(hasEmitted) {
             resolve(lastValue!);
           } else {
-            reject("Stream has not emitted any value.");
+            reject("Subscribable has not emitted any value.");
           }
           unsubscribe.unsubscribe();
         })
@@ -30,6 +30,6 @@ export class LastValueFromConverter extends Converter<Stream, Promise<any>> {
   }
 }
 
-export function lastValueFrom(stream: Stream) {
+export function lastValueFrom(stream: Subscribable) {
   return new LastValueFromConverter().convert(stream);
 }

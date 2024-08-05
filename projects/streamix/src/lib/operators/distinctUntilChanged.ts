@@ -1,6 +1,6 @@
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
-import { Stream } from '../abstractions/stream';
+import { Subscribable } from '../abstractions/subscribable';
 
 export class DistinctUntilChangedOperator<T> extends Operator {
   private lastEmittedValue: T | undefined;
@@ -11,7 +11,7 @@ export class DistinctUntilChangedOperator<T> extends Operator {
     this.comparator = comparator;
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<any> {
+  async handle(emission: Emission, stream: Subscribable): Promise<any> {
     const currentValue = emission.value;
 
     if (this.lastEmittedValue === undefined ||

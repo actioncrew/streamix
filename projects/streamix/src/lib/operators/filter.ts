@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
@@ -11,7 +11,7 @@ export class FilterOperator extends Operator {
     this.predicate = predicate;
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     emission.isPhantom = !this.predicate(emission.value);
     return emission;
   }

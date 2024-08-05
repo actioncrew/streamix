@@ -1,18 +1,18 @@
 import { Subscription } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
-import { Stream } from '../abstractions/stream';
+import { Subscribable } from '../abstractions/subscribable';
 
 export class TakeUntilOperator extends Operator {
-  private readonly notifier: Stream;
+  private readonly notifier: Subscribable;
   private subscription: Subscription | undefined;
 
-  constructor(notifier: Stream) {
+  constructor(notifier: Subscribable) {
     super();
     this.notifier = notifier;
   }
 
-  async handle(emission: Emission, stream: Stream): Promise<Emission> {
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     if (stream.isCancelled()) {
       emission.isCancelled = true;
       this.subscription?.unsubscribe();
@@ -33,4 +33,4 @@ export class TakeUntilOperator extends Operator {
   }
 }
 
-export const takeUntil = (notifier: Stream) => new TakeUntilOperator(notifier);
+export const takeUntil = (notifier: Subscribable) => new TakeUntilOperator(notifier);
