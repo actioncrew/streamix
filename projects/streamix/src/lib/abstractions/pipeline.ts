@@ -1,11 +1,10 @@
-import { Stream } from '@actioncrew/streamix';
-
 import { CatchErrorOperator, EndWithOperator, FinalizeOperator, StartWithOperator } from '../hooks';
 import { ReduceOperator } from '../operators';
 import { PromisifiedType } from '../utils';
 import { Emission } from './emission';
 import { HookType } from './hook';
 import { Operator } from './operator';
+import { Stream } from './stream';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
