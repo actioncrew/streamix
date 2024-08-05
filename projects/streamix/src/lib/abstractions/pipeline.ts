@@ -22,42 +22,42 @@ export class Pipeline<T = any> implements Subscribable {
   private applyOperators(...operators: Operator[]): void {
     this.operators = operators;
     let currentStream = this.streams[0] as Stream<T>;
+    let previousOperator: Operator | undefined;
 
     operators.forEach(operator => {
       if (operator instanceof Operator) {
-        this.addOperatorToStream(currentStream, operator);
+        operator = operator.clone();
+
+        if (previousOperator) {
+          previousOperator.next = operator;
+        }
+
+        if (!currentStream.head) {
+          currentStream.head = operator;
+          currentStream.tail = operator;
+        } else {
+          currentStream.tail!.next = operator;
+          currentStream.tail = operator;
+        }
+
+        if (operator instanceof StartWithOperator) {
+          currentStream.onStart.chain(operator.callback.bind(operator));
+        } else if (operator instanceof EndWithOperator || operator instanceof ReduceOperator) {
+          currentStream.onComplete.chain(operator.callback.bind(operator));
+        } else if (operator instanceof CatchErrorOperator) {
+          currentStream.onError.chain(operator.callback.bind(operator));
+        } else if (operator instanceof FinalizeOperator) {
+          currentStream.onStop.chain(operator.callback.bind(operator));
+        }
 
         if ('outerStream' in operator) {
           currentStream = operator.outerStream as any;
           this.streams.push(currentStream);
         }
+
+        previousOperator = operator;
       }
-
-      this.chainOperatorCallbacks(currentStream, operator);
     });
-  }
-
-  private addOperatorToStream(currentStream: Stream<T>, operator: Operator): void {
-    operator = operator.clone();
-    if (!currentStream.head) {
-      currentStream.head = operator;
-      currentStream.tail = operator;
-    } else {
-      currentStream.tail!.next = operator;
-      currentStream.tail = operator;
-    }
-  }
-
-  private chainOperatorCallbacks(stream: Stream<T>, operator: Operator): void {
-    if (operator instanceof StartWithOperator) {
-      stream.onStart.chain(operator.callback.bind(operator));
-    } else if (operator instanceof EndWithOperator) {
-      stream.onComplete.chain(operator.callback.bind(operator));
-    } else if (operator instanceof CatchErrorOperator) {
-      stream.onError.chain(operator.callback.bind(operator));
-    } else if (operator instanceof FinalizeOperator || operator instanceof ReduceOperator) {
-      stream.onStop.chain(operator.callback.bind(operator));
-    }
   }
 
   pipe(...operators: Operator[]): Pipeline<T> {
