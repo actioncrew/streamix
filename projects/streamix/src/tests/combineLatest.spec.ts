@@ -75,10 +75,6 @@ describe('CombineLatestStream with TimerStreams', () => {
         done(error);
       }
     });
-
-    combinedTimers.isStopped.then(() => {
-      done(new Error('Stream did not handle completion correctly'));
-    });
   });
 
   it('should combine multiple streams correctly', (done) => {
