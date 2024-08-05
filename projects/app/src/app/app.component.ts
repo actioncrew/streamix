@@ -4,6 +4,7 @@ import {
   map,
   startWith,
   Subject,
+  Subscribable,
   switchMap,
   takeUntil,
   tap,
@@ -13,6 +14,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+
 
 @Component({
   selector: 'app-caption',
@@ -92,6 +94,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
   private destroy$ = new Subject<void>();
+  private resize$!: Subscribable<any>;
+  private columns$!: Subscribable<any>;
+  private drops$!: Subscribable<any>;
+  private draw$!: Subscribable<any>;
+  private scene$!: Subscribable<any>;
 
   ngAfterViewInit() {
     this.canvas = document.querySelector('canvas') as HTMLCanvasElement;
@@ -105,21 +112,21 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   private setupAnimation() {
-    const resize$ = fromEvent(window, 'resize').pipe(
+    this.resize$ = fromEvent(window, 'resize').pipe(
       startWith(this.getCanvasSize()),
       map(() => this.getCanvasSize())
     );
 
-    const columns$ = resize$.pipe(
+    this.columns$ = this.resize$.pipe(
       map(({ width }) => Math.floor(width / this.fontSize))
     );
 
-    const drops$ = columns$.pipe(
+    this.drops$ = this.columns$.pipe(
       map(columns => Array.from({ length: columns }, () => 0))
     );
 
-    const draw$ = interval(33).pipe(
-      withLatestFrom(drops$),
+    this.draw$ = interval(33).pipe(
+      withLatestFrom(this.drops$),
       tap(([_, drops]) => {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -132,19 +139,21 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
           drops[index] = drop * this.fontSize > this.canvas.height && Math.random() > 0.95 ? 0 : drop + 1;
         });
-      })
+      }),
     );
 
-    resize$.pipe(
+    this.scene$ = this.resize$.pipe(
       tap(({ width, height }) => {
         this.canvas.width = width;
         this.canvas.height = height;
         this.ctx.fillStyle = 'black';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       }),
-      switchMap(() => draw$),
+      switchMap(() => this.draw$),
       takeUntil(this.destroy$)
-    ).subscribe();
+    )
+
+    this.scene$.subscribe();
   }
 
   private getCanvasSize() {
