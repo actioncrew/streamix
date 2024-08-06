@@ -1,30 +1,20 @@
+import { Subject } from '../../lib';
 import { Emission, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 
 export class SwitchMapOperator extends Operator {
   private project: (value: any) => Subscribable;
   private activeInnerStream?: Subscribable;
-  private outerStream: Stream;
-  private output?: Subscribable;
+  private outerStream = new Subject();
+  private output?: Stream;
   private innerStreamSubscription?: Subscription;
 
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
-    this.outerStream = new Stream();
     this.initializeOuterStream();
   }
 
   private initializeOuterStream() {
-    this.outerStream.run = async () => {
-      await Promise.race([
-        this.outerStream.awaitCompletion(),
-        this.outerStream.awaitTermination()
-      ]);
-      if (this.activeInnerStream) {
-        await this.activeInnerStream.awaitCompletion();
-      }
-    };
-
     this.outerStream.isCancelled.then(() => this.cleanup());
     this.outerStream.isFailed.then(() => this.cleanup());
     this.outerStream.isStopped.then(() => this.cleanup());
@@ -62,7 +52,7 @@ export class SwitchMapOperator extends Operator {
     }
   }
 
-  private async processEmission(emission: Emission, stream: Subscribable): Promise<Emission> {
+  private async processEmission(emission: Emission, stream: Stream): Promise<Emission> {
     const newInnerStream = this.project(emission.value);
 
     if (this.activeInnerStream === newInnerStream) {

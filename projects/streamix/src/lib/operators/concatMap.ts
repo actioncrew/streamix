@@ -1,31 +1,22 @@
+import { Subject } from '../../lib';
 import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 
 export class ConcatMapOperator extends Operator {
   private readonly project: (value: any) => Subscribable;
-  private outerStream: Stream;
+  private outerStream = new Subject<any>();
   private innerStream: Subscribable | null = null;
   private processingPromise: Promise<void> | null = null;
   private queue: Emission[] = [];
   private input?: Subscribable;
-  private output?: Subscribable;
-  private inputCompleted = false;
+  private output?: Stream;
 
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
-    this.outerStream = new Stream();
     this.initializeOuterStream();
   }
 
   private initializeOuterStream() {
-    this.outerStream.run = async () => {
-      await Promise.race([
-        this.outerStream.awaitCompletion(),
-        this.outerStream.awaitTermination()
-      ]);
-      await this.processingPromise;
-    };
-
     this.outerStream.isCancelled.then(() => this.cleanup());
     this.outerStream.isFailed.then(() => this.cleanup());
     this.outerStream.isStopRequested.then(() => this.cleanup());
@@ -53,14 +44,14 @@ export class ConcatMapOperator extends Operator {
     }
   }
 
-  private async processEmission(emission: Emission, stream: Subscribable): Promise<void> {
+  private async processEmission(emission: Emission, stream: Stream): Promise<void> {
     if (await this.checkAndStopStream(stream, emission)) return;
 
     this.innerStream = this.project(emission.value);
     await this.handleInnerStream(emission, stream);
   }
 
-  private async handleInnerStream(emission: Emission, stream: Subscribable): Promise<void> {
+  private async handleInnerStream(emission: Emission, stream: Stream): Promise<void> {
 
     return new Promise<void>((resolve) => {
       const handleCompletion = async () => {

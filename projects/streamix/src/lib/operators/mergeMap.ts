@@ -1,30 +1,20 @@
+import { Subject } from '../../lib';
 import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { promisifiedCounter } from '../utils';
 
 export class MergeMapOperator extends Operator {
   private readonly project: (value: any) => Subscribable;
-  private outerStream: Subscribable;
+  private outerStream = new Subject();
   private activeInnerStreams: Subscribable[] = [];
   private processingPromises: Promise<void>[] = [];
 
   private input?: Subscribable;
-  private output?: Subscribable;
+  private output?: Stream;
   private counter = promisifiedCounter(0);
 
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
-    this.outerStream = new Stream();
-
-    Object.assign(this.outerStream, {
-      run: async () => {
-        await Promise.race([
-          this.outerStream.awaitCompletion(),
-          this.outerStream.awaitTermination()
-        ]);
-        await Promise.all(this.processingPromises);
-      }
-    });
 
     // Handle events for the outer stream
     this.outerStream.isCancelled.then(() => {
@@ -52,7 +42,7 @@ export class MergeMapOperator extends Operator {
     return this.processEmission(emission, this.output!);
   }
 
-  private async processEmission(emission: Emission, stream: Subscribable): Promise<Emission> {
+  private async processEmission(emission: Emission, stream: Stream): Promise<Emission> {
     if (await this.checkAndStopStream(stream, emission)) {
       return emission;
     }
