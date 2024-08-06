@@ -1,9 +1,7 @@
-import { Emission } from '../abstractions/emission';
-import { Stream } from '../abstractions/stream';
-import { promisified } from '../utils';
+import { Emission, promisified, PromisifiedType, Stream } from '../../lib';
 
-export class Subject<T = void> extends Stream {
-  protected emissionQueue: Emission[] = [];
+export class Subject<T = void> extends Stream<any> {
+  protected emissionQueue: PromisifiedType<Emission>[] = [];
   protected emissionAvailable = promisified<boolean>(false);
 
   override async run(): Promise<void> {
@@ -25,7 +23,8 @@ export class Subject<T = void> extends Stream {
             }
 
             const emission = this.emissionQueue.shift()!;
-            await super.emit(emission, this.head!);
+            await super.emit(emission(), this.head!);
+            emission.resolve(emission());
           } while (this.emissionQueue.length > 0);
         } else { break; }
       }
@@ -34,15 +33,19 @@ export class Subject<T = void> extends Stream {
     }
   }
 
-  next(value?: T): void {
+  next(value?: T): Promise<void> {
     if (this.isStopped()) {
       console.warn('Cannot push value to a stopped Subject.');
-      return;
+      return Promise.resolve();
     }
 
     if (!this.isStopRequested() && !this.isCancelled()) {
-      this.emissionQueue.push({ value });
+      let emission = promisified<Emission>({ value });
+      this.emissionQueue.push(emission);
       this.emissionAvailable.resolve(true);
+      return emission.then(() => Promise.resolve());
     }
+
+    return this.isStopped.then(() => Promise.resolve());
   }
 }

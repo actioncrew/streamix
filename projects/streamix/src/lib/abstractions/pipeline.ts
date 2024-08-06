@@ -1,7 +1,6 @@
 import { CatchErrorOperator, EndWithOperator, FinalizeOperator, StartWithOperator } from '../hooks';
 import { ReduceOperator } from '../operators';
 import { PromisifiedType } from '../utils';
-import { Emission } from './emission';
 import { HookType } from './hook';
 import { Operator } from './operator';
 import { Stream } from './stream';
@@ -144,14 +143,9 @@ export class Pipeline<T = any> implements Subscribable {
       return subscription;
     };
 
-    if (this.last.subscribers.length === 0) {
-      for (let i = this.streams.length - 1; i >= 0; i--) {
-        if(!this.streams[i].isRunning()) {
-          subscribeToStream(this.streams[i], i === this.streams.length - 1 ? callback : defaultCallback);
-        }
-      }
-    } else {
-      this.last.subscribers.push(callback);
+
+    for (let i = this.streams.length - 1; i >= 0; i--) {
+      subscribeToStream(this.streams[i], i === this.streams.length - 1 ? callback : defaultCallback);
     }
 
     return {
@@ -159,10 +153,6 @@ export class Pipeline<T = any> implements Subscribable {
         subscriptions.forEach(subscription => subscription.unsubscribe());
       }
     };
-  }
-
-  emit(emission: Emission, next: Operator): Promise<void> {
-    throw new Error("Not implemented.");
   }
 
   private get first(): Subscribable<T> {

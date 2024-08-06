@@ -1,5 +1,4 @@
 import { PromisifiedType } from '../utils';
-import { Emission } from './emission';
 import { HookType } from './hook';
 import { Operator } from './operator';
 import { Subscription } from './subscription';
@@ -33,6 +32,4 @@ export interface Subscribable<T = any> {
 
   pipe(...operators: Operator[]): Subscribable<T>;
   subscribe(callback: ((value: T) => any) | void): Subscription;
-
-  emit(emission: Emission, next: Operator): Promise<void>;
 }

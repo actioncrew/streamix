@@ -1,6 +1,7 @@
 import { ConcatMapOperator, Emission, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
+
   let project: (value: any) => Stream;
   let mockStream: Stream; // Assuming AbstractStream defines basic functionalities
 
