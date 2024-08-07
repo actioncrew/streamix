@@ -62,7 +62,7 @@ describe('DefaultIfEmptyOperator', () => {
     });
   });
 
-  test('should not emit default value if values are emitted before', async () => {
+  test('should not emit default value if values are emitted before', (done) => {
     const stream = new Subject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(
@@ -77,10 +77,14 @@ describe('DefaultIfEmptyOperator', () => {
       emittedValues.push(value);
     });
 
-    await stream.next('Value 1');
-    await stream.next('Value 2');
-    await stream.complete();
+    stream.next('Value 1');
+    stream.next('Value 2');
 
-    expect(emittedValues).toEqual(['Value 3', 'Value 3']);
+    processedStream.complete();
+
+    processedStream.isStopped.then(() => {
+      expect(emittedValues).toEqual(['Value 3', 'Value 3']);
+      done();
+    })
   });
 });
