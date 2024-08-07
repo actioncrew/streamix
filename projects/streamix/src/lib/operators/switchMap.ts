@@ -20,7 +20,7 @@ export class SwitchMapOperator extends Operator {
     this.outerStream.isStopped.then(() => this.cleanup());
   }
 
-  private async cleanup() {
+  override async cleanup() {
     await this.stopInnerStream();
     if (this.output && !this.output.isStopped()) {
       await this.output.complete();
