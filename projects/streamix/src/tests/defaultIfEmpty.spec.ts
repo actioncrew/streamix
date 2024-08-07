@@ -19,7 +19,7 @@ describe('DefaultIfEmptyOperator', () => {
     processedStream.complete();
   });
 
-  test('should not emit the default value if values are emitted', async () => {
+  test('should not emit the default value if values are emitted', (done) => {
     const stream = new Subject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(defaultIfEmpty(defaultValue));
@@ -29,14 +29,17 @@ describe('DefaultIfEmptyOperator', () => {
       emittedValues.push(value);
     });
 
-    await stream.next('Value 1');
-    await stream.next('Value 2');
-    await stream.complete();
+    stream.next('Value 1');
+    stream.next('Value 2');
+    stream.complete();
 
-    expect(emittedValues).toEqual(['Value 1', 'Value 2']);
+    processedStream.isStopped.then(() => {
+      expect(emittedValues).toEqual(['Value 1', 'Value 2']);
+      done();
+    })
   });
 
-  test('should emit default value when one operator returns EMPTY', async () => {
+  test('should emit default value when one operator returns EMPTY', (done) => {
     const stream = new Subject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(
@@ -50,13 +53,16 @@ describe('DefaultIfEmptyOperator', () => {
       emittedValues.push(value);
     });
 
-    await stream.next('value 1');
-    await stream.complete();
+    stream.next('value 1');
+    stream.complete();
 
-    expect(emittedValues).toEqual([defaultValue]);
+    processedStream.isStopped.then(() => {
+      expect(emittedValues).toEqual([defaultValue]);
+      done();
+    });
   });
 
-  test('should not emit default value if values are emitted before', async () => {
+  test('should not emit default value if values are emitted before', (done) => {
     const stream = new Subject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(
@@ -71,10 +77,13 @@ describe('DefaultIfEmptyOperator', () => {
       emittedValues.push(value);
     });
 
-    await stream.next('Value 1');
-    await stream.next('Value 2');
-    await stream.complete();
+    stream.next('Value 1');
+    stream.next('Value 2');
+    stream.complete();
 
-    expect(emittedValues).toEqual(['Value 3', 'Value 3']);
+    processedStream.isStopped.then(() => {
+      expect(emittedValues).toEqual(['Value 3', 'Value 3']);
+      done();
+    })
   });
 });
