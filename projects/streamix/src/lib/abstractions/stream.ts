@@ -23,6 +23,7 @@ export class Stream<T = any> {
   onComplete = hook();
   onStop = hook();
   onError = hook();
+  onEmission = hook();
 
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
@@ -128,7 +129,7 @@ export class Stream<T = any> {
     result.isUnsubscribed = promisified<boolean>(false);
     result.isRunning = promisified<boolean>(false);
 
-    result.subscribers = this.subscribers.slice();
+    result.subscribers = [];
 
     result.onStart = hook();
     result.onComplete = hook();

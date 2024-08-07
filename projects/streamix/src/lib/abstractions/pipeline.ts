@@ -1,4 +1,4 @@
-import { CatchErrorOperator, EndWithOperator, FinalizeOperator, StartWithOperator } from '../hooks';
+import { CatchErrorOperator, DefaultIfEmptyOperator, EndWithOperator, FinalizeOperator, StartWithOperator } from '../hooks';
 import { ReduceOperator } from '../operators';
 import { PromisifiedType } from '../utils';
 import { HookType } from './hook';
@@ -46,6 +46,8 @@ export class Pipeline<T = any> implements Subscribable {
           currentStream.onError.chain(operator.callback.bind(operator));
         } else if (operator instanceof FinalizeOperator) {
           currentStream.onStop.chain(operator.callback.bind(operator));
+        } else if (operator instanceof DefaultIfEmptyOperator) {
+          currentStream.onComplete.chain(operator.callback.bind(operator));
         }
 
         if ('outerStream' in operator) {
