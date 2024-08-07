@@ -2,14 +2,11 @@ import { Emission, promisified, PromisifiedType, Stream } from '../../lib';
 
 export class Subject<T = any> extends Stream<T> {
   protected emissionQueue: PromisifiedType<Emission>[] = [];
-  protected emissionAvailable: Promise<void>;
+  protected emissionAvailable = promisified<boolean>(false);
   protected emissionResolver: (() => void) | null = null;
 
   constructor() {
     super();
-    this.emissionAvailable = new Promise(resolve => {
-      this.emissionResolver = resolve;
-    });
   }
 
   override async run(): Promise<void> {
@@ -19,13 +16,11 @@ export class Subject<T = any> extends Stream<T> {
           await Promise.race([
             this.awaitCompletion(),
             this.awaitTermination(),
-            this.emissionAvailable
+            this.emissionAvailable.promise()
           ]);
 
           // Reset emissionAvailable for next iteration
-          this.emissionAvailable = new Promise(resolve => {
-            this.emissionResolver = resolve;
-          });
+          this.emissionAvailable.reset();
 
           // Check termination condition again after awaiting
           if (this.shouldTerminate()) break;
@@ -66,9 +61,8 @@ export class Subject<T = any> extends Stream<T> {
 
     const emission = promisified<Emission>({ value });
     this.emissionQueue.push(emission);
-    if (this.emissionResolver) {
-      this.emissionResolver();
-      this.emissionResolver = null;
+    if (this.emissionQueue.length === 1) {
+      this.emissionAvailable.resolve(true);
     }
     return emission.then(() => Promise.resolve());
   }

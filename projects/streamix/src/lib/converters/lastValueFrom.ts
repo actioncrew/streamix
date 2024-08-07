@@ -10,7 +10,7 @@ export class LastValueFromConverter extends Converter<Subscribable, Promise<any>
       let lastValue = undefined;
 
       try {
-        this.promise = stream.isStopped.promise;
+        this.promise = stream.isStopped.promise();
         const unsubscribe = stream.subscribe((value) => {
           lastValue = value; hasEmitted = true;
         });
