@@ -2,31 +2,56 @@ import { Emission, promisified, PromisifiedType, Stream } from '../../lib';
 
 export class Subject<T = any> extends Stream<T> {
   protected emissionQueue: PromisifiedType<Emission>[] = [];
-  protected emissionAvailable = promisified<boolean>(false);
+  protected emissionAvailable: Promise<void>;
+  protected emissionResolver: (() => void) | null = null;
+
+  constructor() {
+    super();
+    this.emissionAvailable = new Promise(resolve => {
+      this.emissionResolver = resolve;
+    });
+  }
 
   override async run(): Promise<void> {
     try {
-      while (true) {
-        await Promise.race([this.awaitCompletion(), this.awaitTermination(), this.emissionAvailable.promise]);
+      while (!this.shouldTerminate()) {
+        if (this.emissionQueue.length === 0) {
+          await Promise.race([
+            this.awaitCompletion(),
+            this.awaitTermination(),
+            this.emissionAvailable
+          ]);
 
-        if (this.emissionAvailable()) {
-          this.emissionAvailable.reset();
+          // Reset emissionAvailable for next iteration
+          this.emissionAvailable = new Promise(resolve => {
+            this.emissionResolver = resolve;
+          });
 
-          do {
-            if (this.shouldTerminate()) {
-              this.emissionQueue = [];
-              break;
-            }
+          // Check termination condition again after awaiting
+          if (this.shouldTerminate()) break;
+        }
 
-            if (this.shouldComplete() && this.emissionQueue.length === 0) {
-              break;
-            }
+        // Process all available emissions
+        while (this.emissionQueue.length > 0) {
+          if (this.shouldTerminate()) {
+            this.emissionQueue = [];
+            break;
+          }
 
-            const emission = this.emissionQueue.shift()!;
-            await super.emit(emission(), this.head!);
-            emission.resolve(emission());
-          } while (this.emissionQueue.length > 0);
-        } else { break; }
+          const emission = this.emissionQueue.shift()!;
+          const value = emission();
+          await super.emit(value, this.head!);
+          emission.resolve(value);
+
+          if (this.shouldComplete() && this.emissionQueue.length === 0) {
+            return; // Exit the method if completed and queue is empty
+          }
+        }
+
+        // If we should complete and there are no more emissions, exit
+        if (this.shouldComplete() && this.emissionQueue.length === 0) {
+          return;
+        }
       }
     } catch (error: any) {
       console.warn(`Error in Subject ${this.constructor.name} run:`, error);
@@ -39,13 +64,12 @@ export class Subject<T = any> extends Stream<T> {
       return Promise.resolve();
     }
 
-    if (!this.isStopRequested() && !this.isCancelled()) {
-      let emission = promisified<Emission>({ value });
-      this.emissionQueue.push(emission);
-      this.emissionAvailable.resolve(true);
-      return emission.then(() => Promise.resolve());
+    const emission = promisified<Emission>({ value });
+    this.emissionQueue.push(emission);
+    if (this.emissionResolver) {
+      this.emissionResolver();
+      this.emissionResolver = null;
     }
-
-    return this.isStopped.then(() => Promise.resolve());
+    return emission.then(() => Promise.resolve());
   }
 }
