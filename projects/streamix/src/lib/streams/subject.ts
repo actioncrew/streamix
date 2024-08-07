@@ -1,6 +1,6 @@
 import { Emission, promisified, PromisifiedType, Stream } from '../../lib';
 
-export class Subject<T = void> extends Stream<any> {
+export class Subject<T> extends Stream<any> {
   protected emissionQueue: PromisifiedType<Emission>[] = [];
   protected emissionAvailable = promisified<boolean>(false);
 
