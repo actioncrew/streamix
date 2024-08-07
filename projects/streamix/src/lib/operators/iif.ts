@@ -25,7 +25,7 @@ export class IifOperator extends Operator {
     this.outerStream.isStopped.then(() => this.cleanup());
   }
 
-  private async cleanup() {
+  override async cleanup() {
     if (this.innerSubscription) {
       this.innerSubscription.unsubscribe();
     }

@@ -83,7 +83,7 @@ export class ConcatMapOperator extends Operator {
     callback();
   }
 
-  private async cleanup() {
+  override async cleanup() {
     await this.stopStreams(this.innerStream, this.input, this.output);
   }
 
