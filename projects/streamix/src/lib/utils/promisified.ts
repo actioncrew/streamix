@@ -29,7 +29,7 @@ export function promisified<T>(initialValue: T) {
     _reject(reason);
   };
 
-  innerFunction.promise = _promise;
+  innerFunction.promise = () => _promise;
 
   innerFunction.reset = function () {
     _promise = new Promise<T>((resolve, reject) => {
@@ -47,9 +47,9 @@ export function promisified<T>(initialValue: T) {
 }
 
 promisified.all = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any[]> {
-  return Promise.all(promises.map(p => p.promise));
+  return Promise.all(promises.map(p => p.promise()));
 };
 
 promisified.race = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any> {
-  return Promise.race(promises.map(p => p.promise));
+  return Promise.race(promises.map(p => p.promise()));
 };
