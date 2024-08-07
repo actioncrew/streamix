@@ -1,5 +1,8 @@
+import { Stream } from './stream';
+
 export interface Hook {
   callback: (params?: any) => void | Promise<void>;
+  init:(stream: Stream) => void;
 }
 
 export interface HookType {
@@ -9,6 +12,7 @@ export interface HookType {
 }
 
 export function hook(): HookType {
+  let boundStream = undefined;
   const callbacks: ((params?: any) => void | Promise<void>)[] = [];
 
   async function process(params?: any): Promise<void> {

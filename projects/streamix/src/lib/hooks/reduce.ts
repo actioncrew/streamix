@@ -1,9 +1,10 @@
-import { Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 import { Hook } from './../abstractions/hook';
 
 export class ReduceOperator extends Operator implements Hook {
+  private boundStream!: Stream;
   private readonly accumulator: (acc: any, value: any) => any;
   private readonly seed: any;
   private accumulatedValue: any;
@@ -15,8 +16,13 @@ export class ReduceOperator extends Operator implements Hook {
     this.accumulatedValue = seed;
   }
 
-  async callback({ stream }: any): Promise<void> {
-    await stream.emit({ value: this.accumulatedValue }, this.next!);
+  init(stream: Stream) {
+    this.boundStream = stream;
+    this.boundStream.onComplete.chain(this.callback.bind(this));
+  }
+
+  async callback(params?: any): Promise<void> {
+    await this.boundStream.emit({ value: this.accumulatedValue }, this.next!);
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

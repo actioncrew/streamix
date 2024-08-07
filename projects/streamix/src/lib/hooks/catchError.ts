@@ -1,14 +1,20 @@
-import { Emission, Operator, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { Hook } from '../abstractions/hook';
 
 
 export class CatchErrorOperator extends Operator implements Hook {
+  private boundStream!: Stream;
 
-  constructor(public handler: (error?: any) => void | Promise<void>) {
+  constructor(private handler: (error?: any) => void | Promise<void>) {
     super();
   }
 
-  async callback({ stream, error }: any): Promise<void> {
+  init(stream: Stream) {
+    this.boundStream = stream;
+    this.boundStream.onError.chain(this.callback.bind(this));
+  }
+
+  async callback({ error }: any): Promise<void> {
     return this.handler(error);
   }
 
