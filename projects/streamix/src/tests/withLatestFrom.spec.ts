@@ -85,7 +85,7 @@ describe('withLatestFrom operator', () => {
 
     let results: any[] = [];
 
-    otherStream.isStopped.promise.then(() => {
+    otherStream.isStopped.then(() => {
       combinedStream.subscribe((value) => {
         results.push(value);
       });

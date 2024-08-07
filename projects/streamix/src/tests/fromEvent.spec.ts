@@ -14,7 +14,7 @@ describe('fromEvent function', () => {
     });
 
     // Simulate click events
-    stream.isRunning.promise.then(() => {
+    stream.isRunning.then(() => {
       element.click();
       element.click();
       stream.complete();

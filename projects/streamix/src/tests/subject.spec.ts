@@ -11,6 +11,7 @@ describe('Subject', () => {
 
     subject.next('value1');
     subject.next('value2');
+    subject.complete();
 
     subject.isStopped.then(() => {
       expect(emittedValues).toEqual(['value1', 'value2']);

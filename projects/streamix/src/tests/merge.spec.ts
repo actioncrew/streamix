@@ -48,7 +48,7 @@ describe('MergeStream', () => {
     const mergeStream = new MergeStream(source1, source2);
 
     let isComplete = false;
-    mergeStream.isAutoComplete.promise.then(() => {
+    mergeStream.isAutoComplete.then(() => {
       isComplete = true;
     });
 

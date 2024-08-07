@@ -21,7 +21,7 @@ describe('OfStream', () => {
     const ofStream = new OfStream(value);
 
     let isComplete = false;
-    ofStream.isAutoComplete.promise.then(() => {
+    ofStream.isAutoComplete.then(() => {
       isComplete = true;
     });
 
