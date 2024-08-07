@@ -1,17 +1,23 @@
-import { Emission, Hook, Operator, Subscribable } from '../abstractions';
+import { Emission, Hook, Operator, Stream, Subscribable } from '../abstractions';
 
 export class DefaultIfEmptyOperator extends Operator implements Hook {
+  private boundStream!: Stream;
   private hasEmitted = false;
 
   constructor(private defaultValue: any) {
     super();
   }
 
-  async callback({ stream, error }: any): Promise<void> {
+  init(stream: Stream) {
+    this.boundStream = stream;
+  }
+
+  async callback(params?: any): Promise<void> {
     if(!this.hasEmitted) {
-      return stream.emit({ value: this.defaultValue }, stream.head!);
+      return this.boundStream.emit({ value: this.defaultValue }, this.next!);
     }
   }
+
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     // If the emission is not a phantom, cancelled, or failed, mark it as emitted
     if (!emission.isPhantom && !emission.isCancelled && !emission.isFailed) {

@@ -74,22 +74,22 @@ export class Stream<T = any> {
       queueMicrotask(async () => {
         try {
           // Emit start value if defined
-          await this.onStart?.process({ stream: this });
+          await this.onStart?.process();
 
           // Start the actual stream logic without waiting for it to complete
           await this.run();
 
           // Emit end value if defined
-          await this.onComplete?.process({ stream: this });
+          await this.onComplete?.process();
         } catch (error) {
           // Handle error if catchError defined
-          await this.onError?.process({ stream: this, error });
+          await this.onError?.process({ error });
           if (this.onError === undefined) {
             this.isFailed.resolve(error);
           }
         } finally {
           // Handle finalize callback
-          await this.onStop?.process({ stream: this });
+          await this.onStop?.process();
 
           this.isStopped.resolve(true);
           this.isRunning.reset();

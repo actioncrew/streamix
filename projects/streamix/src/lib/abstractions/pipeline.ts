@@ -1,7 +1,5 @@
-import { CatchErrorOperator, DefaultIfEmptyOperator, EndWithOperator, FinalizeOperator, StartWithOperator } from '../hooks';
-import { ReduceOperator } from '../operators';
 import { PromisifiedType } from '../utils';
-import { HookType } from './hook';
+import { Hook, HookType } from './hook';
 import { Operator } from './operator';
 import { Stream } from './stream';
 import { Subscribable } from './subscribable';
@@ -38,16 +36,9 @@ export class Pipeline<T = any> implements Subscribable {
           currentStream.tail = operator;
         }
 
-        if (operator instanceof StartWithOperator) {
-          currentStream.onStart.chain(operator.callback.bind(operator));
-        } else if (operator instanceof EndWithOperator || operator instanceof ReduceOperator) {
-          currentStream.onComplete.chain(operator.callback.bind(operator));
-        } else if (operator instanceof CatchErrorOperator) {
-          currentStream.onError.chain(operator.callback.bind(operator));
-        } else if (operator instanceof FinalizeOperator) {
-          currentStream.onStop.chain(operator.callback.bind(operator));
-        } else if (operator instanceof DefaultIfEmptyOperator) {
-          currentStream.onComplete.chain(operator.callback.bind(operator));
+        const hook = operator as unknown as Hook;
+        if (typeof hook.init === 'function') {
+          hook.init(currentStream);
         }
 
         if ('outerStream' in operator) {
