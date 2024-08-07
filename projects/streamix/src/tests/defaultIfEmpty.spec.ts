@@ -31,12 +31,12 @@ describe('DefaultIfEmptyOperator', () => {
 
     stream.next('Value 1');
     stream.next('Value 2');
-    stream.complete();
+    processedStream.complete();
 
     processedStream.isStopped.then(() => {
       expect(emittedValues).toEqual(['Value 1', 'Value 2']);
       done();
-    })
+    });
   });
 
   test('should emit default value when one operator returns EMPTY', (done) => {
@@ -54,7 +54,7 @@ describe('DefaultIfEmptyOperator', () => {
     });
 
     stream.next('value 1');
-    stream.complete();
+    processedStream.complete();
 
     processedStream.isStopped.then(() => {
       expect(emittedValues).toEqual([defaultValue]);
@@ -62,7 +62,7 @@ describe('DefaultIfEmptyOperator', () => {
     });
   });
 
-  test('should not emit default value if values are emitted before', (done) => {
+  test('should not emit default value if values are emitted before', async () => {
     const stream = new Subject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(
@@ -77,13 +77,10 @@ describe('DefaultIfEmptyOperator', () => {
       emittedValues.push(value);
     });
 
-    stream.next('Value 1');
-    stream.next('Value 2');
-    stream.complete();
+    await stream.next('Value 1');
+    await stream.next('Value 2');
+    await stream.complete();
 
-    processedStream.isStopped.then(() => {
-      expect(emittedValues).toEqual(['Value 3', 'Value 3']);
-      done();
-    })
+    expect(emittedValues).toEqual(['Value 3', 'Value 3']);
   });
 });
