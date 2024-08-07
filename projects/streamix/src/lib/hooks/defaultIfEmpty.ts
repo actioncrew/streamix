@@ -10,6 +10,7 @@ export class DefaultIfEmptyOperator extends Operator implements Hook {
 
   init(stream: Stream) {
     this.boundStream = stream;
+    this.boundStream.onComplete.chain(this.callback.bind(this));
   }
 
   async callback(params?: any): Promise<void> {
