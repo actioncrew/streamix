@@ -1,4 +1,4 @@
-import { ConcatMapOperator, Emission, Stream } from '../lib';
+import { ConcatMapOperator, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
 
@@ -70,25 +70,9 @@ describe('ConcatMapOperator', () => {
     };
   });
 
-  it('should complete inner stream before processing next emission', async () => {
-    class MockInnerStream extends Stream {
-      constructor(private value: string) {
-        super();
-      }
+  it('should complete inner stream before processing next emission', (done) => {
 
-      override async run(): Promise<void> {
-        await this.emit({value: this.value}, this.head!);
-        this.isAutoComplete.resolve(true);
-      }
-    }
-
-    class MockStream extends Stream {
-      override async run(): Promise<void> {
-        this.isAutoComplete.resolve(true);
-      }
-    }
-
-    const operator = new ConcatMapOperator(value => new MockInnerStream(value));
+    const operator = new ConcatMapOperator(value => of(value));
     const emissions = [
       'data1',
       'data2',
@@ -98,43 +82,20 @@ describe('ConcatMapOperator', () => {
     ];
 
     let processedOrder: any[] = [];
-    const mockStream = new MockStream();
-    const mockNext = {
-      process: async (emission: Emission, stream: Stream) => {
-        processedOrder.push(emission.value);
-        return emission;
-      },
-    };
-    mockStream.nextStream = (operator as any).outerStream;
-    mockStream.nextStream!.head = mockNext as any;
+    const mockStream$ = from(emissions).pipe(operator);
 
-    for (const emission of emissions) {
-      await operator.handle({value: emission}, mockStream);
-    }
+    mockStream$.subscribe((value) => {
+      processedOrder.push(value);
+    });
 
-    expect(processedOrder).toEqual(['data1', 'data2', 'data3', 'data4', 'data5']);
+    mockStream$.isStopped.then(() => {
+      expect(processedOrder).toEqual(['data1', 'data2', 'data3', 'data4', 'data5']);
+      done();
+    });
   });
 
 
-  it('should handle multiple emissions from outer stream and inner stream', async () => {
-    class MockInnerStream extends Stream {
-      constructor(private values: string[]) {
-        super();
-      }
-
-      override async run(): Promise<void> {
-        for (const value of this.values) {
-          await this.emit({ value }, this.head!);
-        }
-        this.isAutoComplete.resolve(true);
-      }
-    }
-
-    class MockStream extends Stream {
-      override async run(): Promise<void> {
-        this.isAutoComplete.resolve(true);
-      }
-    }
+  it('should handle multiple emissions from outer stream and inner stream', (done) => {
 
     const outerEmissions = ['outer1', 'outer2'];
     const innerValues1 = ['inner1a', 'inner1b', 'inner1c'];
@@ -142,36 +103,30 @@ describe('ConcatMapOperator', () => {
 
     const projectFunction = (value: any) => {
       if (value === 'outer1') {
-        return new MockInnerStream(innerValues1);
+        return from(innerValues1);
       } else if (value === 'outer2') {
-        return new MockInnerStream(innerValues2);
+        return from(innerValues2);
       } else {
-        return new MockInnerStream([]);
+        return from([]);
       }
     };
 
     const results: any[] = [];
     const operator = new ConcatMapOperator(projectFunction);
-    const mockStream = new MockStream();
-    const mockNext = {
-      process: async (emission: Emission, stream: Stream) => {
-        results.push(emission.value);
-        return emission;
-      },
-    };
+    const mockStream$ = from(outerEmissions).pipe(operator);
 
-    mockStream.nextStream = (operator as any).outerStream;
-    mockStream.nextStream!.head = mockNext as any;
+    mockStream$.subscribe((value) => {
+      results.push(value)
+    });
 
-    for (const emission of outerEmissions) {
-      await operator.handle({value: emission}, mockStream);
-    }
-
-    expect(results.length).toEqual(6);
-    expect(results).toEqual([
-      'inner1a', 'inner1b', 'inner1c',
-      'inner2a', 'inner2b', 'inner2c'
-    ]);
+    mockStream$.isStopped.then(() => {
+      expect(results.length).toEqual(6);
+      expect(results).toEqual([
+        'inner1a', 'inner1b', 'inner1c',
+        'inner2a', 'inner2b', 'inner2c'
+      ]);
+      done();
+    });
   });
 });
 
