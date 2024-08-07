@@ -6,6 +6,10 @@ export abstract class Operator {
 
   abstract handle(emission: Emission, stream: Subscribable): Promise<Emission>;
 
+  async cleanup(): Promise<void> {
+    throw new Error("Not implemented");
+  }
+
   async process(emission: Emission, stream: Subscribable): Promise<Emission> {
     if (stream.isCancelled() === false) {
       try {
