@@ -51,8 +51,13 @@ export class Stream<T = any> {
   }
 
   complete(): Promise<void> {
-    this.isStopRequested.resolve(true);
-    return this.isRunning() ? this.isStopped.then(() => Promise.resolve()) : Promise.resolve();
+
+    return new Promise<void>((resolve) => {
+      const timer = setTimeout(() => {
+        this.isStopRequested.resolve(true);
+        this.isStopped.then(() => resolve());
+      }, 0);
+    });
   }
 
   unsubscribe(callback: (value: T) => any): void {
