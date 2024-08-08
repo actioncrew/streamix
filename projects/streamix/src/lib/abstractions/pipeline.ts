@@ -42,12 +42,12 @@ export class Pipeline<T = any> implements Subscribable {
         }
 
         if ('outerStream' in operator) {
-          currentStream.tail = undefined;
           currentStream = operator.outerStream as any;
           this.streams.push(currentStream);
+          previousOperator = undefined;
+        } else {
+          previousOperator = operator;
         }
-
-        previousOperator = operator;
       }
     });
   }
