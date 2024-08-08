@@ -6,7 +6,7 @@ import { Pipeline } from './pipeline';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
-export class Stream<T = any> {
+export class Stream<T = any> implements Subscribable {
 
   isAutoComplete = promisified<boolean>(false);
   isCancelled = promisified<boolean>(false);
@@ -179,7 +179,7 @@ export class Stream<T = any> {
       currentEmission = await (next?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
 
       if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
-        await Promise.all(this.subscribers.map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()));
+        await Promise.all((() => this.subscribers.map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()))());
       }
 
       currentEmission.isComplete = true;
