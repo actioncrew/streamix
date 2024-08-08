@@ -1,4 +1,4 @@
-import { Subject } from '../../lib';
+import { promisifiedCounter, Subject } from '../../lib';
 import { Emission, Operator, Subscribable } from '../abstractions';
 
 export class ConcatMapOperator extends Operator {
@@ -9,6 +9,8 @@ export class ConcatMapOperator extends Operator {
   private queue: Emission[] = [];
   private input?: Subscribable;
   private output?: Subject;
+  private emissionNumber = 0;
+  private executionNumber = promisifiedCounter(0)
 
   constructor(project: (value: any) => Subscribable) {
     super();
@@ -23,9 +25,11 @@ export class ConcatMapOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
+    this.emissionNumber++;
+
     if (!this.input) {
       this.input = stream;
-      this.input.isStopped.then(() => this.innerStream?.isStopped.promise()).then(() => this.cleanup());
+      this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber)).then(() => this.cleanup());
     }
     this.output = this.output || this.outerStream;
 
@@ -56,6 +60,7 @@ export class ConcatMapOperator extends Operator {
     return new Promise<void>((resolve) => {
       const handleCompletion = async () => {
         this.innerStream = null;
+        this.executionNumber.increment();
         await this.processQueue();
         resolve();
       };
