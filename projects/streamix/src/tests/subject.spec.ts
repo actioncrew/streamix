@@ -90,4 +90,41 @@ describe('Subject', () => {
       subscription.unsubscribe();
     })
   });
+  it('stress test, synchronous case', async () => {
+    const subject = new Subject<any>();
+
+    let counter = 0;
+    const subscription = subject.subscribe(value => {
+      expect(value === counter++).toBeTruthy();
+    });
+
+    for (let i = 0; i < 10000; i++) {
+      subject.next(i);
+    }
+
+    subject.complete();
+
+    subject.isStopped.then(() => {
+      subscription.unsubscribe();
+    })
+  });
+
+  it('stress test, asynchronous case', async () => {
+    const subject = new Subject<any>();
+
+    let counter = 0;
+    const subscription = subject.subscribe(value => {
+      expect(value === counter++).toBeTruthy();
+    });
+
+    for (let i = 0; i < 10000; i++) {
+      await subject.next(i);
+    }
+
+    await subject.complete();
+
+    subject.isStopped.then(() => {
+      subscription.unsubscribe();
+    })
+  });
 });

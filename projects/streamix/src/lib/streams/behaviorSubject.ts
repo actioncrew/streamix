@@ -1,10 +1,8 @@
-import { Emission, promisified } from '../../lib';
 import { Subject } from './subject';
 
 export class BehaviorSubject<T = any> extends Subject<T> {
   constructor(initialValue: T) {
     super();
-    this.emissionQueue.push(promisified<Emission>({ value: initialValue }));
-    this.emissionResolver!();
+    queueMicrotask(() => this.emissionAvailable = (() => this.isRunning.then(() => this.emissionAvailable).then(() => this.emit({ value: initialValue }, this.head!)))());
   }
 }
