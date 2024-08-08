@@ -1,11 +1,11 @@
 import { Subject } from '../../lib';
-import { Emission, Operator, Stream, Subscribable, Subscription } from '../abstractions';
+import { Emission, Operator, Subscribable, Subscription } from '../abstractions';
 
 export class SwitchMapOperator extends Operator {
   private project: (value: any) => Subscribable;
   private activeInnerStream?: Subscribable;
   private outerStream = new Subject();
-  private output?: Stream;
+  private output?: Subject;
   private innerStreamSubscription?: Subscription;
 
   constructor(project: (value: any) => Subscribable) {
@@ -52,7 +52,7 @@ export class SwitchMapOperator extends Operator {
     }
   }
 
-  private async processEmission(emission: Emission, stream: Stream): Promise<Emission> {
+  private async processEmission(emission: Emission, stream: Subject): Promise<Emission> {
     const newInnerStream = this.project(emission.value);
 
     if (this.activeInnerStream === newInnerStream) {
@@ -65,7 +65,7 @@ export class SwitchMapOperator extends Operator {
 
     this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
       if (!stream.shouldTerminate() && !stream.shouldComplete()) {
-        await stream.emit({ value }, stream.head!);
+        await stream.next(value);
       }
     });
 

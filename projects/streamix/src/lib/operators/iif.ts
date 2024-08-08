@@ -1,5 +1,5 @@
 import { Subject } from '../../lib';
-import { Stream, Subscribable } from '../abstractions';
+import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
@@ -7,7 +7,7 @@ export class IifOperator extends Operator {
   private outerStream = new Subject();
 
   private input?: Subscribable;
-  private output?: Stream;
+  private output?: Subject;
   private innerStream?: Subscribable;
   private innerSubscription?: { unsubscribe: () => void };
 
@@ -48,7 +48,7 @@ export class IifOperator extends Operator {
       this.innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
 
       this.innerSubscription = this.innerStream.subscribe(async (value) => {
-        await this.output!.emit({value}, this.output?.head!);
+        await this.output!.next(value);
       });
 
       Promise.race([this.innerStream.awaitCompletion(), this.innerStream.awaitTermination()]).then((error) => {
