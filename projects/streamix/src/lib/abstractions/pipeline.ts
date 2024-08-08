@@ -10,14 +10,14 @@ export class Pipeline<T = any> implements Subscribable {
   private operators: Operator[] = [];
 
   constructor(stream: Stream<T>, ...operators: Operator[]) {
-    const mainStream = stream.clone();
+    const mainStream = stream;
     this.streams.push(mainStream);
     this.applyOperators(...operators);
   }
 
   private applyOperators(...operators: Operator[]): void {
     this.operators = operators;
-    let currentStream = this.streams[0] as Stream<T>;
+    let currentStream = this.first as Stream<T>;
     let previousOperator: Operator | undefined;
 
     operators.forEach(operator => {
@@ -42,6 +42,7 @@ export class Pipeline<T = any> implements Subscribable {
         }
 
         if ('outerStream' in operator) {
+          currentStream.tail = undefined;
           currentStream = operator.outerStream as any;
           this.streams.push(currentStream);
         }
