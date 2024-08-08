@@ -112,8 +112,6 @@ export class Stream<T = any> implements Subscribable {
     };
   }
 
-  nextStream: Subscribable<T> | undefined = undefined;
-
   head: Operator | undefined = undefined;
   tail: Operator | undefined = undefined;
 
