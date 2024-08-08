@@ -1,9 +1,9 @@
-import { Emission } from '../abstractions/emission';
 import { Stream } from '../abstractions/stream';
 
 export class FromPromiseStream extends Stream {
-  private readonly promise: Promise<any>;
-  private error?: Error;
+  private promise: Promise<any> | undefined;
+  private resolved: boolean = false; // Track if the promise has been resolved
+  private value: any; // Store resolved value
 
   constructor(promise: Promise<any>) {
     super();
@@ -12,22 +12,25 @@ export class FromPromiseStream extends Stream {
 
   override async run(): Promise<void> {
     if (this.isUnsubscribed() || this.isAutoComplete()) {
-      return Promise.resolve();
+      return;
     }
 
-    const value = await this.promise;
-    return super.emit({ value }, this.head!).then(() => {
-      this.isAutoComplete.resolve(true);
-    });
-  }
-
-  override emit(emission: Emission): Promise<void> {
-    if (this.error) {
-      return Promise.reject(this.error);
+    if (!this.resolved) {
+      try {
+        this.value = await this.promise; // Resolve promise and store value
+        this.resolved = true;
+      } catch (error) {
+        this.isFailed.resolve(error);
+        return;
+      }
     }
-    return super.emit(emission, this.head!);
+
+    // Emit stored value
+    await super.emit({ value: this.value }, this.head!);
+    this.isAutoComplete.resolve(true);
   }
 }
+
 
 export function fromPromise(promise: Promise<any>) {
   return new FromPromiseStream(promise);
