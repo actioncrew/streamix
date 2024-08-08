@@ -2,7 +2,6 @@ import { Emission, Operator, Subscribable } from '../abstractions';
 
 export class DelayOperator extends Operator {
   private readonly delayTime: number;
-  private promiseQueue: Promise<Emission> | undefined;
 
   constructor(delayTime: number) {
     super();
@@ -10,26 +9,23 @@ export class DelayOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    // Queue up the promise for delay
-    this.promiseQueue = this.promiseQueue ?? Promise.resolve(emission);
-    this.promiseQueue = this.promiseQueue.then(async (currentEmission) => {
-      if (stream.isCancelled()) {
-        currentEmission.isCancelled = true;
-        return currentEmission;
-      }
+    if (stream.isCancelled()) {
+      emission.isCancelled = true;
+      return emission;
+    }
 
-      return new Promise<Emission>((resolve) => {
-        const timeout = setTimeout(() => resolve(currentEmission), this.delayTime);
+    // Apply the delay
+    await new Promise<Emission>((resolve) => {
+      const timeout = setTimeout(() => resolve(emission), this.delayTime);
 
-        stream.isCancelled.then(() => {
-          currentEmission.isCancelled = true;
-          clearTimeout(timeout);
-          resolve(currentEmission);
-        });
+      stream.isCancelled.then(() => {
+        emission.isCancelled = true;
+        clearTimeout(timeout);
+        resolve(emission);
       });
     });
-    const delayedEmission = await this.promiseQueue;
-    return delayedEmission;
+
+    return emission;
   }
 }
 
