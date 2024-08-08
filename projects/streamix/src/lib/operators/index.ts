@@ -1,4 +1,6 @@
+export * from './bufferCount';
 export * from './concatMap';
+export * from './compute';
 export * from './delay';
 export * from './distinctUntilChanged';
 export * from './filter';
