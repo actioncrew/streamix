@@ -1,20 +1,5 @@
-import {
-  compute,
-  concatMap,
-  delay,
-  finalize,
-  from,
-  fromPromise,
-  map,
-  range,
-  scan,
-  Subscribable,
-  tap,
-} from '@actioncrew/streamix';
+import { compute, concatMap, finalize, fromPromise, map, range, scan, Subscribable, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
-
-const BATCH_SIZE = 1000;
-const DELAY_MS = 100; // Increase delay to make progress visible
 
 // Main Mandelbrot computation function
 function mandelbrotTask(data: { px: number, py: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
@@ -63,41 +48,6 @@ function computeColor(iteration: number, maxIterations: number): { r: number, g:
   return { r: Math.round(r! * 255), g: Math.round(g! * 255), b: Math.round(b! * 255) };
 }
 
-function executeChunkedMandelbrotTask(data: { index: number, width: number, height: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
-  const { index, width, height, maxIterations, zoom, centerX, centerY, panX, panY } = data;
-  const chunkSize = 1000;
-  const result: { px: number, py: number, r: number, g: number, b: number }[] = [];
-  const end = Math.min(index + chunkSize, width * height);
-  for (let i = index; i < end; i++) {
-    const chunkData = {
-      index: i,
-      width,
-      height,
-      maxIterations,
-      zoom,
-      centerX,
-      centerY,
-      panX,
-      panY
-    };
-
-    const px = (chunkData.index % width);
-    const py = Math.floor(chunkData.index / width);
-    result.push(mandelbrotTask({
-      px,
-      py,
-      maxIterations,
-      zoom,
-      centerX,
-      centerY,
-      panX,
-      panY
-    }));
-  }
-
-  return result;
-}
-
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -127,8 +77,8 @@ export class AppComponent implements OnInit {
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
     this.ctx = this.canvas.getContext('2d')!;
 
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
+    this.canvas.width = 100;
+    this.canvas.height = 100;
 
     this.width = this.canvas.width;
     this.height = this.canvas.height;
@@ -164,18 +114,18 @@ export class AppComponent implements OnInit {
     const imageData = this.ctx.createImageData(this.width, this.height);
     const data = imageData.data;
     // Create ComputeOperator instance
-    const computeOperator = compute(executeChunkedMandelbrotTask, mandelbrotTask, computeColor);
+    const computeOperator = compute(mandelbrotTask, computeColor);
 
-    return range(0, this.width * this.height, 1000).pipe(
-      map(index => {
-        const params = { index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY };
+    return range(0, this.width * this.height).pipe(
+      map(i => {
+        const px = i % this.width;
+        const py = Math.floor(i / this.width);
+        const params = { px, py, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY };
         return { value: params };
       }),
       concatMap((emission) => fromPromise(computeOperator.handle(emission, this.fractal$))),
-      delay(0),
-      concatMap(emission => from(emission.value)),
-      map((emission) => {
-        const { px, py, r, g, b } = emission;
+      map(emission => {
+        const { px, py, r, g, b } = emission.value;
         const i = py * this.width + px;
         return { i, r, g, b };
       }),
