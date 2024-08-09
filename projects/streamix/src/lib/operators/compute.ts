@@ -1,29 +1,16 @@
-import { Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { Stream } from '../abstractions';
 
-export class DefineOperator extends Operator {
-  functions: Function[];
-  boundStream!: Stream;
-  worker!: Worker;
-  blob!: Blob;
+export class DefineOperator {
+  private workerPool: Worker[] = [];
+  private workerQueue: Array<(worker: Worker) => void> = [];
+  private maxWorkers: number = navigator.hardwareConcurrency || 4;
 
   constructor(...functions: Function[]) {
-    super();
-    console.log(navigator.hardwareConcurrency);
-    this.functions = functions;
-  }
-
-  callback(params?: any): void | Promise<void> {
-    if(this.worker) {
-      this.worker.terminate();
-    }
-  }
-
-  init(): DefineOperator {
-    if (this.functions.length === 0) {
+    if (functions.length === 0) {
       throw new Error("At least one function (the main task) is required.");
     }
 
-    const [mainTask, ...dependencies] = this.functions;
+    const [mainTask, ...dependencies] = functions;
 
     const injectedDependencies = dependencies.map(fn => {
       let fnBody = fn.toString();
@@ -42,18 +29,38 @@ export class DefineOperator extends Operator {
       };
     `;
 
-    this.blob = new Blob([workerBody], { type: 'application/javascript' });
-    this.worker = new Worker(URL.createObjectURL(this.blob));
+    const blob = new Blob([workerBody], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
 
-    return this;
+    for (let i = 0; i < this.maxWorkers; i++) {
+      this.workerPool.push(new Worker(workerUrl));
+    }
   }
 
-  override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    throw new Error("This operator should not be called within pipeline.");
+  public getIdleWorker(): Promise<Worker> {
+    return new Promise<Worker>((resolve) => {
+      const idleWorker = this.workerPool.shift();
+      if (idleWorker) {
+        resolve(idleWorker);
+      } else {
+        // If no workers are available, add the resolver to the queue
+        this.workerQueue.push(resolve);
+      }
+    });
+  }
+
+  public returnWorker(worker: Worker): void {
+    // Return the worker to the pool and resolve the next promise in the queue, if any
+    if (this.workerQueue.length > 0) {
+      const resolve = this.workerQueue.shift()!;
+      resolve(worker);
+    } else {
+      this.workerPool.push(worker);
+    }
   }
 }
 
-export const define = (...functions: Function[]) => new DefineOperator(...functions).init();
+export const define = (...functions: Function[]) => new DefineOperator(...functions);
 
 export class ComputeStream extends Stream {
   private task: DefineOperator;
@@ -68,17 +75,21 @@ export class ComputeStream extends Stream {
 
   override async run(): Promise<void> {
     let terminateResolve: (() => void) = () => {};
+
     try {
-      this.promise = new Promise<void>((resolve, reject) => {
+      this.promise = new Promise<void>(async (resolve, reject) => {
         terminateResolve = () => resolve();
         if (this.isRunning()) {
-          this.task.worker.postMessage(this.params);
-          this.task.worker.onmessage = async (event) => {
+          const worker = await this.task.getIdleWorker();
+          worker.postMessage(this.params);
+          worker.onmessage = async (event) => {
             await this.emit({ value: event.data }, this.head!);
+            this.task.returnWorker(worker);
             resolve();
           };
-          this.task.worker.onerror = async (error) => {
+          worker.onerror = async (error) => {
             await this.emit({ isFailed: true, error }, this.head!);
+            this.task.returnWorker(worker);
             reject(error);
           };
         } else {
