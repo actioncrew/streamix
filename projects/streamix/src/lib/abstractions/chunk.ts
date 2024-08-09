@@ -50,14 +50,12 @@ export class Chunk<T> implements Subscribable<T> {
   get onEmission(): HookType {
     return this.stream.onEmission;
   }
-  private _head!: Operator;
   get head(): Operator {
     return this.stream.head!;
   }
   set head(value: Operator) {
     this.stream.head = value;
   }
-  private _tail!: Operator;
   get tail(): Operator {
     return this.stream.tail!;
   }
