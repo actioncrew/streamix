@@ -61,7 +61,7 @@ export class Stream<T = any> implements Subscribable {
   }
 
   unsubscribe(callback: (value: T) => any): void {
-    this.subscribers.chain(callback);
+    this.subscribers.remove(callback);
     if (!this.subscribers.hasCallbacks()) {
       this.isStopRequested.resolve(true);
       this.isUnsubscribed.resolve(true);
