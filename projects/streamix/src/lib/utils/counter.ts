@@ -8,14 +8,14 @@ export function promisifiedCounter(initialValue: number = 0) {
     return count;
   }
 
-  innerFunction.increment = function (): void {
-    count++;
+  innerFunction.increment = function (step = 1): void {
+    count += step;
     notifyListener();
     checkWaitFor();
   };
 
-  innerFunction.decrement = function (): void {
-    count--;
+  innerFunction.decrement = function (step = 1): void {
+    count -= step;
     if (count <= 0) {
       notifyListener();
     }
@@ -49,7 +49,7 @@ export function promisifiedCounter(initialValue: number = 0) {
 
     return new Promise<void>((resolve) => {
       waitForPromises.push({ target, resolve });
-      checkWaitFor();
+      checkWaitFor(); // Check immediately in case the target has already been reached
     });
   };
 
@@ -60,9 +60,15 @@ export function promisifiedCounter(initialValue: number = 0) {
   }
 
   function checkWaitFor() {
-    const satisfied = waitForPromises.filter(promiseObj => count === promiseObj.target);
-    waitForPromises.length = 0;
-    satisfied.forEach(promiseObj => promiseObj.resolve());
+    // Iterate over the promises and resolve those whose target has been met
+    for (let i = 0; i < waitForPromises.length; i++) {
+      const promiseObj = waitForPromises[i];
+      if (count === promiseObj.target) {
+        promiseObj.resolve();
+        waitForPromises.splice(i, 1); // Remove the resolved promise
+        i--; // Adjust the index after removal
+      }
+    }
   }
 
   return innerFunction;
