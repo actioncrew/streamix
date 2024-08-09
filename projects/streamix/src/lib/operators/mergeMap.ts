@@ -58,20 +58,26 @@ export class MergeMapOperator extends Operator {
     const innerStream = this.project(emission.value);
     this.activeInnerStreams.push(innerStream);
 
+    let completionPromise = Promise.resolve();
     const processingPromise = new Promise<void>((resolve) => {
-      let promises: Promise<void>[] = [];
+    const promises: Set<Promise<void>> = new Set();
 
-      const handleCompletion = async () => {
-        await Promise.all(promises); // Wait for all next() promises to resolve
-        this.executionNumber.increment(promises.length);
-        promises = [];
+    const handleCompletion = async () => {
+      completionPromise = completionPromise.then(async () => {
+        let snapshot = Array.from(promises);
+        promises.clear(); await Promise.all(snapshot);
+        this.executionNumber.increment();
         this.removeInnerStream(innerStream);
+
+        this.processingPromises = this.processingPromises.filter(p => p !== processingPromise);
         resolve();
-      };
+      });
+      await completionPromise;
+    };
 
       const subscription = innerStream.subscribe((value) => {
         // Gather promises from stream.next() to ensure parallel processing
-        promises.push(
+        promises.add(
           stream.next(value).catch((error) => {
             emission.error = error;
             emission.isFailed = true;

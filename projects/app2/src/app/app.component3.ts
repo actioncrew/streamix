@@ -1,8 +1,8 @@
-import { compute, concatMap, finalize, fromPromise, map, range, scan, Subscribable, tap } from '@actioncrew/streamix';
+import { compute, concatMap, define, finalize, map, range, scan, Subscribable, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 // Main Mandelbrot computation function
-function mandelbrotTask(data: { px: number, py: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
+function computeMandelbrot(data: { px: number, py: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
   const { px, py, maxIterations, zoom, centerX, centerY, panX, panY } = data;
   let x = 0, y = 0;
   const x0 = (px - centerX) / zoom - panX;
@@ -114,7 +114,7 @@ export class AppComponent implements OnInit {
     const imageData = this.ctx.createImageData(this.width, this.height);
     const data = imageData.data;
     // Create ComputeOperator instance
-    const computeOperator = compute(mandelbrotTask, computeColor);
+    const computeOperator = define(computeMandelbrot, computeColor);
 
     return range(0, this.width * this.height).pipe(
       map(i => {
@@ -123,7 +123,7 @@ export class AppComponent implements OnInit {
         const params = { px, py, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY };
         return { value: params };
       }),
-      concatMap((emission) => fromPromise(computeOperator.handle(emission, this.fractal$))),
+      concatMap((emission) => compute(computeOperator, emission)),
       map(emission => {
         const { px, py, r, g, b } = emission.value;
         const i = py * this.width + px;

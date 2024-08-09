@@ -16,9 +16,7 @@ export function promisifiedCounter(initialValue: number = 0) {
 
   innerFunction.decrement = function (step = 1): void {
     count -= step;
-    if (count <= 0) {
-      notifyListener();
-    }
+    notifyListener();
     checkWaitFor();
   };
 
