@@ -11,21 +11,22 @@ export abstract class Operator {
   }
 
   async process(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (stream.isCancelled() === false) {
-      try {
+    try {
+      if (stream.isCancelled() === false) {
         emission = await this.handle(emission, stream);
-      } catch (error) {
-        emission.isFailed = true;
-        emission.error = error;
-      }
-      if (this.next && !emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
-        return this.next.process(emission, stream);
+        if (this.next && !emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
+          return this.next.process(emission, stream);
+        } else {
+          return emission;
+        }
       } else {
+        emission.isCancelled = true;
         return emission;
       }
-    } else {
-      emission.isCancelled = true;
-      return emission;
+    } catch (error) {
+      emission.isFailed = true;
+      emission.error = error;
+      throw error;
     }
   }
 
