@@ -10,7 +10,7 @@ export class ConcatMapOperator extends Operator {
   private input?: Subscribable;
   private output?: Subject;
   private emissionNumber = 0;
-  private executionNumber = promisifiedCounter(0)
+  private executionNumber = promisifiedCounter(0);
 
   constructor(project: (value: any) => Subscribable) {
     super();
