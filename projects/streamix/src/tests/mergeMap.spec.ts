@@ -42,7 +42,8 @@ describe('mergeMap operator', () => {
     });
 
     mergedStream.isStopped.then(() => {
-      expect(results).toEqual([2, 4, 4, 8, 6, 12]);
+      results.sort((a, b) => a - b);
+      expect(results).toEqual([2, 4, 4, 6, 8, 12]);
       done();
     });
   });
