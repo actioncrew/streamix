@@ -1,34 +1,73 @@
-import { promisified } from '../utils';
+import { Stream } from '../abstractions';
+import { promisified, PromisifiedType } from '../utils';
 import { Emission } from './emission';
-import { hook } from './hook';
+import { hook, HookType } from './hook';
 import { Operator } from './operator';
 import { Pipeline } from './pipeline';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
-export class Stream<T = any> implements Subscribable {
+export class Chunk<T> implements Subscribable<T> {
 
-  isAutoComplete = promisified<boolean>(false);
-  isCancelled = promisified<boolean>(false);
-  isStopRequested = promisified<boolean>(false);
-
-  isFailed = promisified<any>(undefined);
-  isStopped = promisified<boolean>(false);
-  isUnsubscribed = promisified<boolean>(false);
-  isRunning = promisified<boolean>(false);
-
-  subscribers = hook();
-
-  onStart = hook();
-  onComplete = hook();
-  onStop = hook();
-  onError = hook();
-  onEmission = hook();
-
+  constructor(private stream: Stream<T>) {
+  }
+  get isAutoComplete(): PromisifiedType<boolean> {
+    return this.stream.isAutoComplete;
+  }
+  get isCancelled(): PromisifiedType<boolean> {
+    return this.stream.isCancelled;
+  }
+  get isStopRequested(): PromisifiedType<boolean> {
+    return this.stream.isStopRequested;
+  }
+  get isFailed(): PromisifiedType<any> {
+    return this.stream.isFailed;
+  }
+  get isStopped(): PromisifiedType<boolean> {
+    return this.stream.isStopped;
+  }
+  get isUnsubscribed(): PromisifiedType<boolean> {
+    return this.stream.isUnsubscribed;
+  }
+  get isRunning(): PromisifiedType<boolean> {
+    return this.stream.isRunning;
+  }
+  get subscribers(): HookType {
+    return this.stream.subscribers;
+  }
+  get onStart(): HookType {
+    return this.stream.onStart;
+  }
+  get onComplete(): HookType {
+    return this.stream.onComplete;
+  }
+  get onStop(): HookType {
+    return this.stream.onStop;
+  }
+  get onError(): HookType {
+    return this.stream.onError;
+  }
+  get onEmission(): HookType {
+    return this.stream.onEmission;
+  }
+  private _head!: Operator;
+  get head(): Operator {
+    return this.stream.head!;
+  }
+  set head(value: Operator) {
+    this.stream.head = value;
+  }
+  private _tail!: Operator;
+  get tail(): Operator {
+    return this.stream.tail!;
+  }
+  set tail(value: Operator) {
+    this.stream.tail = value;
+  }
   processingCallback = (params: any) => this.emit(params.emission, params.next);
 
   run(): Promise<void> {
-    throw new Error('Method is not implemented.');
+    return this.stream.run();
   }
 
   shouldTerminate() {
@@ -110,23 +149,9 @@ export class Stream<T = any> implements Subscribable {
       }
     };
   }
-  private _head!: Operator
-  get head(): Operator {
-    return this._head!;
-  }
-  set head(value: Operator) {
-    this._head = value;
-  }
-  private _tail!: Operator
-  get tail(): Operator {
-    return this._tail!;
-  }
-  set tail(value: Operator) {
-    this._tail = value;
-  }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline(this, ...operators);
+    return new Pipeline(this.stream, ...operators);
   }
 
   clone() {

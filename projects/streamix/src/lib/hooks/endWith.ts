@@ -1,16 +1,16 @@
-import { Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, Operator, Subscribable } from '../abstractions';
 import { Hook } from '../abstractions/hook';
 
 
 export class EndWithOperator extends Operator implements Hook {
-  private boundStream!: Stream;
+  private boundStream!: Subscribable;
   private hasEmitted = false;
 
   constructor(private value: any) {
     super();
   }
 
-  init(stream: Stream) {
+  init(stream: Subscribable) {
     this.boundStream = stream;
     this.boundStream.onComplete.chain(this.callback.bind(this));
   }
