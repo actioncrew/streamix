@@ -10,7 +10,9 @@ export class MergeMapOperator extends Operator {
 
   private input?: Subscribable;
   private output?: Subject;
-  private counter = promisifiedCounter(0);
+
+  private emissionNumber = 0;
+  private executionNumber = promisifiedCounter(0);
 
   constructor(project: (value: any) => Subscribable) {
     super();
@@ -32,11 +34,12 @@ export class MergeMapOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
+    this.emissionNumber++;
     this.output = this.output || this.outerStream;
 
     if (!this.input) {
       this.input = stream;
-      this.input.isStopped.then(() => this.counter.waitFor(0).then(() => this.output?.complete()));
+      this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber).then(() => this.output?.complete()));
     }
 
     return this.processEmission(emission, this.output!);
@@ -49,12 +52,11 @@ export class MergeMapOperator extends Operator {
 
     const innerStream = this.project(emission.value);
     this.activeInnerStreams.push(innerStream);
-    this.counter.increment();
 
     const processingPromise = new Promise<void>((resolve) => {
       const handleCompletion = () => {
         this.removeInnerStream(innerStream);
-        this.counter.decrement();
+        this.executionNumber.increment();
         resolve();
       };
 
