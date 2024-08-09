@@ -1,17 +1,4 @@
-import {
-  compute,
-  concatMap,
-  define,
-  delay,
-  finalize,
-  from,
-  map,
-  mergeMap,
-  range,
-  scan,
-  Subscribable,
-  tap,
-} from '@actioncrew/streamix';
+import { compute, define, finalize, map, mergeMap, range, scan, Subscribable, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 const BATCH_SIZE = 1000;
@@ -170,23 +157,19 @@ export class AppComponent implements OnInit {
     return range(0, this.width * this.height, 1000).pipe(
       map(index => ({ index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
       mergeMap((params) => compute(task, params)),
-      delay(0),
-      concatMap(result => from(result)),
-      map((emission) => {
-        const { px, py, r, g, b } = emission;
-        const i = py * this.width + px;
-        return { i, r, g, b };
-      }),
-      tap(({ i, r, g, b }) => {
-        const index = i * 4;
-        data[index] = r;
-        data[index + 1] = g;
-        data[index + 2] = b;
-        data[index + 3] = 255;
+      tap((result: any) => {
+        result.forEach(({ px, py, r, g, b }: any) => {
+          const i = py * this.width + px;
+          const index = i * 4;
+          data[index] = r;
+          data[index + 1] = g;
+          data[index + 2] = b;
+          data[index + 3] = 255;
+        });
       }),
       scan((acc, _, index) => {
-        const progress = ((index! + 1) / (this.width * this.height)) * 100;
-        this.updateProgressBar(progress);
+        const progress = ((index! + 1) * 1000 / (this.width * this.height)) * 100; // Adjusted progress calculation for batching
+        requestAnimationFrame(() => this.updateProgressBar(progress)); // Use requestAnimationFrame for smoother updates
         return acc;
       }, 0),
       finalize(() => {

@@ -42,28 +42,41 @@ export class MergeMapOperator extends Operator {
       this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber).then(() => this.output?.complete()));
     }
 
-    return this.processEmission(emission, this.output!);
+    // Start processing the emission in parallel
+    this.processEmission(emission, this.output!);
+
+    // Return the phantom emission immediately
+    emission.isPhantom = true;
+    return emission;
   }
 
-  private async processEmission(emission: Emission, stream: Subject): Promise<Emission> {
+  private async processEmission(emission: Emission, stream: Subject): Promise<void> {
     if (await this.checkAndStopStream(stream, emission)) {
-      return emission;
+        return;
     }
 
     const innerStream = this.project(emission.value);
     this.activeInnerStreams.push(innerStream);
 
     const processingPromise = new Promise<void>((resolve) => {
-      const handleCompletion = () => {
+      let promises: Promise<void>[] = [];
+
+      const handleCompletion = async () => {
+        await Promise.all(promises); // Wait for all next() promises to resolve
+        this.executionNumber.increment(promises.length);
+        promises = [];
         this.removeInnerStream(innerStream);
-        this.executionNumber.increment();
         resolve();
       };
 
-      const subscription = innerStream.subscribe(async (value) => {
-        if (!stream.shouldTerminate() && !stream.shouldComplete()) {
-          await stream.next(value);
-        }
+      const subscription = innerStream.subscribe((value) => {
+        // Gather promises from stream.next() to ensure parallel processing
+        promises.push(
+          stream.next(value).catch((error) => {
+            emission.error = error;
+            emission.isFailed = true;
+          })
+        );
       });
 
       innerStream.isCancelled.then(() => {
@@ -79,27 +92,25 @@ export class MergeMapOperator extends Operator {
         handleCompletion();
       });
 
-      innerStream.isStopped.then(() => {
-        subscription.unsubscribe();
-        emission.isComplete = true;
-        handleCompletion();
-      }).catch((error) => {
-        emission.error = error;
-        emission.isFailed = true;
-        handleCompletion();
-      });
+      innerStream.isStopped
+        .then(() => {
+          subscription.unsubscribe();
+          emission.isComplete = true;
+          handleCompletion();
+        })
+        .catch((error) => {
+          emission.error = error;
+          emission.isFailed = true;
+          handleCompletion();
+        });
     });
 
     this.processingPromises.push(processingPromise);
 
-    Promise.race([stream.awaitCompletion(), stream.awaitTermination()]).then(() => {
-      this.stopAllStreams();
-    });
-
-    emission.isPhantom = true;
-
-    return new Promise<Emission>((resolve) => {
-      processingPromise.then(() => resolve(emission));
+    processingPromise.finally(() => {
+      if (stream.shouldTerminate() || stream.shouldComplete()) {
+        this.stopAllStreams();
+      }
     });
   }
 
@@ -131,10 +142,10 @@ export class MergeMapOperator extends Operator {
     }
   }
 
-  private async checkAndStopStream(stream: Subscribable, emission: Emission): Promise<boolean> {
+  private checkAndStopStream(stream: Subscribable, emission: Emission): boolean {
     if (stream.isCancelled()) {
       emission.isCancelled = true;
-      await this.stopAllStreams();
+      this.stopAllStreams();
       return true;
     }
     return false;
