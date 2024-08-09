@@ -17,7 +17,7 @@ export class Stream<T = any> implements Subscribable {
   isUnsubscribed = promisified<boolean>(false);
   isRunning = promisified<boolean>(false);
 
-  subscribers: (((value: T) => any) | void)[] = [];
+  subscribers = hook();
 
   onStart = hook();
   onComplete = hook();
@@ -61,8 +61,8 @@ export class Stream<T = any> implements Subscribable {
   }
 
   unsubscribe(callback: (value: T) => any): void {
-    this.subscribers = this.subscribers.filter(subscriber => subscriber !== callback);
-    if (this.subscribers.length === 0) {
+    this.subscribers.chain(callback);
+    if (!this.subscribers.hasCallbacks()) {
       this.isStopRequested.resolve(true);
       this.isUnsubscribed.resolve(true);
     }
@@ -71,9 +71,9 @@ export class Stream<T = any> implements Subscribable {
   // Protected method to handle the subscription chain
   subscribe(callback: ((value: T) => any) | void): Subscription {
     const boundCallback = callback ?? (() => {});
-    this.subscribers.push(boundCallback);
+    this.subscribers.chain(boundCallback);
 
-    if (this.subscribers.length === 1 && this.isRunning() === false) {
+    if (this.subscribers.callbacks().length === 1 && this.isRunning() === false) {
       this.isRunning.resolve(true);
 
       queueMicrotask(async () => {
@@ -100,8 +100,8 @@ export class Stream<T = any> implements Subscribable {
 
     return {
       unsubscribe: () => {
-          this.subscribers = this.subscribers.filter(cb => cb !== boundCallback);
-          if (this.subscribers.length === 0) {
+          this.subscribers.remove(boundCallback);
+          if (!this.subscribers.hasCallbacks()) {
               this.complete();
           }
       }
@@ -119,7 +119,7 @@ export class Stream<T = any> implements Subscribable {
     const result = Object.create(Object.getPrototypeOf(this));
     Object.assign(result, this);
 
-    result.subscribers = this.subscribers.slice();
+    result.subscribers = hook();
 
     result.onStart = hook();
     result.onComplete = hook();
@@ -164,14 +164,14 @@ export class Stream<T = any> implements Subscribable {
       currentEmission = await (next?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
 
       if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
-        await Promise.all((() => this.subscribers.map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()))());
+        await Promise.all((() => this.subscribers.callbacks().map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()))());
       }
 
       currentEmission.isComplete = true;
     } catch (error: any) {
       emission.isFailed = true;
       emission.error = error;
-      this.onError.hasCallback() ? this.onError.process({ error }) : (() => { this.isFailed.resolve(error); })();
+      this.onError.hasCallbacks() ? this.onError.process({ error }) : (() => { this.isFailed.resolve(error); })();
     }
   }
 }

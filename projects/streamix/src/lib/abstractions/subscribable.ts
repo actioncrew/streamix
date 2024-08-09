@@ -12,7 +12,7 @@ export interface Subscribable<T = any> {
   isUnsubscribed: PromisifiedType<boolean>;
   isRunning: PromisifiedType<boolean>;
 
-  subscribers: (((value: T) => any) | void)[];
+  subscribers: HookType;
 
   onStart: HookType;
   onComplete: HookType;

@@ -5,7 +5,7 @@ import { Stream } from './stream';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
-export class Pipeline<T = any> implements Subscribable {
+export class Pipeline<T = any> implements Subscribable<T> {
   private streams: Stream<T>[] = [];
   private operators: Operator[] = [];
 
@@ -92,7 +92,7 @@ export class Pipeline<T = any> implements Subscribable {
   get isRunning(): PromisifiedType<boolean> {
     return this.last.isRunning;
   }
-  get subscribers(): (void | ((value: any) => any))[] {
+  get subscribers(): HookType {
     return this.last.subscribers;
   }
   get onStart(): HookType {
