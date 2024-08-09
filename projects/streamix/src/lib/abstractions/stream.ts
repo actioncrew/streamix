@@ -25,6 +25,8 @@ export class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
+  processingCallback = (params: any) => this.emit(params.emission, params.next);
+
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
   }
@@ -74,6 +76,7 @@ export class Stream<T = any> implements Subscribable {
     this.subscribers.chain(boundCallback);
 
     if (this.subscribers.callbacks().length === 1 && this.isRunning() === false) {
+      this.onEmission.chain(this.processingCallback.bind(this));
       this.isRunning.resolve(true);
 
       queueMicrotask(async () => {
@@ -102,6 +105,7 @@ export class Stream<T = any> implements Subscribable {
       unsubscribe: () => {
           this.subscribers.remove(boundCallback);
           if (!this.subscribers.hasCallbacks()) {
+              this.onEmission.remove(this.processingCallback);
               this.complete();
           }
       }
@@ -125,6 +129,7 @@ export class Stream<T = any> implements Subscribable {
     result.onComplete = hook();
     result.onStop = hook();
     result.onError = hook();
+    result.onEmission = hook();
 
     // Clone the current operator chain to the new sink
     if (this.head) {
@@ -153,7 +158,7 @@ export class Stream<T = any> implements Subscribable {
     return [clonedHead, cloned];
   }
 
-  async emit(emission: Emission, next: Operator): Promise<void> {
+  async emit(emission: Emission, next: Operator | undefined): Promise<void> {
     try {
       let currentEmission: Emission = emission;
 
