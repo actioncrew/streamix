@@ -31,7 +31,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
           this.values[index].value = value;
 
           if (this.remaining === 0) {
-            this.emit({ value: this.values.map(({ value }) => value) }, this.head!);
+            this.onEmission.process({ emission: { value: this.values.map(({ value }) => value) }, next: this.head! });
           }
         });
 

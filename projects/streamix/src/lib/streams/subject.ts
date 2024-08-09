@@ -22,7 +22,7 @@ export class Subject<T = any> extends Stream<T> {
       return Promise.resolve();
     }
 
-    this.emissionAvailable = (() => this.emissionAvailable.then(() => this.emit({ value }, this.head!)))();
+    this.emissionAvailable = (() => this.emissionAvailable.then(() => this.onEmission.process({ emission: { value }, next: this.head! })))();
     return this.emissionAvailable;
   }
 }

@@ -18,7 +18,7 @@ export class DeferStream extends Stream {
 
       // Forward emissions from the inner stream
       this.subscription = innerStream.subscribe(async (value) => {
-        this.promise = this.emit({ value }, this.head!);
+        this.promise = this.onEmission.process({ emission: { value }, next: this.head! });
         await this.promise;
       });
 

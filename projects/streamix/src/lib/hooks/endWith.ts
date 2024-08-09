@@ -16,7 +16,7 @@ export class EndWithOperator extends Operator implements Hook {
   }
 
   async callback(params?: any): Promise<void> {
-    return this.boundStream.emit({ value: this.value }, this.boundStream.head!);
+    return this.boundStream.onEmission.process({ emission: { value: this.value }, next: this.boundStream.head! });
   }
 
   override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

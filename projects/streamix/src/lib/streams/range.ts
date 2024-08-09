@@ -17,7 +17,7 @@ export class RangeStream extends Stream {
     try {
       while (this.current < this.end && !this.isStopRequested()) {
         let emission = { value: this.current } as Emission;
-        await this.emit(emission, this.head!);
+        await this.onEmission.process({ emission, next: this.head! });
 
         if (emission.isFailed) {
           throw emission.error;

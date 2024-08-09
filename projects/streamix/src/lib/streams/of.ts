@@ -11,7 +11,7 @@ export class OfStream extends Stream {
 
   override async run(): Promise<void> {
     if (!this.emitted && !this.isUnsubscribed() && !this.isCancelled()) {
-      await super.emit({ value: this.value }, this.head!);
+      await this.onEmission.process({ emission: { value: this.value }, next: this.head! });
       this.emitted = true;
     }
     if(!this.isUnsubscribed() && !this.isCancelled()) {
