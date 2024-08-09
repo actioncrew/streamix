@@ -123,16 +123,7 @@ export class Stream<T = any> implements Subscribable {
     const result = Object.create(Object.getPrototypeOf(this));
     Object.assign(result, this);
 
-    result.isAutoComplete = promisified<boolean>(false);
-    result.isCancelled = promisified<boolean>(false);
-    result.isStopRequested = promisified<boolean>(false);
-
-    result.isFailed = promisified<any>(undefined);
-    result.isStopped = promisified<boolean>(false);
-    result.isUnsubscribed = promisified<boolean>(false);
-    result.isRunning = promisified<boolean>(false);
-
-    result.subscribers = [];
+    result.subscribers = this.subscribers.slice();
 
     result.onStart = hook();
     result.onComplete = hook();
