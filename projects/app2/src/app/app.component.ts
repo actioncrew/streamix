@@ -5,7 +5,7 @@ const BATCH_SIZE = 1000;
 const DELAY_MS = 100; // Increase delay to make progress visible
 
 // Main Mandelbrot computation function
-function mandelbrotTask(data: { px: number, py: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
+function computeMandelbrot(data: { px: number, py: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
   const { px, py, maxIterations, zoom, centerX, centerY, panX, panY } = data;
   let x = 0, y = 0;
   const x0 = (px - centerX) / zoom - panX;
@@ -51,7 +51,7 @@ function computeColor(iteration: number, maxIterations: number): { r: number, g:
   return { r: Math.round(r! * 255), g: Math.round(g! * 255), b: Math.round(b! * 255) };
 }
 
-function executeChunkedMandelbrotTask(data: { index: number, width: number, height: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
+function computeMandelbrotInChunks(data: { index: number, width: number, height: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
   const { index, width, height, maxIterations, zoom, centerX, centerY, panX, panY } = data;
   const chunkSize = 1000;
   const result: { px: number, py: number, r: number, g: number, b: number }[] = [];
@@ -71,7 +71,7 @@ function executeChunkedMandelbrotTask(data: { index: number, width: number, heig
 
     const px = (chunkData.index % width);
     const py = Math.floor(chunkData.index / width);
-    result.push(mandelbrotTask({
+    result.push(computeMandelbrot({
       px,
       py,
       maxIterations,
@@ -121,12 +121,12 @@ export class AppComponent implements OnInit {
     this.width = this.canvas.width;
     this.height = this.canvas.height;
     this.maxIterations = 20;
-    this.zoom = 50;
+    this.zoom = 200;
     this.centerX = this.width / 2;
     this.centerY = this.height / 2;
     this.panX = 0.5;
     this.panY = 0;
-    this.subSampling = 2;
+    this.subSampling = 4;
 
     this.showProgressOverlay();
     this.fractal$ = this.drawFractal();
@@ -152,7 +152,7 @@ export class AppComponent implements OnInit {
     const imageData = this.ctx.createImageData(this.width, this.height);
     const data = imageData.data;
     // Create ComputeOperator instance
-    const task = define(executeChunkedMandelbrotTask, mandelbrotTask, computeColor);
+    const task = define(computeMandelbrotInChunks, computeMandelbrot, computeColor);
 
     return range(0, this.width * this.height, 1000).pipe(
       map(index => ({ index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
