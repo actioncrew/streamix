@@ -18,6 +18,7 @@ export interface Subscribable<T = any> {
   onComplete: HookType;
   onStop: HookType;
   onError: HookType;
+  onEmission: HookType;
 
   head: Operator | undefined;
   tail: Operator | undefined;

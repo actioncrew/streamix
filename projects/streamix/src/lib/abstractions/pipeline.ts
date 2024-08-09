@@ -1,23 +1,23 @@
+import { Chunk, Stream } from '../abstractions';
 import { PromisifiedType } from '../utils';
 import { Hook, HookType } from './hook';
 import { Operator } from './operator';
-import { Stream } from './stream';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
 export class Pipeline<T = any> implements Subscribable<T> {
-  private streams: Stream<T>[] = [];
+  private streams: Chunk<T>[] = [];
   private operators: Operator[] = [];
 
   constructor(stream: Stream<T>, ...operators: Operator[]) {
     const mainStream = stream;
-    this.streams.push(mainStream);
+    this.streams.push(new Chunk(mainStream));
     this.applyOperators(...operators);
   }
 
   private applyOperators(...operators: Operator[]): void {
     this.operators = operators;
-    let currentStream = this.first as Stream<T>;
+    let currentStream = this.first as Chunk<T>;
     let previousOperator: Operator | undefined;
 
     operators.forEach(operator => {
@@ -42,7 +42,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
         }
 
         if ('outerStream' in operator) {
-          currentStream = operator.outerStream as any;
+          currentStream = new Chunk(operator.outerStream as any);
           this.streams.push(currentStream);
           previousOperator = undefined;
         } else {
@@ -106,6 +106,9 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
   get onError(): HookType {
     return this.last.onError;
+  }
+  get onEmission(): HookType {
+    return this.last.onEmission;
   }
   shouldTerminate(): boolean {
     return this.last.shouldTerminate();

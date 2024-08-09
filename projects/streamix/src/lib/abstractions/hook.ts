@@ -1,8 +1,8 @@
-import { Stream } from './stream';
+import { Subscribable } from './subscribable';
 
 export interface Hook {
   callback: (params?: any) => void | Promise<void>;
-  init:(stream: Stream) => void;
+  init:(stream: Subscribable) => void;
 }
 
 export interface HookType {
