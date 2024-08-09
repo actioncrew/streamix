@@ -1,10 +1,10 @@
 import {
   compute,
   concatMap,
+  define,
   delay,
   finalize,
   from,
-  fromPromise,
   map,
   range,
   scan,
@@ -164,16 +164,13 @@ export class AppComponent implements OnInit {
     const imageData = this.ctx.createImageData(this.width, this.height);
     const data = imageData.data;
     // Create ComputeOperator instance
-    const computeOperator = compute(executeChunkedMandelbrotTask, mandelbrotTask, computeColor);
+    const task = define(executeChunkedMandelbrotTask, mandelbrotTask, computeColor);
 
     return range(0, this.width * this.height, 1000).pipe(
-      map(index => {
-        const params = { index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY };
-        return { value: params };
-      }),
-      concatMap((emission) => fromPromise(computeOperator.handle(emission, this.fractal$))),
+      map(index => ({ index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
+      concatMap((params) => compute(task, params)),
       delay(0),
-      concatMap(emission => from(emission.value)),
+      concatMap(result => from(result)),
       map((emission) => {
         const { px, py, r, g, b } = emission;
         const i = py * this.width + px;
