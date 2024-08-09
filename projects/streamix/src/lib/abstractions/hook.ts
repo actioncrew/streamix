@@ -9,11 +9,16 @@ export interface HookType {
   process(params?: any): Promise<void>;
   chain(callback: (params?: any) => void | Promise<void>): void;
   clear(): void;
+  hasCallback: () => boolean;
 }
 
 export function hook(): HookType {
-  let boundStream = undefined;
+  let boundStream: Stream | undefined;
   const callbacks: ((params?: any) => void | Promise<void>)[] = [];
+
+  function hasCallback(): boolean {
+    return callbacks.length > 0;
+  }
 
   async function process(params?: any): Promise<void> {
     for (const callback of callbacks) {
@@ -33,5 +38,6 @@ export function hook(): HookType {
     process,
     chain,
     clear,
+    hasCallback
   };
 }

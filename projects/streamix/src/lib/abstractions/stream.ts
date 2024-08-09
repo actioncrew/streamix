@@ -79,22 +79,18 @@ export class Stream<T = any> implements Subscribable {
       queueMicrotask(async () => {
         try {
           // Emit start value if defined
-          await this.onStart?.process();
+          await this.onStart.process();
 
-          // Start the actual stream logic without waiting for it to complete
+          // Start the actual stream logic
           await this.run();
 
           // Emit end value if defined
-          await this.onComplete?.process();
+          await this.onComplete.process();
         } catch (error) {
-          // Handle error if catchError defined
-          await this.onError?.process({ error });
-          if (this.onError === undefined) {
-            this.isFailed.resolve(error);
-          }
+          this.isFailed.resolve(error);
         } finally {
           // Handle finalize callback
-          await this.onStop?.process();
+          await this.onStop.process();
 
           this.isStopped.resolve(true);
           this.isRunning.reset();
@@ -173,9 +169,9 @@ export class Stream<T = any> implements Subscribable {
 
       currentEmission.isComplete = true;
     } catch (error: any) {
-      console.warn(`Error in stream ${this.constructor.name}: `, error);
       emission.isFailed = true;
       emission.error = error;
+      this.onError.hasCallback() ? this.onError.process({ error }) : (() => { this.isFailed.resolve(error); })();
     }
   }
 }
