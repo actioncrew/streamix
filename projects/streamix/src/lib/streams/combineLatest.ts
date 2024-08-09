@@ -52,7 +52,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
       unsubscribe: () => {
         subscription.unsubscribe();
 
-        if (this.subscribers.length === 0) {
+        if (!this.subscribers.hasCallbacks()) {
           // Ensure all source streams are stopped
           this.sources.forEach(source => {
             source.isStopRequested.resolve(true);
