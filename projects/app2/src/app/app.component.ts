@@ -6,6 +6,7 @@ import {
   finalize,
   from,
   map,
+  mergeMap,
   range,
   scan,
   Subscribable,
@@ -168,7 +169,7 @@ export class AppComponent implements OnInit {
 
     return range(0, this.width * this.height, 1000).pipe(
       map(index => ({ index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
-      concatMap((params) => compute(task, params)),
+      mergeMap((params) => compute(task, params)),
       delay(0),
       concatMap(result => from(result)),
       map((emission) => {
