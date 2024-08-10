@@ -22,12 +22,12 @@ export class ComputeStream extends Stream {
           const worker = await this.task.getIdleWorker();
           worker.postMessage(this.params);
           worker.onmessage = async (event) => {
-            await this.onEmission.process({ emission: { value: event.data }, next: this.head! });
+            await this.onEmission.process({ emission: { value: event.data }, source: this });
             this.task.returnWorker(worker);
             resolve();
           };
           worker.onerror = async (error) => {
-            await this.onEmission.process({ isFailed: true, error });
+            await this.onEmission.process({ emission: { isFailed: true, error }, source: this });
             this.task.returnWorker(worker);
             reject(error);
           };

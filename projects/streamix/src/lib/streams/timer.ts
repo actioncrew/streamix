@@ -21,10 +21,10 @@ export class TimerStream<T = any> extends Stream<T> {
       this.resolvePromise = resolve;
 
       setTimeout(() => {
-        this.onEmission.process({ emission: { value: this.value }, next: this.head! }).then(() => {
+        this.onEmission.process({ emission: { value: this.value }, source: this }).then(() => {
           this.intervalId = setInterval(() => {
             this.value++;
-            this.onEmission.process({ emission: { value: this.value }, next: this.head! });
+            this.onEmission.process({ emission: { value: this.value }, source: this });
           }, this.intervalMs);
         });
       }, this.delayMs);

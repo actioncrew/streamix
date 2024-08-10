@@ -1,4 +1,5 @@
 import { Stream } from '../abstractions';
+import { DefaultIfEmptyOperator, ReduceOperator } from '../hooks';
 import { promisified, PromisifiedType } from '../utils';
 import { Emission } from './emission';
 import { hook, HookType } from './hook';
@@ -62,7 +63,15 @@ export class Chunk<T> implements Subscribable<T> {
   set tail(value: Operator) {
     this.stream.tail = value;
   }
-  processingCallback = (params: any) => this.emit(params.emission, params.next);
+  processingCallback = async (params: any) => {
+    if(params) {
+      let next = (params.source instanceof Chunk) ? this.head : undefined;
+      next = (params.source instanceof Stream) ? this.head : next;
+      next = (params.source instanceof ReduceOperator) ? params.source.next : next;
+      next = (params.source instanceof DefaultIfEmptyOperator) ? params.source.next : next;
+      await this.emit(params.emission, next);
+    }
+  };
 
   run(): Promise<void> {
     return this.stream.run();

@@ -23,7 +23,7 @@ export class ReduceOperator extends Operator implements Hook {
 
   async callback(params?: any): Promise<void> {
     // TODO ---- this.next
-    await this.boundStream.onEmission.process({ emission: { value: this.accumulatedValue }, next: this.next });
+    await this.boundStream.onEmission.process({ emission: { value: this.accumulatedValue }, source: this });
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

@@ -21,7 +21,7 @@ export class FromStream extends Stream {
           }
         } else {
           let emission = { value } as Emission;
-          await this.onEmission.process({ emission, next: this.head! });
+          await this.onEmission.process({ emission, source: this });
 
           if (emission.isFailed) {
             throw emission.error;
