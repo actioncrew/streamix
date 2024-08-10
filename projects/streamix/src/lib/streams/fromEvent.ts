@@ -24,7 +24,7 @@ export class FromEventStream extends Stream {
     this.listener = async (event: Event) => {
       if (this.isRunning()) {
         this.eventCounter.increment();
-        await this.onEmission.process({ emission: { value: event }, next: this.head! });
+        await this.onEmission.process({ emission: { value: event }, source: this });
         this.eventCounter.decrement();
       }
     };

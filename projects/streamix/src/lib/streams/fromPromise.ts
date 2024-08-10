@@ -26,7 +26,7 @@ export class FromPromiseStream extends Stream {
     }
 
     // Emit stored value
-    await this.onEmission.process({ emission: { value: this.value }, next: this.head! });
+    await this.onEmission.process({ emission: { value: this.value }, source: this });
     this.isAutoComplete.resolve(true);
   }
 }

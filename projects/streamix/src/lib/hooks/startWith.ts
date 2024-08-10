@@ -15,7 +15,7 @@ export class StartWithOperator extends Operator implements Hook {
   }
 
   async callback(params?: any): Promise<void> {
-    return this.boundStream.onEmission.process({ emission: { value: this.value }, next: this.boundStream.head!});
+    return this.boundStream.onEmission.process({ emission: { value: this.value }, source: this.boundStream });
   }
 
   override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

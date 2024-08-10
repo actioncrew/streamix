@@ -35,7 +35,7 @@ export class ConcatStream extends Stream {
         }
 
         try {
-          await this.onEmission.process({ emission: { value }, next: this.head! });
+          await this.onEmission.process({ emission: { value }, source: this });
         } catch (error) {
           reject(error);
         }
