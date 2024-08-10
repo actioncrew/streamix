@@ -1,6 +1,6 @@
 import { Chunk, Stream } from '../abstractions';
 import { PromisifiedType } from '../utils';
-import { HookType } from './hook';
+import { hook, HookType } from './hook';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
@@ -9,10 +9,22 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private streams: Chunk<T>[] = [];
   private operators: Operator[] = [];
 
+  onStart: HookType;
+  onComplete: HookType;
+  onStop: HookType;
+  onError: HookType;
+  onEmission: HookType
+
   constructor(stream: Stream<T>, ...operators: Operator[]) {
-    const mainStream = stream;
-    this.streams.push(new Chunk(mainStream));
+    const streamChunk = new Chunk(stream);
+    this.streams.push(streamChunk);
     this.applyOperators(...operators);
+
+    this.onStart = hook().initWithHook(streamChunk.onStart);
+    this.onComplete = hook().initWithHook(streamChunk.onComplete);
+    this.onStop = hook().initWithHook(streamChunk.onStop);
+    this.onError = hook().initWithHook(streamChunk.onStart);
+    this.onEmission = hook().initWithHook(streamChunk.onEmission);
   }
 
   private applyOperators(...operators: Operator[]): void {
@@ -79,21 +91,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
   get subscribers(): HookType {
     return this.last.subscribers;
-  }
-  get onStart(): HookType {
-    return this.last.onStart;
-  }
-  get onComplete(): HookType {
-    return this.last.onComplete;
-  }
-  get onStop(): HookType {
-    return this.last.onStop;
-  }
-  get onError(): HookType {
-    return this.last.onError;
-  }
-  get onEmission(): HookType {
-    return this.last.onEmission;
   }
   shouldTerminate(): boolean {
     return this.last.shouldTerminate();

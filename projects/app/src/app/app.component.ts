@@ -57,8 +57,8 @@ export class CaptionComponent implements OnInit {
   showCursor: boolean = true;
 
   ngOnInit() {
-    this.startTypingEffect();
-    this.startCursorBlinking();
+    // this.startTypingEffect();
+    // this.startCursorBlinking();
   }
 
   startTypingEffect() {
@@ -129,9 +129,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
 
 
-    this.draw$ = interval(33).pipe(
-      withLatestFrom(this.drops$),
-      tap(([_, drops]) => {
+    this.draw$ = this.drops$.pipe(
+      withLatestFrom(interval(33)),
+      tap(([drops, _]) => {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
