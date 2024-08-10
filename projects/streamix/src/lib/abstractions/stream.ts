@@ -25,7 +25,7 @@ export class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
-  processingCallback = (params: any) => this.emit(params.emission, params.next);
+  processingCallback = async (params: any) => await this.emit(params.emission, params.next);
 
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
