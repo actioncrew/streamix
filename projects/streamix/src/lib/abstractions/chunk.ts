@@ -163,18 +163,19 @@ export class Chunk<T> implements Subscribable<T> {
         operator = operator.clone();
         this.operators.push(operator);
 
+        // Manage head and tail for every operator
+        if (!this.head) {
+          this.head = operator;
+          this.tail = operator;
+        } else {
+          this.tail!.next = operator;
+          this.tail = operator;
+        }
+
         const hook = operator as unknown as Hook;
         if (typeof hook.init === 'function') {
           hook.init(this.stream);
         }
-
-        // Manage head and tail for every operator
-        if (!this.head) {
-          this.head = operator;
-        } else {
-          this.tail!.next = operator;
-        }
-        this.tail = operator;
 
         if ('outerStream' in operator && index !== operators.length - 1) {
           throw new Error("Only the last operator in a chunk can contain outerStream property.");

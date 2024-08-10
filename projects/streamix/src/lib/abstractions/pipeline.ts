@@ -33,6 +33,8 @@ export class Pipeline<T = any> implements Subscribable<T> {
         }
       }
     });
+
+    currentStream.pipe(...chunkOperators);
   }
 
   pipe(...operators: Operator[]): Pipeline<T> {
