@@ -1,6 +1,6 @@
 import { Chunk, Stream } from '../abstractions';
 import { PromisifiedType } from '../utils';
-import { Hook, HookType } from './hook';
+import { HookType } from './hook';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
@@ -17,36 +17,19 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   private applyOperators(...operators: Operator[]): void {
     this.operators = operators;
-    let currentStream = this.first as Chunk<T>;
-    let previousOperator: Operator | undefined;
+    let currentStream = this.first;
+    let chunkOperators: Operator[] = [];
 
     operators.forEach(operator => {
       if (operator instanceof Operator) {
         operator = operator.clone();
-
-        if (previousOperator) {
-          previousOperator.next = operator;
-        }
-
-        if (!currentStream.head) {
-          currentStream.head = operator;
-          currentStream.tail = operator;
-        } else {
-          currentStream.tail!.next = operator;
-          currentStream.tail = operator;
-        }
-
-        const hook = operator as unknown as Hook;
-        if (typeof hook.init === 'function') {
-          hook.init(currentStream);
-        }
+        chunkOperators.push(operator);
 
         if ('outerStream' in operator) {
+          currentStream.pipe(...chunkOperators);
+          chunkOperators = [];
           currentStream = new Chunk(operator.outerStream as any);
           this.streams.push(currentStream);
-          previousOperator = undefined;
-        } else {
-          previousOperator = operator;
         }
       }
     });
@@ -54,7 +37,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   pipe(...operators: Operator[]): Pipeline<T> {
     // Create a new Pipeline instance with the existing streams and new operators
-    const newPipeline = new Pipeline<T>(this.streams[0].clone(), ...this.operators, ...operators);
+    const newPipeline = new Pipeline<T>(this.first.stream, ...this.operators, ...operators);
     return newPipeline;
   }
 
@@ -152,11 +135,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
     };
   }
 
-  private get first(): Subscribable<T> {
+  private get first(): Chunk<T> {
     return this.streams[0];
   }
 
-  private get last(): Subscribable<T> {
+  private get last(): Chunk<T> {
     return this.streams[this.streams.length - 1];
   }
 }

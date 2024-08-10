@@ -2,15 +2,15 @@ import { Stream } from '../abstractions';
 import { DefaultIfEmptyOperator, ReduceOperator } from '../hooks';
 import { promisified, PromisifiedType } from '../utils';
 import { Emission } from './emission';
-import { hook, HookType } from './hook';
+import { Hook, HookType } from './hook';
 import { Operator } from './operator';
-import { Pipeline } from './pipeline';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
 export class Chunk<T> implements Subscribable<T> {
+  operators: Operator[] = [];
 
-  constructor(private stream: Stream<T>) {
+  constructor(public stream: Stream<T>) {
   }
   get isAutoComplete(): PromisifiedType<boolean> {
     return this.stream.isAutoComplete;
@@ -158,21 +158,36 @@ export class Chunk<T> implements Subscribable<T> {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline(this.stream, ...operators);
+    operators.forEach((operator, index) => {
+      if (operator instanceof Operator) {
+        operator = operator.clone();
+        this.operators.push(operator);
+
+        const hook = operator as unknown as Hook;
+        if (typeof hook.init === 'function') {
+          hook.init(this.stream);
+        }
+
+        // Manage head and tail for every operator
+        if (!this.head) {
+          this.head = operator;
+        } else {
+          this.tail!.next = operator;
+        }
+        this.tail = operator;
+
+        if ('outerStream' in operator && index !== operators.length - 1) {
+          throw new Error("Only the last operator in a chunk can contain outerStream property.");
+        }
+      }
+    });
+
+    return this;
   }
 
   clone() {
     const result = Object.create(Object.getPrototypeOf(this));
     Object.assign(result, this);
-
-    result.subscribers = hook();
-
-    result.onStart = hook();
-    result.onComplete = hook();
-    result.onStop = hook();
-    result.onError = hook();
-    result.onEmission = hook();
-
     return result;
   }
 
