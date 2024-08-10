@@ -63,29 +63,29 @@ export class SwitchMapOperator extends Operator {
     await this.stopInnerStream();
     this.activeInnerStream = newInnerStream;
 
-    this.innerStreamSubscription = newInnerStream.subscribe(async (value) => {
+    this.innerStreamSubscription = this.activeInnerStream.subscribe(async (value) => {
       if (!stream.shouldTerminate() && !stream.shouldComplete()) {
         await stream.next(value);
       }
     });
 
-    newInnerStream.isFailed.then((error) => {
+    this.activeInnerStream.isFailed.then((error) => {
       emission.error = error;
       emission.isFailed = true;
-      this.removeInnerStream(newInnerStream);
+      this.removeInnerStream(this.activeInnerStream!);
     });
 
-    newInnerStream.isStopped.then(() => {
-      this.removeInnerStream(newInnerStream);
+    this.activeInnerStream.isStopped.then(() => {
+      this.removeInnerStream(this.activeInnerStream!);
     }).catch((error) => {
       emission.error = error;
       emission.isFailed = true;
-      this.removeInnerStream(newInnerStream);
+      this.removeInnerStream(this.activeInnerStream!);
     });
 
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {
-      newInnerStream.isStopped.then(() => resolve(emission));
+      this.activeInnerStream!.isStopped.then(() => resolve(emission));
     });
   }
 
