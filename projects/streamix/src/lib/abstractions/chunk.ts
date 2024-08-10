@@ -2,7 +2,7 @@ import { Stream } from '../abstractions';
 import { DefaultIfEmptyOperator, ReduceOperator } from '../hooks';
 import { promisified, PromisifiedType } from '../utils';
 import { Emission } from './emission';
-import { Hook, HookType } from './hook';
+import { Hook, hook, HookType } from './hook';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
@@ -10,8 +10,20 @@ import { Subscription } from './subscription';
 export class Chunk<T> implements Subscribable<T> {
   operators: Operator[] = [];
 
+  onStart: HookType;
+  onComplete: HookType;
+  onStop: HookType;
+  onError: HookType;
+  onEmission: HookType
+
   constructor(public stream: Stream<T>) {
+    this.onStart = hook().initWithHook(stream.onStart);
+    this.onComplete = hook().initWithHook(stream.onComplete);
+    this.onStop = hook().initWithHook(stream.onStop);
+    this.onError = hook().initWithHook(stream.onStart);
+    this.onEmission = hook().initWithHook(stream.onEmission);
   }
+
   get isAutoComplete(): PromisifiedType<boolean> {
     return this.stream.isAutoComplete;
   }
@@ -36,21 +48,7 @@ export class Chunk<T> implements Subscribable<T> {
   get subscribers(): HookType {
     return this.stream.subscribers;
   }
-  get onStart(): HookType {
-    return this.stream.onStart;
-  }
-  get onComplete(): HookType {
-    return this.stream.onComplete;
-  }
-  get onStop(): HookType {
-    return this.stream.onStop;
-  }
-  get onError(): HookType {
-    return this.stream.onError;
-  }
-  get onEmission(): HookType {
-    return this.stream.onEmission;
-  }
+
   get head(): Operator {
     return this.stream.head!;
   }
