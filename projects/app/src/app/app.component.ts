@@ -117,6 +117,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       map(() => this.getCanvasSize())
     );
 
+    this.resize$.subscribe(console.log);
+
     this.columns$ = this.resize$.pipe(
       map(({ width }) => Math.floor(width / this.fontSize))
     );
@@ -124,6 +126,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.drops$ = this.columns$.pipe(
       map(columns => Array.from({ length: columns }, () => 0))
     );
+
+
 
     this.draw$ = interval(33).pipe(
       withLatestFrom(this.drops$),

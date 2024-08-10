@@ -132,15 +132,6 @@ export class Stream<T = any> implements Subscribable {
   clone() {
     const result = Object.create(Object.getPrototypeOf(this));
     Object.assign(result, this);
-
-    result.subscribers = hook();
-
-    result.onStart = hook();
-    result.onComplete = hook();
-    result.onStop = hook();
-    result.onError = hook();
-    result.onEmission = hook();
-
     return result;
   }
 

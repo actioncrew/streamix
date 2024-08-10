@@ -1,3 +1,4 @@
+import { Chunk } from '../abstractions';
 import { Emission } from './emission';
 import { Subscribable } from './subscribable';
 
@@ -12,10 +13,11 @@ export abstract class Operator {
 
   async process(emission: Emission, stream: Subscribable): Promise<Emission> {
     try {
-      if (stream.isCancelled() === false) {
-        emission = await this.handle(emission, stream);
+      let actualStream = (stream instanceof Chunk) ? stream.stream : stream;
+      if (actualStream.isCancelled() === false) {
+        emission = await this.handle(emission, actualStream);
         if (this.next && !emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
-          return this.next.process(emission, stream);
+          return this.next.process(emission, actualStream);
         } else {
           return emission;
         }
