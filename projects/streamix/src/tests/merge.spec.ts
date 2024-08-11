@@ -11,7 +11,7 @@ class MockStream extends Stream {
 
   override async run(): Promise<void> {
     for (const value of this.values) {
-      await this.emit({ value }, this.head!);
+      await this.onEmission.process({emission: { value }, source:this});
     }
     this.isAutoComplete.resolve(true);
   }
