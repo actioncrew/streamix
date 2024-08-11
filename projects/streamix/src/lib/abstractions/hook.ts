@@ -6,7 +6,6 @@ export interface Hook {
   init: (stream: Subscribable) => void;
 }
 
-// Define the HookType interface with support for initializing with other hooks
 // Define HookType as an interface for the hook methods
 export interface HookType {
   process(params?: any): Promise<void>;
@@ -15,49 +14,47 @@ export interface HookType {
   clear(): void;
   hasCallbacks(): boolean;
   callbacks(): ((params?: any) => void | Promise<void>)[];
-  initWithHook(otherHook: HookType): HookType;
 }
 
-// Function to create a new hook
 export function hook(): HookType {
-  const _callbacks: ((params?: any) => void | Promise<void>)[] = [];
-
-  function callbacks(): ((params?: any) => void | Promise<void>)[] {
-    return _callbacks;
-  }
-
-  function hasCallbacks(): boolean {
-    return _callbacks.length > 0;
-  }
+  // WeakMap to track callbacks with undefined values
+  const _callbackMap = new WeakMap<Function, undefined>();
 
   async function process(params?: any): Promise<void> {
-    for (const callback of _callbacks) {
+    // Iterate over WeakMap entries to call all callbacks
+    for (const [callback] of _callbackMap) {
       await callback(params);
     }
   }
 
-  function chain(this: HookType, callback: (params?: any) => void | Promise<void>): HookType {
-    _callbacks.push(callback);
-    return this;
-  }
-
-  function remove(this: HookType, callback: (params?: any) => void | Promise<void>): HookType {
-    const index = _callbacks.findIndex((item) => item === callback);
-    if (index !== -1) {
-      _callbacks.splice(index, 1);
+  function chain(callback: (params?: any) => void | Promise<void>): HookType {
+    // Add the callback to the WeakMap with undefined as the value
+    if (!_callbackMap.has(callback)) {
+      _callbackMap.set(callback, undefined);
     }
     return this;
   }
 
-  function clear(this: HookType): HookType {
-    _callbacks.length = 0;
+  function remove(callback: (params?: any) => void | Promise<void>): HookType {
+    // Remove the callback from the WeakMap if it exists
+    _callbackMap.delete(callback);
     return this;
   }
 
-  function initWithHook(otherHook: HookType): HookType {
-    const newHook = hook();
-    otherHook.callbacks().forEach(callback => newHook.chain(callback));
-    return newHook;
+  function clear(): void {
+    // Remove all entries from the WeakMap
+    _callbackMap = new WeakMap<Function, undefined>();
+  }
+
+  function hasCallbacks(): boolean {
+    // A WeakMap does not have a direct method to check if it contains entries
+    // Use a method to check if WeakMap is non-empty indirectly
+    return Array.from(_callbackMap.keys()).length > 0;
+  }
+
+  function callbacks(): ((params?: any) => void | Promise<void>)[] {
+    // Collect all callback keys from WeakMap
+    return Array.from(_callbackMap.keys());
   }
 
   return {
@@ -67,6 +64,6 @@ export function hook(): HookType {
     clear,
     hasCallbacks,
     callbacks,
-    initWithHook
   };
 }
+
