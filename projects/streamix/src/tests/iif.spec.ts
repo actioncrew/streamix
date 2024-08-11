@@ -13,7 +13,7 @@ class MockStream extends Stream {
 
   override async run(): Promise<void> {
     while (this.index < this.values.length && !this.isStopRequested()) {
-      await this.emit({ value: this.values[this.index] }, this.head!);
+      await this.onEmission.process({emission:{ value: this.values[this.index] }, source: this});
       this.index++;
     }
     this.isAutoComplete.resolve(true);

@@ -14,7 +14,7 @@ class MockStream extends Stream {
 override async run(): Promise<void> {
     while (this.index < this.values.length && !this.isStopRequested()) {
       let emission = { value: this.values[this.index] } as Emission;
-      await this.emit(emission, this.head!);
+      await this.onEmission.process({emission, source: this});
 
       if (emission.isFailed) {
         throw emission.error;
