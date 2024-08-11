@@ -10,18 +10,35 @@ import { Subscription } from './subscription';
 export class Chunk<T> implements Subscribable<T> {
   operators: Operator[] = [];
 
-  onStart: HookType;
-  onComplete: HookType;
-  onStop: HookType;
-  onError: HookType;
-  onEmission: HookType
+  async processEmission(params: {emission: Emission, source: any}) {
+    if(params) {
+      let next = (params.source instanceof Stream) ? this.head : undefined;
+      next = (params.source instanceof ReduceOperator) ? params.source.next : next;
+      next = (params.source instanceof DefaultIfEmptyOperator) ? params.source.next : next;
+      await this.emit(params.emission, next);
+    }
+  }
 
   constructor(public stream: Stream<T>) {
-    this.onStart = hook().initWithHook(stream.onStart);
-    this.onComplete = hook().initWithHook(stream.onComplete);
-    this.onStop = hook().initWithHook(stream.onStop);
-    this.onError = hook().initWithHook(stream.onStart);
-    this.onEmission = hook().initWithHook(stream.onEmission);
+    this.processEmission = this.processEmission.bind(this);
+    stream.onEmission.remove(this.processEmission);
+    stream.onEmission.chain(this.processEmission);
+  }
+
+  get onStart(): HookType {
+    return this.stream.onStart;
+  }
+  get onComplete(): HookType {
+    return this.stream.onComplete;
+  }
+  get onStop(): HookType {
+    return this.stream.onStop;
+  }
+  get onError(): HookType {
+    return this.stream.onError;
+  }
+  get onEmission(): HookType {
+    return this.stream.onEmission;
   }
 
   get isAutoComplete(): PromisifiedType<boolean> {
@@ -49,27 +66,8 @@ export class Chunk<T> implements Subscribable<T> {
     return this.stream.subscribers;
   }
 
-  get head(): Operator {
-    return this.stream.head!;
-  }
-  set head(value: Operator) {
-    this.stream.head = value;
-  }
-  get tail(): Operator {
-    return this.stream.tail!;
-  }
-  set tail(value: Operator) {
-    this.stream.tail = value;
-  }
-  processingCallback = async (params: any) => {
-    if(params) {
-      let next = (params.source instanceof Chunk) ? this.head : undefined;
-      next = (params.source instanceof Stream) ? this.head : next;
-      next = (params.source instanceof ReduceOperator) ? params.source.next : next;
-      next = (params.source instanceof DefaultIfEmptyOperator) ? params.source.next : next;
-      await this.emit(params.emission, next);
-    }
-  };
+  head: Operator | undefined;
+  tail: Operator | undefined;
 
   run(): Promise<void> {
     return this.stream.run();
@@ -119,7 +117,6 @@ export class Chunk<T> implements Subscribable<T> {
     this.subscribers.chain(boundCallback);
 
     if (this.subscribers.callbacks().length === 1 && this.isRunning() === false) {
-      this.onEmission.chain(this.processingCallback.bind(this));
       this.isRunning.resolve(true);
 
       queueMicrotask(async () => {
@@ -148,7 +145,6 @@ export class Chunk<T> implements Subscribable<T> {
       unsubscribe: () => {
           this.subscribers.remove(boundCallback);
           if (!this.subscribers.hasCallbacks()) {
-              this.onEmission.remove(this.processingCallback);
               this.complete();
           }
       }
@@ -156,6 +152,7 @@ export class Chunk<T> implements Subscribable<T> {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
+    this.operators = []; this.head = undefined; this.tail = undefined;
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
         operator = operator.clone();

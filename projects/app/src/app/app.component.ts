@@ -127,10 +127,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       map(columns => Array.from({ length: columns }, () => 0))
     );
 
-
-
-    this.draw$ = this.drops$.pipe(
-      withLatestFrom(interval(33)),
+    this.draw$ = interval(33).pipe(
+      withLatestFrom(this.drops$),
       tap(([drops, _]) => {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
