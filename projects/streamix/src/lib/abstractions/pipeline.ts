@@ -1,6 +1,6 @@
 import { Chunk, Stream } from '../abstractions';
 import { PromisifiedType } from '../utils';
-import { hook, HookType } from './hook';
+import { HookType } from './hook';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
@@ -9,22 +9,16 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private streams: Chunk<T>[] = [];
   private operators: Operator[] = [];
 
-  onStart: HookType;
-  onComplete: HookType;
-  onStop: HookType;
-  onError: HookType;
-  onEmission: HookType
+  onStart!: HookType;
+  onComplete!: HookType;
+  onStop!: HookType;
+  onError!: HookType;
+  onEmission!: HookType;
 
   constructor(stream: Stream<T>, ...operators: Operator[]) {
     const streamChunk = new Chunk(stream);
     this.streams.push(streamChunk);
     this.applyOperators(...operators);
-
-    this.onStart = hook().initWithHook(streamChunk.onStart);
-    this.onComplete = hook().initWithHook(streamChunk.onComplete);
-    this.onStop = hook().initWithHook(streamChunk.onStop);
-    this.onError = hook().initWithHook(streamChunk.onStart);
-    this.onEmission = hook().initWithHook(streamChunk.onEmission);
   }
 
   private applyOperators(...operators: Operator[]): void {
@@ -51,21 +45,8 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   pipe(...operators: Operator[]): Pipeline<T> {
     // Create a new Pipeline instance with the existing streams and new operators
-    const newPipeline = new Pipeline<T>(this.first.stream, ...this.operators, ...operators);
+    const newPipeline = new Pipeline<T>(this.first.stream.clone(), ...this.operators, ...operators);
     return newPipeline;
-  }
-
-  get head(): Operator {
-    return this.first.head!;
-  }
-  set head(value: Operator) {
-    this.first.head = value;
-  }
-  get tail(): Operator {
-    return this.last.tail!;
-  }
-  set tail(value: Operator) {
-    this.last.tail = value;
   }
 
   get isAutoComplete(): PromisifiedType<boolean> {

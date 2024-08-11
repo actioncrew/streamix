@@ -20,9 +20,6 @@ export interface Subscribable<T = any> {
   onError: HookType;
   onEmission: HookType;
 
-  head: Operator | undefined;
-  tail: Operator | undefined;
-
   shouldTerminate(): boolean;
   awaitTermination(): Promise<void>;
   terminate(): Promise<void>;

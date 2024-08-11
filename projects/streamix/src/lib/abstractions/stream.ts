@@ -110,28 +110,15 @@ export class Stream<T = any> implements Subscribable {
       }
     };
   }
-  private _head!: Operator
-  get head(): Operator {
-    return this._head!;
-  }
-  set head(value: Operator) {
-    this._head = value;
-  }
-  private _tail!: Operator
-  get tail(): Operator {
-    return this._tail!;
-  }
-  set tail(value: Operator) {
-    this._tail = value;
-  }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline(this, ...operators);
+    return new Pipeline(this.clone(), ...operators);
   }
 
   clone() {
     const result = Object.create(Object.getPrototypeOf(this));
     Object.assign(result, this);
+    result.subscribers = hook();
     return result;
   }
 
