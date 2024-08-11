@@ -7,14 +7,15 @@ export interface Hook {
 }
 
 // Define the HookType interface with support for initializing with other hooks
+// Define HookType as an interface for the hook methods
 export interface HookType {
   process(params?: any): Promise<void>;
-  chain(callback: (params?: any) => void | Promise<void>): void;
-  remove(callback: (params?: any) => void | Promise<void>): void;
+  chain(callback: (params?: any) => void | Promise<void>): HookType;
+  remove(callback: (params?: any) => void | Promise<void>): HookType;
   clear(): void;
-  callbacks(): ((params?: any) => void | Promise<void>)[];
   hasCallbacks(): boolean;
-  initWithHook(hook: HookType): HookType; // Add a method to initialize with another hook
+  callbacks(): ((params?: any) => void | Promise<void>)[];
+  initWithHook(otherHook: HookType): HookType;
 }
 
 // Function to create a new hook
@@ -35,23 +36,26 @@ export function hook(): HookType {
     }
   }
 
-  function chain(callback: (params?: any) => void | Promise<void>): void {
+  function chain(this: HookType, callback: (params?: any) => void | Promise<void>): HookType {
     _callbacks.push(callback);
+    return this;
   }
 
-  function remove(callback: (params?: any) => void | Promise<void>): void {
+  function remove(this: HookType, callback: (params?: any) => void | Promise<void>): HookType {
     const index = _callbacks.findIndex((item) => item === callback);
     if (index !== -1) {
       _callbacks.splice(index, 1);
     }
+    return this;
   }
 
-  function clear(): void {
+  function clear(this: HookType): HookType {
     _callbacks.length = 0;
+    return this;
   }
 
   function initWithHook(otherHook: HookType): HookType {
-    let newHook = hook();
+    const newHook = hook();
     otherHook.callbacks().forEach(callback => newHook.chain(callback));
     return newHook;
   }
