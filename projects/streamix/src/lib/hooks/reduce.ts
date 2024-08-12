@@ -18,7 +18,7 @@ export class ReduceOperator extends Operator implements Hook {
 
   init(stream: Subscribable) {
     this.boundStream = stream;
-    this.boundStream.onComplete.chain(this.callback.bind(this));
+    this.boundStream.onComplete.chain(this, this.callback);
   }
 
   async callback(params?: any): Promise<void> {

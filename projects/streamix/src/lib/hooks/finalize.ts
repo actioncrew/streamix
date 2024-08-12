@@ -11,7 +11,7 @@ export class FinalizeOperator extends Operator implements Hook {
 
   init(stream: Subscribable) {
     this.boundStream = stream;
-    this.boundStream.onStop.chain(this.callback.bind(this));
+    this.boundStream.onStop.chain(this, this.callback);
   }
 
   async callback(params?: any): Promise<void> {

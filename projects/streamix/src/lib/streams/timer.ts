@@ -50,7 +50,7 @@ export class TimerStream<T = any> extends Stream<T> {
     return {
       unsubscribe: () => {
         subscription.unsubscribe();
-        if (!this.subscribers.hasCallbacks()) {
+        if (this.subscribers.length === 0) {
           if (this.intervalId) {
             clearInterval(this.intervalId);
             this.intervalId = null;

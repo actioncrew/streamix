@@ -11,7 +11,7 @@ export class StartWithOperator extends Operator implements Hook {
 
   init(stream: Subscribable) {
     this.boundStream = stream;
-    this.boundStream.onStart.chain(this.callback.bind(this));
+    this.boundStream.onStart.chain(this, this.callback);
   }
 
   async callback(params?: any): Promise<void> {

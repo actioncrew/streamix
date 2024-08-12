@@ -10,52 +10,68 @@ export interface Hook {
 export interface HookType {
   process(params?: any): Promise<void>;
   parallel(params?: any): Promise<void>;
-  chain(callback: (params?: any) => void | Promise<void>): HookType;
-  remove(callback: (params?: any) => void | Promise<void>): HookType;
-  clear(): void;
-  hasCallbacks(): boolean;
-  callbacks(): ((params?: any) => void | Promise<void>)[];
+  chain(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType;
+  remove(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType;
+  clear(this: HookType): HookType;
+  length: number;
 }
 
 export function hook(): HookType {
-  // WeakMap to track callbacks with undefined values
-  const _callbackMap = new WeakMap<Function, undefined>();
+  const callbackMap = new Map<WeakRef<object>, Set<Function>>();
 
   async function process(params?: any): Promise<void> {
-    for (const [callback] of _callbackMap) {
-      await callback(params);
+    for (const [ownerRef, callbacks] of callbackMap) {
+      const owner = ownerRef.deref();
+      if (owner) {
+        for (const callback of callbacks) {
+          await callback.call(owner, params);
+        }
+      } else {
+        callbackMap.delete(ownerRef);
+      }
     }
   }
 
   async function parallel(params?: any): Promise<void> {
-    const promises = Array.from(_callbackMap.keys()).map(callback => callback(params));
+    const promises: Promise<void>[] = [];
+    for (const [ownerRef, callbacks] of callbackMap) {
+      const owner = ownerRef.deref();
+      if (owner) {
+        for (const callback of callbacks) {
+          promises.push(callback.call(owner, params));
+        }
+      } else {
+        callbackMap.delete(ownerRef);
+      }
+    }
     await Promise.all(promises);
   }
 
-  function chain(callback: (params?: any) => void | Promise<void>): HookType {
-    if (!_callbackMap.has(callback)) {
-      _callbackMap.set(callback, undefined);
+  function chain(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType {
+    const ownerRef = new WeakRef(owner);
+    if (!callbackMap.has(ownerRef)) {
+      callbackMap.set(ownerRef, new Set());
+    }
+    callbackMap.get(ownerRef)!.add(callback);
+    return this;
+  }
+
+  function remove(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType {
+    for (const [ownerRef, callbacks] of callbackMap) {
+      if (ownerRef.deref() === owner) {
+        callbacks.delete(callback);
+        if (callbacks.size === 0) {
+          callbackMap.delete(ownerRef);
+        }
+        break;
+      }
     }
     return this;
   }
 
-  function remove(callback: (params?: any) => void | Promise<void>): HookType {
-    _callbackMap.delete(callback);
+  function clear(this: HookType): HookType {
+    callbackMap.clear();
     return this;
-  }
-
-  function clear(): void {
-    // Reinitialize _callbackMap to clear all entries
-    _callbackMap = new WeakMap<Function, undefined>();
-  }
-
-  function hasCallbacks(): boolean {
-    // Check if there are any entries in the WeakMap
-    return Array.from(_callbackMap.keys()).length > 0;
-  }
-
-  function callbacks(): ((params?: any) => void | Promise<void>)[] {
-    return Array.from(_callbackMap.keys());
   }
 
   return {
@@ -64,7 +80,8 @@ export function hook(): HookType {
     chain,
     remove,
     clear,
-    hasCallbacks,
-    callbacks,
+    get length() {
+      return Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0);
+    }
   };
 }
