@@ -1,10 +1,10 @@
 import { Stream, Subscription } from '../abstractions';
-import { promisifiedCounter } from '../utils';
+import { counter } from '../utils';
 
 export class FromEventStream extends Stream {
   private target: EventTarget;
   private eventName: string;
-  private eventCounter = promisifiedCounter(0);
+  private eventCounter = counter(0);
   private listener!: (event: Event) => void;
 
   constructor(target: EventTarget, eventName: string) {

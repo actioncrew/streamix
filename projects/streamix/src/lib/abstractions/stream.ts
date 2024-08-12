@@ -1,6 +1,5 @@
-import { promisified } from '../utils';
+import { hook, promisified } from '../utils';
 import { Emission } from './emission';
-import { hook } from './hook';
 import { Operator } from './operator';
 import { Pipeline } from './pipeline';
 import { Subscribable } from './subscribable';
