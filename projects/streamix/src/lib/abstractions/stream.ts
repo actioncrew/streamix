@@ -62,8 +62,8 @@ export class Stream<T = any> implements Subscribable {
   }
 
   unsubscribe(callback: (value: T) => any): void {
-    this.subscribers.remove(callback);
-    if (!this.subscribers.hasCallbacks()) {
+    this.subscribers.remove(this, callback);
+    if (this.subscribers.length === 0) {
       this.isStopRequested.resolve(true);
       this.isUnsubscribed.resolve(true);
     }
@@ -72,10 +72,10 @@ export class Stream<T = any> implements Subscribable {
   // Protected method to handle the subscription chain
   subscribe(callback: ((value: T) => any) | void): Subscription {
     const boundCallback = callback ?? (() => {});
-    this.subscribers.chain(boundCallback);
+    this.subscribers.chain(this, boundCallback);
 
-    if (this.subscribers.callbacks().length === 1 && this.isRunning() === false) {
-      this.onEmission.chain(this.processingCallback.bind(this));
+    if (this.subscribers.length === 1 && this.isRunning() === false) {
+      this.onEmission.chain(this, this.processingCallback);
       this.isRunning.resolve(true);
 
       queueMicrotask(async () => {
@@ -102,9 +102,9 @@ export class Stream<T = any> implements Subscribable {
 
     return {
       unsubscribe: () => {
-          this.subscribers.remove(boundCallback);
-          if (!this.subscribers.hasCallbacks()) {
-              this.onEmission.remove(this.processingCallback);
+          this.subscribers.remove(this, boundCallback);
+          if (this.subscribers.length === 0) {
+              this.onEmission.remove(this, this.processingCallback);
               this.complete();
           }
       }
@@ -133,14 +133,14 @@ export class Stream<T = any> implements Subscribable {
       currentEmission = await (next?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
 
       if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
-        await Promise.all((() => this.subscribers.callbacks().map((subscriber) => (subscriber instanceof Function) ? subscriber(currentEmission.value) : Promise.resolve()))());
+        await this.subscribers.parallel(currentEmission.value);
       }
 
       currentEmission.isComplete = true;
     } catch (error: any) {
       emission.isFailed = true;
       emission.error = error;
-      this.onError.hasCallbacks() ? this.onError.process({ error }) : (() => { this.isFailed.resolve(error); })();
+      this.onError.length > 0 ? this.onError.process({ error }) : (() => { this.isFailed.resolve(error); })();
     }
   }
 }

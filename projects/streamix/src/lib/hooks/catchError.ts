@@ -11,7 +11,7 @@ export class CatchErrorOperator extends Operator implements Hook {
 
   init(stream: Subscribable) {
     this.boundStream = stream;
-    this.boundStream.onError.chain(this.callback.bind(this));
+    this.boundStream.onError.chain(this, this.callback);
   }
 
   async callback({ error }: any): Promise<void> {
