@@ -1,5 +1,4 @@
-import { PromisifiedType } from '../utils';
-import { HookType } from './hook';
+import { HookType, PromisifiedType } from '../utils';
 import { Operator } from './operator';
 import { Subscription } from './subscription';
 

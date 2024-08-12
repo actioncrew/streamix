@@ -1,8 +1,7 @@
-import { Stream } from '../abstractions';
+import { Hook, Stream } from '../abstractions';
 import { DefaultIfEmptyOperator, ReduceOperator } from '../hooks';
-import { promisified, PromisifiedType } from '../utils';
+import { hook, HookType, promisified, PromisifiedType } from '../utils';
 import { Emission } from './emission';
-import { Hook, hook, HookType } from './hook';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';

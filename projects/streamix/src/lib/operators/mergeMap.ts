@@ -1,6 +1,6 @@
 import { Subject } from '../../lib';
 import { Emission, Operator, Subscribable } from '../abstractions';
-import { promisifiedCounter } from '../utils';
+import { counter } from '../utils';
 
 export class MergeMapOperator extends Operator {
   private readonly project: (value: any) => Subscribable;
@@ -12,7 +12,7 @@ export class MergeMapOperator extends Operator {
   private output?: Subject;
 
   private emissionNumber = 0;
-  private executionNumber = promisifiedCounter(0);
+  private executionNumber = counter(0);
 
   constructor(project: (value: any) => Subscribable) {
     super();
