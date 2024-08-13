@@ -66,7 +66,7 @@ export class Stream<T = any> implements Subscribable {
       ? () => Promise.resolve()
       : (value: T) => Promise.resolve(callback!(value));
 
-    if (this.subscribers.length === 0 && caller === undefined) {
+    if (!this.onEmission.contains(this, this.emit) && !(caller?.stream === this)) {
       this.onEmission.chain(this, this.emit);
     }
 

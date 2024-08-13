@@ -7,7 +7,8 @@ import { Subscription } from './subscription';
 
 export class Chunk<T = any> implements Subscribable<T> {
   operators: Operator[] = [];
-  emitterRegistered = false;
+  head: Operator | undefined;
+  tail: Operator | undefined;
 
   constructor(public stream: Stream<T>) {
   }
@@ -36,9 +37,6 @@ export class Chunk<T = any> implements Subscribable<T> {
   get subscribers(): HookType {
     return this.stream.subscribers;
   }
-
-  head: Operator | undefined;
-  tail: Operator | undefined;
 
   run(): Promise<void> {
     return this.stream.run();
@@ -76,7 +74,7 @@ export class Chunk<T = any> implements Subscribable<T> {
 
   // Protected method to handle the subscription chain
   subscribe(callback: ((value: T) => any) | void): Subscription {
-    if(this.subscribers.length === 0) {
+    if(!this.stream.onEmission.contains(this, this.emit)) {
       this.stream.onEmission.chain(this, this.emit);
     }
 
