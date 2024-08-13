@@ -9,7 +9,6 @@ export class Chunk<T = any> implements Subscribable<T> {
   operators: Operator[] = [];
 
   constructor(public stream: Stream<T>) {
-    stream.onEmission.chain(this, this.emit);
   }
 
   get isAutoComplete(): PromisifiedType<boolean> {
@@ -76,12 +75,14 @@ export class Chunk<T = any> implements Subscribable<T> {
 
   // Protected method to handle the subscription chain
   subscribe(callback: ((value: T) => any) | void): Subscription {
+    const stream = this.stream;
     const boundCallback = callback ?? (() => {});
     this.subscribers.chain(this, boundCallback);
 
     if (this.subscribers.length === 1 && this.isRunning() === false) {
       this.isRunning.resolve(true);
-      const stream = this.stream;
+      stream.onEmission.chain(this, this.emit);
+
       queueMicrotask(async () => {
         try {
           // Emit start value if defined
@@ -109,6 +110,7 @@ export class Chunk<T = any> implements Subscribable<T> {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
               this.isUnsubscribed.resolve(true);
+              stream.onEmission.remove(this, this.emit);
               this.complete();
           }
       }
