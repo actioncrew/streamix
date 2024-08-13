@@ -83,7 +83,11 @@ export class CaptionComponent implements OnInit {
   selector: 'app-root',
   standalone: true,
   imports: [RouterOutlet, CaptionComponent],
-  templateUrl: './app.component.html',
+  template: `
+  <div class="container">
+    <app-caption></app-caption>
+    <canvas></canvas>
+  </div>`,
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
