@@ -63,6 +63,12 @@ export class DefineOperator extends Operator {
       this.workerPool.push(worker);
     }
   }
+
+  override async cleanup(): Promise<void> {
+    this.workerPool.forEach(worker => {
+      worker.terminate();
+    })
+  }
 }
 
 export const define = (...functions: Function[]) => new DefineOperator(...functions);

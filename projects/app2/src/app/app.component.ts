@@ -174,6 +174,7 @@ export class AppComponent implements OnInit {
       }, 0),
       finalize(() => {
         this.ctx.putImageData(imageData, 0, 0);
+        task.cleanup();
         this.hideProgressOverlay();
       })
     );
