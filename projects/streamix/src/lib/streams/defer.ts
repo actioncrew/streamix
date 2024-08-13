@@ -1,12 +1,12 @@
-import { Subscription } from '../abstractions';
+import { Subscribable, Subscription } from '../abstractions';
 import { Stream } from '../abstractions/stream';
 
 export class DeferStream extends Stream {
-  private readonly factory: () => Stream;
+  private readonly factory: () => Subscribable;
   private subscription?: Subscription;
   private promise: Promise<void> = Promise.resolve();
 
-  constructor(factory: () => Stream) {
+  constructor(factory: () => Subscribable) {
     super();
     this.factory = factory;
   }
@@ -56,6 +56,6 @@ export class DeferStream extends Stream {
 }
 
 // Factory function to create a new stream instance
-export function defer(factory: () => Stream): Stream {
+export function defer(factory: () => Subscribable): Stream {
   return new DeferStream(factory);
 }

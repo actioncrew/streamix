@@ -1,9 +1,9 @@
-import { Stream } from '../abstractions/stream';
+import { Stream, Subscribable } from '../abstractions';
 
 export class MergeStream extends Stream {
-  private sources: Stream[];
+  private sources: Subscribable[];
 
-  constructor(...sources: Stream[]) {
+  constructor(...sources: Subscribable[]) {
     super();
     this.sources = sources;
   }
@@ -20,7 +20,7 @@ export class MergeStream extends Stream {
   }
 }
 
-export function merge(...sources: Stream[]) {
+export function merge(...sources: Subscribable[]) {
   return new MergeStream(...sources);
 }
 
