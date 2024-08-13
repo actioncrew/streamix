@@ -1,6 +1,7 @@
-import { fromEvent, interval, merge, startWith, tap } from '@actioncrew/streamix';
-import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+import { fromEvent, merge, tap } from '@actioncrew/streamix';
+import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -9,7 +10,7 @@ import { RouterOutlet } from '@angular/router';
   template: '<canvas #canvas></canvas>',
   styles: ['canvas { display: block; }']
 })
-export class AppComponent implements AfterViewInit {
+export class AppComponent implements AfterViewInit, OnDestroy {
   @ViewChild('canvas', { static: false }) canvasRef!: ElementRef<HTMLCanvasElement>;
   private ctx!: CanvasRenderingContext2D;
   private particles: any[] = [];
@@ -18,6 +19,7 @@ export class AppComponent implements AfterViewInit {
   private mouseY = 0;
   private isMouseOver = false;
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
+  private subscriptions = new Subscription();
 
   ngAfterViewInit() {
     const canvas = this.canvasRef.nativeElement;
@@ -26,6 +28,10 @@ export class AppComponent implements AfterViewInit {
     this.createParticles();
     this.setupEventStreams();
     this.startAnimation();
+  }
+
+  ngOnDestroy() {
+    this.subscriptions.unsubscribe(); // Cleanup subscriptions
   }
 
   private setupCanvas() {
@@ -40,32 +46,21 @@ export class AppComponent implements AfterViewInit {
     this.ctx.textBaseline = 'middle';
 
     const centerY = this.ctx.canvas.height / 2;
-
-    // Calculate total width of the text
     const totalWidth = this.ctx.measureText(this.text).width;
     let startX = (this.ctx.canvas.width - totalWidth) / 2;
 
-    // Clear the canvas before drawing
     this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
 
     for (let i = 0; i < this.text.length; i++) {
       const letter = this.text[i];
       const color = this.colorPalette[i % this.colorPalette.length];
-
       this.ctx.fillStyle = color;
-
-      // Get the width of the current letter
       const letterWidth = this.ctx.measureText(letter).width;
-
-      // Draw the letter
       this.ctx.fillText(letter, startX + letterWidth / 2, centerY);
-
-      // Move startX to the right for the next letter
       startX += letterWidth;
     }
 
     const imageData = this.ctx.getImageData(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-
     this.particles = []; // Clear previous particles
 
     for (let y = 0; y < this.ctx.canvas.height; y += 4) {
@@ -99,6 +94,7 @@ export class AppComponent implements AfterViewInit {
       tap(e => {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
+        this.checkMouseProximity(); // Check proximity on mouse move
       })
     );
 
@@ -110,7 +106,9 @@ export class AppComponent implements AfterViewInit {
       tap(() => this.isMouseOver = false)
     );
 
-    merge(mouseMove$, mouseEnter$, mouseLeave$).subscribe();
+    this.subscriptions.add(
+      merge(mouseMove$, mouseEnter$, mouseLeave$).subscribe()
+    );
   }
 
   private checkMouseProximity() {
@@ -127,10 +125,12 @@ export class AppComponent implements AfterViewInit {
   }
 
   private startAnimation() {
-    interval(1000 / 60).pipe(
-      startWith(0),
-      tap(() => this.animate())
-    ).subscribe();
+    const animate = () => {
+      this.animate();
+      requestAnimationFrame(animate); // Use requestAnimationFrame for smooth animation
+    };
+
+    requestAnimationFrame(animate);
   }
 
   private animate() {
