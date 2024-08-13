@@ -1,4 +1,4 @@
-export function promisifiedValue<T>() {
+export function asyncValue<T>() {
   let _value: T | undefined;
   let _hasValue = false;
   let _resolve!: (value: T | PromiseLike<T>) => void;

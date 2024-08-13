@@ -1,8 +1,8 @@
 import { Emission, Operator, Subscribable, Subscription } from '../abstractions';
-import { promisifiedValue } from '../utils';
+import { asyncValue } from '../utils';
 
 export class WithLatestFromOperator extends Operator {
-  private latestValues: ReturnType<typeof promisifiedValue<any>>[] = [];
+  private latestValues: ReturnType<typeof asyncValue<any>>[] = [];
   private subscriptions: Subscription[] = [];
   private streams: Subscribable[];
 
@@ -10,7 +10,7 @@ export class WithLatestFromOperator extends Operator {
     super();
     this.streams = streams;
     this.streams.forEach((stream) => {
-      const latestValue = promisifiedValue();
+      const latestValue = asyncValue();
       this.latestValues.push(latestValue);
       this.subscriptions.push(stream.subscribe((value) => {
         latestValue.set(value);
