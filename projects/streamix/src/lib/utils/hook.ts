@@ -5,6 +5,7 @@ export interface HookType {
   chain(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType;
   remove(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType;
   clear(this: HookType): HookType;
+  contains(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): boolean;
   length: number;
 }
 
@@ -61,6 +62,15 @@ export function hook(): HookType {
     return this;
   }
 
+  function contains(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): boolean {
+    for (const [ownerRef, callbacks] of callbackMap) {
+      if (ownerRef.deref() === owner) {
+        return callbacks.has(callback);
+      }
+    }
+    return false;
+  }
+
   function clear(this: HookType): HookType {
     callbackMap.clear();
     return this;
@@ -72,6 +82,7 @@ export function hook(): HookType {
     chain,
     remove,
     clear,
+    contains,
     get length() {
       return Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0);
     }
