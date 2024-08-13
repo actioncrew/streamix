@@ -22,5 +22,5 @@ export interface Subscribable<T = any> {
   complete(): Promise<void>;
 
   pipe(...operators: Operator[]): Subscribable<T>;
-  subscribe(callback: ((value: T) => any) | void, source?: any): Subscription;
+  subscribe(callback: ((value: T) => any) | void): Subscription;
 }
