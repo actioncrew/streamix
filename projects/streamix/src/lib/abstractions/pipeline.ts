@@ -91,7 +91,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     callback = callback ?? defaultCallback;
 
     const subscribeToStream = (stream: Subscribable<T>, cb: (value: T) => any): Subscription => {
-      const subscription = stream.subscribe(cb, this);
+      const subscription = stream.subscribe(cb);
       subscriptions.push(subscription);
       return subscription;
     };

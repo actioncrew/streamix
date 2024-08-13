@@ -20,7 +20,7 @@ export class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
-  emitterRegistered = false;
+  skipChainingOnSubscription = false;
 
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
@@ -62,7 +62,7 @@ export class Stream<T = any> implements Subscribable {
       ? () => Promise.resolve()
       : (value: T) => Promise.resolve(callback!(value));
 
-    if (!this.onEmission.contains(this, this.emit)) {
+    if (!this.skipChainingOnSubscription && !this.onEmission.contains(this, this.emit)) {
       this.onEmission.chain(this, this.emit);
     }
 
