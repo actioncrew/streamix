@@ -86,6 +86,7 @@ export class Chunk<T = any> implements Subscribable<T> {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
+    operators = [...this.operators, ...operators];
     this.operators = []; this.head = undefined; this.tail = undefined;
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
@@ -113,12 +114,6 @@ export class Chunk<T = any> implements Subscribable<T> {
     });
 
     return this;
-  }
-
-  clone() {
-    const result = Object.create(Object.getPrototypeOf(this));
-    Object.assign(result, this);
-    return result;
   }
 
   async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {

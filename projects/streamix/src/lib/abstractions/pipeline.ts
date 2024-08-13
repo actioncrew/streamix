@@ -8,10 +8,9 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private streams: Chunk<T>[] = [];
   private operators: Operator[] = [];
 
-  constructor(stream: Stream<T>, ...operators: Operator[]) {
+  constructor(stream: Stream<T>) {
     const streamChunk = new Chunk(stream);
     this.streams.push(streamChunk);
-    this.applyOperators(...operators);
   }
 
   private applyOperators(...operators: Operator[]): void {
@@ -38,7 +37,8 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   pipe(...operators: Operator[]): Pipeline<T> {
     // Create a new Pipeline instance with the existing streams and new operators
-    const newPipeline = new Pipeline<T>(this.first.stream.clone(), ...this.operators, ...operators);
+    const newPipeline = new Pipeline<T>(this.first.stream.clone());
+    newPipeline.applyOperators(...this.operators, ...operators)
     return newPipeline;
   }
 

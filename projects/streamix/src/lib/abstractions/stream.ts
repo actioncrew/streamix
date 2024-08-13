@@ -1,9 +1,5 @@
+import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
 import { hook, promisified } from '../utils';
-import { Emission } from './emission';
-import { Operator } from './operator';
-import { Pipeline } from './pipeline';
-import { Subscribable } from './subscribable';
-import { Subscription } from './subscription';
 
 export class Stream<T = any> implements Subscribable {
 
@@ -110,7 +106,10 @@ export class Stream<T = any> implements Subscribable {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline(this.clone(), ...operators);
+    // if(!operators.some((operator, index) => 'outerStream' in operator && index !== operators.length - 1)) {
+    //   return new Chunk(this.clone()).pipe(...operators);
+    // }
+    return new Pipeline(this.clone()).pipe(...operators);
   }
 
   clone() {
