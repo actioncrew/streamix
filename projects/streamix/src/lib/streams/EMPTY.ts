@@ -1,6 +1,6 @@
 import { Stream } from '../abstractions/stream';
 
-export class EmptyStream extends Stream {
+export class EmptyStream<T = any> extends Stream<T> {
   constructor() {
     super();
   }

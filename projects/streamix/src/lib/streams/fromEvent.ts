@@ -1,7 +1,7 @@
 import { Stream, Subscription } from '../abstractions';
 import { counter } from '../utils';
 
-export class FromEventStream extends Stream {
+export class FromEventStream<T = any> extends Stream<T> {
   private target: EventTarget;
   private eventName: string;
   private eventCounter = counter(0);
@@ -35,6 +35,6 @@ export class FromEventStream extends Stream {
   }
 }
 
-export function fromEvent(target: EventTarget, eventName: string) {
-  return new FromEventStream(target, eventName);
+export function fromEvent<T = any>(target: EventTarget, eventName: string) {
+  return new FromEventStream<T>(target, eventName);
 }

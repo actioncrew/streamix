@@ -66,6 +66,6 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
   }
 }
 
-export function combineLatest(sources: Subscribable[]) {
-  return new CombineLatestStream(sources);
+export function combineLatest<T = any>(sources: Subscribable[]) {
+  return new CombineLatestStream<T>(sources);
 }

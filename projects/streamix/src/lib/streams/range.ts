@@ -1,7 +1,7 @@
 import { Emission } from '../abstractions';
 import { Stream } from '../abstractions/stream';
 
-export class RangeStream extends Stream {
+export class RangeStream<T = any> extends Stream<T> {
   private current: number;
   private end: number;
   private step: number;
@@ -34,6 +34,6 @@ export class RangeStream extends Stream {
   }
 }
 
-export function range(start: number, end: number, step: number = 1) {
-  return new RangeStream(start, end, step);
+export function range<T = any>(start: number, end: number, step: number = 1) {
+  return new RangeStream<T>(start, end, step);
 }

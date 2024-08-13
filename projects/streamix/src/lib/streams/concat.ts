@@ -1,7 +1,7 @@
 import { Stream, Subscribable } from '../abstractions';
 import { Subscription } from '../abstractions/subscription';
 
-export class ConcatStream extends Stream {
+export class ConcatStream<T = any> extends Stream<T> {
   private sources: Subscribable[];
   private currentSourceIndex: number = 0;
   private currentSubscription?: Subscription;
@@ -60,6 +60,6 @@ export class ConcatStream extends Stream {
   }
 }
 
-export function concat(...sources: Subscribable[]) {
-  return new ConcatStream(...sources);
+export function concat<T = any>(...sources: Subscribable[]) {
+  return new ConcatStream<T>(...sources);
 }
