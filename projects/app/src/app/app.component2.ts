@@ -1,3 +1,4 @@
+import { fromEvent, interval, merge, startWith, tap } from '@actioncrew/streamix';
 import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
@@ -23,8 +24,8 @@ export class AppComponent implements AfterViewInit {
     this.ctx = canvas.getContext('2d')!;
     this.setupCanvas();
     this.createParticles();
-    this.addEventListeners();
-    this.animate();
+    this.setupEventStreams();
+    this.startAnimation();
   }
 
   private setupCanvas() {
@@ -91,15 +92,25 @@ export class AppComponent implements AfterViewInit {
     }
   }
 
-  private addEventListeners() {
+  private setupEventStreams() {
     const canvas = this.canvasRef.nativeElement;
-    canvas.addEventListener('mousemove', (e) => {
-      this.mouseX = e.clientX;
-      this.mouseY = e.clientY;
-      this.checkMouseProximity();
-    });
-    canvas.addEventListener('mouseenter', () => this.checkMouseProximity());
-    canvas.addEventListener('mouseleave', () => this.isMouseOver = false);
+
+    const mouseMove$ = fromEvent(canvas, 'mousemove').pipe(
+      tap(e => {
+        this.mouseX = e.clientX;
+        this.mouseY = e.clientY;
+      })
+    );
+
+    const mouseEnter$ = fromEvent(canvas, 'mouseenter').pipe(
+      tap(() => this.checkMouseProximity())
+    );
+
+    const mouseLeave$ = fromEvent(canvas, 'mouseleave').pipe(
+      tap(() => this.isMouseOver = false)
+    );
+
+    merge(mouseMove$, mouseEnter$, mouseLeave$).subscribe();
   }
 
   private checkMouseProximity() {
@@ -113,6 +124,13 @@ export class AppComponent implements AfterViewInit {
         return false;
       }
     });
+  }
+
+  private startAnimation() {
+    interval(1000 / 60).pipe(
+      startWith(0),
+      tap(() => this.animate())
+    ).subscribe();
   }
 
   private animate() {
@@ -141,9 +159,8 @@ export class AppComponent implements AfterViewInit {
     }
 
     this.particles = this.particles.filter(p => p.y < this.ctx.canvas.height);
-    if(this.particles.length === 0) {
+    if (this.particles.length === 0) {
       this.createParticles();
     }
-    requestAnimationFrame(() => this.animate());
   }
 }
