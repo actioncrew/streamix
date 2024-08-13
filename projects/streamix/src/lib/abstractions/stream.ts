@@ -24,6 +24,8 @@ export class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
+  emitterRegistered = false;
+
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
   }
@@ -59,14 +61,18 @@ export class Stream<T = any> implements Subscribable {
   }
 
   // Protected method to handle the subscription chain
-  subscribe(callback: ((value: T) => any) | void): Subscription {
+  subscribe(callback: ((value: T) => any) | void, source: any = undefined): Subscription {
     const boundCallback = callback === undefined
       ? () => Promise.resolve()
       : (value: T) => Promise.resolve(callback!(value));
+
+    if (this.subscribers.length === 0 && source === undefined) {
+      this.onEmission.chain(this, this.emit);
+    }
+
     this.subscribers.chain(this, boundCallback);
 
-    if (this.subscribers.length === 1 && this.isRunning() === false) {
-      this.onEmission.chain(this, this.emit);
+    if (this.isRunning() === false) {
       this.isRunning.resolve(true);
 
       queueMicrotask(async () => {
@@ -96,7 +102,7 @@ export class Stream<T = any> implements Subscribable {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
               this.isUnsubscribed.resolve(true);
-              this.onEmission.remove(this, this.emit);
+              this.onEmission.clear();
               this.complete();
           }
       }

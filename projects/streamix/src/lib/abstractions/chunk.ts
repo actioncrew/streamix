@@ -7,6 +7,7 @@ import { Subscription } from './subscription';
 
 export class Chunk<T = any> implements Subscribable<T> {
   operators: Operator[] = [];
+  emitterRegistered = false;
 
   constructor(public stream: Stream<T>) {
   }
@@ -75,47 +76,14 @@ export class Chunk<T = any> implements Subscribable<T> {
 
   // Protected method to handle the subscription chain
   subscribe(callback: ((value: T) => any) | void): Subscription {
-    const stream = this.stream;
-    const boundCallback = callback === undefined
-      ? () => Promise.resolve()
-      : (value: T) => Promise.resolve(callback!(value));
-    this.subscribers.chain(this, boundCallback);
-
-    if (this.subscribers.length === 1 && this.isRunning() === false) {
-      this.isRunning.resolve(true);
-      stream.onEmission.chain(this, this.emit);
-
-      queueMicrotask(async () => {
-        try {
-          // Emit start value if defined
-          await stream.onStart.process();
-
-          // Start the actual stream logic
-          await stream.run();
-
-          // Emit end value if defined
-          await stream.onComplete.process();
-        } catch (error) {
-          this.isFailed.resolve(error);
-        } finally {
-          // Handle finalize callback
-          await stream.onStop.process();
-
-          this.isStopped.resolve(true);
-          this.isRunning.reset();
-        }
-      });
+    if(this.subscribers.length === 0) {
+      this.stream.onEmission.chain(this, this.emit);
     }
 
+    const subscription = this.stream.subscribe(callback, this);
+
     return {
-      unsubscribe: () => {
-          this.subscribers.remove(this, boundCallback);
-          if (this.subscribers.length === 0) {
-              this.isUnsubscribed.resolve(true);
-              stream.onEmission.remove(this, this.emit);
-              this.complete();
-          }
-      }
+      unsubscribe: () => subscription.unsubscribe()
     };
   }
 
