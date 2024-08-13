@@ -1,7 +1,6 @@
-import { fromEvent, merge, tap } from '@actioncrew/streamix';
+import { fromEvent, merge, Stream, Subscription, tap } from '@actioncrew/streamix';
 import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -19,7 +18,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private mouseY = 0;
   private isMouseOver = false;
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
-  private subscriptions = new Subscription();
+  private subscriptions: Subscription[] = [];
+  private mergeStream$!: Stream;
 
   ngAfterViewInit() {
     const canvas = this.canvasRef.nativeElement;
@@ -31,7 +31,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    this.subscriptions.unsubscribe(); // Cleanup subscriptions
+    this.subscriptions.forEach(subscription => subscription.unsubscribe()); // Cleanup subscriptions
   }
 
   private setupCanvas() {
@@ -90,7 +90,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private setupEventStreams() {
     const canvas = this.canvasRef.nativeElement;
 
-    const mouseMove$ = fromEvent(canvas, 'mousemove').pipe(
+    const mouseMove$ = fromEvent<MouseEvent>(canvas, 'mousemove').pipe(
       tap(e => {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
@@ -106,8 +106,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       tap(() => this.isMouseOver = false)
     );
 
-    this.subscriptions.add(
-      merge(mouseMove$, mouseEnter$, mouseLeave$).subscribe()
+    this.mergeStream$ = merge(mouseMove$, mouseEnter$, mouseLeave$);
+    this.subscriptions.push(
+      this.mergeStream$.subscribe()
     );
   }
 
