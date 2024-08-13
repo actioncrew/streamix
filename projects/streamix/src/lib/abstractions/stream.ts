@@ -24,8 +24,6 @@ export class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
-  processingCallback = async (params: any) => await this.emit(params.emission, params.next);
-
   run(): Promise<void> {
     throw new Error('Method is not implemented.');
   }
@@ -74,7 +72,7 @@ export class Stream<T = any> implements Subscribable {
     this.subscribers.chain(this, boundCallback);
 
     if (this.subscribers.length === 1 && this.isRunning() === false) {
-      this.onEmission.chain(this, this.processingCallback);
+      this.onEmission.chain(this, this.emit);
       this.isRunning.resolve(true);
 
       queueMicrotask(async () => {
@@ -103,7 +101,7 @@ export class Stream<T = any> implements Subscribable {
       unsubscribe: () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
-              this.onEmission.remove(this, this.processingCallback);
+              this.onEmission.remove(this, this.emit);
               this.complete();
           }
       }
@@ -121,21 +119,21 @@ export class Stream<T = any> implements Subscribable {
     return result;
   }
 
-  async emit(emission: Emission, next: Operator | undefined): Promise<void> {
+  async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      let currentEmission: Emission = emission;
+      let next = (source instanceof Operator) ? source.next : undefined;
 
       if (this.isCancelled()) {
-        currentEmission.isCancelled = true;
+        emission.isCancelled = true;
       }
 
-      currentEmission = await (next?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
+      emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
 
-      if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
-        await this.subscribers.parallel(currentEmission.value);
+      if (!(emission.isPhantom || emission.isCancelled || emission.isFailed)) {
+        await this.subscribers.parallel(emission.value);
       }
 
-      currentEmission.isComplete = true;
+      emission.isComplete = true;
     } catch (error: any) {
       emission.isFailed = true;
       emission.error = error;

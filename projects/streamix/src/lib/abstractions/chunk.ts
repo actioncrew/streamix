@@ -1,5 +1,4 @@
 import { Hook, Stream } from '../abstractions';
-import { DefaultIfEmptyOperator, ReduceOperator } from '../hooks';
 import { hook, HookType, promisified, PromisifiedType } from '../utils';
 import { Emission } from './emission';
 import { Operator } from './operator';
@@ -9,17 +8,8 @@ import { Subscription } from './subscription';
 export class Chunk<T> implements Subscribable<T> {
   operators: Operator[] = [];
 
-  async processEmission(params: {emission: Emission, source: any}) {
-    if(params) {
-      let next = (params.source instanceof Stream) ? this.head : undefined;
-      next = (params.source instanceof ReduceOperator) ? params.source.next : next;
-      next = (params.source instanceof DefaultIfEmptyOperator) ? params.source.next : next;
-      await this.emit(params.emission, next);
-    }
-  }
-
   constructor(public stream: Stream<T>) {
-    stream.onEmission.chain(this, this.processEmission);
+    stream.onEmission.chain(this, this.emit);
   }
 
   get onStart(): HookType {
@@ -184,25 +174,34 @@ export class Chunk<T> implements Subscribable<T> {
     return result;
   }
 
-  async emit(emission: Emission, next: Operator | undefined): Promise<void> {
+  async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      let currentEmission: Emission = emission;
+      let next = (source instanceof Stream) ? this.head : undefined;
+      next = (source instanceof Operator) ? source.next : next;
 
       if (this.isCancelled()) {
-        currentEmission.isCancelled = true;
+        emission.isCancelled = true;
       }
 
-      currentEmission = await (next?.process(currentEmission, this) ?? Promise.resolve(currentEmission));
+      // Process the emission with the next operator, if any
+      emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
 
-      if (!(currentEmission.isPhantom || currentEmission.isCancelled || currentEmission.isFailed)) {
-        await this.subscribers.parallel(currentEmission.value);
+      // If emission is valid, notify subscribers
+      if (!(emission.isPhantom || emission.isCancelled || emission.isFailed)) {
+        await this.subscribers.parallel(emission.value);
       }
 
-      currentEmission.isComplete = true;
+      emission.isComplete = true;
     } catch (error: any) {
+      // Handle the error case
       emission.isFailed = true;
       emission.error = error;
-      this.onError.length > 0 ? this.onError.process({ error }) : (() => { this.isFailed.resolve(error); })();
+
+      if (this.onError.length > 0) {
+        await this.onError.process({ error });
+      } else {
+        this.isFailed.resolve(error);
+      }
     }
   }
 }
