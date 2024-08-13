@@ -1,165 +1,436 @@
-import {
-  fromEvent,
-  interval,
-  map,
-  startWith,
-  Subject,
-  Subscribable,
-  switchMap,
-  takeUntil,
-  tap,
-  timer,
-  withLatestFrom,
-} from '@actioncrew/streamix';
-import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-
-
-@Component({
-  selector: 'app-caption',
-  template: `
-    <div class="caption">
-      {{ displayedCaption }}
-      <span *ngIf="showCursor" class="cursor">_</span>
-    </div>
-  `,
-  styles: `
-    .caption {
-      font-family: monospace;
-      font-size: 48px;
-      color: #0f0;
-      text-align: center;
-      position: relative;
-      background: transparent;
-    }
-
-    .cursor {
-      position: absolute;
-      right: 0;
-      top: 0;
-      transform: translateX(100%);
-      animation: blink 0.5s step-start infinite;
-    }
-
-    @keyframes blink {
-      0% { opacity: 0; }
-      33% { opacity: 1; }
-      100% { opacity: 1; }
-    }
-  `,
-  standalone: true,
-  imports: [CommonModule]
-})
-export class CaptionComponent implements OnInit {
-  caption: string = 'Streamix';
-  displayedCaption: string = '';
-  showCursor: boolean = true;
-
-  ngOnInit() {
-    this.startTypingEffect();
-    this.startCursorBlinking();
-  }
-
-  startTypingEffect() {
-    let currentIndex = 0;
-    const typeInterval = 200;
-
-    timer(1800, typeInterval).subscribe(() => {
-      if (currentIndex < this.caption.length) {
-        this.displayedCaption += this.caption[currentIndex];
-        currentIndex++;
-      }
-    });
-  }
-
-  startCursorBlinking() {
-    interval(500).subscribe(() => {
-      this.showCursor = !this.showCursor;
-    });
-  }
-}
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CaptionComponent],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  imports: [RouterOutlet],
+  template: '<canvas #canvas></canvas>',
+  styles: ['canvas { display: block; }'],
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
-  private canvas!: HTMLCanvasElement;
+export class AppComponent implements AfterViewInit {
+  @ViewChild('canvas', { static: false })
+  canvasRef!: ElementRef<HTMLCanvasElement>;
   private ctx!: CanvasRenderingContext2D;
-  private fontSize = 10;
-  private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
-  private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
-  private destroy$ = new Subject<void>();
-  private resize$!: Subscribable<any>;
-  private columns$!: Subscribable<any>;
-  private drops$!: Subscribable<any>;
-  private draw$!: Subscribable<any>;
-  private scene$!: Subscribable<any>;
+  private particles: any[] = [];
+  private text = 'Streamix';
+  private whirlpoolCenterX = 0;
+  private whirlpoolCenterY = 0;
+  private whirlpoolRadius = Math.max(window.innerWidth, window.innerHeight);
+  private whirlpoolSpeed = 0.03;
+  private formingText = false;
+  private animationStopped = false;
+  private targetPositions: { [key: string]: { x: number; y: number } } = {};
+  private animationState:
+    | 'initial'
+    | 'forming'
+    | 'delay'
+    | 'destruction'
+    | 'reformation' = 'initial';
+  private frameCount = 0;
+  private delayFrames = 60;
+  private ribbons: any[] = [];
+  private rectangles: any[] = [];
 
   ngAfterViewInit() {
-    this.canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    this.ctx = this.canvas.getContext('2d')!;
-    this.setupAnimation();
+    const canvas = this.canvasRef.nativeElement;
+    this.ctx = canvas.getContext('2d')!;
+    this.setupCanvas();
+    this.createParticles();
+    this.createRectangles();
+    this.createRibbons();
+    this.animate();
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
+  private setupCanvas() {
+    const canvas = this.canvasRef.nativeElement;
+    canvas.width = window.innerWidth - 20;
+    canvas.height = window.innerHeight - 20;
+    this.whirlpoolCenterX = canvas.width / 2;
+    this.whirlpoolCenterY = canvas.height / 2;
   }
 
-  private setupAnimation() {
-    this.resize$ = fromEvent(window, 'resize').pipe(
-      startWith(this.getCanvasSize()),
-      map(() => this.getCanvasSize())
+  private createParticles() {
+    this.ctx.font = 'bold 100px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(this.text, this.whirlpoolCenterX, this.whirlpoolCenterY);
+    const imageData = this.ctx.getImageData(
+      0,
+      0,
+      this.ctx.canvas.width,
+      this.ctx.canvas.height
     );
 
-    this.columns$ = this.resize$.pipe(
-      map(({ width }) => Math.floor(width / this.fontSize))
-    );
+    this.targetPositions = {};
+    this.particles = [];
 
-    this.drops$ = this.columns$.pipe(
-      map(columns => Array.from({ length: columns }, () => 0))
-    );
-
-    this.draw$ = interval(33).pipe(
-      withLatestFrom(this.drops$),
-      tap(([_, drops]) => {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        drops.forEach((drop: any, index: number) => {
-          const text = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
-          const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
-          this.ctx.fillStyle = color;
-          this.ctx.fillText(text, index * this.fontSize, drop * this.fontSize);
-
-          drops[index] = drop * this.fontSize > this.canvas.height && Math.random() > 0.95 ? 0 : drop + 1;
-        });
-      }),
-    );
-
-    this.scene$ = this.resize$.pipe(
-      tap(({ width, height }) => {
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.ctx.fillStyle = 'black';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-      }),
-      switchMap(() => this.draw$),
-      takeUntil(this.destroy$)
-    )
-
-    this.scene$.subscribe();
+    for (let y = 0; y < this.ctx.canvas.height; y++) {
+      for (let x = 0; x < this.ctx.canvas.width; x++) {
+        const index = (y * this.ctx.canvas.width + x) * 4;
+        const alpha = imageData.data[index + 3];
+        if (alpha > 128) {
+          this.targetPositions[`${x},${y}`] = {
+            x:
+              this.whirlpoolCenterX -
+              this.ctx.measureText(this.text).width / 2 +
+              (x -
+                this.whirlpoolCenterX +
+                this.ctx.measureText(this.text).width / 2),
+            y:
+              this.whirlpoolCenterY -
+              (this.ctx.measureText(this.text).actualBoundingBoxAscent +
+                this.ctx.measureText(this.text).actualBoundingBoxDescent) /
+                2 +
+              (y -
+                this.whirlpoolCenterY +
+                (this.ctx.measureText(this.text).actualBoundingBoxAscent +
+                  this.ctx.measureText(this.text).actualBoundingBoxDescent) /
+                  2),
+          };
+          this.particles.push({
+            x:
+              this.whirlpoolCenterX +
+              (Math.random() - 0.5) * this.whirlpoolRadius * 2,
+            y:
+              this.whirlpoolCenterY +
+              (Math.random() - 0.5) * this.whirlpoolRadius * 2,
+            targetX: x,
+            targetY: y,
+            angle: Math.random() * Math.PI * 2,
+            speed: Math.random() * 2 + 1,
+            state: 'moving',
+            speedX: Math.random() * 2 - 1,
+            speedY: Math.random() * 2 - 1,
+            color: `rgba(${imageData.data[index]}, ${
+              imageData.data[index + 1]
+            }, ${imageData.data[index + 2]}, ${
+              imageData.data[index + 3] / 255
+            })`,
+            phase: 'formation',
+          });
+        }
+      }
+    }
   }
 
-  private getCanvasSize() {
-    return {
-      width: window.innerWidth,
-      height: window.innerHeight
-    };
+  private createReformationParticles() {
+    this.ctx.font = 'bold 100px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(this.text, this.whirlpoolCenterX, this.whirlpoolCenterY);
+
+    const imageData = this.ctx.getImageData(
+      0,
+      0,
+      this.ctx.canvas.width,
+      this.ctx.canvas.height
+    );
+
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+
+    this.targetPositions = {};
+    this.particles = [];
+
+    for (let y = 0; y < this.ctx.canvas.height; y++) {
+      for (let x = 0; x < this.ctx.canvas.width; x++) {
+        const index = (y * this.ctx.canvas.width + x) * 4;
+        const alpha = imageData.data[index + 3];
+        if (alpha > 128) {
+          const targetX = x;
+          const targetY = y;
+          this.targetPositions[`${x},${y}`] = { x: targetX, y: targetY };
+
+          let initialX, initialY;
+          const border = Math.floor(Math.random() * 4);
+
+          switch (border) {
+            case 0:
+              initialX = Math.random() * this.ctx.canvas.width;
+              initialY = 0;
+              break;
+            case 1:
+              initialX = this.ctx.canvas.width;
+              initialY = Math.random() * this.ctx.canvas.height;
+              break;
+            case 2:
+              initialX = Math.random() * this.ctx.canvas.width;
+              initialY = this.ctx.canvas.height;
+              break;
+            case 3:
+              initialX = 0;
+              initialY = Math.random() * this.ctx.canvas.height;
+              break;
+          }
+
+          this.particles.push({
+            x: initialX,
+            y: initialY,
+            targetX: targetX,
+            targetY: targetY,
+            angle: Math.random() * Math.PI * 2,
+            speed: Math.random() * 2 + 1,
+            state: 'moving',
+            speedX: (targetX - initialX!) / 50,
+            speedY: (targetY - initialY!) / 50,
+            color: `rgba(${imageData.data[index]}, ${
+              imageData.data[index + 1]
+            }, ${imageData.data[index + 2]}, ${
+              imageData.data[index + 3] / 255
+            })`,
+            phase: 'reformation',
+          });
+        }
+      }
+    }
+  }
+
+  private createRibbons() {
+    const canvasWidth = this.canvasRef.nativeElement.width;
+    const canvasHeight = this.canvasRef.nativeElement.height;
+    const ribbonWidth = 10; // Width of the ribbon
+
+    this.ribbons = [];
+
+    // Create horizontal ribbons
+    for (let y = 0; y < canvasHeight; y += ribbonWidth) {
+      this.ribbons.push({
+        x: -ribbonWidth,
+        y: y,
+        width: canvasWidth + ribbonWidth * 2,
+        height: ribbonWidth,
+        color: 'rgba(255, 0, 0, 0.5)', // Example color
+        speed: 2,
+        direction: 'horizontal',
+      });
+    }
+
+    // Create vertical ribbons
+    for (let x = 0; x < canvasWidth; x += ribbonWidth) {
+      this.ribbons.push({
+        x: x,
+        y: -ribbonWidth,
+        width: ribbonWidth,
+        height: canvasHeight + ribbonWidth * 2,
+        color: 'rgba(0, 0, 255, 0.5)', // Example color
+        speed: 2,
+        direction: 'vertical',
+      });
+    }
+  }
+
+  private animate() {
+    if (this.animationStopped) return;
+
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+
+    switch (this.animationState) {
+      case 'initial':
+      case 'forming':
+        this.animateFormation();
+        break;
+      case 'delay':
+        this.renderParticles();
+        this.frameCount++;
+        if (this.frameCount >= this.delayFrames) {
+          this.animationState = 'destruction';
+          this.frameCount = 0;
+        }
+        break;
+      case 'destruction':
+        this.animateCaptionDestruction();
+        break;
+      case 'reformation':
+        this.animateReformation();
+        break;
+    }
+
+    if (!this.animationStopped) {
+      requestAnimationFrame(() => this.animate());
+    }
+  }
+
+  private renderParticles() {
+    this.particles.forEach((p) => {
+      this.ctx.fillStyle = p.color;
+      this.ctx.beginPath();
+      this.ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+  }
+
+  private animateFormation() {
+    this.ctx.clearRect(0, 0, this.canvasRef.nativeElement.width, this.canvasRef.nativeElement.height);
+    this.particles.forEach((p) => {
+      if (p.phase === 'formation') {
+        if (!this.formingText) {
+          const dx = p.x - this.whirlpoolCenterX;
+          const dy = p.y - this.whirlpoolCenterY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx) + this.whirlpoolSpeed;
+          p.x = this.whirlpoolCenterX + Math.cos(angle) * distance;
+          p.y = this.whirlpoolCenterY + Math.sin(angle) * distance;
+        }
+
+        if (this.formingText) {
+          const dx = p.targetX - p.x;
+          const dy = p.targetY - p.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 2) {
+            p.x = p.targetX;
+            p.y = p.targetY;
+            p.state = 'static';
+          } else {
+            p.x += dx * 0.05;
+            p.y += dy * 0.05;
+          }
+        }
+
+        if (p.state === 'falling') {
+          p.y += p.speed;
+        }
+      }
+
+      this.ctx.fillStyle = p.color;
+      this.ctx.beginPath();
+      this.ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+
+    if (this.formingText && this.particles.every((p) => p.state === 'static')) {
+      this.animationState = 'delay';
+      this.frameCount = 0;
+    } else if (!this.formingText) {
+      this.formingText = true;
+    }
+  }
+
+  private animateCaptionDestruction() {
+    const width = this.canvasRef.nativeElement.width;
+    const height = this.canvasRef.nativeElement.height;
+
+    this.ctx.clearRect(0, 0, width, height);
+
+    let allParticlesBelowCanvas = true;
+
+    this.particles.forEach((p) => {
+      if (p.phase === 'formation') {
+        p.x += p.speedX;
+        p.y += p.speedY;
+
+        p.speedY += 0.05; // gravity
+        p.speedX += Math.random() * 0.2 - 0.1; // wind effect
+
+        if (p.y < height && p.x > 0 && p.x < width) {
+          this.ctx.fillStyle = p.color;
+          this.ctx.fillRect(p.x, p.y, 2, 2);
+          allParticlesBelowCanvas = false;
+        }
+      }
+    });
+
+    if (allParticlesBelowCanvas) {
+      this.animationState = 'reformation'; // Transition to Reformation phase
+      this.createReformationParticles();
+    }
+  }
+
+  private animateReformation() {
+    this.ctx.clearRect(0, 0, this.canvasRef.nativeElement.width, this.canvasRef.nativeElement.height);
+
+    this.particles.forEach((p) => {
+      if (p.phase === 'reformation') {
+        const dx = p.targetX - p.x;
+        const dy = p.targetY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 2) {
+          p.x = p.targetX;
+          p.y = p.targetY;
+          p.state = 'static';
+        } else {
+          p.x += dx * 0.05;
+          p.y += dy * 0.05;
+        }
+      }
+
+      this.ctx.fillStyle = p.color;
+      this.ctx.beginPath();
+      this.ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+
+    if (this.particles.every((p) => p.state === 'static') && this.animationState === 'reformation') {
+      this.animateRectangles(); // Start ribbon animation after reformation
+      this.drawTextWithOutline();
+    }
+  }
+
+  private drawTextWithOutline() {
+    const canvas = this.canvasRef.nativeElement;
+    const ctx = this.ctx;
+
+    ctx.font = 'bold 100px Arial'; // Set font style and size
+    ctx.textAlign = 'center'; // Align text to center
+    ctx.textBaseline = 'middle'; // Baseline of text
+
+    // Draw text stroke
+    ctx.strokeStyle = 'black'; // Set stroke color
+    ctx.lineWidth = 2; // Set stroke width
+    ctx.strokeText(this.text, canvas.width / 2, canvas.height / 2);
+
+    // Draw text fill
+    ctx.fillStyle = 'black'; // Set fill color
+    ctx.fillText(this.text, canvas.width / 2, canvas.height / 2);
+  }
+
+  private createRectangles() {
+    const canvasWidth = this.canvasRef.nativeElement.width;
+    const canvasHeight = this.canvasRef.nativeElement.height;
+    const rectangleSize = 20; // Size of the rectangle
+
+    this.rectangles = [];
+
+    for (let i = 0; i < 100; i++) {
+      // Create 100 rectangles
+      this.rectangles.push({
+        x: Math.random() * canvasWidth,
+        y: Math.random() * canvasHeight,
+        width: rectangleSize,
+        height: rectangleSize,
+        color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${
+          Math.random() * 255
+        }, 0.5)`, // Random color
+        speedX: (Math.random() - 0.5) * 4, // Random speed in X direction
+        speedY: (Math.random() - 0.5) * 4, // Random speed in Y direction
+      });
+    }
+  }
+
+  private animateRectangles() {
+    if (this.animationStopped) return;
+
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+
+    this.rectangles.forEach((rect) => {
+      // Draw the rectangle
+      this.ctx.fillStyle = rect.color;
+      this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+
+      // Update the rectangle position
+      rect.x += rect.speedX;
+      rect.y += rect.speedY;
+
+      // Bounce off the edges
+      if (rect.x < 0 || rect.x + rect.width > this.ctx.canvas.width) {
+        rect.speedX *= -1;
+      }
+      if (rect.y < 0 || rect.y + rect.height > this.ctx.canvas.height) {
+        rect.speedY *= -1;
+      }
+    });
+
+    if (!this.animationStopped) {
+      requestAnimationFrame(() => this.animate());
+    }
   }
 }
