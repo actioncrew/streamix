@@ -91,7 +91,7 @@ export class Chunk<T = any> implements Subscribable<T> {
           await stream.onStart.process();
 
           // Start the actual stream logic
-          await this.run();
+          await stream.run();
 
           // Emit end value if defined
           await stream.onComplete.process();
