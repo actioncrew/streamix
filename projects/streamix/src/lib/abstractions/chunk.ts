@@ -76,7 +76,9 @@ export class Chunk<T = any> implements Subscribable<T> {
   // Protected method to handle the subscription chain
   subscribe(callback: ((value: T) => any) | void): Subscription {
     const stream = this.stream;
-    const boundCallback = callback ?? (() => {});
+    const boundCallback = callback === undefined
+      ? () => Promise.resolve()
+      : (value: T) => Promise.resolve(callback!(value));
     this.subscribers.chain(this, boundCallback);
 
     if (this.subscribers.length === 1 && this.isRunning() === false) {
