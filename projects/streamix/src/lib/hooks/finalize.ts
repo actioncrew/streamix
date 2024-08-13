@@ -1,15 +1,15 @@
-import { Emission, Operator, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { Hook } from '../abstractions/hook';
 
 
 export class FinalizeOperator extends Operator implements Hook {
-  private boundStream!: Subscribable;
+  private boundStream!: Stream;
 
   constructor(private callbackMethod: () => (void | Promise<void>)) {
     super();
   }
 
-  init(stream: Subscribable) {
+  init(stream: Stream) {
     this.boundStream = stream;
     this.boundStream.onStop.chain(this, this.callback);
   }

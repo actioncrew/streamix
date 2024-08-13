@@ -13,12 +13,6 @@ export interface Subscribable<T = any> {
 
   subscribers: HookType;
 
-  onStart: HookType;
-  onComplete: HookType;
-  onStop: HookType;
-  onError: HookType;
-  onEmission: HookType;
-
   shouldTerminate(): boolean;
   awaitTermination(): Promise<void>;
   terminate(): Promise<void>;

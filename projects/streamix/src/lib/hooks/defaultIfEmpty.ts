@@ -1,14 +1,14 @@
-import { Emission, Hook, Operator, Subscribable } from '../abstractions';
+import { Emission, Hook, Operator, Stream, Subscribable } from '../abstractions';
 
 export class DefaultIfEmptyOperator extends Operator implements Hook {
-  private boundStream!: Subscribable;
+  private boundStream!: Stream;
   private hasEmitted = false;
 
   constructor(private defaultValue: any) {
     super();
   }
 
-  init(stream: Subscribable) {
+  init(stream: Stream) {
     this.boundStream = stream;
     this.boundStream.onComplete.chain(this, this.callback);
   }

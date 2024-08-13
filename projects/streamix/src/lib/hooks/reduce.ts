@@ -1,10 +1,10 @@
-import { Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 import { Hook } from './../abstractions/hook';
 
 export class ReduceOperator extends Operator implements Hook {
-  private boundStream!: Subscribable;
+  private boundStream!: Stream;
   private readonly accumulator: (acc: any, value: any) => any;
   private readonly seed: any;
   private accumulatedValue: any;
@@ -16,7 +16,7 @@ export class ReduceOperator extends Operator implements Hook {
     this.accumulatedValue = seed;
   }
 
-  init(stream: Subscribable) {
+  init(stream: Stream) {
     this.boundStream = stream;
     this.boundStream.onComplete.chain(this, this.callback);
   }
