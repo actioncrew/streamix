@@ -58,14 +58,6 @@ export class Stream<T = any> implements Subscribable {
     });
   }
 
-  unsubscribe(callback: (value: T) => any): void {
-    this.subscribers.remove(this, callback);
-    if (this.subscribers.length === 0) {
-      this.isStopRequested.resolve(true);
-      this.isUnsubscribed.resolve(true);
-    }
-  }
-
   // Protected method to handle the subscription chain
   subscribe(callback: ((value: T) => any) | void): Subscription {
     const boundCallback = callback ?? (() => {});
@@ -101,6 +93,7 @@ export class Stream<T = any> implements Subscribable {
       unsubscribe: () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
+              this.isUnsubscribed.resolve(true);
               this.onEmission.remove(this, this.emit);
               this.complete();
           }

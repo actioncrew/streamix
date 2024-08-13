@@ -5,7 +5,7 @@ import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
-export class Chunk<T> implements Subscribable<T> {
+export class Chunk<T = any> implements Subscribable<T> {
   operators: Operator[] = [];
 
   constructor(public stream: Stream<T>) {
@@ -74,14 +74,6 @@ export class Chunk<T> implements Subscribable<T> {
     });
   }
 
-  unsubscribe(callback: (value: T) => any): void {
-    this.subscribers.remove(this, callback);
-    if (this.subscribers.length === 0) {
-      this.isStopRequested.resolve(true);
-      this.isUnsubscribed.resolve(true);
-    }
-  }
-
   // Protected method to handle the subscription chain
   subscribe(callback: ((value: T) => any) | void): Subscription {
     const boundCallback = callback ?? (() => {});
@@ -116,6 +108,7 @@ export class Chunk<T> implements Subscribable<T> {
       unsubscribe: () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
+              this.isUnsubscribed.resolve(true);
               this.complete();
           }
       }
