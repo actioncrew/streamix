@@ -65,6 +65,6 @@ export class TimerStream<T = any> extends Stream<T> {
   }
 }
 
-export function timer(delayMs: number, interval: number) {
-  return new TimerStream(delayMs, interval);
+export function timer<T = any>(delayMs: number, interval: number) {
+  return new TimerStream<T>(delayMs, interval);
 }

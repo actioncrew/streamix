@@ -1,6 +1,6 @@
 import { Stream } from '../abstractions/stream';
 
-export class FromPromiseStream extends Stream {
+export class FromPromiseStream<T = any> extends Stream<T> {
   private promise: Promise<any> | undefined;
   private resolved: boolean = false; // Track if the promise has been resolved
   private value: any; // Store resolved value
@@ -32,6 +32,6 @@ export class FromPromiseStream extends Stream {
 }
 
 
-export function fromPromise(promise: Promise<any>) {
-  return new FromPromiseStream(promise);
+export function fromPromise<T = any>(promise: Promise<any>) {
+  return new FromPromiseStream<T>(promise);
 }

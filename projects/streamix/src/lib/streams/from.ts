@@ -1,7 +1,7 @@
 import { Emission } from '../abstractions';
 import { Stream } from '../abstractions/stream';
 
-export class FromStream extends Stream {
+export class FromStream<T = any> extends Stream<T> {
   private readonly iterator: IterableIterator<any>;
   private done: boolean = false;
 
@@ -34,11 +34,11 @@ export class FromStream extends Stream {
   }
 }
 
-export function from(input: any[] | IterableIterator<any>) {
+export function from<T = any>(input: any[] | IterableIterator<any>) {
   if (Array.isArray(input)) {
-    return new FromStream(input[Symbol.iterator]()); // Convert array to iterator
+    return new FromStream<T>(input[Symbol.iterator]()); // Convert array to iterator
   } else if (typeof input[Symbol.iterator] === 'function') {
-    return new FromStream(input as IterableIterator<any>);
+    return new FromStream<T>(input as IterableIterator<any>);
   } else {
     throw new TypeError('Input must be an array or an iterable iterator');
   }
