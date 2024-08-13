@@ -20,17 +20,51 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     return this.stream.run();
   }
 
-
-  // Protected method to handle the subscription chain
   override subscribe(callback: ((value: T) => any) | void): Subscription {
-    if(!this.onEmission.contains(this, this.emit)) {
+    const boundCallback = callback === undefined
+      ? () => Promise.resolve()
+      : (value: T) => Promise.resolve(callback!(value));
+
+    if (!this.onEmission.contains(this, this.emit)) {
       this.onEmission.chain(this, this.emit);
     }
 
-    const subscription = super.subscribe(callback, this);
+    this.subscribers.chain(this, boundCallback);
+
+    if (this.isRunning() === false) {
+      this.isRunning.resolve(true);
+
+      queueMicrotask(async () => {
+        try {
+          // Emit start value if defined
+          await this.onStart.process();
+
+          // Start the actual stream logic
+          await this.run();
+
+          // Emit end value if defined
+          await this.onComplete.process();
+        } catch (error) {
+          this.isFailed.resolve(error);
+        } finally {
+          // Handle finalize callback
+          await this.onStop.process();
+
+          this.isStopped.resolve(true);
+          this.isRunning.reset();
+        }
+      });
+    }
 
     return {
-      unsubscribe: () => subscription.unsubscribe()
+      unsubscribe: () => {
+          this.subscribers.remove(this, boundCallback);
+          if (this.subscribers.length === 0) {
+              this.isUnsubscribed.resolve(true);
+              this.onEmission.clear();
+              this.complete();
+          }
+      }
     };
   }
 

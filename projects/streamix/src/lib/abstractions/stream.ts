@@ -57,12 +57,12 @@ export class Stream<T = any> implements Subscribable {
   }
 
   // Protected method to handle the subscription chain
-  subscribe(callback: ((value: T) => any) | void, caller: any = undefined): Subscription {
+  subscribe(callback: ((value: T) => any) | void): Subscription {
     const boundCallback = callback === undefined
       ? () => Promise.resolve()
       : (value: T) => Promise.resolve(callback!(value));
 
-    if (!this.onEmission.contains(this, this.emit) && !(caller?.stream === this)) {
+    if (!this.onEmission.contains(this, this.emit)) {
       this.onEmission.chain(this, this.emit);
     }
 
@@ -107,9 +107,9 @@ export class Stream<T = any> implements Subscribable {
 
   pipe(...operators: Operator[]): Subscribable<T> {
     // if(!operators.some((operator, index) => 'outerStream' in operator && index !== operators.length - 1)) {
-    //   return new Chunk(this.clone()).pipe(...operators);
+    //   return new Chunk(this).pipe(...operators);
     // }
-    return new Pipeline(this.clone()).pipe(...operators);
+    return new Pipeline(this).pipe(...operators);
   }
 
   clone() {
