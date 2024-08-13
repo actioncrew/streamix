@@ -12,22 +12,6 @@ export class Chunk<T> implements Subscribable<T> {
     stream.onEmission.chain(this, this.emit);
   }
 
-  get onStart(): HookType {
-    return this.stream.onStart;
-  }
-  get onComplete(): HookType {
-    return this.stream.onComplete;
-  }
-  get onStop(): HookType {
-    return this.stream.onStop;
-  }
-  get onError(): HookType {
-    return this.stream.onError;
-  }
-  get onEmission(): HookType {
-    return this.stream.onEmission;
-  }
-
   get isAutoComplete(): PromisifiedType<boolean> {
     return this.stream.isAutoComplete;
   }
@@ -105,22 +89,22 @@ export class Chunk<T> implements Subscribable<T> {
 
     if (this.subscribers.length === 1 && this.isRunning() === false) {
       this.isRunning.resolve(true);
-
+      const stream = this.stream;
       queueMicrotask(async () => {
         try {
           // Emit start value if defined
-          await this.onStart.process();
+          await stream.onStart.process();
 
           // Start the actual stream logic
           await this.run();
 
           // Emit end value if defined
-          await this.onComplete.process();
+          await stream.onComplete.process();
         } catch (error) {
           this.isFailed.resolve(error);
         } finally {
           // Handle finalize callback
-          await this.onStop.process();
+          await stream.onStop.process();
 
           this.isStopped.resolve(true);
           this.isRunning.reset();
@@ -197,8 +181,9 @@ export class Chunk<T> implements Subscribable<T> {
       emission.isFailed = true;
       emission.error = error;
 
-      if (this.onError.length > 0) {
-        await this.onError.process({ error });
+      const stream = this.stream;
+      if (stream.onError.length > 0) {
+        await stream.onError.process({ error });
       } else {
         this.isFailed.resolve(error);
       }

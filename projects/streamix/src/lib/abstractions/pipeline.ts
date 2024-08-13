@@ -8,12 +8,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private streams: Chunk<T>[] = [];
   private operators: Operator[] = [];
 
-  onStart!: HookType;
-  onComplete!: HookType;
-  onStop!: HookType;
-  onError!: HookType;
-  onEmission!: HookType;
-
   constructor(stream: Stream<T>, ...operators: Operator[]) {
     const streamChunk = new Chunk(stream);
     this.streams.push(streamChunk);
