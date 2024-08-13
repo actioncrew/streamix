@@ -1,5 +1,8 @@
 # Streamix
 
+```javascript
+  import {..., Stream as Observable } from '@actioncrew/streamix;'
+```
 
   [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
   [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
