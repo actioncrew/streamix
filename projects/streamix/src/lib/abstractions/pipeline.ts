@@ -37,7 +37,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   pipe(...operators: Operator[]): Pipeline<T> {
     // Create a new Pipeline instance with the existing streams and new operators
-    const newPipeline = new Pipeline<T>(this.first.stream.clone());
+    const newPipeline = new Pipeline<T>(this.first);
     newPipeline.applyOperators(...this.operators, ...operators)
     return newPipeline;
   }

@@ -112,13 +112,6 @@ export class Stream<T = any> implements Subscribable {
     return new Pipeline(this).pipe(...operators);
   }
 
-  clone() {
-    const result = Object.create(Object.getPrototypeOf(this));
-    Object.assign(result, this);
-    result.subscribers = hook();
-    return result;
-  }
-
   async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
       let next = (source instanceof Operator) ? source.next : undefined;
