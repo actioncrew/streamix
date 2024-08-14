@@ -17,7 +17,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override run(): Promise<void> {
-    return this.stream.run();
+    return this.stream.run.call(this);
   }
 
   override subscribe(callback: ((value: T) => any) | void): Subscription {
