@@ -1,7 +1,7 @@
 # Streamix
 
 ```javascript
-  import {..., Stream as Observable } from '@actioncrew/streamix;'
+  import { ..., Stream as Observable } from '@actioncrew/streamix;'
 ```
 
   [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
