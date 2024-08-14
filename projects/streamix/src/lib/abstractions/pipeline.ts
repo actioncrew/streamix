@@ -28,12 +28,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
   get onEmission(): HookType {
     throw new Error('Method not implemented.');
   }
-  get skipChainingOnSubscription(): boolean {
-    throw new Error('Method not implemented.');
-  }
-  set skipChainingOnSubscription(value: boolean) {
-    throw new Error('Method not implemented.');
-  }
 
   run(): Promise<void> {
     throw new Error('Method not implemented.');
