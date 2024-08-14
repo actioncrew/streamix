@@ -18,8 +18,6 @@ export interface Subscribable<T = any> {
   onError: HookType;
   onEmission: HookType;
 
-  skipChainingOnSubscription: boolean;
-
   run(): Promise<void>;
   shouldTerminate(): boolean;
   awaitTermination(): Promise<void>;
