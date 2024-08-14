@@ -22,11 +22,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
 
   override subscribe(callback: ((value: T) => any) | void): Subscription {
 
-    const boundCallback = callback === undefined
-    ? () => Promise.resolve()
-    : (value: T) => Promise.resolve(callback!(value));
-
-    const subscription = this.stream.subscribe.call(this, boundCallback);
+    const subscription = this.stream.subscribe.call(this, callback);
     return {
       unsubscribe: () => subscription.unsubscribe()
     };
