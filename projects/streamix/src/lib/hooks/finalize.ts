@@ -9,7 +9,7 @@ export class FinalizeOperator extends Operator implements Hook {
     super();
   }
 
-  init(stream: Stream) {
+  override init(stream: Stream) {
     this.boundStream = stream;
     this.boundStream.onStop.chain(this, this.callback);
   }

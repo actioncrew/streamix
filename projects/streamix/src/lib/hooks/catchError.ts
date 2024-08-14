@@ -9,7 +9,7 @@ export class CatchErrorOperator extends Operator implements Hook {
     super();
   }
 
-  init(stream: Stream) {
+  override init(stream: Stream) {
     this.boundStream = stream;
     this.boundStream.onError.chain(this, this.callback);
   }

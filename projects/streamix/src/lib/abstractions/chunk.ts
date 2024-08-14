@@ -1,4 +1,4 @@
-import { Hook, Stream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { hook } from '../utils';
 import { Emission } from './emission';
 import { Operator } from './operator';
@@ -36,28 +36,22 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override pipe(...operators: Operator[]): Subscribable<T> {
-    operators = [...this.operators, ...operators];
     this.operators = []; this.head = undefined; this.tail = undefined;
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
-        operator = operator.clone();
-        this.operators.push(operator);
+        let clone = operator.clone(); clone.init(this)
+        this.operators.push(clone);
 
         // Manage head and tail for every operator
         if (!this.head) {
-          this.head = operator;
-          this.tail = operator;
+          this.head = clone;
+          this.tail = clone;
         } else {
-          this.tail!.next = operator;
-          this.tail = operator;
+          this.tail!.next = clone;
+          this.tail = clone;
         }
 
-        const hook = operator as unknown as Hook;
-        if (typeof hook.init === 'function') {
-          hook.init(this.stream);
-        }
-
-        if ('outerStream' in operator && index !== operators.length - 1) {
+        if ('outerStream' in clone && index !== operators.length - 1) {
           throw new Error("Only the last operator in a chunk can contain outerStream property.");
         }
       }
