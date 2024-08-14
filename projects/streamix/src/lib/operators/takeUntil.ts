@@ -6,28 +6,30 @@ import { Subscribable } from '../abstractions/subscribable';
 export class TakeUntilOperator extends Operator {
   private readonly notifier: Subscribable;
   private subscription: Subscription | undefined;
+  private stopRequested;
 
   constructor(notifier: Subscribable) {
     super();
     this.notifier = notifier;
+    this.stopRequested = false;
+  }
+
+  override init() {
+    this.subscription = this.notifier.subscribe(() => {
+      this.stopRequested = true;
+      this.subscription?.unsubscribe();
+    });
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (stream.isCancelled()) {
-      emission.isCancelled = true;
-      this.subscription?.unsubscribe();
+    if (this.stopRequested) {
+      stream.isStopRequested.resolve(true);
+      emission.isPhantom = true;
       return emission;
     }
 
-    if (!this.subscription) {
-      this.subscription = this.notifier.subscribe(() => {
-        stream.isStopRequested.resolve(true);
-        this.subscription!.unsubscribe();
-      });
-    }
-
-    if(stream.isStopRequested()) {
-      emission.isPhantom = true;
+    if(stream.isCancelled()) {
+      emission.isCancelled = true;
     }
     return emission;
   }

@@ -1,9 +1,12 @@
-import { Chunk } from '../abstractions';
+import { Chunk, Stream } from '../abstractions';
 import { Emission } from './emission';
 import { Subscribable } from './subscribable';
 
 export abstract class Operator {
   next?: Operator;
+
+  init(stream: Stream): void {
+  }
 
   abstract handle(emission: Emission, stream: Subscribable): Promise<Emission>;
 

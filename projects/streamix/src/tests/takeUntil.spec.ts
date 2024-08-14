@@ -60,7 +60,7 @@ describe('takeUntil operator', () => {
     });
 
     takenUntilStream.isStopped.then(() => {
-      expect(results).toEqual([0]); // Should not emit any values because notifier emits immediately
+      expect(results.length).toEqual(0); // Should not emit any values because notifier emits immediately
       done();
     });
   });

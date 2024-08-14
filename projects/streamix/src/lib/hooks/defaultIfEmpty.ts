@@ -8,7 +8,7 @@ export class DefaultIfEmptyOperator extends Operator implements Hook {
     super();
   }
 
-  init(stream: Stream) {
+  override init(stream: Stream) {
     this.boundStream = stream;
     this.boundStream.onComplete.chain(this, this.callback);
   }
