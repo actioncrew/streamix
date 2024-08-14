@@ -4,7 +4,7 @@ import {
   map,
   startWith,
   Subject,
-  Subscription,
+  Subscribable,
   switchMap,
   takeUntil,
   tap,
@@ -97,7 +97,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
   private destroy$ = new Subject<void>();
-  private subscription!: Subscription;
+  private scene$!: Subscribable;
 
   ngAfterViewInit() {
     this.canvas = document.querySelector('canvas') as HTMLCanvasElement;
@@ -141,7 +141,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       })
     );
 
-    resize$.pipe(
+    this.scene$ = resize$.pipe(
       tap(({ width, height }) => {
         this.canvas.width = width;
         this.canvas.height = height;
@@ -150,7 +150,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       }),
       switchMap(() => draw$),
       takeUntil(this.destroy$)
-    ).subscribe();
+    );
+
+    this.scene$.subscribe();
   }
 
   private getCanvasSize() {
