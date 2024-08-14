@@ -8,10 +8,10 @@ export class TimerStream<T = any> extends Stream<T> {
   private value: number;
   private resolvePromise: ((value: void | PromiseLike<void>) => void) | null = null;
 
-  constructor(delayMs: number, intervalMs: number) {
+  constructor(delayMs: number = 0, intervalMs?: number) {
     super();
     this.delayMs = delayMs;
-    this.intervalMs = intervalMs;
+    this.intervalMs = intervalMs || delayMs;
     this.intervalId = null;
     this.value = 0;
   }
@@ -65,6 +65,6 @@ export class TimerStream<T = any> extends Stream<T> {
   }
 }
 
-export function timer<T = any>(delayMs: number, interval: number) {
+export function timer<T = any>(delayMs: number = 0, interval?: number) {
   return new TimerStream<T>(delayMs, interval);
 }
