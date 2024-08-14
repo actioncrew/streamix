@@ -1,4 +1,4 @@
-import { Chunk, Stream } from '../abstractions';
+import { Chunk, Emission, Stream } from '../abstractions';
 import { HookType, PromisifiedType } from '../utils';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
@@ -11,6 +11,35 @@ export class Pipeline<T = any> implements Subscribable<T> {
   constructor(stream: Stream<T>) {
     const streamChunk = new Chunk(stream);
     this.streams.push(streamChunk);
+  }
+
+  get onStart(): HookType {
+    throw new Error('Method not implemented.');
+  }
+  get onComplete(): HookType {
+    throw new Error('Method not implemented.');
+  }
+  get onStop(): HookType {
+    throw new Error('Method not implemented.');
+  }
+  get onError(): HookType {
+    throw new Error('Method not implemented.');
+  }
+  get onEmission(): HookType {
+    throw new Error('Method not implemented.');
+  }
+  get skipChainingOnSubscription(): boolean {
+    throw new Error('Method not implemented.');
+  }
+  set skipChainingOnSubscription(value: boolean) {
+    throw new Error('Method not implemented.');
+  }
+
+  run(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+  emit({ emission, source }: { emission: Emission; source: any; }): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 
   private applyOperators(...operators: Operator[]): void {
@@ -35,7 +64,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     currentStream.pipe(...chunkOperators);
   }
 
-  pipe(...operators: Operator[]): Pipeline<T> {
+  pipe(...operators: Operator[]): Subscribable<T> {
     // Create a new Pipeline instance with the existing streams and new operators
     const newPipeline = new Pipeline<T>(this.first);
     newPipeline.applyOperators(...this.operators, ...operators)
