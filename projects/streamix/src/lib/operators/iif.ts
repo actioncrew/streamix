@@ -6,18 +6,12 @@ import { Operator } from '../abstractions/operator';
 export class IifOperator extends Operator {
   private outerStream = new Subject();
 
-  private input?: Subscribable;
-  private output?: Subject;
-  private innerStream?: Subscribable;
-  private innerSubscription?: { unsubscribe: () => void };
-
   constructor(
     private readonly condition: (emission: Emission) => boolean,
     private readonly trueStream: Subscribable,
     private readonly falseStream: Subscribable
   ) {
     super();
-    this.initializeOuterStream();
   }
 
   private initializeOuterStream() {
@@ -26,42 +20,33 @@ export class IifOperator extends Operator {
     this.outerStream.isStopped.then(() => this.cleanup());
   }
 
+  override init(stream: Subscribable) {
+    this.initializeOuterStream();
+  }
+
   override async cleanup() {
-    if (this.innerSubscription) {
-      this.innerSubscription.unsubscribe();
-    }
-
-    if (this.input) {
-      await this.input.complete();
-    }
-
-    if (this.output) {
-      await this.output.complete();
-    }
+    await this.outerStream.complete();
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (!this.input) {
-      this.input = stream;
-      this.output = this.outerStream;
+    // Check the condition for every emission
+    const selectedStream = this.condition(emission) ? this.trueStream : this.falseStream;
 
-      this.innerStream = this.condition(emission) ? this.trueStream : this.falseStream;
+    // Unsubscribe from any previous inner stream to avoid potential memory leaks
+    let innerSubscription = selectedStream.subscribe(async (value) => {
+      await this.outerStream.next(value);
+    });
 
-      this.innerSubscription = this.innerStream.subscribe(async (value) => {
-        await this.output!.next(value);
-      });
-
-      Promise.race([this.innerStream.awaitCompletion(), this.innerStream.awaitTermination()]).then((error) => {
-        this.innerSubscription?.unsubscribe();
-        this.output?.complete();
-        this.input?.complete();
-      });
-    }
+    // Cleanup when the selected stream completes or terminates
+    Promise.race([selectedStream.awaitCompletion(), selectedStream.awaitTermination()]).then(() => {
+      innerSubscription.unsubscribe();
+      this.outerStream.complete();
+    });
 
     emission.isPhantom = true;
 
     return new Promise<Emission>((resolve) => {
-      this.innerStream?.isStopped.then(() => resolve(emission));
+      selectedStream.isStopped.then(() => resolve(emission));
     });
   }
 }
