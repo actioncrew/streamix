@@ -15,7 +15,6 @@ export class ConcatMapOperator extends Operator {
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
-    this.initializeOuterStream();
   }
 
   private initializeOuterStream() {
@@ -24,13 +23,16 @@ export class ConcatMapOperator extends Operator {
     this.outerStream.isStopRequested.then(() => this.cleanup());
   }
 
+  override init(stream: Subscribable) {
+    this.input = stream;
+    this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber)).then(() => this.cleanup());
+    this.initializeOuterStream();
+  }
+
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     this.emissionNumber++;
 
-    if (!this.input) {
-      this.input = stream;
-      this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber)).then(() => this.cleanup());
-    }
+
     this.output = this.output || this.outerStream;
 
     this.queue.push(emission);
