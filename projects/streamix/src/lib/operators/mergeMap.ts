@@ -9,7 +9,6 @@ export class MergeMapOperator extends Operator {
   private processingPromises: Promise<void>[] = [];
 
   private input?: Subscribable;
-  private output?: Subject;
 
   private emissionNumber = 0;
   private executionNumber = counter(0);
@@ -17,33 +16,23 @@ export class MergeMapOperator extends Operator {
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
+  }
 
-    // Handle events for the outer stream
-    this.outerStream.isCancelled.then(() => {
-      this.stopAllStreams();
-    });
+  override init(stream: Subscribable) {
 
-    this.outerStream.isFailed.then((error) => {
-      console.warn('Outer stream failed:', error);
-      this.stopAllStreams();
-    });
+    this.input = stream;
+    this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber).then(() => this.outerStream?.complete()));
 
-    this.outerStream.isStopped.then(() => {
-      this.stopAllStreams();
-    });
+    this.outerStream.isCancelled.then(() => this.stopAllStreams());
+    this.outerStream.isFailed.then((error) => this.stopAllStreams());
+    this.outerStream.isStopped.then(() => this.stopAllStreams());
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     this.emissionNumber++;
-    this.output = this.output || this.outerStream;
-
-    if (!this.input) {
-      this.input = stream;
-      this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber).then(() => this.output?.complete()));
-    }
 
     // Start processing the emission in parallel
-    this.processEmission(emission, this.output!);
+    this.processEmission(emission, this.outerStream!);
 
     // Return the phantom emission immediately
     emission.isPhantom = true;
@@ -143,8 +132,8 @@ export class MergeMapOperator extends Operator {
   }
 
   private async stopOutputStream() {
-    if (this.output) {
-      await this.output.complete();
+    if (this.outerStream) {
+      await this.outerStream.complete();
     }
   }
 
