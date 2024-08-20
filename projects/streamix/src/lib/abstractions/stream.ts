@@ -115,8 +115,6 @@ export class Stream<T = any> implements Subscribable {
         emission.isCancelled = true;
       }
 
-      emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
-
       if (!(emission.isPhantom || emission.isCancelled || emission.isFailed)) {
         await this.subscribers.parallel(emission.value);
       }
