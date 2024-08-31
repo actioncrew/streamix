@@ -13,7 +13,11 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   constructor(public stream: Stream<T>) {
     super();
     Object.assign(this, stream);
+    this.onEmission = hook();
     this.subscribers = hook();
+
+    this.onEmission.chain(this, this.process);
+    this.stream.onEmission.chain(this, (params: any) => this.onEmission.process(params));
   }
 
   override run(): Promise<void> {
@@ -53,7 +57,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     return this;
   }
 
-  override async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
+  override async process({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
       let next = (source instanceof Stream) ? this.head : undefined;
       next = (source instanceof Operator) ? source.next : next;

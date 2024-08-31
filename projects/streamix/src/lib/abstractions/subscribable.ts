@@ -31,5 +31,5 @@ export interface Subscribable<T = any> {
 
   pipe(...operators: Operator[]): Subscribable<T>;
 
-  emit({ emission, source }: { emission: Emission; source: any }): Promise<void>;
+  process({ emission, source }: { emission: Emission; source: any }): Promise<void>;
 }

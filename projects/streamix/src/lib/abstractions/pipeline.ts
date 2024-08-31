@@ -28,11 +28,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
   get onEmission(): HookType {
     throw new Error('Method not implemented.');
   }
-
   run(): Promise<void> {
     throw new Error('Method not implemented.');
   }
-  emit({ emission, source }: { emission: Emission; source: any; }): Promise<void> {
+  process({ emission, source }: { emission: Emission; source: any; }): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

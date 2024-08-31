@@ -61,9 +61,8 @@ export class Stream<T = any> implements Subscribable {
       : (value: T) => Promise.resolve(callback!(value));
 
     this.subscribers.chain(this, boundCallback);
-
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
+    if(this.subscribers.length === 1) {
+      this.onEmission.chain(this, this.process);
     }
 
     if (this.isRunning() === false) {
@@ -107,9 +106,8 @@ export class Stream<T = any> implements Subscribable {
     return new Pipeline(this).pipe(...operators);
   }
 
-  async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
+  async process({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      let next = (source instanceof Operator) ? source.next : undefined;
 
       if (this.isCancelled()) {
         emission.isCancelled = true;
