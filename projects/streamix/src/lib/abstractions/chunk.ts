@@ -65,21 +65,22 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
       // Process the emission with the next operator, if any
       emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
 
+      if(emission.isFailed) {
+        throw emission.error;
+      }
       // If emission is valid, notify subscribers
-      if (!(emission.isPhantom || emission.isCancelled || emission.isFailed)) {
+      if (!emission.isPhantom && !emission.isCancelled) {
         await this.subscribers.parallel(emission.value);
       }
 
       emission.isComplete = true;
     } catch (error: any) {
-      // Handle the error case
       emission.isFailed = true;
       emission.error = error;
 
-      if (this.onError.length > 0) {
+      this.isFailed.resolve(error);
+      if(this.onError.length > 0) {
         await this.onError.process({ error });
-      } else {
-        this.isFailed.resolve(error);
       }
     }
   }
