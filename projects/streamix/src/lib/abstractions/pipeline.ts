@@ -5,12 +5,12 @@ import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
 export class Pipeline<T = any> implements Subscribable<T> {
-  private streams: Chunk<T>[] = [];
+  private chunks: Chunk<T>[] = [];
   private operators: Operator[] = [];
 
   constructor(stream: Stream<T>) {
-    const streamChunk = new Chunk(stream);
-    this.streams.push(streamChunk);
+    const chunk = new Chunk(stream);
+    this.chunks.push(chunk);
   }
 
   get onStart(): HookType {
@@ -38,7 +38,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   private applyOperators(...operators: Operator[]): void {
     this.operators = operators;
-    let currentStream = this.first;
+    let currentChunk = this.first;
     let chunkOperators: Operator[] = [];
 
     operators.forEach(operator => {
@@ -47,15 +47,15 @@ export class Pipeline<T = any> implements Subscribable<T> {
         chunkOperators.push(operator);
 
         if ('outerStream' in operator) {
-          currentStream.pipe(...chunkOperators);
+          currentChunk.pipe(...chunkOperators);
           chunkOperators = [];
-          currentStream = new Chunk(operator.outerStream as any);
-          this.streams.push(currentStream);
+          currentChunk = new Chunk(operator.outerStream as any);
+          this.chunks.push(currentChunk);
         }
       }
     });
 
-    currentStream.pipe(...chunkOperators);
+    currentChunk.pipe(...chunkOperators);
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
@@ -120,8 +120,8 @@ export class Pipeline<T = any> implements Subscribable<T> {
     };
 
 
-    for (let i = this.streams.length - 1; i >= 0; i--) {
-      subscribeToStream(this.streams[i], i === this.streams.length - 1 ? callback : defaultCallback);
+    for (let i = this.chunks.length - 1; i >= 0; i--) {
+      subscribeToStream(this.chunks[i], i === this.chunks.length - 1 ? callback : defaultCallback);
     }
 
     return {
@@ -132,10 +132,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   private get first(): Chunk<T> {
-    return this.streams[0];
+    return this.chunks[0];
   }
 
   private get last(): Chunk<T> {
-    return this.streams[this.streams.length - 1];
+    return this.chunks[this.chunks.length - 1];
   }
 }
