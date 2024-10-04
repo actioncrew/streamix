@@ -81,6 +81,9 @@ export class Stream<T = any> implements Subscribable {
           await this.onComplete.process();
         } catch (error) {
           this.isFailed.resolve(error);
+          if(this.onError.length > 0) {
+            await this.onError.process({ error });
+          }
         } finally {
           // Handle finalize callback
           await this.onStop.process();
@@ -125,7 +128,10 @@ export class Stream<T = any> implements Subscribable {
     } catch (error: any) {
       emission.isFailed = true;
       emission.error = error;
-      this.onError.length > 0 ? this.onError.process({ error }) : (() => { this.isFailed.resolve(error); })();
+      this.isFailed.resolve(error);
+      if(this.onError.length > 0) {
+        await this.onError.process({ error });
+      }
     }
   }
 }
