@@ -1,8 +1,8 @@
 import { Emission, Operator, Stream, Subscribable } from '../abstractions';
-import { Hook } from '../abstractions/hook';
+import { HookOperator } from '../abstractions/hook';
 
 
-export class EndWithOperator extends Operator implements Hook {
+export class EndWithOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
   private hasEmitted = false;
 

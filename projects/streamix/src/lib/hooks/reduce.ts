@@ -1,9 +1,9 @@
 import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
-import { Hook } from './../abstractions/hook';
+import { HookOperator } from './../abstractions/hook';
 
-export class ReduceOperator extends Operator implements Hook {
+export class ReduceOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
   private readonly accumulator: (acc: any, value: any) => any;
   private readonly seed: any;

@@ -1,6 +1,6 @@
-import { Emission, Hook, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
 
-export class DefaultIfEmptyOperator extends Operator implements Hook {
+export class DefaultIfEmptyOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
   private hasEmitted = false;
 

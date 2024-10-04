@@ -1,8 +1,8 @@
 import { Emission, Operator, Stream, Subscribable } from '../abstractions';
-import { Hook } from '../abstractions/hook';
+import { HookOperator } from '../abstractions/hook';
 
 
-export class CatchErrorOperator extends Operator implements Hook {
+export class CatchErrorOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
 
   constructor(private handler: (error?: any) => void | Promise<void>) {
