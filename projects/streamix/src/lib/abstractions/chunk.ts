@@ -32,7 +32,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
-        let clone = operator.clone(); clone.init(this)
+        let clone = operator.clone(); clone.init(this.stream)
         this.operators.push(clone);
 
         // Manage head and tail for every operator
