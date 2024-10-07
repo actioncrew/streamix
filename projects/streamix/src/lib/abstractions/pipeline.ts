@@ -1,5 +1,5 @@
 import { Chunk, Emission, Stream } from '../abstractions';
-import { HookType, PromisifiedType } from '../utils';
+import { hook, HookType, PromisifiedType } from '../utils';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
@@ -7,33 +7,50 @@ import { Subscription } from './subscription';
 export class Pipeline<T = any> implements Subscribable<T> {
   private chunks: Chunk<T>[] = [];
   private operators: Operator[] = [];
+  private onPipelineError: HookType;
 
   constructor(stream: Stream<T>) {
     const chunk = new Chunk(stream);
     this.chunks.push(chunk);
+    this.onPipelineError = hook();
   }
 
   get onStart(): HookType {
-    throw new Error('Method not implemented.');
+    return this.first.onStart;
   }
+
   get onComplete(): HookType {
-    throw new Error('Method not implemented.');
+    return this.last.onComplete;
   }
+
   get onStop(): HookType {
-    throw new Error('Method not implemented.');
+    return this.last.onStop;
   }
+
   get onError(): HookType {
-    throw new Error('Method not implemented.');
+    return this.onPipelineError;
   }
+
   get onEmission(): HookType {
-    throw new Error('Method not implemented.');
+    return this.last.onEmission;
+  }
+
+  start() {
+    for (let i = this.chunks.length - 1; i >= 0; i--) {
+      this.chunks[i].start();
+    }
   }
 
   run(): Promise<void> {
     throw new Error('Method not implemented.');
   }
+
   emit({ emission, source }: { emission: Emission; source: any; }): Promise<void> {
     throw new Error('Method not implemented.');
+  }
+
+  async errorCallback(error: any) {
+    await this.onPipelineError.process(error);
   }
 
   private applyOperators(...operators: Operator[]): void {
@@ -56,6 +73,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
     });
 
     currentChunk.pipe(...chunkOperators);
+
+    this.chunks.forEach(chunk => {
+      chunk.onError.chain(this, this.errorCallback);
+    });
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
