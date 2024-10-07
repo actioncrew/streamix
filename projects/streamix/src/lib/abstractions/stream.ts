@@ -81,6 +81,7 @@ export class Stream<T = any> implements Subscribable {
           await this.onComplete.process();
         } catch (error) {
           this.isFailed.resolve(error);
+
           if(this.onError.length > 0) {
             await this.onError.process({ error });
           }
@@ -112,19 +113,9 @@ export class Stream<T = any> implements Subscribable {
 
   async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      let next = (source instanceof Operator) ? source.next : undefined;
-
       if (this.isCancelled()) {
         emission.isCancelled = true;
-      }
-
-      emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
-
-      if(emission.isFailed) {
-        throw emission.error;
-      }
-
-      if (!emission.isPhantom && !emission.isCancelled) {
+      } else {
         await this.subscribers.parallel(emission.value);
       }
 
