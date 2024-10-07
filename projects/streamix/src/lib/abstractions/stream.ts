@@ -81,6 +81,7 @@ export class Stream<T = any> implements Subscribable {
           await this.onComplete.process();
         } catch (error) {
           this.isFailed.resolve(error);
+
           if(this.onError.length > 0) {
             await this.onError.process({ error });
           }
