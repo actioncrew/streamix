@@ -14,13 +14,13 @@ export abstract class Operator {
     throw new Error("Not implemented");
   }
 
-  async process(emission: Emission, stream: Subscribable): Promise<Emission> {
+  async process(emission: Emission, chunk: Chunk): Promise<Emission> {
     try {
-      let actualStream = (stream instanceof Chunk) ? stream.stream : stream;
+      let actualStream = chunk.stream;
       if (actualStream.isCancelled() === false) {
         emission = await this.handle(emission, actualStream);
         if (this.next && !emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
-          return this.next.process(emission, actualStream);
+          return this.next.process(emission, chunk);
         } else {
           return emission;
         }

@@ -12,9 +12,6 @@ export class BufferCountOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (emission.isPhantom) {
-      return emission;
-    }
 
     this.buffer.push(emission.value);
 

@@ -54,18 +54,7 @@ export class Stream<T = any> implements Subscribable {
     });
   }
 
-  // Protected method to handle the subscription chain
-  subscribe(callback: ((value: T) => any) | void): Subscription {
-    const boundCallback = callback === undefined
-      ? () => Promise.resolve()
-      : (value: T) => Promise.resolve(callback!(value));
-
-    this.subscribers.chain(this, boundCallback);
-
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
-    }
-
+  start() {
     if (this.isRunning() === false) {
       this.isRunning.resolve(true);
 
@@ -94,13 +83,27 @@ export class Stream<T = any> implements Subscribable {
         }
       });
     }
+  }
+
+  subscribe(callback: ((value: T) => any) | void): Subscription {
+    const boundCallback = callback === undefined
+      ? () => Promise.resolve()
+      : (value: T) => Promise.resolve(callback!(value));
+
+    this.subscribers.chain(this, boundCallback);
+
+    if (!this.onEmission.contains(this, this.emit)) {
+      this.onEmission.chain(this, this.emit);
+    }
+
+    this.start();
 
     return {
       unsubscribe: () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
               this.isUnsubscribed.resolve(true);
-              this.onEmission.clear();
+              this.onEmission.remove(this, this.emit);
               this.complete();
           }
       }
