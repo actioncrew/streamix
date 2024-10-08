@@ -1,12 +1,12 @@
 import { Stream, Subscribable, Subscription } from '../abstractions';
 
 export class CombineLatestStream<T = any> extends Stream<T[]> {
-  private readonly sources: Stream[];
+  private readonly sources: Subscribable[];
   private values: { hasValue: boolean; value: any }[];
   private remaining: number;
   private handleEmissionFns: Array<(value: any) => void> = [];
 
-  constructor(sources: Stream[]) {
+  constructor(sources: Subscribable[]) {
     super();
     this.sources = sources;
     this.values = sources.map(() => ({ hasValue: false, value: undefined }));
@@ -56,6 +56,6 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
   }
 }
 
-export function combineLatest<T = any>(sources: Stream[]) {
+export function combineLatest<T = any>(sources: Subscribable[]) {
   return new CombineLatestStream<T>(sources);
 }
