@@ -35,6 +35,12 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.onEmission;
   }
 
+  start(context: any) {
+    for (let i = context.chunks.length - 1; i >= 0; i--) {
+      context.chunks[i].stream.start(context.chunks[i]);
+    }
+  }
+
   run(): Promise<void> {
     throw new Error('Method not implemented.');
   }
@@ -83,63 +89,79 @@ export class Pipeline<T = any> implements Subscribable<T> {
   get isAutoComplete(): PromisifiedType<boolean> {
     return this.last.isAutoComplete;
   }
+
   get isCancelled(): PromisifiedType<boolean> {
     return this.last.isCancelled;
   }
+
   get isStopRequested(): PromisifiedType<boolean> {
     return this.last.isStopRequested;
   }
+
   get isFailed(): PromisifiedType<any> {
     return this.last.isFailed;
   }
+
   get isStopped(): PromisifiedType<boolean> {
     return this.last.isStopped;
   }
+
   get isUnsubscribed(): PromisifiedType<boolean> {
     return this.last.isUnsubscribed;
   }
+
   get isRunning(): PromisifiedType<boolean> {
     return this.last.isRunning;
   }
+
   get subscribers(): HookType {
     return this.last.subscribers;
   }
+
   shouldTerminate(): boolean {
     return this.last.shouldTerminate();
   }
+
   awaitTermination(): Promise<void> {
     return this.last.awaitTermination();
   }
-  terminate(): Promise<void> {
-    return this.last.terminate();
+
+  async terminate(): Promise<void> {
+    for (let i = 0; i <= this.chunks.length - 1; i++) {
+      await this.chunks[i].terminate();
+    }
   }
+
   shouldComplete(): boolean {
     return this.last.shouldComplete();
   }
+
   awaitCompletion(): Promise<void> {
     return this.last.awaitCompletion();
   }
-  complete(): Promise<void> {
-    return this.last.complete();
+
+  async complete(): Promise<void> {
+    for (let i = 0; i <= this.chunks.length - 1; i++) {
+      await this.chunks[i].complete();
+    }
   }
 
   subscribe(callback?: (value: T) => any): Subscription {
-    const subscriptions: Subscription[] = [];
-    const defaultCallback = () => {};
-    callback = callback ?? defaultCallback;
+    const boundCallback = callback === undefined
+      ? () => Promise.resolve()
+      : (value: T) => Promise.resolve(callback!(value));
 
-    const subscription = this.last.subscribe(callback);
+    this.subscribers.chain(this, boundCallback);
 
-    for (let i = this.chunks.length - 2; i >= 0; i--) {
-      this.chunks[i].start(this.chunks[i]);
-    }
+    this.start(this);
 
     return {
-      unsubscribe: () => {
-        for (let i = 0; i < this.chunks.length - 1; i++) {
-          this.chunks[i].terminate();
-        }
-        subscription.unsubscribe();
+      unsubscribe: async () => {
+          this.subscribers.remove(this, boundCallback);
+          if (this.subscribers.length === 0) {
+              this.isUnsubscribed.resolve(true);
+              await this.complete();
+          }
       }
     };
   }

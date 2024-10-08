@@ -90,7 +90,7 @@ export class Stream<T = any> implements Subscribable {
     }
   }
 
-  subscribe(callback: ((value: T) => any) | void): Subscription {
+  subscribe(callback?: ((value: T) => any) | void): Subscription {
     const boundCallback = callback === undefined
       ? () => Promise.resolve()
       : (value: T) => Promise.resolve(callback!(value));
@@ -100,11 +100,11 @@ export class Stream<T = any> implements Subscribable {
     this.start(this);
 
     return {
-      unsubscribe: () => {
+      unsubscribe: async () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
               this.isUnsubscribed.resolve(true);
-              this.complete();
+              await this.complete();
           }
       }
     };
