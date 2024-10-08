@@ -54,7 +54,11 @@ export class Stream<T = any> implements Subscribable {
     });
   }
 
-  start() {
+  start(context: any) {
+    if (!this.onEmission.contains(context, context.emit)) {
+      this.onEmission.chain(context, context.emit);
+    }
+
     if (this.isRunning() === false) {
       this.isRunning.resolve(true);
 
@@ -77,6 +81,7 @@ export class Stream<T = any> implements Subscribable {
         } finally {
           // Handle finalize callback
           await this.onStop.process();
+          this.onEmission.remove(context, context.emit);
 
           this.isStopped.resolve(true);
           this.isRunning.reset();
@@ -92,18 +97,13 @@ export class Stream<T = any> implements Subscribable {
 
     this.subscribers.chain(this, boundCallback);
 
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
-    }
-
-    this.start();
+    this.start(this);
 
     return {
       unsubscribe: () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
               this.isUnsubscribed.resolve(true);
-              this.onEmission.remove(this, this.emit);
               this.complete();
           }
       }

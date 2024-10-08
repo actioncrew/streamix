@@ -128,20 +128,18 @@ export class Pipeline<T = any> implements Subscribable<T> {
     const defaultCallback = () => {};
     callback = callback ?? defaultCallback;
 
-    const subscribeToStream = (stream: Subscribable<T>, cb: (value: T) => any): Subscription => {
-      const subscription = stream.subscribe(cb);
-      subscriptions.push(subscription);
-      return subscription;
-    };
+    const subscription = this.last.subscribe(callback);
 
-
-    for (let i = this.chunks.length - 1; i >= 0; i--) {
-      subscribeToStream(this.chunks[i], i === this.chunks.length - 1 ? callback : defaultCallback);
+    for (let i = this.chunks.length - 2; i >= 0; i--) {
+      this.chunks[i].start(this.chunks[i]);
     }
 
     return {
       unsubscribe: () => {
-        subscriptions.forEach(subscription => subscription.unsubscribe());
+        for (let i = 0; i < this.chunks.length - 1; i++) {
+          this.chunks[i].terminate();
+        }
+        subscription.unsubscribe();
       }
     };
   }
