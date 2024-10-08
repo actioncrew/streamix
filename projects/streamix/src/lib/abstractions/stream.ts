@@ -29,7 +29,12 @@ export class Stream<T = any> implements Subscribable {
   }
 
   awaitTermination() {
-    return promisified.race([this.isCancelled, this.isFailed]);
+    const promise = promisified.race([this.isCancelled, this.isFailed]);
+    const error = this.isFailed();
+    if(error) {
+      throw error;
+    }
+    return promise;
   }
 
   terminate(): Promise<void> {

@@ -119,11 +119,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   shouldTerminate(): boolean {
-    return this.last.shouldTerminate();
+    return this.chunks.some(chunk => chunk.isFailed());
   }
 
   awaitTermination(): Promise<void> {
-    return this.last.awaitTermination();
+    return Promise.race(this.chunks.map(chunk => chunk.awaitTermination()));
   }
 
   async terminate(): Promise<void> {
