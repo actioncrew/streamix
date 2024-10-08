@@ -14,6 +14,8 @@ describe('ConcatMapOperator', () => {
 
   it('should handle empty stream', async () => {
     const operator = new ConcatMapOperator(project);
+    operator.init(mockStream);
+
     const request = { value: null, isCancelled: false };
 
     const result = await operator.handle(request, mockStream);
@@ -23,8 +25,9 @@ describe('ConcatMapOperator', () => {
 
   it('should handle cancelled stream', async () => {
     const operator = new ConcatMapOperator(project);
-    const request = { value: 'data', isCancelled: true };
+    operator.init(mockStream);
 
+    const request = { value: 'data', isCancelled: true };
     const result = await operator.handle(request, mockStream);
 
     expect(result).toEqual({ ...request, isCancelled: true });
@@ -32,9 +35,10 @@ describe('ConcatMapOperator', () => {
 
   it('should project value and subscribe to inner stream (integration test)', async () => {
     const operator = new ConcatMapOperator(project);
+    operator.init(mockStream);
+
     const request = { value: 'data', isCancelled: false };
     const expectedValue = 'innerValue'; // Expected value from inner stream
-
     const result = await operator.handle(request, mockStream);
 
     expect(result).toEqual(request); // Assuming handle returns the original request
@@ -42,6 +46,8 @@ describe('ConcatMapOperator', () => {
 
   it('should handle multiple emissions sequentially', async () => {
     const operator = new ConcatMapOperator(project);
+    operator.init(mockStream);
+
     const requests = [
       { value: 'data1', isCancelled: false },
       { value: 'data2', isCancelled: false },
@@ -61,6 +67,8 @@ describe('ConcatMapOperator', () => {
       return new ErrorInnerStream(value); // Replace with your error inner stream implementation
     };
     const operator = new ConcatMapOperator(errorProject);
+    operator.init(mockStream);
+
     const request = { value: 'data', isCancelled: false };
 
     try {
@@ -73,6 +81,8 @@ describe('ConcatMapOperator', () => {
   it('should complete inner stream before processing next emission', (done) => {
 
     const operator = new ConcatMapOperator(value => of(value));
+    operator.init(mockStream);
+
     const emissions = [
       'data1',
       'data2',
@@ -112,7 +122,10 @@ describe('ConcatMapOperator', () => {
     };
 
     const results: any[] = [];
+
     const operator = new ConcatMapOperator(projectFunction);
+    operator.init(mockStream);
+
     const mockStream$ = from(outerEmissions).pipe(operator);
 
     mockStream$.subscribe((value) => {
@@ -167,4 +180,3 @@ class ErrorInnerStream extends Stream {
     throw new Error('Inner Stream Error');
   }
 }
-

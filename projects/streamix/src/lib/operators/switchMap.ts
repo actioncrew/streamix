@@ -5,13 +5,11 @@ export class SwitchMapOperator extends Operator {
   private project: (value: any) => Subscribable;
   private activeInnerStream?: Subscribable;
   private outerStream = new Subject();
-  private output?: Subject;
   private innerStreamSubscription?: Subscription;
 
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
-    this.initializeOuterStream();
   }
 
   private initializeOuterStream() {
@@ -20,24 +18,25 @@ export class SwitchMapOperator extends Operator {
     this.outerStream.isStopped.then(() => this.cleanup());
   }
 
+  override init(stream: Subscribable) {
+    this.initializeOuterStream();
+
+    stream.isStopped.then(async () => {
+      if (this.activeInnerStream) {
+        await this.activeInnerStream.awaitCompletion();
+      }
+      await this.cleanup();
+    });
+  }
+
   override async cleanup() {
     await this.stopInnerStream();
-    if (this.output && !this.output.isStopped()) {
-      await this.output.complete();
+    if (this.outerStream && !this.outerStream.isStopped()) {
+      await this.outerStream.complete();
     }
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if(!this.output) {
-      this.output = this.outerStream;
-
-      stream.isStopped.then(async () => {
-        if (this.activeInnerStream) {
-          await this.activeInnerStream.awaitCompletion();
-        }
-        await this.cleanup();
-      });
-    }
 
     if (stream.isCancelled()) {
       emission.isCancelled = true;
@@ -46,7 +45,7 @@ export class SwitchMapOperator extends Operator {
     }
 
     try {
-      return await this.processEmission(emission, this.output);
+      return await this.processEmission(emission, this.outerStream);
     } catch (error) {
       return Promise.reject(error);
     }
