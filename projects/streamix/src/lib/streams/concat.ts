@@ -1,58 +1,62 @@
 import { Stream, Subscribable } from '../abstractions';
-import { Subscription } from '../abstractions/subscription';
 
 export class ConcatStream<T = any> extends Stream<T> {
-  private sources: Subscribable[];
+  private readonly sources: Subscribable[];
   private currentSourceIndex: number = 0;
-  private currentSubscription?: Subscription;
+  private handleEmissionFn: (event: { emission: { value: T }, source: Subscribable }) => void;
 
   constructor(...sources: Subscribable[]) {
     super();
     this.sources = sources;
+    this.handleEmissionFn = ({ emission, source }) => this.handleEmission(emission.value);
   }
 
   override async run(): Promise<void> {
-
-    for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length && !this.shouldComplete(); this.currentSourceIndex++) {
-      if (this.isCancelled() || this.isUnsubscribed()) { break; }
+    for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length; this.currentSourceIndex++) {
+      if (this.shouldComplete() || this.shouldTerminate()) {
+        break;
+      }
       await this.runCurrentSource();
     }
 
-    if(!this.shouldComplete()) {
+    if (!this.shouldComplete()) {
       this.isAutoComplete.resolve(true);
     }
   }
 
   private async runCurrentSource(): Promise<void> {
     const currentSource = this.sources[this.currentSourceIndex];
+    currentSource.onEmission.chain(this, this.handleEmissionFn);
+    currentSource.start(currentSource);
 
-    return new Promise<void>((resolve, reject) => {
-      this.currentSubscription = currentSource.subscribe(async (value: any) => {
-        if (this.isCancelled()) {
-          this.currentSubscription?.unsubscribe();
-          resolve();
-          return;
-        }
+    try {
+      await Promise.race([currentSource.awaitCompletion(), this.awaitCompletion(), this.awaitTermination()]);
+    }
+    finally{
+      currentSource.onEmission.remove(this, this.handleEmissionFn);
+      await currentSource.complete();
+    }
+  }
 
-        try {
-          await this.onEmission.process({ emission: { value }, source: this });
-        } catch (error) {
-          reject(error);
-        }
-      });
+  private async handleEmission(value: T): Promise<void> {
+    if (this.shouldComplete() || this.shouldTerminate()) {
+      return;
+    }
 
-      currentSource.isStopped.then(() => {
-        this.currentSubscription?.unsubscribe();
-        resolve();
-      }).catch((error) => {
-        this.currentSubscription?.unsubscribe();
-        reject(error);
-      });
+    await this.onEmission.process({
+      emission: { value },
+      source: this,
     });
   }
 
+  override async complete(): Promise<void> {
+    for (const source of this.sources) {
+      await source.complete();
+    }
+    return super.complete();
+  }
+
   override async terminate(): Promise<void> {
-    this.currentSubscription?.unsubscribe();
     for (const source of this.sources) {
       await source.terminate();
     }
@@ -60,6 +64,6 @@ export class ConcatStream<T = any> extends Stream<T> {
   }
 }
 
-export function concat<T = any>(...sources: Subscribable[]) {
+export function concat<T = any>(...sources: Subscribable[]): ConcatStream<T> {
   return new ConcatStream<T>(...sources);
 }
