@@ -26,11 +26,13 @@ export class ConcatStream<T = any> extends Stream<T> {
 
   private async runCurrentSource(): Promise<void> {
     const currentSource = this.sources[this.currentSourceIndex];
-    currentSource.onEmission.chain(this, this.handleEmissionFn);
-    currentSource.start(currentSource);
-
     try {
-      await Promise.race([currentSource.awaitCompletion(), this.awaitCompletion(), this.awaitTermination()]);
+      currentSource.onEmission.chain(this, this.handleEmissionFn);
+      currentSource.start(currentSource);
+      await Promise.race([currentSource.awaitCompletion(), currentSource.awaitTermination(), this.awaitTermination()]);
+    }
+    catch(error) {
+      this.handleError(error);
     }
     finally{
       currentSource.onEmission.remove(this, this.handleEmissionFn);
@@ -47,6 +49,11 @@ export class ConcatStream<T = any> extends Stream<T> {
       emission: { value },
       source: this,
     });
+  }
+
+  private async handleError(error: any): Promise<void> {
+    this.isFailed.resolve(error);
+    await this.onError.process({ emission: { isFailed: true, error }, source: this });
   }
 
   override async complete(): Promise<void> {

@@ -22,9 +22,11 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
     this.sources.forEach((source) => source.start(source));
 
     try {
-      await Promise.race([this.awaitCompletion(), this.awaitTermination(),
-        Promise.all(this.sources.map(source => source.awaitCompletion()))
+      await Promise.race([this.awaitTermination(),
+        Promise.all(this.sources.map(source => source.awaitCompletion())),
+        Promise.race(this.sources.map(source => source.awaitTermination()))
       ]);
+
     } catch (error) {
       await this.handleError(error);
     } finally {
@@ -48,7 +50,8 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
   }
 
   private async handleError(error: any): Promise<void> {
-    await this.onError.process({ error, source: this });
+    this.isFailed.resolve(error);
+    await this.onError.process({ emission: { isFailed: true, error }, source: this });
   }
 
   override async complete(): Promise<void> {
