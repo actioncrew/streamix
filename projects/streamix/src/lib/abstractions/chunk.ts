@@ -17,39 +17,13 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.onEmission = hook();
   }
 
-  override start() {
-    this.stream.start();
+  override start(context: any) {
+    return this.stream.start(context);
   }
 
   override run(): Promise<void> {
     return this.stream.run();
   }
-
-  override subscribe(callback: ((value: T) => any) | void): Subscription {
-    const boundCallback = callback === undefined
-      ? () => Promise.resolve()
-      : (value: T) => Promise.resolve(callback!(value));
-
-    this.subscribers.chain(this, boundCallback);
-
-    if (!this.stream.onEmission.contains(this, this.emit)) {
-      this.stream.onEmission.chain(this, this.emit);
-    }
-
-    this.stream.start();
-
-    return {
-      unsubscribe: () => {
-          this.subscribers.remove(this, boundCallback);
-          if (this.subscribers.length === 0) {
-              this.isUnsubscribed.resolve(true);
-              this.stream.onEmission.remove(this, this.emit);
-              this.complete();
-          }
-      }
-    };
-  }
-
 
   override pipe(...operators: Operator[]): Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
