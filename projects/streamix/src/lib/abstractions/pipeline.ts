@@ -35,12 +35,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.onEmission;
   }
 
-  start() {
-    for (let i = this.chunks.length - 1; i >= 0; i--) {
-      this.chunks[i].start();
-    }
-  }
-
   run(): Promise<void> {
     throw new Error('Method not implemented.');
   }
