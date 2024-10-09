@@ -10,11 +10,11 @@ export class OfStream<T = any> extends Stream<T> {
   }
 
   override async run(): Promise<void> {
-    if (!this.emitted && !this.isUnsubscribed() && !this.isCancelled()) {
+    if (!this.emitted && !this.shouldComplete() && !this.shouldTerminate()) {
       await this.onEmission.process({ emission: { value: this.value }, source: this });
       this.emitted = true;
     }
-    if(!this.isUnsubscribed() && !this.isCancelled()) {
+    if(this.emitted) {
       this.isAutoComplete.resolve(true);
     }
   }
