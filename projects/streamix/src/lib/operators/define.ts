@@ -25,8 +25,12 @@ export class DefineOperator extends Operator {
       ${injectedDependencies}
       const mainTask = ${mainTaskBody};
       onmessage = (event) => {
-        const result = mainTask(event.data);
-        postMessage(result);
+        try {
+          const result = mainTask(event.data);
+          postMessage(result);
+        } catch (error) {
+          postMessage({ error: error.message });
+        }
       };
     `;
 
@@ -48,7 +52,6 @@ export class DefineOperator extends Operator {
       if (idleWorker) {
         resolve(idleWorker);
       } else {
-        // If no workers are available, add the resolver to the queue
         this.workerQueue.push(resolve);
       }
     });
@@ -64,10 +67,32 @@ export class DefineOperator extends Operator {
     }
   }
 
+  public async processTask(data: any): Promise<any> {
+    const worker = await this.getIdleWorker();
+    return new Promise<any>((resolve, reject) => {
+      worker.onmessage = (event: MessageEvent) => {
+        if (event.data.error) {
+          reject(event.data.error);
+        } else {
+          resolve(event.data);
+        }
+        this.returnWorker(worker); // Always return the worker after task is done
+      };
+
+      worker.onerror = (error: ErrorEvent) => {
+        reject(error.message);
+        this.returnWorker(worker); // Return the worker even if an error occurs
+      };
+
+      worker.postMessage(data);
+    });
+  }
+
   override async cleanup(): Promise<void> {
-    this.workerPool.forEach(worker => {
-      worker.terminate();
-    })
+    // Terminate all workers and clear the pool and queue
+    this.workerPool.forEach(worker => worker.terminate());
+    this.workerPool = [];
+    this.workerQueue = [];
   }
 }
 
