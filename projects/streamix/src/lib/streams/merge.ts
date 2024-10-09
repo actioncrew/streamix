@@ -49,10 +49,6 @@ export class MergeStream<T = any> extends Stream<T> {
     });
   }
 
-  private async handleError(error: any): Promise<void> {
-    await this.onError.process({ error, source: this });
-  }
-
   private async cleanup(): Promise<void> {
     for (let i = 0; i < this.sources.length; i++) {
       const source = this.sources[i];

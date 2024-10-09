@@ -51,11 +51,6 @@ export class ConcatStream<T = any> extends Stream<T> {
     });
   }
 
-  private async handleError(error: any): Promise<void> {
-    this.isFailed.resolve(error);
-    await this.onError.process({ emission: { isFailed: true, error }, source: this });
-  }
-
   override async complete(): Promise<void> {
     for (const source of this.sources) {
       await source.complete();

@@ -32,11 +32,6 @@ export class RangeStream<T = any> extends Stream<T> {
       await this.handleError(error);
     }
   }
-
-  private async handleError(error: any): Promise<void> {
-    this.isFailed.resolve(error);
-    await this.onError.process({ emission: { isFailed: true, error }, source: this });
-  }
 }
 
 export function range<T = any>(start: number, end: number, step: number = 1) {
