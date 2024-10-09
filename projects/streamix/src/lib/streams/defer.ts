@@ -51,11 +51,6 @@ export class DeferStream<T = any> extends Stream<T> {
     });
   }
 
-  private async handleError(error: any): Promise<void> {
-    this.isFailed.resolve(error);
-    await this.onError.process({ emission: { isFailed: true, error }, source: this });
-  }
-
   private async cleanupInnerStream(): Promise<void> {
     if (this.innerStream) {
       this.innerStream.onEmission.remove(this, this.handleEmissionFn);

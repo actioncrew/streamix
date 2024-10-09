@@ -49,11 +49,6 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
     }
   }
 
-  private async handleError(error: any): Promise<void> {
-    this.isFailed.resolve(error);
-    await this.onError.process({ emission: { isFailed: true, error }, source: this });
-  }
-
   override async complete(): Promise<void> {
     this.sources.forEach((source, index) => {
       source.onEmission.remove(this, this.handleEmissionFns[index]);

@@ -138,4 +138,9 @@ export class Stream<T = any> implements Subscribable {
       }
     }
   }
+
+  async handleError(error: any): Promise<void> {
+    this.isFailed.resolve(error);
+    await this.onError.process({ emission: { isFailed: true, error }, source: this });
+  }
 }

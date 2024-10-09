@@ -41,11 +41,6 @@ export class FromPromiseStream<T = any> extends Stream<T> {
       await this.handleError(error);
     }
   }
-
-  private async handleError(error: any): Promise<void> {
-    await this.onError.process({ error, source: this });
-    this.isFailed.resolve(error);
-  }
 }
 
 export function fromPromise<T = any>(promise: Promise<T>): FromPromiseStream<T> {
