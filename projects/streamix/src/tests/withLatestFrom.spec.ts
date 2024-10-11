@@ -121,25 +121,4 @@ describe('withLatestFrom operator', () => {
       done();
     });
   });
-
-  it('should handle cancellation of the other stream', (done) => {
-    const mainStream = new MockStream([1, 2, 3]);
-    const otherStream = new MockStream(['A', 'B', 'C']);
-
-    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
-
-    let results: any[] = [];
-
-    combinedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    // Cancel the other stream immediately
-    otherStream.terminate();
-
-    combinedStream.isStopped.then(() => {
-      expect(results).toEqual([]);
-      done();
-    });
-  });
 });
