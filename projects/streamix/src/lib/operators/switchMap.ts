@@ -5,7 +5,7 @@ export class SwitchMapOperator extends Operator {
   private project: (value: any) => Subscribable;
   private activeInnerStream?: Subscribable;
   private outerStream = new Subject();
-  private innerStreamSubscription?: Subscription;
+  private handleInnerEmission: (({ emission, source }: any) => Promise<void>) | null = null;
 
   constructor(project: (value: any) => Subscribable) {
     super();
@@ -62,11 +62,13 @@ export class SwitchMapOperator extends Operator {
     await this.stopInnerStream();
     this.activeInnerStream = newInnerStream;
 
-    this.innerStreamSubscription = this.activeInnerStream.subscribe(async (value) => {
+    this.handleInnerEmission = async ({ emission }) => {
       if (!stream.shouldTerminate() && !stream.shouldComplete()) {
-        await stream.next(value);
+        await stream.next(emission.value);
       }
-    });
+    };
+
+    this.activeInnerStream.onEmission.chain(this, this.handleInnerEmission);
 
     this.activeInnerStream.isFailed.then((error) => {
       emission.error = error;
@@ -82,10 +84,13 @@ export class SwitchMapOperator extends Operator {
       this.removeInnerStream(this.activeInnerStream!);
     });
 
+    this.activeInnerStream.start();
+
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {
       this.activeInnerStream!.isStopped.then(() => resolve(emission));
     });
+
   }
 
   private removeInnerStream(innerStream: Subscribable) {
@@ -96,7 +101,7 @@ export class SwitchMapOperator extends Operator {
 
   private async stopInnerStream() {
     if (this.activeInnerStream) {
-      this.innerStreamSubscription?.unsubscribe();
+      this.activeInnerStream.onEmission.remove(this, this.handleInnerEmission!);
       this.activeInnerStream.terminate();
       this.removeInnerStream(this.activeInnerStream);
     }
