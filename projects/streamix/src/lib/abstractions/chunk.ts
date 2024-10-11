@@ -14,25 +14,22 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     super();
     Object.assign(this, stream);
     this.subscribers = hook();
+    this.onEmission = hook();
+  }
+
+  override start(context: any) {
+    return this.stream.start(context);
   }
 
   override run(): Promise<void> {
-    return this.stream.run.call(this);
-  }
-
-  override subscribe(callback: ((value: T) => any) | void): Subscription {
-
-    const subscription = this.stream.subscribe.call(this, callback);
-    return {
-      unsubscribe: () => subscription.unsubscribe()
-    };
+    return this.stream.run();
   }
 
   override pipe(...operators: Operator[]): Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
-        let clone = operator.clone(); clone.init(this)
+        let clone = operator.clone(); clone.init(this.stream)
         this.operators.push(clone);
 
         // Manage head and tail for every operator
@@ -65,21 +62,23 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
       // Process the emission with the next operator, if any
       emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
 
+      if(emission.isFailed) {
+        throw emission.error;
+      }
       // If emission is valid, notify subscribers
-      if (!(emission.isPhantom || emission.isCancelled || emission.isFailed)) {
+      if (!emission.isPhantom && !emission.isCancelled) {
+        await this.onEmission.parallel({ emission, source: this });
         await this.subscribers.parallel(emission.value);
       }
 
       emission.isComplete = true;
     } catch (error: any) {
-      // Handle the error case
       emission.isFailed = true;
       emission.error = error;
 
-      if (this.onError.length > 0) {
+      this.isFailed.resolve(error);
+      if(this.onError.length > 0) {
         await this.onError.process({ error });
-      } else {
-        this.isFailed.resolve(error);
       }
     }
   }

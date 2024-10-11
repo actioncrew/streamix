@@ -1,37 +1,48 @@
 import { Stream } from '../abstractions/stream';
 
 export class FromPromiseStream<T = any> extends Stream<T> {
-  private promise: Promise<any> | undefined;
-  private resolved: boolean = false; // Track if the promise has been resolved
-  private value: any; // Store resolved value
+  private promise: Promise<T>;
+  private resolved: boolean = false;
+  private value: T | undefined;
 
-  constructor(promise: Promise<any>) {
+  constructor(promise: Promise<T>) {
     super();
     this.promise = promise;
   }
 
   override async run(): Promise<void> {
-    if (this.isUnsubscribed() || this.isAutoComplete()) {
-      return;
-    }
+    try {
+      if (!this.resolved) {
+        const resolutionPromise = this.resolvePromise();
+        await Promise.race([
+          resolutionPromise,
+          this.awaitCompletion(),
+          this.awaitTermination()
+        ]);
 
-    if (!this.resolved) {
-      try {
-        this.value = await this.promise; // Resolve promise and store value
-        this.resolved = true;
-      } catch (error) {
-        this.isFailed.resolve(error);
-        return;
+        // If we've been completed or terminated, don't continue
+        if (this.shouldComplete() || this.shouldTerminate()) {
+          return;
+        }
       }
-    }
 
-    // Emit stored value
-    await this.onEmission.process({ emission: { value: this.value }, source: this });
-    this.isAutoComplete.resolve(true);
+      await this.onEmission.process({ emission: { value: this.value as T }, source: this });
+      this.isAutoComplete.resolve(true);
+    } catch (error) {
+      await this.handleError(error);
+    }
+  }
+
+  private async resolvePromise(): Promise<void> {
+    try {
+      this.value = await this.promise;
+      this.resolved = true;
+    } catch (error) {
+      await this.handleError(error);
+    }
   }
 }
 
-
-export function fromPromise<T = any>(promise: Promise<any>) {
+export function fromPromise<T = any>(promise: Promise<T>): FromPromiseStream<T> {
   return new FromPromiseStream<T>(promise);
 }

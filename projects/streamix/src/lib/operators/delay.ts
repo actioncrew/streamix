@@ -9,10 +9,6 @@ export class DelayOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (stream.isCancelled()) {
-      emission.isCancelled = true;
-      return emission;
-    }
 
     // Apply the delay
     await new Promise<Emission>((resolve) => {

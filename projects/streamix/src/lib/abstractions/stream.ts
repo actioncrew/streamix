@@ -29,7 +29,12 @@ export class Stream<T = any> implements Subscribable {
   }
 
   awaitTermination() {
-    return promisified.race([this.isCancelled, this.isFailed]);
+    const promise = promisified.race([this.isCancelled, this.isFailed]);
+    const error = this.isFailed();
+    if(error) {
+      throw error;
+    }
+    return promise;
   }
 
   terminate(): Promise<void> {
@@ -54,16 +59,9 @@ export class Stream<T = any> implements Subscribable {
     });
   }
 
-  // Protected method to handle the subscription chain
-  subscribe(callback: ((value: T) => any) | void): Subscription {
-    const boundCallback = callback === undefined
-      ? () => Promise.resolve()
-      : (value: T) => Promise.resolve(callback!(value));
-
-    this.subscribers.chain(this, boundCallback);
-
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
+  start(context: any) {
+    if (!this.onEmission.contains(context, context.emit)) {
+      this.onEmission.chain(context, context.emit);
     }
 
     if (this.isRunning() === false) {
@@ -81,23 +79,37 @@ export class Stream<T = any> implements Subscribable {
           await this.onComplete.process();
         } catch (error) {
           this.isFailed.resolve(error);
+
+          if(this.onError.length > 0) {
+            await this.onError.process({ error });
+          }
         } finally {
           // Handle finalize callback
           await this.onStop.process();
+          this.onEmission.remove(context, context.emit);
 
           this.isStopped.resolve(true);
           this.isRunning.reset();
         }
       });
     }
+  }
+
+  subscribe(callback?: ((value: T) => any) | void): Subscription {
+    const boundCallback = callback === undefined
+      ? () => Promise.resolve()
+      : (value: T) => Promise.resolve(callback!(value));
+
+    this.subscribers.chain(this, boundCallback);
+
+    this.start(this);
 
     return {
-      unsubscribe: () => {
+      unsubscribe: async () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
               this.isUnsubscribed.resolve(true);
-              this.onEmission.clear();
-              this.complete();
+              await this.complete();
           }
       }
     };
@@ -109,13 +121,9 @@ export class Stream<T = any> implements Subscribable {
 
   async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      let next = (source instanceof Operator) ? source.next : undefined;
-
       if (this.isCancelled()) {
         emission.isCancelled = true;
-      }
-
-      if (!(emission.isPhantom || emission.isCancelled || emission.isFailed)) {
+      } else {
         await this.subscribers.parallel(emission.value);
       }
 
@@ -123,7 +131,16 @@ export class Stream<T = any> implements Subscribable {
     } catch (error: any) {
       emission.isFailed = true;
       emission.error = error;
-      this.onError.length > 0 ? this.onError.process({ error }) : (() => { this.isFailed.resolve(error); })();
+
+      this.isFailed.resolve(error);
+      if(this.onError.length > 0) {
+        await this.onError.process({ error });
+      }
     }
+  }
+
+  async handleError(error: any): Promise<void> {
+    this.isFailed.resolve(error);
+    await this.onError.process({ emission: { isFailed: true, error }, source: this });
   }
 }
