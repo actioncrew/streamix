@@ -7,8 +7,8 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    stream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    stream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     stream.isStopped.then(() => {
@@ -55,8 +55,8 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    const subscription = stream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = stream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     subscription.unsubscribe(); // Unsubscribe before running
@@ -72,11 +72,11 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    stream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    stream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
-    stream.terminate(); // Cancel before running
+    stream.complete(); // Cancel before running
 
     expect(emittedValues).toEqual([]);
   });
