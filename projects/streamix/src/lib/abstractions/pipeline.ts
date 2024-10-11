@@ -35,9 +35,9 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.onEmission;
   }
 
-  start(context: any) {
-    for (let i = context.chunks.length - 1; i >= 0; i--) {
-      context.chunks[i].stream.start(context.chunks[i]);
+  start() {
+    for (let i = this.chunks.length - 1; i >= 0; i--) {
+      this.chunks[i].start();
     }
   }
 
@@ -153,7 +153,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
     this.subscribers.chain(this, boundCallback);
 
-    this.start(this);
+    this.start();
 
     return {
       unsubscribe: async () => {

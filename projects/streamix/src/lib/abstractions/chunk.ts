@@ -17,8 +17,40 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.onEmission = hook();
   }
 
-  override start(context: any) {
-    return this.stream.start(context);
+  override start() {
+    if (!this.stream.onEmission.contains(this, this.emit)) {
+      this.stream.onEmission.chain(this, this.emit);
+    }
+
+    if (this.isRunning() === false) {
+      this.isRunning.resolve(true);
+
+      queueMicrotask(async () => {
+        try {
+          // Emit start value if defined
+          await this.onStart.process();
+
+          // Start the actual stream logic
+          await this.run();
+
+          // Emit end value if defined
+          await this.onComplete.process();
+        } catch (error) {
+          this.isFailed.resolve(error);
+
+          if(this.onError.length > 0) {
+            await this.onError.process({ error });
+          }
+        } finally {
+          // Handle finalize callback
+          await this.onStop.process();
+          this.stream.onEmission.remove(this, this.emit);
+
+          this.isStopped.resolve(true);
+          this.isRunning.reset();
+        }
+      });
+    }
   }
 
   override run(): Promise<void> {
