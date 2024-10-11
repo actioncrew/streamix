@@ -19,7 +19,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
   }
 
   override async run(): Promise<void> {
-    this.sources.forEach((source) => source.start(source));
+    this.sources.forEach((source) => source.start());
 
     try {
       await Promise.race([this.awaitTermination(),

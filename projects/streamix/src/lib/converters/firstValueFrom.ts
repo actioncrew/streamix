@@ -20,9 +20,7 @@ export class FirstValueFromConverter extends Converter<Subscribable, Promise<any
         stream.onEmission.chain(this, this.emissionHandler);
 
         stream.isStopped.then(() => {
-          if(stream.onEmission.contains(this, this.emissionHandler)) {
-            stream.onEmission.remove(this, this.emissionHandler);
-          }
+          stream.onEmission.remove(this, this.emissionHandler);
 
           if (!hasEmitted) {
             reject("Subscribable has not emitted any value.");
