@@ -6,8 +6,8 @@ describe('IntervalStream', () => {
     const intervalStream = new IntervalStream(intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = intervalStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = intervalStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     intervalStream.isStopped.then(() => {
@@ -28,8 +28,8 @@ describe('IntervalStream', () => {
     const intervalStream = new IntervalStream(intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = intervalStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = intervalStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     subscription.unsubscribe();
@@ -45,8 +45,8 @@ describe('IntervalStream', () => {
     const intervalStream = new IntervalStream(intervalMs);
 
     const emittedValues: number[] = [];
-    intervalStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    intervalStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     intervalStream.terminate();
