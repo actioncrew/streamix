@@ -36,5 +36,9 @@ export function asyncValue<T>() {
     return _hasValue;
   };
 
+  innerFunction.value = function (): T | undefined {
+    return _value;
+  }
+
   return innerFunction;
 }
