@@ -14,13 +14,11 @@ export class FromEventStream<T = any> extends Stream<T> {
   }
 
   override async run(): Promise<void> {
-
-    await Promise.race([this.awaitCompletion(), this.awaitTermination()]).then(() => {
-      this.target.removeEventListener(this.eventName, this.listener);
-    });
+    await Promise.race([this.awaitCompletion(), this.awaitTermination()]);
+    this.target.removeEventListener(this.eventName, this.listener);
   }
 
-  override subscribe(callback: void | ((value: any) => any)): Subscription {
+  override start(context: any) {
     this.listener = async (event: Event) => {
       if (this.isRunning()) {
         this.eventCounter.increment();
@@ -31,7 +29,7 @@ export class FromEventStream<T = any> extends Stream<T> {
 
     this.target.addEventListener(this.eventName, this.listener);
 
-    return super.subscribe(callback);
+    return super.start(context);
   }
 }
 

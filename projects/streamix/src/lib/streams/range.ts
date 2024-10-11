@@ -15,7 +15,7 @@ export class RangeStream<T = any> extends Stream<T> {
 
   override async run(): Promise<void> {
     try {
-      while (this.current < this.end && !this.isStopRequested()) {
+      while (this.current < this.end && !this.shouldComplete() && !this.shouldTerminate()) {
         let emission = { value: this.current } as Emission;
         await this.onEmission.process({ emission, source: this });
 
@@ -25,11 +25,11 @@ export class RangeStream<T = any> extends Stream<T> {
 
         this.current += this.step;
       }
-      if (!this.isStopRequested()) {
+      if (this.current >= this.end && !this.shouldComplete() && !this.shouldTerminate()) {
         this.isAutoComplete.resolve(true);
       }
     } catch (error) {
-      this.isFailed.resolve(error);
+      await this.handleError(error);
     }
   }
 }
