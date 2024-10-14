@@ -3,7 +3,6 @@ import { hook } from '../utils';
 import { Emission } from './emission';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
-import { Subscription } from './subscription';
 
 export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   operators: Operator[] = [];

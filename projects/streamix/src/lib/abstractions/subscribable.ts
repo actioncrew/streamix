@@ -28,6 +28,4 @@ export interface Subscribable<T = any> {
   subscribe(callback?: (value: T) => any): Subscription;
 
   pipe(...operators: Operator[]): Subscribable<T>;
-
-  emit({ emission, source }: { emission: Emission; source: any }): Promise<void>;
 }

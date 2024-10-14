@@ -24,7 +24,7 @@ describe('CatchErrorOperator Functional Test', () => {
     subject.next(1);
     streamWithCatchError.complete();
 
-    Promise.race([streamWithCatchError.awaitCompletion(), streamWithCatchError.awaitTermination()]).then(() => {
+    streamWithCatchError.awaitCompletion().then(() => {
       expect(handlerMock).toHaveBeenCalled();
       expect(streamWithCatchError.isStopped()).toBe(true); // Stream should complete
       expect(streamWithCatchError.isFailed()).toBe(false); // Stream should not propagate an error
@@ -46,7 +46,7 @@ describe('CatchErrorOperator Functional Test', () => {
     subject.next(1);
     streamWithCatchError.complete();
 
-    Promise.race([streamWithCatchError.awaitCompletion(), streamWithCatchError.awaitTermination()]).then(() => {
+    streamWithCatchError.awaitCompletion().then(() => {
       expect(handlerMock).not.toHaveBeenCalled();
       expect(streamWithCatchError.isStopped()).toBe(true); // Stream should complete
       expect(streamWithCatchError.isFailed()).toBe(true); // Stream should propagate an error

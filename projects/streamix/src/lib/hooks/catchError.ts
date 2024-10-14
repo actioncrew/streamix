@@ -1,6 +1,4 @@
-import { Emission, Operator, Stream, Subscribable } from '../abstractions';
-import { HookOperator } from '../abstractions/hook';
-
+import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
 
 export class CatchErrorOperator extends Operator implements HookOperator {
   private boundStream!: Stream;

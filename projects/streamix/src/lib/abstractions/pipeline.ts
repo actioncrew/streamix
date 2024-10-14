@@ -42,11 +42,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   run(): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  emit({ emission, source }: { emission: Emission; source: any; }): Promise<void> {
-    throw new Error('Method not implemented.');
+    return this.isRunning.promise().then(() => Promise.resolve());
   }
 
   async errorCallback(error: any) {

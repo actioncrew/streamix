@@ -53,7 +53,7 @@ describe('mergeMap operator', () => {
 
   //   const project = (value: number) => {
   //     const innerStream = new MockStream([value, value * 2]);
-  //     setTimeout(() => innerStream.terminate(), 10); // Cancel inner stream after a delay
+  //     setTimeout(() => innerStream.complete(), 10); // Cancel inner stream after a delay
   //     return innerStream;
   //   };
 
