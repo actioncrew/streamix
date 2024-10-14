@@ -76,7 +76,7 @@ export class ConcatMapOperator extends Operator {
       };
 
       this.handleInnerEmission = async ({ emission: innerEmission }) => {
-        if (!stream.shouldTerminate() && !stream.shouldComplete()) {
+        if (!stream.shouldComplete()) {
           await stream.next(innerEmission.value);
         }
       };

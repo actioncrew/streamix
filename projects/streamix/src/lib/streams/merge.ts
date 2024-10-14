@@ -21,14 +21,11 @@ export class MergeStream<T = any> extends Stream<T> {
       this.sources.forEach(source => source.start());
 
       await Promise.race([
-        Promise.all(this.sources.map(source =>
-          Promise.race([source.awaitCompletion(), source.awaitTermination()])
-        )),
-        this.awaitCompletion(),
-        this.awaitTermination()
+        Promise.all(this.sources.map(source => source.awaitCompletion())),
+        this.awaitCompletion()
       ]);
 
-      if (!this.shouldComplete() && !this.shouldTerminate() && this.sources.every(source => source.shouldComplete())) {
+      if (!this.shouldComplete() && this.sources.every(source => source.shouldComplete())) {
         this.isAutoComplete.resolve(true);
       }
     } catch (error) {
@@ -39,7 +36,7 @@ export class MergeStream<T = any> extends Stream<T> {
   }
 
   private async handleEmission(value: T): Promise<void> {
-    if (this.shouldComplete() || this.shouldTerminate()) {
+    if (this.shouldComplete()) {
       return;
     }
 
@@ -60,11 +57,6 @@ export class MergeStream<T = any> extends Stream<T> {
   override async complete(): Promise<void> {
     await this.cleanup();
     return super.complete();
-  }
-
-  override async terminate(): Promise<void> {
-    await this.cleanup();
-    return super.terminate();
   }
 }
 

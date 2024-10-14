@@ -111,7 +111,7 @@ export class MergeMapOperator extends Operator {
     this.processingPromises.push(processingPromise);
 
     processingPromise.finally(() => {
-      if (stream.shouldTerminate() || stream.shouldComplete()) {
+      if (stream.shouldComplete()) {
         this.stopAllStreams();
       }
     });

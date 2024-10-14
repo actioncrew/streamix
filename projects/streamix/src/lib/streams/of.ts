@@ -11,7 +11,7 @@ export class OfStream<T = any> extends Stream<T> {
 
   override async run(): Promise<void> {
     try {
-      if (!this.emitted && !this.shouldComplete() && !this.shouldTerminate()) {
+      if (!this.emitted && !this.shouldComplete()) {
         await this.onEmission.process({ emission: { value: this.value }, source: this });
         this.emitted = true;
       }

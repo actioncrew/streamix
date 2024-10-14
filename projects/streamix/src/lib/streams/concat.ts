@@ -13,7 +13,7 @@ export class ConcatStream<T = any> extends Stream<T> {
 
   override async run(): Promise<void> {
     for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length; this.currentSourceIndex++) {
-      if (this.shouldComplete() || this.shouldTerminate()) {
+      if (this.shouldComplete()) {
         break;
       }
       await this.runCurrentSource();
@@ -29,7 +29,7 @@ export class ConcatStream<T = any> extends Stream<T> {
     try {
       currentSource.onEmission.chain(this, this.handleEmissionFn);
       currentSource.start();
-      await Promise.race([currentSource.awaitCompletion(), currentSource.awaitTermination(), this.awaitTermination()]);
+      await Promise.race([currentSource.awaitCompletion(), this.awaitCompletion()]);
     }
     catch(error) {
       this.handleError(error);
@@ -41,7 +41,7 @@ export class ConcatStream<T = any> extends Stream<T> {
   }
 
   private async handleEmission(value: T): Promise<void> {
-    if (this.shouldComplete() || this.shouldTerminate()) {
+    if (this.shouldComplete()) {
       return;
     }
 
@@ -56,13 +56,6 @@ export class ConcatStream<T = any> extends Stream<T> {
       await source.complete();
     }
     return super.complete();
-  }
-
-  override async terminate(): Promise<void> {
-    for (const source of this.sources) {
-      await source.terminate();
-    }
-    return super.terminate();
   }
 }
 

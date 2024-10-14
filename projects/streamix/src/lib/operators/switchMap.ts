@@ -63,7 +63,7 @@ export class SwitchMapOperator extends Operator {
     this.activeInnerStream = newInnerStream;
 
     this.handleInnerEmission = async ({ emission }) => {
-      if (!stream.shouldTerminate() && !stream.shouldComplete()) {
+      if (!stream.shouldComplete()) {
         await stream.next(emission.value);
       }
     };
@@ -102,7 +102,7 @@ export class SwitchMapOperator extends Operator {
   private async stopInnerStream() {
     if (this.activeInnerStream) {
       this.activeInnerStream.onEmission.remove(this, this.handleInnerEmission!);
-      this.activeInnerStream.terminate();
+      this.activeInnerStream.complete();
       this.removeInnerStream(this.activeInnerStream);
     }
   }

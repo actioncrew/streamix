@@ -20,19 +20,20 @@ export class DeferStream<T = any> extends Stream<T> {
       // Set up emission handling
       this.innerStream.onEmission.chain(this, this.handleEmissionFn);
 
+      this.innerStream.isFailed.then(() => {
+        this.handleError(this.innerStream!.isFailed());
+      });
+
       // Start the inner stream
       this.innerStream.start();
 
       // Wait for completion or termination
-      await Promise.race([this.innerStream.awaitCompletion(), this.innerStream.awaitTermination(), this.awaitTermination()]);
+      await Promise.race([this.innerStream.awaitCompletion(), this.awaitCompletion()]);
 
       // Handle auto-completion
       if (this.innerStream.shouldComplete()) {
         this.isAutoComplete.resolve(true);
-      } else if(this.innerStream.shouldTerminate()) {
-        await this.handleError(this.innerStream.isFailed());
       }
-
     } catch (error) {
       await this.handleError(error);
     } finally {
@@ -41,7 +42,7 @@ export class DeferStream<T = any> extends Stream<T> {
   }
 
   private async handleEmission(value: T): Promise<void> {
-    if (this.shouldComplete() || this.shouldTerminate()) {
+    if (this.shouldComplete()) {
       return;
     }
 
@@ -62,11 +63,6 @@ export class DeferStream<T = any> extends Stream<T> {
   override async complete(): Promise<void> {
     await this.cleanupInnerStream();
     return super.complete();
-  }
-
-  override async terminate(): Promise<void> {
-    await this.cleanupInnerStream();
-    return super.terminate();
   }
 }
 

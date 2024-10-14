@@ -8,12 +8,9 @@ export class Subject<T = any> extends Stream<T> {
   }
 
   override async run(): Promise<void> {
-    await Promise.race([
-      this.awaitCompletion(),
-      this.awaitTermination(),
-    ]);
+    await this.awaitCompletion();
 
-    this.shouldTerminate() ? Promise.resolve() : await this.isRunning.then(() => (() => this.emissionAvailable)());
+    return this.emissionAvailable;
   }
 
   async next(value?: T): Promise<void> {

@@ -20,9 +20,8 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
     this.sources.forEach((source) => source.start());
 
     try {
-      await Promise.race([this.awaitTermination(),
-        Promise.all(this.sources.map(source => source.awaitCompletion())),
-        Promise.race(this.sources.map(source => source.awaitTermination()))
+      await Promise.race([this.awaitCompletion(),
+        Promise.all(this.sources.map(source => source.awaitCompletion()))
       ]);
 
     } catch (error) {
@@ -33,7 +32,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
   }
 
   private async handleEmission(index: number, value: any): Promise<void> {
-    if (this.shouldComplete() || this.shouldTerminate()) {
+    if (this.shouldComplete()) {
       return;
     }
 
@@ -53,14 +52,6 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
       source.complete();
     });
     return super.complete();
-  }
-
-  override async terminate(): Promise<void> {
-    this.sources.forEach((source, index) => {
-      source.onEmission.remove(this, this.handleEmissionFns[index]);
-      source.terminate();
-    });
-    return super.terminate();
   }
 }
 
