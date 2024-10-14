@@ -38,17 +38,11 @@ export class ComputeStream extends Stream {
 
       await Promise.race([
         this.awaitCompletion(),
-        this.awaitTermination(),
         this.promise,
       ]);
     } catch (error) {
       console.warn('Error during computation:', error);
     } finally {
-      if (this.shouldTerminate()) {
-        terminateResolve();
-        await this.complete();
-        return;
-      }
       if (this.shouldComplete()) {
         await this.promise;
         await this.complete();
