@@ -19,8 +19,7 @@ export class ConcatMapOperator extends Operator {
   }
 
   private initializeOuterStream() {
-    this.outerStream.isFailed.then(() => this.cleanup());
-    this.outerStream.isStopRequested.then(() => this.cleanup());
+    this.outerStream.isStopped.then(() => this.cleanup());
   }
 
   override init(stream: Subscribable) {

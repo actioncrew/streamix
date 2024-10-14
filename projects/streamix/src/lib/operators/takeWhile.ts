@@ -14,7 +14,7 @@ export class TakeWhileOperator extends Operator {
     const shouldContinue = this.predicate(emission.value);
     if (!shouldContinue) {
       emission.isPhantom = true;
-      stream.isStopRequested.resolve(true);
+      stream.complete();
       return emission
     }
 

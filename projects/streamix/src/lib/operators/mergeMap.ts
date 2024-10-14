@@ -27,7 +27,6 @@ export class MergeMapOperator extends Operator {
         .then(() => this.outerStream?.complete())
     );
 
-    this.outerStream.isFailed.then((error) => this.stopAllStreams());
     this.outerStream.isStopped.then(() => this.stopAllStreams());
   }
 

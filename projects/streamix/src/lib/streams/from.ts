@@ -11,25 +11,21 @@ export class FromStream<T = any> extends Stream<T> {
   }
 
   override async run(): Promise<void> {
-    try {
-      while (!this.done && !this.isStopRequested()) {
-        const { value, done } = this.iterator.next();
-        if (done) {
-          this.done = true;
-          if (!this.isStopRequested()) {
-            this.isAutoComplete.resolve(true);
-          }
-        } else {
-          let emission = { value } as Emission;
-          await this.onEmission.process({ emission, source: this });
+    while (!this.done && !this.shouldComplete()) {
+      const { value, done } = this.iterator.next();
+      if (done) {
+        this.done = true;
+        if (!this.shouldComplete()) {
+          this.isAutoComplete.resolve(true);
+        }
+      } else {
+        let emission = { value } as Emission;
+        await this.onEmission.process({ emission, source: this });
 
-          if (emission.isFailed) {
-            throw emission.error;
-          }
+        if (emission.isFailed) {
+          throw emission.error;
         }
       }
-    } catch (error) {
-      this.isFailed.resolve(error);
     }
   }
 }
