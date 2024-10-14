@@ -36,7 +36,7 @@ describe('DelayOperator', () => {
     delayedStream.subscribe((value) => {
       emitCount++;
       if (emitCount === 2) {
-        delayedStream.terminate();
+        delayedStream.complete();
       }
     });
 

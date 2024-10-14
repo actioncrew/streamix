@@ -57,7 +57,7 @@ describe('ConcatStream', () => {
   //   });
 
   //   setTimeout(() => {
-  //     concatStream.terminate();
+  //     concatStream.complete();
   //   }, 10);
 
   //   expect(emittedValues).toEqual(['source1_value1', 'source1_value2']); // Only first source emitted

@@ -2,6 +2,16 @@ import { Chunk, Stream } from '../abstractions';
 import { Emission } from './emission';
 import { Subscribable } from './subscribable';
 
+
+export interface HookOperator {
+  callback: (params?: any) => void | Promise<void>;
+}
+
+export interface StreamOperator {
+  get stream(): Subscribable;
+}
+
+
 export abstract class Operator {
   next?: Operator;
 

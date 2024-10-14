@@ -53,7 +53,7 @@ describe('OfStream', () => {
       emittedValues.push(emission.value);
     });
 
-    ofStream.terminate();
+    ofStream.complete();
     await ofStream.run();
 
     expect(emittedValues).toEqual([]);

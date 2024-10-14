@@ -1,7 +1,7 @@
 import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
 import { hook, promisified } from '../utils';
 
-export class Stream<T = any> implements Subscribable {
+export abstract class Stream<T = any> implements Subscribable {
 
   isAutoComplete = promisified<boolean>(false);
   isCancelled = promisified<boolean>(false);
@@ -20,9 +20,7 @@ export class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
-  run(): Promise<void> {
-    throw new Error('Method is not implemented.');
-  }
+  abstract run(): Promise<void>;
 
   shouldComplete() {
     return this.isAutoComplete() || this.isUnsubscribed() || this.isStopRequested();
@@ -33,12 +31,8 @@ export class Stream<T = any> implements Subscribable {
   }
 
   complete(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      const timer = setTimeout(() => {
-        this.isStopRequested.resolve(true);
-        this.isStopped.then(() => resolve());
-      }, 0);
-    });
+    this.isStopRequested.resolve(true);
+    return this.isStopped.then(() => Promise.resolve())
   }
 
   start() {
