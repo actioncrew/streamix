@@ -13,7 +13,6 @@ export class SwitchMapOperator extends Operator {
   }
 
   private initializeOuterStream() {
-    this.outerStream.isCancelled.then(() => this.cleanup());
     this.outerStream.isFailed.then(() => this.cleanup());
     this.outerStream.isStopped.then(() => this.cleanup());
   }
@@ -38,7 +37,7 @@ export class SwitchMapOperator extends Operator {
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
 
-    if (stream.isCancelled()) {
+    if (stream.shouldComplete()) {
       emission.isPhantom = true;
       await this.stopInnerStream();
       return emission;

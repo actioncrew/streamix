@@ -28,9 +28,6 @@ export class TakeUntilOperator extends Operator {
       return emission;
     }
 
-    if(stream.isCancelled()) {
-      emission.isPhantom = true;
-    }
     return emission;
   }
 }

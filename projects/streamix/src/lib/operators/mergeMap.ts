@@ -27,7 +27,6 @@ export class MergeMapOperator extends Operator {
         .then(() => this.outerStream?.complete())
     );
 
-    this.outerStream.isCancelled.then(() => this.stopAllStreams());
     this.outerStream.isFailed.then((error) => this.stopAllStreams());
     this.outerStream.isStopped.then(() => this.stopAllStreams());
   }
@@ -44,11 +43,6 @@ export class MergeMapOperator extends Operator {
   }
 
   private async processEmission(emission: Emission, stream: Subject): Promise<void> {
-    // Stop stream processing if necessary
-    if (await this.checkAndStopStream(stream, emission)) {
-      return;
-    }
-
     const innerStream = this.project(emission.value);
     this.activeInnerStreams.push(innerStream);
 
@@ -78,13 +72,6 @@ export class MergeMapOperator extends Operator {
       }
 
       innerStream.onEmission.chain(this, this.handleInnerEmission);
-
-      // Handle inner stream completion and cancellation
-      innerStream.isCancelled.then(() => {
-        emission.isPhantom = true;
-        innerStream.onEmission.remove(this, this.handleInnerEmission!);
-        handleCompletion();
-      });
 
       innerStream.isFailed.then((error) => {
         emission.error = error;
@@ -143,15 +130,6 @@ export class MergeMapOperator extends Operator {
     if (this.outerStream) {
       await this.outerStream.complete();
     }
-  }
-
-  private checkAndStopStream(stream: Subscribable, emission: Emission): boolean {
-    if (stream.isCancelled()) {
-      emission.isPhantom = true;
-      this.stopAllStreams();
-      return true;
-    }
-    return false;
   }
 }
 
