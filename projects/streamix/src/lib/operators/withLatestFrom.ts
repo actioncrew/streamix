@@ -45,15 +45,14 @@ export class WithLatestFromOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if(stream.shouldComplete() || stream.shouldTerminate()) {
+    if(stream.shouldComplete()) {
       await Promise.all(this.streams.map(stream => stream.complete()));
     }
 
     const latestValuesPromise = Promise.all(this.latestValues.map(async (value) => await value()));
     const terminationPromises = Promise.race([
-      stream.awaitCompletion(), stream.awaitTermination(),
+      stream.awaitCompletion(),
       ...this.streams.map(source => source.awaitCompletion()),
-      ...this.streams.map(source => source.awaitTermination())
     ]);
 
     await Promise.race([latestValuesPromise, terminationPromises]);
@@ -62,7 +61,7 @@ export class WithLatestFromOperator extends Operator {
       emission.value = [emission.value, ...this.latestValues.map(value => value.value())];
     } else {
       emission.isFailed = true;
-      emission.error = new Error("Some streams are terminated without emitting value.");
+      emission.error = new Error("Some streams are completed without emitting value.");
       this.cleanup();
     }
 

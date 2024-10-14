@@ -16,7 +16,7 @@ export class TimerStream extends Stream<number> {
   override async run(): Promise<void> {
     try {
       if (await this.initialDelay()) {
-        return; // Stream was completed or terminated during the delay
+        return; // Stream was completed during the delay
       }
 
       await this.emitValue();
@@ -35,19 +35,19 @@ export class TimerStream extends Stream<number> {
 
   private async initialDelay(): Promise<boolean> {
     if (this.delayMs === 0) {
-      return this.shouldComplete() || this.shouldTerminate();
+      return this.shouldComplete();
     }
 
     return new Promise<boolean>((resolve) => {
       this.timeoutId = setTimeout(() => {
         this.timeoutId = undefined;
-        resolve(this.shouldComplete() || this.shouldTerminate());
+        resolve(this.shouldComplete());
       }, this.delayMs);
     });
   }
 
   private async emitValue(): Promise<void> {
-    if (this.shouldComplete() || this.shouldTerminate()) {
+    if (this.shouldComplete()) {
       return;
     }
     await this.onEmission.process({ emission: { value: this.value }, source: this });
@@ -58,7 +58,7 @@ export class TimerStream extends Stream<number> {
     return new Promise<void>((resolve) => {
       this.intervalId = setInterval(async () => {
         try {
-          if (this.shouldComplete() || this.shouldTerminate()) {
+          if (this.shouldComplete()) {
             this.cleanup();
             resolve();
             return;
@@ -87,11 +87,6 @@ export class TimerStream extends Stream<number> {
   override async complete(): Promise<void> {
     this.cleanup();
     return super.complete();
-  }
-
-  override async terminate(): Promise<void> {
-    this.cleanup();
-    return super.terminate();
   }
 }
 

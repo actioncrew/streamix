@@ -14,7 +14,7 @@ export class FromEventStream<T = any> extends Stream<T> {
   }
 
   override async run(): Promise<void> {
-    await Promise.race([this.awaitCompletion(), this.awaitTermination()]);
+    await this.awaitCompletion();
     this.target.removeEventListener(this.eventName, this.listener);
   }
 

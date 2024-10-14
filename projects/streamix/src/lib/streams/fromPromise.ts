@@ -16,12 +16,11 @@ export class FromPromiseStream<T = any> extends Stream<T> {
         const resolutionPromise = this.resolvePromise();
         await Promise.race([
           resolutionPromise,
-          this.awaitCompletion(),
-          this.awaitTermination()
+          this.awaitCompletion()
         ]);
 
-        // If we've been completed or terminated, don't continue
-        if (this.shouldComplete() || this.shouldTerminate()) {
+        // If we've been completed, don't continue
+        if (this.shouldComplete()) {
           return;
         }
       }

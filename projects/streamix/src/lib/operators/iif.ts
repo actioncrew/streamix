@@ -26,8 +26,8 @@ export class IifOperator extends Operator {
     this.falseStream.onEmission.chain(this, this.handleInnerEmission);
 
     this.finalizePromise = Promise.all([
-      Promise.race([this.trueStream.awaitCompletion(), this.trueStream.awaitTermination()]),
-      Promise.race([this.falseStream.awaitCompletion(), this.falseStream.awaitTermination()])
+      this.trueStream.awaitCompletion(),
+      this.falseStream.awaitCompletion()
     ]).then(() => this.cleanup());
   }
 

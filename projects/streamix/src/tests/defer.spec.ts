@@ -77,15 +77,17 @@ describe('DeferStream', () => {
     const deferStream = defer(factory);
 
     const failure = new Promise<void>((resolve, reject) => {
-      deferStream.isFailed.then((e) => {
+      (deferStream as any).callback = ((e: any) => {
         if (e === error) resolve();
         else reject('Expected error not received');
       });
+      deferStream.onError.chain(deferStream, (deferStream as any).callback);
     });
 
-    await deferStream.run();
-
-    expect(factory).toHaveBeenCalled();
-    await failure; // Ensure the error is properly handled
+    deferStream.start();
+    deferStream.isRunning.then(async () => {
+      expect(factory).toHaveBeenCalled();
+      await failure; // Ensure the error is properly handled
+    })
   });
 });
