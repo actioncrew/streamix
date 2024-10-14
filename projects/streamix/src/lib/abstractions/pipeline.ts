@@ -118,20 +118,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.subscribers;
   }
 
-  shouldTerminate(): boolean {
-    return this.chunks.some(chunk => chunk.isFailed());
-  }
-
-  awaitTermination(): Promise<void> {
-    return Promise.race(this.chunks.map(chunk => chunk.awaitTermination()));
-  }
-
-  async terminate(): Promise<void> {
-    for (let i = 0; i <= this.chunks.length - 1; i++) {
-      await this.chunks[i].terminate();
-    }
-  }
-
   shouldComplete(): boolean {
     return this.last.shouldComplete();
   }

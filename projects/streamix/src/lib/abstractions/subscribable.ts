@@ -21,10 +21,6 @@ export interface Subscribable<T = any> {
   start(): void;
   run(): Promise<void>;
 
-  shouldTerminate(): boolean;
-  awaitTermination(): Promise<void>;
-  terminate(): Promise<void>;
-
   shouldComplete(): boolean;
   awaitCompletion(): Promise<void>;
   complete(): Promise<void>;
