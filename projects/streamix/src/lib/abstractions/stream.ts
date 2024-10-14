@@ -24,24 +24,6 @@ export class Stream<T = any> implements Subscribable {
     throw new Error('Method is not implemented.');
   }
 
-  shouldTerminate() {
-    return this.isCancelled() || this.isFailed();
-  }
-
-  awaitTermination() {
-    const promise = promisified.race([this.isCancelled, this.isFailed]);
-    const error = this.isFailed();
-    if(error) {
-      throw error;
-    }
-    return promise;
-  }
-
-  terminate(): Promise<void> {
-    this.isCancelled.resolve(true);
-    return this.isStopped.then(() => Promise.resolve());
-  }
-
   shouldComplete() {
     return this.isAutoComplete() || this.isUnsubscribed() || this.isStopRequested();
   }
