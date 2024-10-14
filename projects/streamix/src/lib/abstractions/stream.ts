@@ -4,7 +4,6 @@ import { hook, promisified } from '../utils';
 export abstract class Stream<T = any> implements Subscribable {
 
   isAutoComplete = promisified<boolean>(false);
-  isCancelled = promisified<boolean>(false);
   isStopRequested = promisified<boolean>(false);
 
   isFailed = promisified<any>(undefined);

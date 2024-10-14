@@ -86,10 +86,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.isAutoComplete;
   }
 
-  get isCancelled(): PromisifiedType<boolean> {
-    return this.last.isCancelled;
-  }
-
   get isStopRequested(): PromisifiedType<boolean> {
     return this.last.isStopRequested;
   }

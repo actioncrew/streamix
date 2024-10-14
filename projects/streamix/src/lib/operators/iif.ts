@@ -32,7 +32,6 @@ export class IifOperator extends Operator {
   }
 
   private initializeOuterStream() {
-    this.outerStream.isCancelled.then(() => this.cleanup());
     this.outerStream.isFailed.then(() => this.cleanup());
     this.outerStream.isStopped.then(() => this.cleanup());
   }

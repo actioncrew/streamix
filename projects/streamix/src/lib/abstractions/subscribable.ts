@@ -3,7 +3,6 @@ import { HookType, PromisifiedType } from '../utils';
 
 export interface Subscribable<T = any> {
   isAutoComplete: PromisifiedType<boolean>;
-  isCancelled: PromisifiedType<boolean>;
   isStopRequested: PromisifiedType<boolean>;
 
   isFailed: PromisifiedType<any>;

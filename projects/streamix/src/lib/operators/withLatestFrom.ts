@@ -26,7 +26,6 @@ export class WithLatestFromOperator extends Operator {
 
   override init(stream: Subscribable) {
     // Cleanup on stream termination
-    stream.isCancelled.then(() => this.cleanup());
     stream.isFailed.then(() => this.cleanup());
     stream.isStopped.then(() => this.cleanup());
   }

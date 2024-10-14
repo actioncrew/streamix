@@ -27,15 +27,10 @@ export abstract class Operator {
   async process(emission: Emission, chunk: Chunk): Promise<Emission> {
     try {
       let actualStream = chunk.stream;
-      if (actualStream.isCancelled() === false) {
-        emission = await this.handle(emission, actualStream);
-        if (this.next && !emission.isPhantom && !emission.isPhantom && !emission.isFailed) {
-          return this.next.process(emission, chunk);
-        } else {
-          return emission;
-        }
+      emission = await this.handle(emission, actualStream);
+      if (this.next && !emission.isPhantom && !emission.isFailed) {
+        return this.next.process(emission, chunk);
       } else {
-        emission.isPhantom = true;
         return emission;
       }
     } catch (error) {
