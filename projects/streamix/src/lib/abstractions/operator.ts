@@ -18,11 +18,10 @@ export abstract class Operator {
   init(stream: Stream): void {
   }
 
-  abstract handle(emission: Emission, stream: Subscribable): Promise<Emission>;
-
   async cleanup(): Promise<void> {
-    throw new Error("Not implemented");
   }
+
+  abstract handle(emission: Emission, stream: Subscribable): Promise<Emission>;
 
   async process(emission: Emission, chunk: Chunk): Promise<Emission> {
     try {
