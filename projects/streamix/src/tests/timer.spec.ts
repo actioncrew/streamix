@@ -6,8 +6,8 @@ describe('TimerStream', () => {
     const timerStream = new TimerStream(0, intervalMs);
 
     const emittedValues: number[] = [];
-    timerStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    timerStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     timerStream.isStopped.then(() => {
@@ -26,8 +26,8 @@ describe('TimerStream', () => {
     const timerStream = new TimerStream(0, intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = timerStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = timerStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     subscription.unsubscribe();
@@ -43,8 +43,8 @@ describe('TimerStream', () => {
     const timerStream = new TimerStream(0, intervalMs);
 
     const emittedValues: number[] = [];
-    timerStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    timerStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     timerStream.terminate();
