@@ -29,7 +29,7 @@ export class TakeUntilOperator extends Operator {
     }
 
     if(stream.isCancelled()) {
-      emission.isCancelled = true;
+      emission.isPhantom = true;
     }
     return emission;
   }

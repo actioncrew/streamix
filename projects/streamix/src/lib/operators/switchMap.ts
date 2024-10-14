@@ -39,7 +39,7 @@ export class SwitchMapOperator extends Operator {
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
 
     if (stream.isCancelled()) {
-      emission.isCancelled = true;
+      emission.isPhantom = true;
       await this.stopInnerStream();
       return emission;
     }

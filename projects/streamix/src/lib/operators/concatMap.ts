@@ -117,7 +117,7 @@ export class ConcatMapOperator extends Operator {
 
   private async checkAndStopStream(stream: Subscribable, emission: Emission): Promise<boolean> {
     if (stream.isCancelled()) {
-      emission.isCancelled = true;
+      emission.isPhantom = true;
       await this.stopStreams(this.innerStream, this.input, this.output);
       return true;
     }

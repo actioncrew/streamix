@@ -97,9 +97,11 @@ export abstract class Stream<T = any> implements Subscribable {
 
   async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      if (this.isCancelled()) {
-        emission.isCancelled = true;
-      } else {
+      if(emission.isFailed) {
+        throw emission.error;
+      }
+
+      if (!emission.isPhantom) {
         await this.subscribers.parallel(emission.value);
       }
 

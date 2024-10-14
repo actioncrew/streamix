@@ -15,7 +15,7 @@ export class DelayOperator extends Operator {
       const timeout = setTimeout(() => resolve(emission), this.delayTime);
 
       stream.isCancelled.then(() => {
-        emission.isCancelled = true;
+        emission.isPhantom = true;
         clearTimeout(timeout);
         resolve(emission);
       });
