@@ -81,7 +81,7 @@ export class MergeMapOperator extends Operator {
 
       // Handle inner stream completion and cancellation
       innerStream.isCancelled.then(() => {
-        emission.isCancelled = true;
+        emission.isPhantom = true;
         innerStream.onEmission.remove(this, this.handleInnerEmission!);
         handleCompletion();
       });
@@ -147,7 +147,7 @@ export class MergeMapOperator extends Operator {
 
   private checkAndStopStream(stream: Subscribable, emission: Emission): boolean {
     if (stream.isCancelled()) {
-      emission.isCancelled = true;
+      emission.isPhantom = true;
       this.stopAllStreams();
       return true;
     }
