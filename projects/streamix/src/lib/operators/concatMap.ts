@@ -19,7 +19,6 @@ export class ConcatMapOperator extends Operator {
   }
 
   private initializeOuterStream() {
-    this.outerStream.isCancelled.then(() => this.cleanup());
     this.outerStream.isFailed.then(() => this.cleanup());
     this.outerStream.isStopRequested.then(() => this.cleanup());
   }
@@ -54,8 +53,6 @@ export class ConcatMapOperator extends Operator {
   }
 
   private async processEmission(emission: Emission, stream: Subject): Promise<void> {
-    if (await this.checkAndStopStream(stream, emission)) return;
-
     this.innerStream = this.project(emission.value);
     await this.handleInnerStream(emission, stream);
   }
@@ -76,9 +73,7 @@ export class ConcatMapOperator extends Operator {
       };
 
       this.handleInnerEmission = async ({ emission: innerEmission }) => {
-        if (!stream.shouldComplete()) {
-          await stream.next(innerEmission.value);
-        }
+        await stream.next(innerEmission.value);
       };
 
       this.innerStream!.onEmission.chain(this, this.handleInnerEmission);
@@ -113,15 +108,6 @@ export class ConcatMapOperator extends Operator {
 
   private async stopStreams(...streams: (Subscribable | null | undefined)[]) {
     await Promise.all(streams.filter(Boolean).map(stream => stream!.complete()));
-  }
-
-  private async checkAndStopStream(stream: Subscribable, emission: Emission): Promise<boolean> {
-    if (stream.isCancelled()) {
-      emission.isPhantom = true;
-      await this.stopStreams(this.innerStream, this.input, this.output);
-      return true;
-    }
-    return false;
   }
 }
 
