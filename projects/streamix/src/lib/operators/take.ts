@@ -16,7 +16,7 @@ export class TakeOperator extends Operator {
       this.emittedCount++;
 
       if(this.emittedCount === this.count) {
-        stream.isStopRequested.resolve(true);
+        stream.isAutoComplete.resolve(true);
       }
       return emission;
     } else {
