@@ -20,7 +20,6 @@ export class IifOperator extends Operator {
   }
 
   override init(stream: Subscribable) {
-    this.initializeOuterStream();
     // Chain handlers for both streams during initialization
     this.trueStream.onEmission.chain(this, this.handleInnerEmission);
     this.falseStream.onEmission.chain(this, this.handleInnerEmission);
@@ -28,17 +27,12 @@ export class IifOperator extends Operator {
     this.finalizePromise = Promise.all([
       this.trueStream.awaitCompletion(),
       this.falseStream.awaitCompletion()
-    ]).then(() => this.cleanup());
+    ]).then(() => this.finalize());
   }
 
-  private initializeOuterStream() {
-    this.outerStream.isStopped.then(() => this.cleanup());
-  }
-
-  override async cleanup() {
+  async finalize() {
     this.trueStream.onEmission.remove(this, this.handleInnerEmission);
     this.falseStream.onEmission.remove(this, this.handleInnerEmission);
-    await Promise.all([this.trueStream.complete(), this.falseStream.complete()]);
     await this.outerStream.complete();
   }
 
