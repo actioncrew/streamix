@@ -2,13 +2,11 @@ import { Stream, Subscribable } from '../abstractions';
 
 export class MergeStream<T = any> extends Stream<T> {
   private sources: Subscribable[];
-  private activeSources: number;
   private handleEmissionFns: Array<(event: { emission: { value: T }, source: Subscribable }) => void> = [];
 
   constructor(...sources: Subscribable[]) {
     super();
     this.sources = sources;
-    this.activeSources = sources.length;
 
     this.sources.forEach((source, index) => {
       this.handleEmissionFns[index] = ({ emission }) => this.handleEmission(emission.value);
@@ -46,7 +44,7 @@ export class MergeStream<T = any> extends Stream<T> {
     });
   }
 
-  private async cleanup(): Promise<void> {
+  private async finalize(): Promise<void> {
     for (let i = 0; i < this.sources.length; i++) {
       const source = this.sources[i];
       source.onEmission.remove(this, this.handleEmissionFns[i]);
@@ -55,7 +53,7 @@ export class MergeStream<T = any> extends Stream<T> {
   }
 
   override async complete(): Promise<void> {
-    await this.cleanup();
+    await this.finalize();
     return super.complete();
   }
 }
