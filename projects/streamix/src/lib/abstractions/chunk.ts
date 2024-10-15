@@ -16,8 +16,26 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.onEmission = hook();
   }
 
+  override init() {
+    for(let operator of this.operators) {
+      operator.init(this.stream);
+    }
+
+    if (!this.stream.onEmission.contains(this, this.emit)) {
+      this.stream.onEmission.chain(this, this.emit);
+    }
+  }
+
   override start() {
     return this.stream.startWithContext(this);
+  }
+
+  override async cleanup() {
+    this.stream.onEmission.remove(this, this.emit);
+
+    for(let operator of this.operators) {
+      await operator.cleanup();
+    }
   }
 
   override run(): Promise<void> {
@@ -28,7 +46,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
-        let clone = operator.clone(); clone.init(this.stream)
+        let clone = operator.clone();
         this.operators.push(clone);
 
         // Manage head and tail for every operator
