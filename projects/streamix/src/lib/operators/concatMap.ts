@@ -1,7 +1,7 @@
-import { Operator, Subscribable, Emission } from '../abstractions';
+import { Operator, StreamOperator, Subscribable, Emission } from '../abstractions';
 import { Subject, counter } from '../../lib';
 
-export class ConcatMapOperator extends Operator {
+export class ConcatMapOperator extends Operator implements StreamOperator {
   private readonly project: (value: any) => Subscribable;
   private outerStream = new Subject();
   private innerStream: Subscribable | null = null;
@@ -16,6 +16,10 @@ export class ConcatMapOperator extends Operator {
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
+  }
+
+  get stream() {
+    return this.outerStream;
   }
 
   private initializeOuterStream() {
