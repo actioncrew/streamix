@@ -17,7 +17,7 @@ export interface Subscribable<T = any> {
   onError: HookType;
   onEmission: HookType;
 
-  start(): void;
+  start(context: any): void;
   run(): Promise<void>;
 
   shouldComplete(): boolean;

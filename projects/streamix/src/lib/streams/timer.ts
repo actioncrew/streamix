@@ -85,7 +85,7 @@ export class TimerStream extends Stream<number> {
   }
 
   override async complete(): Promise<void> {
-    this.cleanup();
+    this.finalize();
     return super.complete();
   }
 }

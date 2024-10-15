@@ -28,8 +28,8 @@ export class ConcatStream<T = any> extends Stream<T> {
     const currentSource = this.sources[this.currentSourceIndex];
     try {
       currentSource.onEmission.chain(this, this.handleEmissionFn);
-      currentSource.start();
-      await Promise.race([currentSource.awaitCompletion(), this.awaitCompletion()]);
+      currentSource.start(currentSource);
+      await currentSource.awaitCompletion();
     }
     catch(error) {
       this.handleError(error);

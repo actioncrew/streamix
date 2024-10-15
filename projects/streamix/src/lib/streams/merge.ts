@@ -18,7 +18,7 @@ export class MergeStream<T = any> extends Stream<T> {
 
   override async run(): Promise<void> {
     try {
-      this.sources.forEach(source => source.start());
+      this.sources.forEach(source => source.start(source));
 
       await Promise.race([
         Promise.all(this.sources.map(source => source.awaitCompletion())),
@@ -31,7 +31,7 @@ export class MergeStream<T = any> extends Stream<T> {
     } catch (error) {
       await this.handleError(error);
     } finally {
-      await this.finalize();
+      await this.cleanup();
     }
   }
 
@@ -46,7 +46,7 @@ export class MergeStream<T = any> extends Stream<T> {
     });
   }
 
-  private async finalize() {
+  private async cleanup(): Promise<void> {
     for (let i = 0; i < this.sources.length; i++) {
       const source = this.sources[i];
       source.onEmission.remove(this, this.handleEmissionFns[i]);
@@ -55,7 +55,7 @@ export class MergeStream<T = any> extends Stream<T> {
   }
 
   override async complete(): Promise<void> {
-    await this.finalize();
+    await this.cleanup();
     return super.complete();
   }
 }
