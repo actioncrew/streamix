@@ -86,7 +86,7 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
       this.removeInnerStream(this.activeInnerStream!);
     });
 
-    this.activeInnerStream.start(this.activeInnerStream);
+    this.activeInnerStream.start();
 
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {

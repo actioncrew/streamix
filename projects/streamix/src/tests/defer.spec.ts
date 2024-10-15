@@ -84,7 +84,7 @@ describe('DeferStream', () => {
       deferStream.onError.chain(deferStream, (deferStream as any).callback);
     });
 
-    deferStream.start(deferStream);
+    deferStream.start();
     deferStream.isRunning.then(async () => {
       expect(factory).toHaveBeenCalled();
       await failure; // Ensure the error is properly handled

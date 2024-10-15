@@ -28,7 +28,7 @@ export class ConcatStream<T = any> extends Stream<T> {
     const currentSource = this.sources[this.currentSourceIndex];
     try {
       currentSource.onEmission.chain(this, this.handleEmissionFn);
-      currentSource.start(currentSource);
+      currentSource.start();
       await currentSource.awaitCompletion();
     }
     catch(error) {

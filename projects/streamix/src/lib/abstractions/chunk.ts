@@ -16,8 +16,8 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.onEmission = hook();
   }
 
-  override start(context: any) {
-    return this.stream.start(context);
+  override start() {
+    return this.stream.startWithContext(this);
   }
 
   override run(): Promise<void> {

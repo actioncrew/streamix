@@ -37,7 +37,11 @@ export class Stream<T = any> implements Subscribable {
     return this.isStopped.then(() => Promise.resolve());
   }
 
-  start(context: any) {
+  start(): void {
+    return this.startWithContext(this);
+  }
+
+  startWithContext(context: any) {
     if (!this.onEmission.contains(context, context.emit)) {
       this.onEmission.chain(context, context.emit);
     }
@@ -80,7 +84,7 @@ export class Stream<T = any> implements Subscribable {
 
     this.subscribers.chain(this, boundCallback);
 
-    this.start(this);
+    this.start();
 
     return {
       unsubscribe: async () => {
