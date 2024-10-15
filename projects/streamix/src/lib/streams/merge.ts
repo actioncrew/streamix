@@ -31,7 +31,7 @@ export class MergeStream<T = any> extends Stream<T> {
     } catch (error) {
       await this.handleError(error);
     } finally {
-      await this.cleanup();
+      await this.finalize();
     }
   }
 
@@ -46,7 +46,7 @@ export class MergeStream<T = any> extends Stream<T> {
     });
   }
 
-  private async cleanup(): Promise<void> {
+  private async finalize() {
     for (let i = 0; i < this.sources.length; i++) {
       const source = this.sources[i];
       source.onEmission.remove(this, this.handleEmissionFns[i]);
@@ -55,7 +55,7 @@ export class MergeStream<T = any> extends Stream<T> {
   }
 
   override async complete(): Promise<void> {
-    await this.cleanup();
+    await this.finalize();
     return super.complete();
   }
 }

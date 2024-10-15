@@ -34,13 +34,16 @@ export abstract class Stream<T = any> implements Subscribable {
     return this.isStopped.then(() => Promise.resolve())
   }
 
-  start() {
+  init() {
     if (!this.onEmission.contains(this, this.emit)) {
       this.onEmission.chain(this, this.emit);
     }
+  }
 
+  start() {
     if (this.isRunning() === false) {
       this.isRunning.resolve(true);
+      this.init();
 
       queueMicrotask(async () => {
         try {
@@ -61,13 +64,18 @@ export abstract class Stream<T = any> implements Subscribable {
         } finally {
           // Handle finalize callback
           await this.onStop.process();
-          this.onEmission.remove(this, this.emit);
 
           this.isStopped.resolve(true);
           this.isRunning.reset();
+
+          await this.cleanup()
         }
       });
     }
+  }
+
+  async cleanup() {
+    this.onEmission.remove(this, this.emit);
   }
 
   subscribe(callback?: ((value: T) => any) | void): Subscription {

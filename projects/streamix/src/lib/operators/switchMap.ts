@@ -13,7 +13,7 @@ export class SwitchMapOperator extends Operator {
   }
 
   private initializeOuterStream() {
-    this.outerStream.isStopped.then(() => this.cleanup());
+    this.outerStream.isStopped.then(() => this.finalize());
   }
 
   override init(stream: Subscribable) {
@@ -23,11 +23,11 @@ export class SwitchMapOperator extends Operator {
       if (this.activeInnerStream) {
         await this.activeInnerStream.awaitCompletion();
       }
-      await this.cleanup();
+      await this.finalize();
     });
   }
 
-  override async cleanup() {
+  async finalize() {
     await this.stopInnerStream();
     if (this.outerStream && !this.outerStream.isStopped()) {
       await this.outerStream.complete();

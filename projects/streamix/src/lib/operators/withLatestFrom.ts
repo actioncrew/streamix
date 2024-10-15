@@ -26,10 +26,10 @@ export class WithLatestFromOperator extends Operator {
 
   override init(stream: Subscribable) {
     // Cleanup on stream termination
-    stream.isStopped.then(() => this.cleanup());
+    stream.isStopped.then(() => this.finalize());
   }
 
-  override async cleanup() {
+  async finalize() {
     // Remove emission handlers for each stream
     this.streams.forEach((stream, index) => {
       if(stream.isStopped()) {
@@ -60,7 +60,7 @@ export class WithLatestFromOperator extends Operator {
     } else {
       emission.isFailed = true;
       emission.error = new Error("Some streams are completed without emitting value.");
-      this.cleanup();
+      this.finalize();
     }
 
     return emission;
