@@ -58,10 +58,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
       if (operator instanceof Operator) {
         chunkOperators.push(operator);
 
-        if ('outerStream' in operator) {
+        if ('stream' in operator) {
           currentChunk.pipe(...chunkOperators);
           chunkOperators = [];
-          currentChunk = new Chunk(operator.outerStream as any);
+          currentChunk = new Chunk(operator.stream as any);
           this.chunks.push(currentChunk);
         }
       }

@@ -1,7 +1,7 @@
 import { Subject } from '../../lib';
-import { Emission, Operator, Subscribable, Subscription } from '../abstractions';
+import { Emission, Operator, StreamOperator, Subscribable } from '../abstractions';
 
-export class SwitchMapOperator extends Operator {
+export class SwitchMapOperator extends Operator implements StreamOperator {
   private project: (value: any) => Subscribable;
   private activeInnerStream?: Subscribable;
   private outerStream = new Subject();
@@ -10,6 +10,10 @@ export class SwitchMapOperator extends Operator {
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
+  }
+
+  get stream() {
+    return this.outerStream;
   }
 
   private initializeOuterStream() {

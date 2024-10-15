@@ -1,8 +1,8 @@
 import { Subject } from '../../lib';
-import { Emission, Operator, Subscribable } from '../abstractions';
+import { Emission, Operator, StreamOperator, Subscribable } from '../abstractions';
 import { counter } from '../utils';
 
-export class MergeMapOperator extends Operator {
+export class MergeMapOperator extends Operator implements StreamOperator {
   private readonly project: (value: any) => Subscribable;
   private outerStream = new Subject();
   private activeInnerStreams: Subscribable[] = [];
@@ -17,6 +17,10 @@ export class MergeMapOperator extends Operator {
   constructor(project: (value: any) => Subscribable) {
     super();
     this.project = project;
+  }
+
+  get stream() {
+    return this.outerStream;
   }
 
   override init(stream: Subscribable) {
