@@ -1,9 +1,9 @@
 import { Subject } from '../../lib';
 import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
+import { Operator, StreamOperator } from '../abstractions/operator';
 
-export class IifOperator extends Operator {
+export class IifOperator extends Operator implements StreamOperator {
   private outerStream = new Subject();
   private currentStream: Subscribable | null = null;
   private finalizePromise: Promise<void> | null = null;
@@ -16,6 +16,10 @@ export class IifOperator extends Operator {
     private readonly falseStream: Subscribable
   ) {
     super();
+  }
+
+  get stream() {
+    return this.outerStream;
   }
 
   override init(stream: Subscribable) {
