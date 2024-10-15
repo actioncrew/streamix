@@ -20,7 +20,7 @@ export class WithLatestFromOperator extends Operator {
       });
 
       stream.onEmission.chain(this, this.handleEmissionFns[index]);
-      stream.start(); // Start the stream
+      stream.start(stream); // Start the stream
     });
   }
 

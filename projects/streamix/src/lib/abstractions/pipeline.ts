@@ -35,9 +35,9 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.onEmission;
   }
 
-  start() {
-    for (let i = this.chunks.length - 1; i >= 0; i--) {
-      this.chunks[i].stream.startWithContext(this.chunks[i]);
+  start(context: any) {
+    for (let i = context.chunks.length - 1; i >= 0; i--) {
+      context.chunks[i].stream.start(context.chunks[i]);
     }
   }
 
@@ -56,12 +56,13 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
     operators.forEach(operator => {
       if (operator instanceof Operator) {
+        operator = operator.clone();
         chunkOperators.push(operator);
 
-        if ('stream' in operator) {
+        if ('outerStream' in operator) {
           currentChunk.pipe(...chunkOperators);
           chunkOperators = [];
-          currentChunk = new Chunk(operator.stream as any);
+          currentChunk = new Chunk(operator.outerStream as any);
           this.chunks.push(currentChunk);
         }
       }
@@ -130,7 +131,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
     this.subscribers.chain(this, boundCallback);
 
-    this.start();
+    this.start(this);
 
     return {
       unsubscribe: async () => {

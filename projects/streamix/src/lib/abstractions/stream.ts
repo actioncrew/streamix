@@ -1,9 +1,10 @@
 import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
 import { hook, promisified } from '../utils';
 
-export abstract class Stream<T = any> implements Subscribable {
+export class Stream<T = any> implements Subscribable {
 
   isAutoComplete = promisified<boolean>(false);
+  isCancelled = promisified<boolean>(false);
   isStopRequested = promisified<boolean>(false);
 
   isFailed = promisified<any>(undefined);
@@ -19,7 +20,9 @@ export abstract class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
-  abstract run(): Promise<void>;
+  run(): Promise<void> {
+    throw new Error('Method is not implemented.');
+  }
 
   shouldComplete() {
     return this.isAutoComplete() || this.isUnsubscribed() || this.isStopRequested();
@@ -31,19 +34,16 @@ export abstract class Stream<T = any> implements Subscribable {
 
   complete(): Promise<void> {
     this.isStopRequested.resolve(true);
-    return this.isStopped.then(() => Promise.resolve())
+    return this.isStopped.then(() => Promise.resolve());
   }
 
-  init() {
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
+  start(context: any) {
+    if (!this.onEmission.contains(context, context.emit)) {
+      this.onEmission.chain(context, context.emit);
     }
-  }
 
-  startWithContext(context: any) {
     if (this.isRunning() === false) {
       this.isRunning.resolve(true);
-      context.init();
 
       queueMicrotask(async () => {
         try {
@@ -64,22 +64,13 @@ export abstract class Stream<T = any> implements Subscribable {
         } finally {
           // Handle finalize callback
           await this.onStop.process();
+          this.onEmission.remove(context, context.emit);
 
           this.isStopped.resolve(true);
           this.isRunning.reset();
-
-          await context.cleanup()
         }
       });
     }
-  }
-
-  start() {
-    this.startWithContext(this);
-  }
-
-  async cleanup() {
-    this.onEmission.remove(this, this.emit);
   }
 
   subscribe(callback?: ((value: T) => any) | void): Subscription {
@@ -89,7 +80,7 @@ export abstract class Stream<T = any> implements Subscribable {
 
     this.subscribers.chain(this, boundCallback);
 
-    this.start();
+    this.start(this);
 
     return {
       unsubscribe: async () => {
