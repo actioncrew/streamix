@@ -16,39 +16,21 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.onEmission = hook();
   }
 
-  override start() {
+  override init() {
+    for(let operator of this.operators) {
+      operator.init(this.stream);
+    }
+
     if (!this.stream.onEmission.contains(this, this.emit)) {
       this.stream.onEmission.chain(this, this.emit);
     }
+  }
 
-    if (this.isRunning() === false) {
-      this.isRunning.resolve(true);
+  override async cleanup() {
+    this.stream.onEmission.remove(this, this.emit);
 
-      queueMicrotask(async () => {
-        try {
-          // Emit start value if defined
-          await this.onStart.process();
-
-          // Start the actual stream logic
-          await this.run();
-
-          // Emit end value if defined
-          await this.onComplete.process();
-        } catch (error) {
-          this.isFailed.resolve(error);
-
-          if(this.onError.length > 0) {
-            await this.onError.process({ error });
-          }
-        } finally {
-          // Handle finalize callback
-          await this.onStop.process();
-          this.stream.onEmission.remove(this, this.emit);
-
-          this.isStopped.resolve(true);
-          this.isRunning.reset();
-        }
-      });
+    for(let operator of this.operators) {
+      await operator.cleanup();
     }
   }
 
@@ -60,7 +42,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
-        let clone = operator.clone(); clone.init(this.stream)
+        let clone = operator.clone();
         this.operators.push(clone);
 
         // Manage head and tail for every operator

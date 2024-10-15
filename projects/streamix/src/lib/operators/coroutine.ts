@@ -88,7 +88,7 @@ export class Coroutine extends Operator {
     });
   }
 
-  override async cleanup(): Promise<void> {
+  async finalize(): Promise<void> {
     // Terminate all workers and clear the pool and queue
     this.workerPool.forEach(worker => worker.terminate());
     this.workerPool = [];

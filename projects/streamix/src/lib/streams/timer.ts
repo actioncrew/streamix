@@ -29,7 +29,7 @@ export class TimerStream extends Stream<number> {
     } catch (error) {
       await this.handleError(error);
     } finally {
-      this.cleanup();
+      this.finalize();
     }
   }
 
@@ -59,21 +59,21 @@ export class TimerStream extends Stream<number> {
       this.intervalId = setInterval(async () => {
         try {
           if (this.shouldComplete()) {
-            this.cleanup();
+            this.finalize();
             resolve();
             return;
           }
           await this.emitValue();
         } catch (error) {
           this.handleError(error);
-          this.cleanup();
+          this.finalize();
           resolve();
         }
       }, this.intervalMs);
     });
   }
 
-  private cleanup(): void {
+  private finalize() {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = undefined;

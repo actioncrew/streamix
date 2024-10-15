@@ -88,7 +88,7 @@ export class DefineOperator extends Operator {
     });
   }
 
-  override async cleanup(): Promise<void> {
+  override async finalize(): Promise<void> {
     // Terminate all workers and clear the pool and queue
     this.workerPool.forEach(worker => worker.terminate());
     this.workerPool = [];
