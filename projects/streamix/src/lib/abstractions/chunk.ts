@@ -26,6 +26,10 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     }
   }
 
+  override start() {
+    this.stream.startWithContext(this);
+  }
+
   override async cleanup() {
     this.stream.onEmission.remove(this, this.emit);
 

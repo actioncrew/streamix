@@ -40,10 +40,10 @@ export abstract class Stream<T = any> implements Subscribable {
     }
   }
 
-  start() {
+  startWithContext(context: any) {
     if (this.isRunning() === false) {
       this.isRunning.resolve(true);
-      this.init();
+      context.init();
 
       queueMicrotask(async () => {
         try {
@@ -68,10 +68,14 @@ export abstract class Stream<T = any> implements Subscribable {
           this.isStopped.resolve(true);
           this.isRunning.reset();
 
-          await this.cleanup()
+          await context.cleanup()
         }
       });
     }
+  }
+
+  start() {
+    this.startWithContext(this);
   }
 
   async cleanup() {
