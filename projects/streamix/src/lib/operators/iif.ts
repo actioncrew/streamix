@@ -1,4 +1,3 @@
-import { finalize } from '@actioncrew/streamix';
 import { Subject } from '../../lib';
 import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
