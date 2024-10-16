@@ -1,13 +1,13 @@
 import { Stream } from '../abstractions';
-import { Coroutine } from '../operators';
+import { CoroutineOperator } from '../operators';
 
 
 export class ComputeStream extends Stream {
-  private task: Coroutine;
+  private task: CoroutineOperator;
   private params: any;
   private promise!: Promise<void>;
 
-  constructor(task: Coroutine, params: any) {
+  constructor(task: CoroutineOperator, params: any) {
     super();
     this.params = params;
     this.task = task;
@@ -22,12 +22,12 @@ export class ComputeStream extends Stream {
         if (this.isRunning()) {
           const worker = await this.task.getIdleWorker();
           worker.postMessage(this.params);
-          worker.onmessage = async (event) => {
+          worker.onmessage = async (event: any) => {
             await this.onEmission.process({ emission: { value: event.data }, source: this });
             this.task.returnWorker(worker);
             resolve();
           };
-          worker.onerror = async (error) => {
+          worker.onerror = async (error: any) => {
             await this.onEmission.process({ emission: { isFailed: true, error }, source: this });
             this.task.returnWorker(worker);
             reject(error);

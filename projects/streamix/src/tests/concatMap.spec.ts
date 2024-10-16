@@ -1,4 +1,4 @@
-import { ConcatMapOperator, from, of, Stream } from '../lib';
+import { concatMap, ConcatMapOperator, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
 
@@ -79,10 +79,6 @@ describe('ConcatMapOperator', () => {
   });
 
   it('should complete inner stream before processing next emission', (done) => {
-
-    const operator = new ConcatMapOperator(value => of(value));
-    operator.init(mockStream);
-
     const emissions = [
       'data1',
       'data2',
@@ -92,7 +88,7 @@ describe('ConcatMapOperator', () => {
     ];
 
     let processedOrder: any[] = [];
-    const mockStream$ = from(emissions).pipe(operator);
+    const mockStream$ = from(emissions).pipe(concatMap(value => of(value)));
 
     mockStream$.subscribe((value) => {
       processedOrder.push(value);
