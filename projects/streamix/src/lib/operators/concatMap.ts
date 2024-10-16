@@ -1,36 +1,39 @@
 import { Operator, StreamOperator, Subscribable, Emission } from '../abstractions';
-import { Subject, counter } from '../../lib';
+import { CounterType, Subject, counter } from '../../lib';
 
 export class ConcatMapOperator extends Operator implements StreamOperator {
-  private readonly project: (value: any) => Subscribable;
-  private outerStream = new Subject();
-  private innerStream: Subscribable | null = null;
-  private processingPromise: Promise<void> | null = null;
-  private queue: Emission[] = [];
-  private input?: Subscribable;
-  private output?: Subject;
-  private emissionNumber = 0;
-  private executionNumber = counter(0);
-  private handleInnerEmission: (({ emission, source }: any) => Promise<void>) | null = null;
+  private innerStream!: Subscribable | null;
+  private processingPromise!: Promise<void> | null;
+  private inputStoppedPromise!: Promise<void>;
+  private outputStoppedPromise!: Promise<void>;
 
-  constructor(project: (value: any) => Subscribable) {
+  private queue!: Emission[];
+  private input!: Subscribable;
+  private output!: Subject;
+  private emissionNumber!: number;
+  private executionNumber!: CounterType;
+  private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
+
+  constructor(private readonly project: (value: any) => Subscribable) {
     super();
     this.project = project;
   }
 
-  get stream() {
-    return this.outerStream;
-  }
-
-  private initializeOuterStream() {
-    this.outerStream.isStopped.then(() => this.finalize());
-  }
-
   override init(stream: Subscribable) {
+    this.innerStream = null;
+    this.handleInnerEmission = null;
+    this.queue = [];
     this.input = stream;
-    this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber)).then(() => this.finalize());
-    this.output = this.outerStream;
-    this.initializeOuterStream();
+    this.output = new Subject();
+    this.emissionNumber = 0;
+    this.executionNumber = counter(0);
+    this.processingPromise = null;
+    this.inputStoppedPromise = this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber)).then(() => this.finalize());
+    this.outputStoppedPromise = this.output.isStopped.then(() => this.finalize());
+  }
+
+  get stream() {
+    return this.output;
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
@@ -84,7 +87,6 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
       this.innerStream!.isFailed.then((error) => this.handleStreamError(emission, error, handleCompletion));
 
       this.innerStream!.isStopped.then(() => {
-        emission.isComplete = true;
         handleCompletion();
       }).catch((error) => this.handleStreamError(emission, error, handleCompletion));
 

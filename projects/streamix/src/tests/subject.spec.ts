@@ -117,14 +117,14 @@ describe('Subject', () => {
       expect(value === counter++).toBeTruthy();
     });
 
+    subject.isStopped.then(() => {
+      subscription.unsubscribe();
+    })
+
     for (let i = 0; i < 10000; i++) {
       await subject.next(i);
     }
 
     await subject.complete();
-
-    subject.isStopped.then(() => {
-      subscription.unsubscribe();
-    })
   });
 });

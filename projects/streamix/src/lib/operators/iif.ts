@@ -1,14 +1,16 @@
 import { Subject } from '../../lib';
-import { Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator, StreamOperator } from '../abstractions/operator';
 
 export class IifOperator extends Operator implements StreamOperator {
-  private outerStream = new Subject();
-  private currentStream: Subscribable | null = null;
-  private finalizePromise: Promise<void> | null = null;
-  private hasStartedTrueStream: boolean = false;
-  private hasStartedFalseStream: boolean = false;
+
+  private outerStream!: Subject;
+  private currentStream!: Subscribable | null;
+  private finalizePromise!: Promise<void> | null;
+
+  private hasStartedTrueStream!: boolean;
+  private hasStartedFalseStream!: boolean;
 
   constructor(
     private readonly condition: (emission: Emission) => boolean,
@@ -22,8 +24,13 @@ export class IifOperator extends Operator implements StreamOperator {
     return this.outerStream;
   }
 
-  override init(stream: Subscribable) {
-    // Chain handlers for both streams during initialization
+  override init(stream: Stream) {
+    this.outerStream = new Subject();
+    this.currentStream = null;
+
+    this.hasStartedTrueStream = false;
+    this.hasStartedFalseStream = false;
+
     this.trueStream.onEmission.chain(this, this.handleInnerEmission);
     this.falseStream.onEmission.chain(this, this.handleInnerEmission);
 

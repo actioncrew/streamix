@@ -1,19 +1,16 @@
 import { Stream } from '../abstractions/stream';
 
 export class TimerStream extends Stream<number> {
-  private delayMs: number;
-  private intervalMs: number;
   private value: number = 0;
   private timeoutId: any | undefined;
   private intervalId: any | undefined;
 
-  constructor(delayMs: number = 0, intervalMs?: number) {
+  constructor(private readonly delayMs: number = 0, private intervalMs?: number) {
     super();
-    this.delayMs = delayMs;
     this.intervalMs = intervalMs ?? delayMs;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
       if (await this.initialDelay()) {
         return; // Stream was completed during the delay
@@ -21,7 +18,7 @@ export class TimerStream extends Stream<number> {
 
       await this.emitValue();
 
-      if (this.intervalMs > 0) {
+      if (this.intervalMs !== undefined && this.intervalMs > 0) {
         await this.startInterval();
       } else {
         this.isAutoComplete.resolve(true);

@@ -3,7 +3,7 @@ import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstr
 export class FinalizeOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
 
-  constructor(private callbackMethod: () => (void | Promise<void>)) {
+  constructor(private readonly callbackMethod: () => (void | Promise<void>)) {
     super();
   }
 

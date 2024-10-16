@@ -17,10 +17,6 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override init() {
-    for(let operator of this.operators) {
-      operator.init(this.stream);
-    }
-
     if (!this.stream.onEmission.contains(this, this.emit)) {
       this.stream.onEmission.chain(this, this.emit);
     }
@@ -32,10 +28,6 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
 
   override async cleanup() {
     this.stream.onEmission.remove(this, this.emit);
-
-    for(let operator of this.operators) {
-      await operator.cleanup();
-    }
   }
 
   override run(): Promise<void> {
@@ -43,22 +35,26 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override pipe(...operators: Operator[]): Subscribable<T> {
+    const clonedOperators = operators.map(operator => operator.clone());
+    clonedOperators.forEach(operator => operator.init(this.stream));
+    return new Chunk(this.stream).pipeOperators(...this.operators, ...clonedOperators);
+  }
+
+  pipeOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
+
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
-        let clone = operator.clone();
-        this.operators.push(clone);
+        this.operators.push(operator);
 
-        // Manage head and tail for every operator
         if (!this.head) {
-          this.head = clone;
-          this.tail = clone;
+          this.head = operator;
         } else {
-          this.tail!.next = clone;
-          this.tail = clone;
+          this.tail!.next = operator;
         }
+        this.tail = operator;
 
-        if ('outerStream' in clone && index !== operators.length - 1) {
+        if ('stream' in operator && index !== operators.length - 1) {
           throw new Error("Only the last operator in a chunk can contain outerStream property.");
         }
       }

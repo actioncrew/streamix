@@ -3,17 +3,13 @@ import { CoroutineOperator } from '../operators';
 
 
 export class ComputeStream extends Stream {
-  private task: CoroutineOperator;
-  private params: any;
   private promise!: Promise<void>;
 
-  constructor(task: CoroutineOperator, params: any) {
+  constructor(private readonly task: CoroutineOperator, private readonly params: any) {
     super();
-    this.params = params;
-    this.task = task;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     let terminateResolve: (() => void) = () => {};
 
     try {

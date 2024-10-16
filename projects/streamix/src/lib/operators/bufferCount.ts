@@ -1,14 +1,18 @@
-import { Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
 export class BufferCountOperator extends Operator {
-  private readonly bufferSize: number;
-  private buffer: any[] = [];
 
-  constructor(bufferSize: number) {
+  private buffer!: any[];
+
+  constructor(private readonly bufferSize: number) {
     super();
     this.bufferSize = bufferSize;
+  }
+
+  override init(stream: Stream) {
+    this.buffer = [];
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

@@ -2,18 +2,14 @@ import { Stream, Subscription } from '../abstractions';
 import { counter } from '../utils';
 
 export class FromEventStream<T = any> extends Stream<T> {
-  private target: EventTarget;
-  private eventName: string;
   private eventCounter = counter(0);
   private listener!: (event: Event) => void;
 
-  constructor(target: EventTarget, eventName: string) {
+  constructor(private readonly target: EventTarget, private readonly eventName: string) {
     super();
-    this.target = target;
-    this.eventName = eventName;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     await this.awaitCompletion();
     this.target.removeEventListener(this.eventName, this.listener);
   }

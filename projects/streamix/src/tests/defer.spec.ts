@@ -15,7 +15,7 @@ class MockStream extends Stream {
     this.error = error;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     if (this.failed && this.error) {
       this.isFailed.resolve(this.error);
       return;

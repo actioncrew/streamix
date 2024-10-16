@@ -1,7 +1,7 @@
 import { Stream, Subscribable } from '../abstractions';
 
 export class MergeStream<T = any> extends Stream<T> {
-  private sources: Subscribable[];
+  private readonly sources: Subscribable[];
   private handleEmissionFns: Array<(event: { emission: { value: T }, source: Subscribable }) => void> = [];
 
   constructor(...sources: Subscribable[]) {
@@ -14,7 +14,7 @@ export class MergeStream<T = any> extends Stream<T> {
     });
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
       this.sources.forEach(source => source.start());
 

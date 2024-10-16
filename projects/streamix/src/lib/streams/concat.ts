@@ -2,6 +2,7 @@ import { Stream, Subscribable } from '../abstractions';
 
 export class ConcatStream<T = any> extends Stream<T> {
   private readonly sources: Subscribable[];
+
   private currentSourceIndex: number = 0;
   private handleEmissionFn: (event: { emission: { value: T }, source: Subscribable }) => void;
 
@@ -11,7 +12,7 @@ export class ConcatStream<T = any> extends Stream<T> {
     this.handleEmissionFn = ({ emission, source }) => this.handleEmission(emission.value);
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length; this.currentSourceIndex++) {
       if (this.shouldComplete()) {
         break;

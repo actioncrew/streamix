@@ -1,4 +1,5 @@
 import { Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { EMPTY } from '../streams';
 
 export class CoroutineOperator extends Operator {
   private readonly functions: Function[];
@@ -10,6 +11,7 @@ export class CoroutineOperator extends Operator {
   constructor(...functions: Function[]) {
     super();
     this.functions = functions;
+    this.init(EMPTY);
   }
 
   override init(stream: Stream) {

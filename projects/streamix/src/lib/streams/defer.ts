@@ -2,17 +2,15 @@ import { Subscribable } from '../abstractions';
 import { Stream } from '../abstractions/stream';
 
 export class DeferStream<T = any> extends Stream<T> {
-  private readonly factory: () => Subscribable;
   private innerStream?: Subscribable;
   private handleEmissionFn: (event: { emission: { value: T }, source: Subscribable }) => void;
 
-  constructor(factory: () => Subscribable) {
+  constructor(private readonly factory: () => Subscribable) {
     super();
-    this.factory = factory;
     this.handleEmissionFn = ({ emission, source }) => this.handleEmission(emission.value);
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
       // Create a new stream from the factory function each time this stream is run
       this.innerStream = this.factory();
