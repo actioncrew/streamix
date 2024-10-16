@@ -3,11 +3,9 @@ import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
 export class TakeWhileOperator extends Operator {
-  private readonly predicate: (value: any) => boolean;
 
-  constructor(predicate: (value: any, index?: number) => boolean) {
+  constructor(private readonly predicate: (value: any, index?: number) => boolean) {
     super();
-    this.predicate = predicate;
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

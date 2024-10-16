@@ -4,14 +4,11 @@ import { Operator, HookOperator } from '../abstractions/operator';
 
 export class ReduceOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
-  private readonly accumulator: (acc: any, value: any) => any;
-  private readonly seed: any;
   private accumulatedValue: any;
 
-  constructor(accumulator: (acc: any, value: any) => any, seed: any) {
+  constructor(private readonly accumulator: (acc: any, value: any) => any, private readonly seed: any) {
     super();
     this.accumulator = accumulator;
-    this.seed = seed;
     this.accumulatedValue = seed;
   }
 

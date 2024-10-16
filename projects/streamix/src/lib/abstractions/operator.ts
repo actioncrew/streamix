@@ -15,7 +15,7 @@ export interface StreamOperator {
 export abstract class Operator {
   next?: Operator;
 
-  init(stream: Stream): void {
+  init(stream: Stream) {
   }
 
   async cleanup(): Promise<void> {

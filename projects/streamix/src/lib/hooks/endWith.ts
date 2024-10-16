@@ -4,7 +4,7 @@ export class EndWithOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
   private hasEmitted = false;
 
-  constructor(private value: any) {
+  constructor(private readonly value: any) {
     super();
   }
 

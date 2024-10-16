@@ -4,7 +4,7 @@ export class DefaultIfEmptyOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
   private hasEmitted = false;
 
-  constructor(private defaultValue: any) {
+  constructor(private readonly defaultValue: any) {
     super();
   }
 

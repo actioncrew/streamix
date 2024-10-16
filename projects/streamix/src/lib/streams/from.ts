@@ -2,15 +2,13 @@ import { Emission } from '../abstractions';
 import { Stream } from '../abstractions/stream';
 
 export class FromStream<T = any> extends Stream<T> {
-  private readonly iterator: IterableIterator<any>;
   private done: boolean = false;
 
-  constructor(iterator: IterableIterator<any>) {
+  constructor(private readonly iterator: IterableIterator<any>) {
     super();
-    this.iterator = iterator;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     while (!this.done && !this.shouldComplete()) {
       const { value, done } = this.iterator.next();
       if (done) {

@@ -7,7 +7,7 @@ export class Subject<T = any> extends Stream<T> {
     super();
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     await this.awaitCompletion();
 
     return this.emissionAvailable;

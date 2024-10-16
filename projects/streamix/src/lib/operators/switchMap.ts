@@ -1,40 +1,44 @@
 import { Subject } from '../../lib';
-import { Emission, Operator, StreamOperator, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, StreamOperator, Subscribable } from '../abstractions';
 
 export class SwitchMapOperator extends Operator implements StreamOperator {
-  private project: (value: any) => Subscribable;
-  private activeInnerStream?: Subscribable;
-  private outerStream = new Subject();
-  private handleInnerEmission: (({ emission, source }: any) => Promise<void>) | null = null;
 
-  constructor(project: (value: any) => Subscribable) {
+  private activeInnerStream!: Subscribable | null;
+  private input!: Stream;
+  private output!: Subject;
+  private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
+  private inputStoppedPromise!: Promise<void>;
+  private outputStoppedPromise!: Promise<void>;
+
+  constructor(private readonly project: (value: any) => Subscribable) {
     super();
     this.project = project;
   }
 
-  get stream() {
-    return this.outerStream;
-  }
+  override init(stream: Stream) {
+    this.activeInnerStream = null;
+    this.input = stream;
+    this.output = new Subject();
+    this.handleInnerEmission = null;
 
-  private initializeOuterStream() {
-    this.outerStream.isStopped.then(() => this.finalize());
-  }
-
-  override init(stream: Subscribable) {
-    this.initializeOuterStream();
-
-    stream.isStopped.then(async () => {
+    this.inputStoppedPromise = this.input.isStopped.then(async () => {
       if (this.activeInnerStream) {
         await this.activeInnerStream.awaitCompletion();
       }
       await this.finalize();
     });
+
+    this.outputStoppedPromise = this.output.isStopped.then(() => this.finalize());
+  }
+
+  get stream() {
+    return this.output;
   }
 
   async finalize() {
     await this.stopInnerStream();
-    if (this.outerStream && !this.outerStream.isStopped()) {
-      await this.outerStream.complete();
+    if (this.output && !this.output.isStopped()) {
+      await this.output.complete();
     }
   }
 
@@ -47,7 +51,7 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
     }
 
     try {
-      return await this.processEmission(emission, this.outerStream);
+      return await this.processEmission(emission, this.output);
     } catch (error) {
       return Promise.reject(error);
     }
@@ -97,7 +101,7 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
 
   private removeInnerStream(innerStream: Subscribable) {
     if (this.activeInnerStream === innerStream) {
-      this.activeInnerStream = undefined;
+      this.activeInnerStream = null;
     }
   }
 

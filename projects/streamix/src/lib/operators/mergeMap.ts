@@ -1,44 +1,52 @@
+import { CounterType } from './../utils/counter';
 import { Subject } from '../../lib';
 import { Emission, Operator, StreamOperator, Subscribable } from '../abstractions';
 import { counter } from '../utils';
 
 export class MergeMapOperator extends Operator implements StreamOperator {
-  private readonly project: (value: any) => Subscribable;
-  private outerStream = new Subject();
-  private activeInnerStreams: Subscribable[] = [];
-  private processingPromises: Promise<void>[] = [];
+  private output!: Subject;
+  private activeInnerStreams!: Subscribable[];
+  private processingPromises!: Promise<void>[];
 
-  private input?: Subscribable;
+  private input!: Subscribable;
 
-  private emissionNumber = 0;
-  private executionNumber = counter(0);
-  private handleInnerEmission: (({ emission, source }: any) => Promise<void>) | null = null;
+  private emissionNumber!: number;
+  private executionNumber!: CounterType;
+  private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
+  private inputStoppedPromise!: Promise<void>;
+  private outputStoppedPromise!: Promise<void>;
 
-  constructor(project: (value: any) => Subscribable) {
+  constructor(private readonly project: (value: any) => Subscribable) {
     super();
     this.project = project;
   }
 
   get stream() {
-    return this.outerStream;
+    return this.output;
   }
 
   override init(stream: Subscribable) {
+    this.output = new Subject();
+    this.activeInnerStreams = [];
+    this.processingPromises = [];
     this.input = stream;
-    // Wait for the input stream to complete, then complete the outer stream when all emissions are processed.
-    this.input.isStopped.then(() =>
+    this.emissionNumber = 0;
+    this.executionNumber = counter(0);
+    this.handleInnerEmission = null;
+
+    this.inputStoppedPromise = this.input.isStopped.then(() =>
       this.executionNumber.waitFor(this.emissionNumber)
-        .then(() => this.outerStream?.complete())
+        .then(() => this.output?.complete())
     );
 
-    this.outerStream.isStopped.then(() => this.stopAllStreams());
+    this.outputStoppedPromise = this.output.isStopped.then(() => this.stopAllStreams());
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     this.emissionNumber++;
 
     // Process the emission in parallel with other emissions
-    this.processEmission(emission, this.outerStream!);
+    this.processEmission(emission, this.output!);
 
     // Return the phantom emission immediately
     emission.isPhantom = true;
@@ -130,8 +138,8 @@ export class MergeMapOperator extends Operator implements StreamOperator {
   }
 
   private async stopOutputStream() {
-    if (this.outerStream) {
-      await this.outerStream.complete();
+    if (this.output) {
+      await this.output.complete();
     }
   }
 }

@@ -18,7 +18,6 @@ export interface Subscribable<T = any> {
   onEmission: HookType;
 
   start(): void;
-  run(): Promise<void>;
 
   shouldComplete(): boolean;
   awaitCompletion(): Promise<void>;

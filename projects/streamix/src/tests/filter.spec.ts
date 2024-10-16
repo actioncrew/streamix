@@ -80,7 +80,7 @@ class TestStream extends Stream {
     this.values = values;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     while (this.index < this.values.length && !this.isStopRequested()) {
       await this.onEmission.process({emission:{ value: this.values[this.index] }, source: this});
       this.index++;

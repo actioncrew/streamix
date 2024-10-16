@@ -9,7 +9,7 @@ class MockStream extends Stream {
     this.values = values;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     for (const value of this.values) {
       await this.onEmission.process({emission: { value }, source:this});
     }

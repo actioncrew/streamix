@@ -1,16 +1,14 @@
 import { Stream } from '../abstractions/stream';
 
 export class FromPromiseStream<T = any> extends Stream<T> {
-  private promise: Promise<T>;
   private resolved: boolean = false;
   private value: T | undefined;
 
-  constructor(promise: Promise<T>) {
+  constructor(private readonly promise: Promise<T>) {
     super();
-    this.promise = promise;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
       if (!this.resolved) {
         const resolutionPromise = this.resolvePromise();

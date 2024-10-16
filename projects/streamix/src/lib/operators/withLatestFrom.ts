@@ -1,14 +1,22 @@
-import { Emission, Operator, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export class WithLatestFromOperator extends Operator {
-  private latestValues: ReturnType<typeof asyncValue<any>>[] = [];
-  private streams: Subscribable[];
-  private handleEmissionFns: Array<(event: { emission: Emission; source: Subscribable }) => void> = [];
+  private readonly streams: Subscribable[];
+
+  private latestValues!: ReturnType<typeof asyncValue<any>>[];
+  private handleEmissionFns!: Array<(event: { emission: Emission; source: Subscribable }) => void>;
+  private input!: Stream;
 
   constructor(...streams: Subscribable[]) {
     super();
     this.streams = streams;
+  }
+
+  override init(stream: Stream) {
+    this.latestValues = [];
+    this.handleEmissionFns = [];
+    this.input = stream;
 
     this.streams.forEach((stream, index) => {
       const latestValue = asyncValue();
@@ -22,9 +30,7 @@ export class WithLatestFromOperator extends Operator {
       stream.onEmission.chain(this, this.handleEmissionFns[index]);
       stream.start(); // Start the stream
     });
-  }
 
-  override init(stream: Subscribable) {
     // Cleanup on stream termination
     stream.isStopped.then(() => this.finalize());
   }

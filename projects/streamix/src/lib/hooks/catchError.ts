@@ -3,7 +3,7 @@ import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstr
 export class CatchErrorOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
 
-  constructor(private handler: (error?: any) => void | Promise<void>) {
+  constructor(private readonly handler: (error?: any) => void | Promise<void>) {
     super();
   }
 
