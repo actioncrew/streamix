@@ -53,4 +53,4 @@ export class ComputeStream extends Stream {
   }
 }
 
-export const compute = (task: Coroutine, params: any) => new ComputeStream(task, params);
+export const compute = (task: CoroutineOperator, params: any) => new ComputeStream(task, params);
