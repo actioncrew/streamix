@@ -1,17 +1,26 @@
-import { Emission, Operator, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 
-export class Coroutine extends Operator {
-  private workerPool: Worker[] = [];
-  private workerQueue: Array<(worker: Worker) => void> = [];
-  private maxWorkers: number = navigator.hardwareConcurrency || 4;
+export class CoroutineOperator extends Operator {
+  private readonly functions: Function[];
+  private readonly maxWorkers: number = navigator.hardwareConcurrency || 4;
+
+  private workerPool!: Worker[];
+  private workerQueue!: Array<(worker: Worker) => void>;
 
   constructor(...functions: Function[]) {
     super();
-    if (functions.length === 0) {
+    this.functions = functions;
+  }
+
+  override init(stream: Stream) {
+    this.workerPool = [];
+    this.workerQueue = [];
+
+    if (this.functions.length === 0) {
       throw new Error("At least one function (the main task) is required.");
     }
 
-    const [mainTask, ...dependencies] = functions;
+    const [mainTask, ...dependencies] = this.functions;
 
     const injectedDependencies = dependencies.map(fn => {
       let fnBody = fn.toString();
@@ -96,4 +105,4 @@ export class Coroutine extends Operator {
   }
 }
 
-export const coroutine = (...functions: Function[]) => new Coroutine(...functions);
+export const coroutine = (...functions: Function[]) => new CoroutineOperator(...functions);
