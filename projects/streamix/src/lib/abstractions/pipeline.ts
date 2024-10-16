@@ -49,7 +49,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     await this.onPipelineError.process(error);
   }
 
-  private applyOperators(...operators: Operator[]): void {
+  private pipeOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = operators;
     let currentChunk = this.first;
     let chunkOperators: Operator[] = [];
@@ -57,29 +57,29 @@ export class Pipeline<T = any> implements Subscribable<T> {
     operators.forEach(operator => {
       if (operator instanceof Operator) {
         operator = operator.clone();
+        operator.init(currentChunk.stream);
         chunkOperators.push(operator);
 
-        if ('outerStream' in operator) {
-          currentChunk.pipe(...chunkOperators);
+        if ('stream' in operator) {
+          currentChunk.pipeOperators(...chunkOperators);
           chunkOperators = [];
-          currentChunk = new Chunk(operator.outerStream as any);
+          currentChunk = new Chunk(operator.stream as any);
           this.chunks.push(currentChunk);
         }
       }
     });
 
-    currentChunk.pipe(...chunkOperators);
+    currentChunk.pipeOperators(...chunkOperators);
 
     this.chunks.forEach(chunk => {
       chunk.onError.chain(this, this.errorCallback);
     });
+
+    return this;
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    // Create a new Pipeline instance with the existing streams and new operators
-    const newPipeline = new Pipeline<T>(this.first);
-    newPipeline.applyOperators(...this.operators, ...operators)
-    return newPipeline;
+    return new Pipeline<T>(this.first).pipeOperators(...this.operators, ...operators)
   }
 
   get isAutoComplete(): PromisifiedType<boolean> {

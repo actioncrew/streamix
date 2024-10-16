@@ -1,20 +1,23 @@
-import { Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
 export class SkipOperator extends Operator {
-  private count: number;
+  private counter!: number;
 
-  constructor(count: number) {
+  constructor(private readonly count: number) {
     super();
-    this.count = count;
+  }
+
+  override init(stream: Stream) {
+    this.counter = this.count;
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (this.count <= 0) {
+    if (this.counter <= 0) {
       return emission;
     } else {
-      this.count--;
+      this.counter--;
       emission.isPhantom = true;
       return emission
     }
