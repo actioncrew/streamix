@@ -1,4 +1,4 @@
-type CounterType = {
+export type CounterType = {
   (): number;
   increment(step?: number): void;
   decrement(step?: number): void;

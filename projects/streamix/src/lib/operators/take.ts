@@ -1,14 +1,16 @@
-import { Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
 export class TakeOperator extends Operator {
-  private count: number;
-  private emittedCount: number = 0;
+  private emittedCount!: number;
 
-  constructor(count: number) {
+  constructor(private readonly count: number) {
     super();
-    this.count = count;
+  }
+
+  override init(stream: Stream) {
+    this.emittedCount = 0;
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
