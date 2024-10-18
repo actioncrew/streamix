@@ -38,7 +38,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     return new Pipeline<T>(this.stream).pipe(...this.operators, ...operators);
   }
 
-  pipeOperators(...operators: Operator[]): Subscribable<T> {
+  bindOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
 
     operators.forEach((operator, index) => {

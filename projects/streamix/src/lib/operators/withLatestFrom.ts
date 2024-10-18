@@ -55,11 +55,10 @@ export class WithLatestFromOperator extends Operator {
 
     const latestValuesPromise = Promise.all(this.latestValues.map(async (value) => await value()));
     const terminationPromises = Promise.race([
-      stream.awaitCompletion(),
       ...this.streams.map(source => source.awaitCompletion()),
     ]);
 
-    await Promise.race([latestValuesPromise, terminationPromises]);
+    await Promise.race([latestValuesPromise, terminationPromises, stream.awaitCompletion()]);
 
     if (this.latestValues.every((value) => value.hasValue())) {
       emission.value = [emission.value, ...this.latestValues.map(value => value.value())];

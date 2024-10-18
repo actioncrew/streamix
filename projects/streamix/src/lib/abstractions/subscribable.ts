@@ -2,6 +2,8 @@ import { Emission, Operator, Subscription } from '../abstractions';
 import { HookType, PromisifiedType } from '../utils';
 
 export interface Subscribable<T = any> {
+  currentValue: T | undefined;
+
   isAutoComplete: PromisifiedType<boolean>;
   isStopRequested: PromisifiedType<boolean>;
 
@@ -23,7 +25,7 @@ export interface Subscribable<T = any> {
   awaitCompletion(): Promise<void>;
   complete(): Promise<void>;
 
-  subscribe(callback?: (value: T) => any): Subscription;
+  subscribe(callback?: ((value: T) => void) | void): Subscription;
 
   pipe(...operators: Operator[]): Subscribable<T>;
 }
