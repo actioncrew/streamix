@@ -1,8 +1,16 @@
-import { Subject } from './subject';
+import { Subject, SubjectType } from './subject';
 
-export class BehaviorSubject<T = any> extends Subject<T> {
-  constructor(private readonly initialValue: T) {
-    super();
-    queueMicrotask(() => this.emissionAvailable = (() => this.isRunning.then(() => this.emissionAvailable).then(() => this.onEmission.process({ emission: { value: initialValue }, source: this })))());
-  }
+export function BehaviorSubject<T = any>(initialValue: T): SubjectType<T> {
+  const instance = Subject<T>() as SubjectType<T>;
+
+  queueMicrotask(() => {
+    instance.emissionAvailable = (() =>
+      instance.isRunning.then(() =>
+        instance.emissionAvailable.then(() =>
+          instance.onEmission.process({ emission: { value: initialValue }, source: instance })
+        )
+      ))();
+  });
+
+  return instance;
 }

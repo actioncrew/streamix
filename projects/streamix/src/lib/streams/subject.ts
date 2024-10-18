@@ -1,25 +1,35 @@
 import { Stream } from '../../lib';
 
-export class Subject<T = any> extends Stream<T> {
-  protected emissionAvailable = Promise.resolve();
+export interface SubjectType<T = any> extends ReturnType<typeof Stream<T>> {
+  currentValue: T | undefined;
+  emissionAvailable: Promise<void>;
+  next(value?: T): Promise<void>;
+}
 
-  constructor() {
-    super();
-  }
+export function Subject<T = any>(): SubjectType<T> {
+  const instance = Stream<T>() as SubjectType<T>;
 
-  async run(): Promise<void> {
-    await this.awaitCompletion();
+  instance.currentValue = undefined;
+  instance.emissionAvailable = Promise.resolve();
 
-    return this.emissionAvailable;
-  }
+  instance.run = async (): Promise<void> => {
+    await instance.awaitCompletion();
+    return instance.emissionAvailable;
+  };
 
-  async next(value?: T): Promise<void> {
-    if (this.isStopped()) {
+  instance.next = async (value?: T): Promise<void> => {
+    if (instance.isStopped()) {
       console.warn('Cannot push value to a stopped Subject.');
       return Promise.resolve();
     }
 
-    this.emissionAvailable = (() => this.emissionAvailable.then(() => this.onEmission.process({ emission: { value }, source: this })))();
-    return this.emissionAvailable;
-  }
+    instance.emissionAvailable = instance.emissionAvailable.then(() =>
+      instance.onEmission.process({ emission: { value }, source: instance })
+    );
+
+    return instance.emissionAvailable;
+  };
+
+  // Return the callable instance
+  return instance;
 }

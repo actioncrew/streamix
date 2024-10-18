@@ -1,7 +1,8 @@
-import { Emission, Operator, Pipeline, Subscription } from '../abstractions';
+import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
 import { hook, promisified } from '../utils';
 
 export function Stream<T = any>() {
+
   const isAutoComplete = promisified<boolean>(false);
   const isStopRequested = promisified<boolean>(false);
 
@@ -54,15 +55,7 @@ export function Stream<T = any>() {
     }
   };
 
-  const start = () => {
-
-  };
-
-  const pipe = () => {
-
-  };
-
-  const run = () => {
+  const run = async (): Promise<void> => {
     throw new Error('Abstract method')
   };
 
