@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { Pipeline, Stream } from '../abstractions';
 import { hook } from '../utils';
 import { Emission } from './emission';
 import { Operator } from './operator';
@@ -35,9 +35,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override pipe(...operators: Operator[]): Subscribable<T> {
-    const clonedOperators = operators.map(operator => operator.clone());
-    clonedOperators.forEach(operator => operator.init(this.stream));
-    return new Chunk(this.stream).pipeOperators(...this.operators, ...clonedOperators);
+    return new Pipeline<T>(this.stream).pipe(...this.operators, ...operators);
   }
 
   pipeOperators(...operators: Operator[]): Subscribable<T> {
