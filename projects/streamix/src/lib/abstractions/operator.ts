@@ -15,7 +15,7 @@ export interface StreamOperator {
 export abstract class Operator {
   next?: Operator;
 
-  init(stream: Stream) {
+  init(stream: ReturnType<typeof Stream>) {
   }
 
   async cleanup(): Promise<void> {
@@ -23,7 +23,7 @@ export abstract class Operator {
 
   abstract handle(emission: Emission, stream: Subscribable): Promise<Emission>;
 
-  async process(emission: Emission, chunk: Chunk): Promise<Emission> {
+  async process(emission: Emission, chunk: ReturnType<typeof Chunk>): Promise<Emission> {
     try {
       let actualStream = chunk.stream;
       emission = await this.handle(emission, actualStream);
