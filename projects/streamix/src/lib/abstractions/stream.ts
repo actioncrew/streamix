@@ -83,7 +83,7 @@ export abstract class Stream<T = any> implements Subscribable {
     this.onEmission.remove(this, this.emit);
   }
 
-  subscribe(callback?: ((value: T) => any) | void): Subscription {
+  subscribe(callback?: ((value: T) => void) | void): Subscription {
     const boundCallback = callback === undefined
       ? () => Promise.resolve()
       : (value: T) => Promise.resolve(callback!(value));
