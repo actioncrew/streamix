@@ -1,4 +1,5 @@
-import { Chunk, Emission, Stream } from '../abstractions';
+import { Chunk, Stream } from '../abstractions';
+import { Subject } from '../';
 import { hook, HookType, PromisifiedType } from '../utils';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
@@ -120,7 +121,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     }
   }
 
-  subscribe(callback?: (value: T) => any): Subscription {
+  subscribe(callback?: (value: T) => void): Subscription {
     const boundCallback = callback === undefined
       ? () => Promise.resolve()
       : (value: T) => Promise.resolve(callback!(value));
@@ -147,4 +148,30 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private get last(): Chunk<T> {
     return this.chunks[this.chunks.length - 1];
   }
+}
+
+
+export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
+  const subject = new Subject<T>();
+  const subscription = source.subscribe((value) => subject.next(value));
+  source.isStopped.then(() => subject.complete());
+
+  const pipeline = new Pipeline<T>(subject);
+  const originalSubscribe = pipeline.subscribe.bind(pipeline);
+  let subscribers = 0;
+
+  pipeline.subscribe = (observer: (value: T) => void) => {
+    const originalSubscription = originalSubscribe(observer);
+    subscribers++;
+    return {
+      unsubscribe: () => {
+        originalSubscription.unsubscribe();
+        if(--subscribers === 0) {
+          subscription.unsubscribe();
+        }
+      }
+    };
+  };
+
+  return pipeline;
 }
