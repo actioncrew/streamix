@@ -9,7 +9,8 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private chunks: Chunk<T>[] = [];
   private operators: Operator[] = [];
   private onPipelineError: HookType;
-  private currentValue: T | undefined;
+
+  currentValue: T | undefined;
 
   constructor(stream: Stream<T>) {
     const chunk = new Chunk(stream);
@@ -47,7 +48,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     await this.onPipelineError.process(error);
   }
 
-  private pipeOperators(...operators: Operator[]): Subscribable<T> {
+  private bindOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = operators;
     let currentChunk = this.first;
     let chunkOperators: Operator[] = [];
@@ -59,7 +60,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
         chunkOperators.push(operator);
 
         if ('stream' in operator) {
-          currentChunk.pipeOperators(...chunkOperators);
+          currentChunk.bindOperators(...chunkOperators);
           chunkOperators = [];
           currentChunk = new Chunk(operator.stream as any);
           this.chunks.push(currentChunk);
@@ -67,7 +68,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
       }
     });
 
-    currentChunk.pipeOperators(...chunkOperators);
+    currentChunk.bindOperators(...chunkOperators);
 
     this.chunks.forEach(chunk => {
       chunk.onError.chain(this, this.errorCallback);
@@ -77,7 +78,8 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline<T>(this.first).pipeOperators(...this.operators, ...operators)
+    this.operators = [...this.operators, ...operators];
+    return this;
   }
 
   get isAutoComplete(): PromisifiedType<boolean> {
@@ -122,12 +124,13 @@ export class Pipeline<T = any> implements Subscribable<T> {
     }
   }
 
-  subscribe(callback?: (value: T) => void): Subscription {
+  subscribe(callback?: ((value: T) => void) | void): Subscription {
     const boundCallback = (value: T) => {
       this.currentValue = value;
       return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
     };
 
+    this.bindOperators(...this.operators);
     this.subscribers.chain(this, boundCallback);
 
     this.start();

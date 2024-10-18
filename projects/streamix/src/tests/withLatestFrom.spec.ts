@@ -1,4 +1,4 @@
-import { Emission, Stream, withLatestFrom } from '../lib';
+import { delay, Emission, Stream, withLatestFrom } from '../lib';
 
 // Mock implementation for AbstractStream
 class MockStream extends Stream {
@@ -81,15 +81,9 @@ describe('withLatestFrom operator', () => {
     const mainStream = new MockStream([1, 2, 3]);
     const otherStream = new MockStream(['A', 'B', 'C', 'D']);
 
-    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
+    const combinedStream = mainStream.pipe(delay(1000), withLatestFrom(otherStream));
 
     let results: any[] = [];
-
-    otherStream.isStopped.then(() => {
-      combinedStream.subscribe((value) => {
-        results.push(value);
-      });
-    });
 
     combinedStream.isStopped.then(() => {
       expect(results).toEqual([
@@ -98,6 +92,10 @@ describe('withLatestFrom operator', () => {
         [3, 'D']  // Main stream emits 3, other stream still emits 'D'
       ]);
       done();
+    });
+
+    combinedStream.subscribe((value) => {
+      results.push(value);
     });
   });
 
