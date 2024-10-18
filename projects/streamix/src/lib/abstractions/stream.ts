@@ -1,7 +1,7 @@
 import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
 import { hook, promisified } from '../utils';
 
-export abstract class Stream<T = any> implements Subscribable {
+export abstract class Stream<T = any> implements Subscribable<T> {
 
   isAutoComplete = promisified<boolean>(false);
   isStopRequested = promisified<boolean>(false);
@@ -19,7 +19,7 @@ export abstract class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
-  currentValue: T | undefined;
+  private currentValue: T | undefined;
 
   abstract run(): Promise<void>;
 

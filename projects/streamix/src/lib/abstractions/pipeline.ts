@@ -10,7 +10,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private operators: Operator[] = [];
   private onPipelineError: HookType;
 
-  currentValue: T | undefined;
+  private currentValue: T | undefined;
 
   constructor(stream: Stream<T>) {
     const chunk = new Chunk(stream);
@@ -19,15 +19,15 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   get onStart(): HookType {
-    return this.first.onStart;
+    return this.firstChunk.onStart;
   }
 
   get onComplete(): HookType {
-    return this.last.onComplete;
+    return this.lastChunk.onComplete;
   }
 
   get onStop(): HookType {
-    return this.last.onStop;
+    return this.lastChunk.onStop;
   }
 
   get onError(): HookType {
@@ -35,7 +35,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   get onEmission(): HookType {
-    return this.last.onEmission;
+    return this.lastChunk.onEmission;
   }
 
   start() {
@@ -50,7 +50,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   private bindOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = operators;
-    let currentChunk = this.first;
+    let currentChunk = this.firstChunk;
     let chunkOperators: Operator[] = [];
 
     operators.forEach(operator => {
@@ -83,39 +83,39 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   get isAutoComplete(): PromisifiedType<boolean> {
-    return this.last.isAutoComplete;
+    return this.lastChunk.isAutoComplete;
   }
 
   get isStopRequested(): PromisifiedType<boolean> {
-    return this.last.isStopRequested;
+    return this.lastChunk.isStopRequested;
   }
 
   get isFailed(): PromisifiedType<any> {
-    return this.last.isFailed;
+    return this.lastChunk.isFailed;
   }
 
   get isStopped(): PromisifiedType<boolean> {
-    return this.last.isStopped;
+    return this.lastChunk.isStopped;
   }
 
   get isUnsubscribed(): PromisifiedType<boolean> {
-    return this.last.isUnsubscribed;
+    return this.lastChunk.isUnsubscribed;
   }
 
   get isRunning(): PromisifiedType<boolean> {
-    return this.last.isRunning;
+    return this.lastChunk.isRunning;
   }
 
   get subscribers(): HookType {
-    return this.last.subscribers;
+    return this.lastChunk.subscribers;
   }
 
   shouldComplete(): boolean {
-    return this.last.shouldComplete();
+    return this.lastChunk.shouldComplete();
   }
 
   awaitCompletion(): Promise<void> {
-    return this.last.awaitCompletion();
+    return this.lastChunk.awaitCompletion();
   }
 
   async complete(): Promise<void> {
@@ -146,11 +146,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
     };
   }
 
-  private get first(): Chunk<T> {
+  private get firstChunk(): Chunk<T> {
     return this.chunks[0];
   }
 
-  private get last(): Chunk<T> {
+  private get lastChunk(): Chunk<T> {
     return this.chunks[this.chunks.length - 1];
   }
 
