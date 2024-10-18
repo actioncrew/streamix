@@ -125,7 +125,7 @@ export function Pipeline<T = any>(stream: ReturnType<typeof Stream<T>>) {
 
 
 export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
-  const subject = new Subject<T>();
+  const subject = Subject<T>();
   const subscription = source.subscribe((value) => subject.next(value));
   source.isStopped.then(() => subject.complete());
 
