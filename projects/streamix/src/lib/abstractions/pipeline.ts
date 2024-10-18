@@ -1,162 +1,126 @@
+import { PromisifiedType } from './../utils/promisified';
 import { Chunk, Stream } from '../abstractions';
 import { Subject } from '../';
-import { hook, HookType, PromisifiedType } from '../utils';
+import { hook, HookType } from '../utils';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
+import { pipe } from 'rxjs';
 
-export class Pipeline<T = any> implements Subscribable<T> {
-  private chunks: Chunk<T>[] = [];
-  private operators: Operator[] = [];
-  private onPipelineError: HookType;
 
-  private currentValue: T | undefined;
+export function Pipeline<T = any>(stream: ReturnType<typeof Stream<T>>) {
+  const chunks: ReturnType<typeof Chunk<T>>[] = [Chunk(stream)];
+  const operators: Operator[] = [];
+  const onPipelineError: HookType = hook();
+  let currentValue: T | undefined;
 
-  constructor(stream: Stream<T>) {
-    const chunk = new Chunk(stream);
-    this.chunks.push(chunk);
-    this.onPipelineError = hook();
-  }
+  const firstChunk = () => chunks[0];
+  const lastChunk = () => chunks[chunks.length - 1];
 
-  get onStart(): HookType {
-    return this.firstChunk.onStart;
-  }
-
-  get onComplete(): HookType {
-    return this.lastChunk.onComplete;
-  }
-
-  get onStop(): HookType {
-    return this.lastChunk.onStop;
-  }
-
-  get onError(): HookType {
-    return this.onPipelineError;
-  }
-
-  get onEmission(): HookType {
-    return this.lastChunk.onEmission;
-  }
-
-  start() {
-    for (let i = this.chunks.length - 1; i >= 0; i--) {
-      this.chunks[i].stream.startWithContext(this.chunks[i]);
-    }
-  }
-
-  async errorCallback(error: any) {
-    await this.onPipelineError.process(error);
-  }
-
-  private bindOperators(...operators: Operator[]): Subscribable<T> {
-    this.operators = operators;
-    let currentChunk = this.firstChunk;
+  const bindOperators = (...newOperators: Operator[]) => {
+    let currentChunk = firstChunk();
     let chunkOperators: Operator[] = [];
 
-    operators.forEach(operator => {
+    newOperators.forEach(operator => {
       if (operator instanceof Operator) {
-        operator = operator.clone();
-        operator.init(currentChunk.stream);
-        chunkOperators.push(operator);
+        const clonedOperator = operator.clone();
+        clonedOperator.init(currentChunk.stream);
+        chunkOperators.push(clonedOperator);
 
-        if ('stream' in operator) {
+        if ('stream' in clonedOperator) {
           currentChunk.bindOperators(...chunkOperators);
           chunkOperators = [];
-          currentChunk = new Chunk(operator.stream as any);
-          this.chunks.push(currentChunk);
+          currentChunk = Chunk(clonedOperator.stream as any);
+          chunks.push(currentChunk);
         }
       }
     });
 
     currentChunk.bindOperators(...chunkOperators);
 
-    this.chunks.forEach(chunk => {
-      chunk.onError.chain(this, this.errorCallback);
+    chunks.forEach(chunk => {
+      chunk.onError.chain({ errorCallback }, errorCallback);
     });
+  };
 
-    return this;
+  const subscribers = (): HookType => {
+    return lastChunk().subscribers;
   }
 
-  pipe(...operators: Operator[]): Subscribable<T> {
-    this.operators = [...this.operators, ...operators];
-    return this;
+  const shouldComplete = (): boolean => {
+    return lastChunk().shouldComplete();
   }
 
-  get isAutoComplete(): PromisifiedType<boolean> {
-    return this.lastChunk.isAutoComplete;
+  const awaitCompletion = (): Promise<void> => {
+    return lastChunk().awaitCompletion();
   }
 
-  get isStopRequested(): PromisifiedType<boolean> {
-    return this.lastChunk.isStopRequested;
-  }
+  const complete = async () => {
+    await Promise.all(chunks.map(chunk => chunk.complete()));
+  };
 
-  get isFailed(): PromisifiedType<any> {
-    return this.lastChunk.isFailed;
-  }
+  const errorCallback = async (error: any) => {
+    await onPipelineError.process(error);
+  };
 
-  get isStopped(): PromisifiedType<boolean> {
-    return this.lastChunk.isStopped;
-  }
+  const start = () => {
+    chunks.forEach(chunk => chunk.stream.startWithContext(chunk));
+  };
 
-  get isUnsubscribed(): PromisifiedType<boolean> {
-    return this.lastChunk.isUnsubscribed;
-  }
-
-  get isRunning(): PromisifiedType<boolean> {
-    return this.lastChunk.isRunning;
-  }
-
-  get subscribers(): HookType {
-    return this.lastChunk.subscribers;
-  }
-
-  shouldComplete(): boolean {
-    return this.lastChunk.shouldComplete();
-  }
-
-  awaitCompletion(): Promise<void> {
-    return this.lastChunk.awaitCompletion();
-  }
-
-  async complete(): Promise<void> {
-    for (let i = 0; i <= this.chunks.length - 1; i++) {
-      await this.chunks[i].complete();
-    }
-  }
-
-  subscribe(callback?: ((value: T) => void) | void): Subscription {
-    const boundCallback = (value: T) => {
-      this.currentValue = value;
-      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+  const subscribe = (callback?: ((value: T) => void) | void): Subscription => {
+    const boundMethod = {
+      method: (value: T) => {
+        currentValue = value;
+        return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+      }
     };
 
-    this.bindOperators(...this.operators);
-    this.subscribers.chain(this, boundCallback);
+    bindOperators(...operators);
+    subscribers().chain(boundMethod, boundMethod.method);
 
-    this.start();
+    start();
 
     return {
       unsubscribe: async () => {
-          this.subscribers.remove(this, boundCallback);
-          if (this.subscribers.length === 0) {
-              this.isUnsubscribed.resolve(true);
-              await this.complete();
+          subscribers().remove(boundMethod, boundMethod.method);
+          if (subscribers().length === 0) {
+              lastChunk().isUnsubscribed.resolve(true);
+              await complete();
           }
       }
     };
   }
 
-  private get firstChunk(): Chunk<T> {
-    return this.chunks[0];
-  }
+  // Return a function with attached properties that behaves like an object
+  const pipeline = () => currentValue;
 
-  private get lastChunk(): Chunk<T> {
-    return this.chunks[this.chunks.length - 1];
-  }
+  pipeline.pipe = (...newOperators: Operator[]) => {
+    operators.push(...newOperators);
+    return pipeline;
+  };
 
-  get value(): T | undefined {
-    return this.currentValue;
-  }
+  pipeline.onStart = firstChunk().onStart;
+  pipeline.onComplete = lastChunk().onComplete;
+  pipeline.onStop = lastChunk().onStop;
+  pipeline.onError = onPipelineError;
+  pipeline.onEmission = lastChunk().onEmission;
+
+  pipeline.isAutoComplete = lastChunk().isAutoComplete;
+  pipeline.isStopRequested = lastChunk().isStopRequested;
+  pipeline.isFailed = lastChunk().isFailed;
+  pipeline.isStopped = lastChunk().isStopped;
+  pipeline.isUnsubscribed = lastChunk().isUnsubscribed;
+  pipeline.isRunning = lastChunk().isRunning;
+
+  pipeline.start = start;
+  pipeline.shouldComplete = shouldComplete;
+  pipeline.awaitCompletion = awaitCompletion;
+  pipeline.complete = complete;
+
+  pipeline.subscribers = lastChunk().subscribers;
+  pipeline.subscribe = subscribe;
+
+  return pipeline;
 }
 
 
@@ -165,12 +129,12 @@ export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
   const subscription = source.subscribe((value) => subject.next(value));
   source.isStopped.then(() => subject.complete());
 
-  const pipeline = new Pipeline<T>(subject);
+  const pipeline = Pipeline<T>(subject);
   const originalSubscribe = pipeline.subscribe.bind(pipeline);
   let subscribers = 0;
 
-  pipeline.subscribe = (observer: (value: T) => void) => {
-    const originalSubscription = originalSubscribe(observer);
+  pipeline.subscribe = (callback?: ((value: T) => void) | void) => {
+    const originalSubscription = originalSubscribe(callback);
     subscribers++;
     return {
       unsubscribe: () => {

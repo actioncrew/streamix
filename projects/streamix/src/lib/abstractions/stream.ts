@@ -1,123 +1,80 @@
-import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
+import { Emission, Subscription } from '../abstractions';
 import { hook, promisified } from '../utils';
 
-export abstract class Stream<T = any> implements Subscribable<T> {
+export function Stream<T = any>() {
+  const isAutoComplete = promisified<boolean>(false);
+  const isStopRequested = promisified<boolean>(false);
 
-  isAutoComplete = promisified<boolean>(false);
-  isStopRequested = promisified<boolean>(false);
+  const isFailed = promisified<any>(undefined);
+  const isStopped = promisified<boolean>(false);
+  const isUnsubscribed = promisified<boolean>(false);
+  const isRunning = promisified<boolean>(false);
 
-  isFailed = promisified<any>(undefined);
-  isStopped = promisified<boolean>(false);
-  isUnsubscribed = promisified<boolean>(false);
-  isRunning = promisified<boolean>(false);
+  const subscribers = hook();
+  const onStart = hook();
+  const onComplete = hook();
+  const onStop = hook();
+  const onError = hook();
+  const onEmission = hook();
 
-  subscribers = hook();
+  let currentValue: T | undefined;
 
-  onStart = hook();
-  onComplete = hook();
-  onStop = hook();
-  onError = hook();
-  onEmission = hook();
-
-  private currentValue: T | undefined;
-
-  abstract run(): Promise<void>;
-
-  shouldComplete() {
-    return this.isAutoComplete() || this.isUnsubscribed() || this.isStopRequested();
-  }
-
-  awaitCompletion() {
-    return promisified.race([this.isAutoComplete, this.isUnsubscribed, this.isStopRequested]);
-  }
-
-  complete(): Promise<void> {
-    this.isStopRequested.resolve(true);
-    return this.isStopped.then(() => Promise.resolve());
-  }
-
-  init() {
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
+  const init = () => {
+    if (!onEmission.contains(stream, emit)) {
+      onEmission.chain(stream, emit);
     }
-  }
+  };
 
-  start(): void {
-    return this.startWithContext(this);
-  }
-
-  startWithContext(context: any) {
+  const startWithContext = (context: any) => {
     context.init();
 
-    if (this.isRunning() === false) {
-      this.isRunning.resolve(true);
+    if (isRunning() === false) {
+      isRunning.resolve(true);
 
       queueMicrotask(async () => {
         try {
-          // Emit start value if defined
-          await this.onStart.process();
+          await onStart.process();
+          await context.run();
 
-          // Start the actual stream logic
-          await this.run();
-
-          // Emit end value if defined
-          await this.onComplete.process();
+          await onComplete.process();
         } catch (error) {
-          this.isFailed.resolve(error);
+          isFailed.resolve(error);
 
-          if(this.onError.length > 0) {
-            await this.onError.process({ error });
+          if (onError.length > 0) {
+            await onError.process({ error });
           }
         } finally {
-          // Handle finalize callback
-          await this.onStop.process();
-
-          this.isStopped.resolve(true);
-          this.isRunning.reset();
+          await onStop.process();
+          isStopped.resolve(true);
+          isRunning.reset();
 
           await context.cleanup();
         }
       });
     }
-  }
+  };
 
-  async cleanup() {
-    this.onEmission.remove(this, this.emit);
-  }
+  const run = () => {
+    throw new Error('Abstract method')
+  };
 
-  subscribe(callback?: ((value: T) => void) | void): Subscription {
-    const boundCallback = (value: T) => {
-      this.currentValue = value;
-      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
-    };
+  const cleanup = async () => {
+    onEmission.remove(stream, emit);
+  };
 
-    this.subscribers.chain(this, boundCallback);
+  const complete = (): Promise<void> => {
+    isStopRequested.resolve(true);
+    return isStopped.then(() => Promise.resolve());
+  };
 
-    this.start();
-
-    return {
-      unsubscribe: async () => {
-          this.subscribers.remove(this, boundCallback);
-          if (this.subscribers.length === 0) {
-              this.isUnsubscribed.resolve(true);
-              await this.complete();
-          }
-      }
-    };
-  }
-
-  pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline<T>(this).pipe(...operators);
-  }
-
-  async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
+  const emit = async ({ emission, source }: { emission: Emission; source: any }): Promise<void> => {
     try {
-      if(emission.isFailed) {
+      if (emission.isFailed) {
         throw emission.error;
       }
 
       if (!emission.isPhantom) {
-        await this.subscribers.parallel(emission.value);
+        await subscribers.parallel(emission.value);
       }
 
       emission.isComplete = true;
@@ -125,19 +82,60 @@ export abstract class Stream<T = any> implements Subscribable<T> {
       emission.isFailed = true;
       emission.error = error;
 
-      this.isFailed.resolve(error);
-      if(this.onError.length > 0) {
-        await this.onError.process({ error });
+      isFailed.resolve(error);
+      if (onError.length > 0) {
+        await onError.process({ error });
       }
     }
-  }
+  };
 
-  async propagateError(error: any): Promise<void> {
-    this.isFailed.resolve(error);
-    await this.onError.process({ emission: { isFailed: true, error }, source: this });
-  }
+  const subscribe = (callback?: (value: T) => void): Subscription => {
+    const boundCallback = (value: T) => {
+      currentValue = value;
+      return callback ? Promise.resolve(callback(value)) : Promise.resolve();
+    };
 
-  get value(): T | undefined {
-    return this.currentValue;
-  }
+    subscribers.chain(stream, boundCallback);
+    startWithContext(stream);
+
+    return {
+      unsubscribe: async () => {
+        subscribers.remove(stream, boundCallback);
+        if (subscribers.length === 0) {
+          isUnsubscribed.resolve(true);
+          await complete();
+        }
+      }
+    };
+  };
+
+  // Returning the stream function that holds the current value
+  const stream = () => currentValue;
+
+  // Attach properties to the function
+  stream.isAutoComplete = isAutoComplete;
+  stream.isStopRequested = isStopRequested;
+  stream.isFailed = isFailed;
+  stream.isStopped = isStopped;
+  stream.isUnsubscribed = isUnsubscribed;
+  stream.isRunning = isRunning;
+  stream.subscribers = subscribers;
+  stream.onStart = onStart;
+  stream.onComplete = onComplete;
+  stream.onStop = onStop;
+  stream.onError = onError;
+  stream.onEmission = onEmission;
+
+  stream.shouldComplete = () => isAutoComplete() || isUnsubscribed() || isStopRequested();
+  stream.awaitCompletion = () => promisified.race([isAutoComplete, isUnsubscribed, isStopRequested]);
+
+  stream.run = run;
+  stream.complete = complete;
+  stream.init = init;
+  stream.subscribe = subscribe;
+  stream.emit = emit;
+  stream.cleanup = cleanup;
+  stream.startWithContext = startWithContext;
+
+  return stream;
 }
