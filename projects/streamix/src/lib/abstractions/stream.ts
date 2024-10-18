@@ -1,4 +1,4 @@
-import { Emission, Subscription } from '../abstractions';
+import { Emission, Operator, Pipeline, Subscription } from '../abstractions';
 import { hook, promisified } from '../utils';
 
 export function Stream<T = any>() {
@@ -52,6 +52,14 @@ export function Stream<T = any>() {
         }
       });
     }
+  };
+
+  const start = () => {
+
+  };
+
+  const pipe = () => {
+
   };
 
   const run = () => {
@@ -135,6 +143,8 @@ export function Stream<T = any>() {
   stream.subscribe = subscribe;
   stream.emit = emit;
   stream.cleanup = cleanup;
+  stream.start = () => stream.startWithContext(stream);
+  stream.pipe = (...operators: Operator[]) => Pipeline<T>(stream).pipe(...operators);
   stream.startWithContext = startWithContext;
 
   return stream;
