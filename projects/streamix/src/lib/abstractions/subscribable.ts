@@ -2,7 +2,7 @@ import { Emission, Operator, Subscription } from '../abstractions';
 import { HookType, PromisifiedType } from '../utils';
 
 export interface Subscribable<T = any> {
-  currentValue: T | undefined;
+  value: T | undefined;
 
   isAutoComplete: PromisifiedType<boolean>;
   isStopRequested: PromisifiedType<boolean>;
