@@ -3,21 +3,21 @@ import { Stream } from '../abstractions/stream';
 export class OfStream<T = any> extends Stream<T> {
   private emitted: boolean = false;
 
-  constructor(private readonly value: T) {
+  constructor(private readonly inputValue: T) {
     super();
   }
 
   async run(): Promise<void> {
     try {
       if (!this.emitted && !this.shouldComplete()) {
-        await this.onEmission.process({ emission: { value: this.value }, source: this });
+        await this.onEmission.process({ emission: { value: this.inputValue }, source: this });
         this.emitted = true;
       }
       if(this.emitted) {
         this.isAutoComplete.resolve(true);
       }
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     }
   }
 }

@@ -25,7 +25,7 @@ export class RangeStream<T = any> extends Stream<T> {
         this.isAutoComplete.resolve(true);
       }
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     }
   }
 }

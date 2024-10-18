@@ -23,7 +23,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
       ]);
 
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     } finally {
       this.complete();
     }

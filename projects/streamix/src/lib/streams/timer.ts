@@ -1,7 +1,7 @@
 import { Stream } from '../abstractions/stream';
 
 export class TimerStream extends Stream<number> {
-  private value: number = 0;
+  private timerValue: number = 0;
   private timeoutId: any | undefined;
   private intervalId: any | undefined;
 
@@ -24,7 +24,7 @@ export class TimerStream extends Stream<number> {
         this.isAutoComplete.resolve(true);
       }
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     } finally {
       this.finalize();
     }
@@ -47,8 +47,8 @@ export class TimerStream extends Stream<number> {
     if (this.shouldComplete()) {
       return;
     }
-    await this.onEmission.process({ emission: { value: this.value }, source: this });
-    this.value++;
+    await this.onEmission.process({ emission: { value: this.timerValue }, source: this });
+    this.timerValue++;
   }
 
   private startInterval(): Promise<void> {
@@ -62,7 +62,7 @@ export class TimerStream extends Stream<number> {
           }
           await this.emitValue();
         } catch (error) {
-          this.handleError(error);
+          this.propagateError(error);
           this.finalize();
           resolve();
         }

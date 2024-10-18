@@ -9,6 +9,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private chunks: Chunk<T>[] = [];
   private operators: Operator[] = [];
   private onPipelineError: HookType;
+  private currentValue: T | undefined;
 
   constructor(stream: Stream<T>) {
     const chunk = new Chunk(stream);
@@ -122,9 +123,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   subscribe(callback?: (value: T) => void): Subscription {
-    const boundCallback = callback === undefined
-      ? () => Promise.resolve()
-      : (value: T) => Promise.resolve(callback!(value));
+    const boundCallback = (value: T) => {
+      this.currentValue = value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+    };
 
     this.subscribers.chain(this, boundCallback);
 
@@ -147,6 +149,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   private get last(): Chunk<T> {
     return this.chunks[this.chunks.length - 1];
+  }
+
+  get value(): T | undefined {
+    return this.currentValue;
   }
 }
 

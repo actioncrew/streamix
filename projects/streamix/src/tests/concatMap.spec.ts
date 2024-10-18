@@ -141,17 +141,17 @@ describe('ConcatMapOperator', () => {
 
 // Example Inner Stream Implementation (Replace with your actual implementation)
 class MyInnerStream extends Stream {
-  private value: any;
+  private innerValue: any;
 
   constructor(value: any) {
     super();
-    this.value = value;
+    this.innerValue = value;
   }
 
   async run(): Promise<void> {
     // Simulate inner stream behavior (emission, completion, error)
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
-    this.onEmission.process({emission:{ value: this.value }, source: this}); // Emit the projected value
+    this.onEmission.process({emission:{ value: this.innerValue }, source: this}); // Emit the projected value
   }
 }
 
@@ -165,11 +165,11 @@ class MyRealStream extends Stream {
 
 // Example Error Inner Stream Implementation (Replace with your actual implementation)
 class ErrorInnerStream extends Stream {
-  private value: any;
+  private innerValue: any;
 
   constructor(value: any) {
     super();
-    this.value = value;
+    this.innerValue = value;
   }
 
   async run(): Promise<void> {
