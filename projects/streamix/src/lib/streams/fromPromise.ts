@@ -2,7 +2,7 @@ import { Stream } from '../abstractions/stream';
 
 export class FromPromiseStream<T = any> extends Stream<T> {
   private resolved: boolean = false;
-  private value: T | undefined;
+  private promiseValue: T | undefined;
 
   constructor(private readonly promise: Promise<T>) {
     super();
@@ -23,19 +23,19 @@ export class FromPromiseStream<T = any> extends Stream<T> {
         }
       }
 
-      await this.onEmission.process({ emission: { value: this.value as T }, source: this });
+      await this.onEmission.process({ emission: { value: this.promiseValue as T }, source: this });
       this.isAutoComplete.resolve(true);
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     }
   }
 
   private async resolvePromise(): Promise<void> {
     try {
-      this.value = await this.promise;
+      this.promiseValue = await this.promise;
       this.resolved = true;
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     }
   }
 }

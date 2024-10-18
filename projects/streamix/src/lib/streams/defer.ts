@@ -28,11 +28,11 @@ export class DeferStream<T = any> extends Stream<T> {
       if (this.innerStream.shouldComplete()) {
         this.isAutoComplete.resolve(true);
       } else if(this.innerStream.isFailed()) {
-        await this.handleError(this.innerStream.isFailed());
+        await this.propagateError(this.innerStream.isFailed());
       }
 
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     } finally {
       await this.cleanupInnerStream();
     }

@@ -27,7 +27,7 @@ export class MergeStream<T = any> extends Stream<T> {
         this.isAutoComplete.resolve(true);
       }
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     } finally {
       await this.cleanup();
     }

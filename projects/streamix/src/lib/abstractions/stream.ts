@@ -19,6 +19,8 @@ export abstract class Stream<T = any> implements Subscribable {
   onError = hook();
   onEmission = hook();
 
+  currentValue: T | undefined;
+
   abstract run(): Promise<void>;
 
   shouldComplete() {
@@ -84,9 +86,10 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   subscribe(callback?: ((value: T) => void) | void): Subscription {
-    const boundCallback = callback === undefined
-      ? () => Promise.resolve()
-      : (value: T) => Promise.resolve(callback!(value));
+    const boundCallback = (value: T) => {
+      this.currentValue = value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+    };
 
     this.subscribers.chain(this, boundCallback);
 
@@ -129,8 +132,12 @@ export abstract class Stream<T = any> implements Subscribable {
     }
   }
 
-  async handleError(error: any): Promise<void> {
+  async propagateError(error: any): Promise<void> {
     this.isFailed.resolve(error);
     await this.onError.process({ emission: { isFailed: true, error }, source: this });
+  }
+
+  get value(): T | undefined {
+    return this.currentValue;
   }
 }
