@@ -6,8 +6,8 @@ describe('OfStream', () => {
     const ofStream = new OfStream(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = ofStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     ofStream.isStopped.then(() => {
@@ -35,8 +35,8 @@ describe('OfStream', () => {
     const ofStream = new OfStream(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = ofStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     subscription.unsubscribe();
@@ -49,8 +49,8 @@ describe('OfStream', () => {
     const ofStream = new OfStream(value);
 
     const emittedValues: any[] = [];
-    ofStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    ofStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     ofStream.complete();
