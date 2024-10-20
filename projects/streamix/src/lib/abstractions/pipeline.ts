@@ -70,10 +70,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     currentChunk.bindOperators(...chunkOperators);
 
     this.chunks.forEach((chunk) => {
-      chunk.operators.forEach(operator => {
-        operator.init(chunk.stream);
-        chunk.onError.chain(this, this.errorCallback);
-      });
+      chunk.onError.chain(this, this.errorCallback);
     });
 
     return this;
