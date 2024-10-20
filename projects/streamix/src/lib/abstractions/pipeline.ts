@@ -95,7 +95,8 @@ export function Pipeline<T = any>(stream: ReturnType<typeof Stream<T>>) {
   const pipeline = () => currentValue;
 
   pipeline.pipe = (...newOperators: Operator[]) => {
-    operators.push(...newOperators);
+    const pipeline = Pipeline<T>(firstChunk().stream);
+    pipeline.bindOperators(...operators, ...newOperators);
     return pipeline;
   };
 
@@ -118,6 +119,7 @@ export function Pipeline<T = any>(stream: ReturnType<typeof Stream<T>>) {
   pipeline.complete = complete;
 
   pipeline.subscribers = lastChunk().subscribers;
+  pipeline.bindOperators = bindOperators;
   pipeline.subscribe = subscribe;
 
   return pipeline;
