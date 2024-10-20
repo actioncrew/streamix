@@ -55,6 +55,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     operators.forEach(operator => {
       if (operator instanceof Operator) {
         operator = operator.clone();
+        operator.init(currentChunk.stream);
         chunkOperators.push(operator);
 
         if ('stream' in operator) {
