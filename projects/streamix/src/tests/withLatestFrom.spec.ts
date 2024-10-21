@@ -87,7 +87,7 @@ describe('withLatestFrom operator', () => {
 
     combinedStream.isStopped.then(() => {
       expect(results).toEqual([
-        [1, 'D'], // Other stream emits up to 'D', then main stream emits 1
+        [1, 'A'], // Other stream emits up to 'D', then main stream emits 1
         [2, 'D'], // Main stream emits 2, other stream still emits 'D'
         [3, 'D']  // Main stream emits 3, other stream still emits 'D'
       ]);

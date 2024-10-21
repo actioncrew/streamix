@@ -35,7 +35,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline<T>(this.stream).pipe(...this.operators, ...operators);
+    return new Pipeline<T>(this.stream.clone()).pipe(...this.operators, ...operators);
   }
 
   bindOperators(...operators: Operator[]): Subscribable<T> {

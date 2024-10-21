@@ -49,7 +49,7 @@ export abstract class Stream<T = any> implements Subscribable {
   startWithContext(context: any) {
     context.init();
 
-    if (this.isRunning() === false) {
+    if (!this.isRunning()) {
       this.isRunning.resolve(true);
 
       queueMicrotask(async () => {
@@ -107,7 +107,7 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline(this).pipe(...operators);
+    return new Pipeline(this.clone()).pipe(...operators);
   }
 
   async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
@@ -139,5 +139,31 @@ export abstract class Stream<T = any> implements Subscribable {
 
   get value(): T | undefined {
     return this.currentValue;
+  }
+
+  clone() {
+    // Create a new instance of the Stream class (assuming it's a class)
+    const clonedStream = Object.assign(Object.create(this), this);
+
+    // Clone each promisified property to ensure they are independent
+    clonedStream.isAutoComplete = promisified(this.isAutoComplete());
+    clonedStream.isStopRequested = promisified(this.isStopRequested());
+    clonedStream.isFailed = promisified(this.isFailed());
+    clonedStream.isStopped = promisified(this.isStopped());
+    clonedStream.isUnsubscribed = promisified(this.isUnsubscribed());
+    clonedStream.isRunning = promisified(this.isRunning());
+
+    // Clone hooks by creating new hook instances (this assumes `hook()` creates a new hook object)
+    clonedStream.subscribers = hook();
+    clonedStream.onStart = hook();
+    clonedStream.onComplete = hook();
+    clonedStream.onStop = hook();
+    clonedStream.onError = hook();
+    clonedStream.onEmission = hook();
+
+    // If hooks have specific subscribers or behaviors, copy them over if needed.
+    // Be careful with hooks that might hold references to functions or objects you don’t want to share.
+
+    return clonedStream;
   }
 }

@@ -7,6 +7,7 @@ export class WithLatestFromOperator extends Operator {
   private latestValues!: ReturnType<typeof asyncValue<any>>[];
   private handleEmissionFns!: Array<(event: { emission: Emission; source: Subscribable }) => void>;
   private input!: Stream;
+  private started!: boolean;
 
   constructor(...streams: Subscribable[]) {
     super();
@@ -17,8 +18,9 @@ export class WithLatestFromOperator extends Operator {
     this.latestValues = [];
     this.handleEmissionFns = [];
     this.input = stream;
+    this.started = false;
 
-    this.streams.forEach((stream, index) => {
+    this.streams.forEach((source, index) => {
       const latestValue = asyncValue();
       this.latestValues.push(latestValue);
 
@@ -27,8 +29,7 @@ export class WithLatestFromOperator extends Operator {
         latestValue.set(emission.value);
       });
 
-      stream.onEmission.chain(this, this.handleEmissionFns[index]);
-      stream.start(); // Start the stream
+      source.onEmission.chain(this, this.handleEmissionFns[index]);
     });
 
     // Cleanup on stream termination
@@ -49,8 +50,13 @@ export class WithLatestFromOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
+    if(!this.started) {
+      this.started = true;
+      this.streams.forEach(source => source.start());
+    }
+
     if(stream.shouldComplete()) {
-      await Promise.all(this.streams.map(stream => stream.complete()));
+      await Promise.all(this.streams.map(source => source.complete()));
     }
 
     const latestValuesPromise = Promise.all(this.latestValues.map(async (value) => await value()));
@@ -68,7 +74,6 @@ export class WithLatestFromOperator extends Operator {
       emission.error = new Error("Some streams are completed without emitting value.");
       this.finalize();
     }
-
     return emission;
   }
 }

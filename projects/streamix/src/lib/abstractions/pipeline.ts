@@ -11,7 +11,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private onPipelineError: HookType;
   private currentValue: T | undefined;
 
-  constructor(stream: Stream<T>) {
+  constructor(public stream: Stream<T>) {
     const chunk = new Chunk(stream);
     this.chunks.push(chunk);
     this.onPipelineError = hook();
@@ -77,7 +77,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline<T>(this.first).bindOperators(...this.operators, ...operators)
+    return new Pipeline<T>(this.stream.clone()).bindOperators(...this.operators, ...operators)
   }
 
   get isAutoComplete(): PromisifiedType<boolean> {

@@ -55,7 +55,7 @@ export function hook(): HookType {
     const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     const wrapper = async (params?: any) => {
-      await callback(params);
+      await callback.call(owner, params);
       remove.call(this, owner, wrapper);
     };
 
