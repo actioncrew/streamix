@@ -161,7 +161,7 @@ export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
     const originalSubscription = originalSubscribe(observer);
     subscribers++;
     return {
-      unsubscribe: () => {
+      unsubscribe: async () => {
         originalSubscription.unsubscribe();
         if(--subscribers === 0) {
           subscription.unsubscribe();
