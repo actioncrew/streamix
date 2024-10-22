@@ -1,124 +1,118 @@
-import { Operator, StreamOperator, Subscribable, Emission } from '../abstractions';
+// concatMap.ts
+import { Subscribable, Emission, createOperator } from '../abstractions';
 import { CounterType, Subject, counter } from '../../lib';
 
-export class ConcatMapOperator extends Operator implements StreamOperator {
-  private innerStream!: Subscribable | null;
-  private processingPromise!: Promise<void> | null;
+export const concatMap = (project: (value: any) => Subscribable) => {
+  let innerStream: Subscribable | null = null;
+  let processingPromise: Promise<void> | null = null;
 
-  private queue!: Emission[];
-  private input!: Subscribable;
-  private output!: Subject;
-  private emissionNumber!: number;
-  private executionNumber!: CounterType;
-  private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
-  private isFinalizing!: boolean;
+  let queue: Emission[] = [];
+  let emissionNumber: number = 0;
+  let executionNumber: CounterType = counter(0);
+  let isFinalizing: boolean = false;
 
-  constructor(private readonly project: (value: any) => Subscribable) {
-    super();
-    this.project = project;
-  }
+  const output = new Subject();
 
-  override init(stream: Subscribable) {
-    this.innerStream = null;
-    this.handleInnerEmission = null;
-    this.queue = [];
-    this.input = stream;
-    this.output = new Subject();
-    this.emissionNumber = 0;
-    this.executionNumber = counter(0);
-    this.processingPromise = null;
-    this.isFinalizing = false;
-    this.input.onStop.once(() => this.executionNumber.waitFor(this.emissionNumber).then(() => this.finalize()));
-    this.output.onStop.once(() => this.finalize());
-  }
+  const init = (input: Subscribable) => {
+    input.onStop.once(() => {
+      executionNumber.waitFor(emissionNumber).then(finalize);
+    });
+    output.onStop.once(finalize);
+  };
 
-  get stream() {
-    return this.output;
-  }
+  // Declare handleInnerEmission here to make it visible in the closure
+  const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
+    await output.next(innerEmission.value); // Emit the inner emission
+  };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    this.emissionNumber++;
-    this.queue.push(emission);
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    emissionNumber++;
+    queue.push(emission);
 
     // Ensure processing continues if not already in progress
-    this.processingPromise = this.processingPromise || this.processQueue();
-    await this.processingPromise;
-    this.processingPromise = null;
+    processingPromise = processingPromise || processQueue();
+    await processingPromise;
+    processingPromise = null;
 
-    emission.isPhantom = true;
-    return emission;
-  }
+    emission.isPhantom = true; // Mark as phantom emission
+    return emission; // Return the original emission
+  };
 
-  private async processQueue(): Promise<void> {
-    while (this.queue.length > 0 && !this.innerStream) {
-      const nextEmission = this.queue.shift();
-      if (nextEmission && this.output) {
-        await this.processEmission(nextEmission, this.output);
+  const processQueue = async (): Promise<void> => {
+    while (queue.length > 0 && !innerStream) {
+      const nextEmission = queue.shift(); // Get the next emission from the queue
+      if (nextEmission) {
+        await processEmission(nextEmission, output); // Process the emission
       }
     }
-  }
+  };
 
-  private async processEmission(emission: Emission, stream: Subject): Promise<void> {
-    this.innerStream = this.project(emission.value);
-    await this.handleInnerStream(emission, stream);
-  }
+  const processEmission = async (emission: Emission, stream: Subject): Promise<void> => {
+    innerStream = project(emission.value); // Create inner stream using the provided project function
+    await handleInnerStream(emission, stream); // Handle the inner stream
+  };
 
-  private async handleInnerStream(emission: Emission, stream: Subject): Promise<void> {
+  const handleInnerStream = async (emission: Emission, stream: Subject): Promise<void> => {
     return new Promise<void>((resolve) => {
       const handleCompletion = async () => {
-        if (this.innerStream && this.handleInnerEmission) {
-          this.innerStream.onEmission.remove(this, this.handleInnerEmission);
+        if (innerStream) {
+          innerStream.onEmission.remove(handleInnerEmission); // Clean up inner stream subscription
         }
-        this.innerStream = null;
-        this.handleInnerEmission = null;
-        this.executionNumber.increment();
+        innerStream = null; // Clear inner stream reference
+        executionNumber.increment(); // Increment execution count
 
-        resolve();
+        resolve(); // Resolve the promise when done
         // Continue processing the queue
-        await this.processQueue();
+        await processQueue();
       };
 
-      // This will handle emissions from the inner stream
-      this.handleInnerEmission = async ({ emission: innerEmission }) => {
-        await stream.next(innerEmission.value);
-      };
-
-      // Subscribe to inner stream emissions
-      this.innerStream!.onEmission.chain(this, this.handleInnerEmission);
+      innerStream!.onEmission.chain(handleInnerEmission); // Subscribe to emissions from the inner stream
 
       // Handle errors from the inner stream
-      this.innerStream!.onError.once((error: any) => this.handleStreamError(emission, error, handleCompletion));
+      innerStream!.onError.once((error: any) => {
+        handleStreamError(emission, error, handleCompletion);
+      });
 
-      // Ensure the inner stream is not stopped before processing
-      this.innerStream!.onStop.once(() => handleCompletion());
-
-      // Start the inner stream
-      this.innerStream!.start();
+      // Ensure inner stream completion is handled
+      innerStream!.onStop.once(() => handleCompletion());
+      innerStream!.start(); // Start the inner stream
     });
-  }
+  };
 
-  private handleStreamError(emission: Emission, error: any, callback: () => void) {
+  const handleStreamError = (emission: Emission, error: any, callback: () => void) => {
     emission.error = error;
     emission.isFailed = true;
-    this.stopStreams(this.input, this.output);
-    callback();
-  }
+    stopStreams(innerStream, output); // Stop the streams
+    callback(); // Call the callback to complete the inner stream handling
+  };
 
-  async finalize() {
-    if (this.isFinalizing) { return; }
-    this.isFinalizing = true;
+  const finalize = async () => {
+    if (isFinalizing) { return; }
+    isFinalizing = true;
 
-    if (this.innerStream && this.handleInnerEmission) {
-      this.innerStream.onEmission.remove(this, this.handleInnerEmission);
+    if (innerStream) {
+      innerStream.onEmission.remove(handleInnerEmission); // Clean up inner stream subscription
     }
-    await this.stopStreams(this.innerStream, this.input, this.output);
-    this.innerStream = null;
-    this.handleInnerEmission = null;
-  }
+    await stopStreams(innerStream, output); // Stop relevant streams
+    innerStream = null; // Clear inner stream reference
+  };
 
-  private async stopStreams(...streams: (Subscribable | null | undefined)[]) {
+  const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {
     await Promise.all(streams.filter(stream => stream?.isRunning).map(stream => stream!.complete()));
-  }
-}
+  };
 
-export const concatMap = (project: (value: any) => Subscribable) => new ConcatMapOperator(project);
+  const operator = createOperator(handle) as any;
+  operator.init = init;
+  operator.handleInnerEmission = handleInnerEmission;
+  operator.processQueue = processQueue;
+  operator.processEmission = processEmission;
+  operator.handleInnerStream = handleInnerStream;
+
+  operator.handleStreamError = handleStreamError;
+  operator.finalize = finalize;
+  operator.stopStreams = stopStreams;
+
+  operator.stream = output;
+
+  return operator;
+};
