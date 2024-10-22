@@ -7,15 +7,7 @@ export class BehaviorSubject<T = any> extends Subject<T> {
   constructor(private readonly initialValue: T) {
     super();
     this.latestValue = initialValue;
-
-    // Ensure the initial value is processed once the stream starts
-    queueMicrotask(() => {
-      if (this.isRunning()) {
-        this.processEmission(this.initialValue);
-      } else {
-        this.buffer.push(this.initialValue); // Buffer the initial value if not running yet
-      }
-    });
+    this.buffer.push(this.initialValue); // Buffer the initial value if not running yet
   }
 
   // Override the next method to update the latest value and emit it
