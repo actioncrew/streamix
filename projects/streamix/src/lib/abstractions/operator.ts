@@ -20,32 +20,32 @@ export type Operator = {
 
 // Assuming OperatorType has a certain structure, we can use type guards
 export function isOperatorType(obj: any): obj is Operator {
-  return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.stream === 'object';
+  return obj && typeof obj === 'object' && typeof obj.handle === 'function';
 }
 
 export const createOperator = (handleFn: (emission: Emission, stream: Subscribable) => Promise<Emission>): Operator => {
-  const operator: Operator = {
+  let operator: Operator = {
     next: undefined,
 
-    init: (stream: Stream) => {
+    init: function(stream: Stream) {
       // Initialization logic can be added here
       console.log('Operator initialized with stream:', stream);
     },
 
-    cleanup: async () => {
+    cleanup: async function() {
       // Cleanup logic can be added here
       console.log('Cleaning up operator');
     },
 
-    process: async (emission: Emission, chunk: Chunk): Promise<Emission> => {
+    process: async function (emission: Emission, chunk: Chunk): Promise<Emission> {
       try {
         const actualStream = chunk.stream;
         // Handle the emission with the provided handle function
         emission = await handleFn(emission, actualStream);
 
         // If there's a next operator and the emission is valid, pass it to the next operator
-        if (operator.next && !emission.isPhantom && !emission.isFailed) {
-          return operator.next.process(emission, chunk);
+        if (this.next && !emission.isPhantom && !emission.isFailed) {
+          return this.next.process(emission, chunk);
         } else {
           return emission; // Return the processed emission
         }
