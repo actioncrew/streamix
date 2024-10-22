@@ -1,11 +1,11 @@
 import { Stream } from '../abstractions';
-import { CoroutineOperator } from '../operators';
+import { coroutine } from '../operators';
 
 
 export class ComputeStream extends Stream {
   private promise!: Promise<void>;
 
-  constructor(private readonly task: CoroutineOperator, private readonly params: any) {
+  constructor(private readonly task: ReturnType<typeof coroutine>, private readonly params: any) {
     super();
   }
 
@@ -49,4 +49,4 @@ export class ComputeStream extends Stream {
   }
 }
 
-export const compute = (task: CoroutineOperator, params: any) => new ComputeStream(task, params);
+export const compute = (task: ReturnType<typeof coroutine>, params: any) => new ComputeStream(task, params);

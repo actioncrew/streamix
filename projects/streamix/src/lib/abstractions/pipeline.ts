@@ -1,13 +1,13 @@
 import { Chunk, Stream } from '../abstractions';
 import { Subject } from '../';
 import { hook, HookType, PromisifiedType } from '../utils';
-import { OperatorType } from './operator';
+import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
 export class Pipeline<T = any> implements Subscribable<T> {
   private chunks: Chunk<T>[] = [];
-  private operators: OperatorType[] = [];
+  private operators: Operator[] = [];
   private onPipelineError: HookType;
   private currentValue: T | undefined;
 
@@ -47,10 +47,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
     await this.onPipelineError.process(error);
   }
 
-  private bindOperators(...operators: OperatorType[]): Subscribable<T> {
+  private bindOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = operators;
     let currentChunk = this.first;
-    let chunkOperators: OperatorType[] = [];
+    let chunkOperators: Operator[] = [];
 
     operators.forEach(operator => {
       operator = operator.clone();
@@ -74,7 +74,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this;
   }
 
-  pipe(...operators: OperatorType[]): Subscribable<T> {
+  pipe(...operators: Operator[]): Subscribable<T> {
     return new Pipeline<T>(this.stream.clone()).bindOperators(...this.operators, ...operators)
   }
 

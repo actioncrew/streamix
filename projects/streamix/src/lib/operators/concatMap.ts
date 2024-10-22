@@ -102,16 +102,8 @@ export const concatMap = (project: (value: any) => Subscribable) => {
   };
 
   const operator = createOperator(handle) as any;
+  operator.name = 'concatMap';
   operator.init = init;
-  operator.handleInnerEmission = handleInnerEmission;
-  operator.processQueue = processQueue;
-  operator.processEmission = processEmission;
-  operator.handleInnerStream = handleInnerStream;
-
-  operator.handleStreamError = handleStreamError;
-  operator.finalize = finalize;
-  operator.stopStreams = stopStreams;
-
   operator.stream = output;
 
   return operator;

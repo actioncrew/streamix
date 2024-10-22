@@ -1,16 +1,14 @@
 import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
+import { createOperator, Operator } from '../abstractions/operator';
 
-export class MapOperator extends Operator {
-  constructor(private readonly transform: (value: any) => any) {
-    super();
-  }
+export const map = (transform: (value: any) => any) => {
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    const value = transform(emission.value); // Transform the emission value
+    return { value }; // Return the modified emission
+  };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    emission.value = this.transform(emission.value);
-    return emission;
-  }
-}
-
-export const map = (transform: (value: any) => any) => new MapOperator(transform);
+  const operator = createOperator(handle); // Create the operator using createOperator
+  operator.name = 'map';
+  return operator; // Return the created operator
+};
