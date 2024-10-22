@@ -12,11 +12,11 @@ class MockStream extends Stream {
   }
 
   async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+    while (this.index < this.values.length && !this.isStopRequested) {
       await this.onEmission.process({emission:{ value: this.values[this.index] }, source: this});
       this.index++;
     }
-    this.isAutoComplete.resolve(true);
+    this.isAutoComplete = true;
 
   }
 }
@@ -34,7 +34,7 @@ describe('iif operator', () => {
       result.push(value);
     });
 
-    operator.isStopped.then(() => {
+    operator.onStop.once(() => {
       expect(result).toEqual([10, 20, 30]);
       subscription.unsubscribe();
       done();
@@ -53,7 +53,7 @@ describe('iif operator', () => {
       result.push(value);
     });
 
-    operator.isStopped.then(() => {
+    operator.onStop.once(() => {
       expect(result).toEqual([1, 2, 3]);
       subscription.unsubscribe();
       done();

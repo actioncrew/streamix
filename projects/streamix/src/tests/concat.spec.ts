@@ -16,7 +16,7 @@ class MockStream extends Stream {
       await this.onEmission.process({emission:{ value }, source:this});
     }
 
-    this.isAutoComplete.resolve(true);
+    this.isAutoComplete = true;
   }
 }
 
@@ -32,7 +32,7 @@ describe('ConcatStream', () => {
       emittedValues.push(value);
     });
 
-    concatStream.isStopped.then(() => {
+    concatStream.onStop.once(() => {
       expect(emittedValues).toEqual([
         'source1_value1',
         'source1_value2',
@@ -73,7 +73,7 @@ describe('ConcatStream', () => {
     const subscription = concatStream.subscribe(() => {});
 
     let isCompleted = false;
-    concatStream.isStopped.then(() => {
+    concatStream.onStop.once(() => {
       isCompleted = true;
       expect(isCompleted).toBe(true);
       subscription.unsubscribe();

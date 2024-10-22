@@ -1,5 +1,5 @@
 export type PromisifiedType<T> = ReturnType<typeof promisified<T>>;
-export function promisified<T>(initialValue: T) {
+export function promisified<T>(initialValue?: T) {
   let _value = initialValue;
   let _default = initialValue;
   let _resolve!: (value: T) => void;

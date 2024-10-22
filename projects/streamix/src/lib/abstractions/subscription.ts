@@ -1,3 +1,3 @@
 export interface Subscription {
-  unsubscribe(): void;
+  unsubscribe(): Promise<void>;
 }

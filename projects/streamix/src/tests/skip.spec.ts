@@ -13,7 +13,7 @@ class MockStream extends Stream {
 
   async run(): Promise<void> {
 
-    while (this.index < this.values.length && !this.isStopRequested()) {
+    while (this.index < this.values.length && !this.isStopRequested) {
       let emission = { value: this.values[this.index] } as Emission;
       await this.onEmission.process({emission, source: this});
 
@@ -23,8 +23,8 @@ class MockStream extends Stream {
 
       this.index++;
     }
-    if (!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+    if (!this.isStopRequested) {
+      this.isAutoComplete = true;
     }
   }
 }
@@ -42,7 +42,7 @@ describe('skip operator', () => {
       results.push(value);
     });
 
-    skippedStream.isStopped.then(() => {
+    skippedStream.onStop.once(() => {
       expect(results).toEqual([4, 5]); // Should skip the first 3 values and emit [4, 5]
       done();
     });
@@ -60,7 +60,7 @@ describe('skip operator', () => {
       results.push(value);
     });
 
-    skippedStream.isStopped.then(() => {
+    skippedStream.onStop.once(() => {
       expect(results).toEqual([]); // Should skip all values, resulting in an empty array
       done();
     });
@@ -78,7 +78,7 @@ describe('skip operator', () => {
       results.push(value);
     });
 
-    skippedStream.isStopped.then(() => {
+    skippedStream.onStop.once(() => {
       expect(results).toEqual([1, 2, 3]); // Should emit all values without skipping
       done();
     });

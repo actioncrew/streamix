@@ -1,16 +1,12 @@
-import { Emission, Operator, Subscription, Stream, Pipeline } from '../abstractions';
+import { Emission, Operator, Subscription } from '../abstractions';
 import { HookType, PromisifiedType } from '../utils';
 
 export interface Subscribable<T = any> {
-  (): T | undefined;
+  isAutoComplete: boolean;
+  isStopRequested: boolean;
 
-  isAutoComplete: PromisifiedType<boolean>;
-  isStopRequested: PromisifiedType<boolean>;
-
-  isFailed: PromisifiedType<any>;
-  isStopped: PromisifiedType<boolean>;
-  isUnsubscribed: PromisifiedType<boolean>;
-  isRunning: PromisifiedType<boolean>;
+  isStopped: boolean;
+  isRunning: boolean;
 
   subscribers: HookType;
   onStart: HookType;
@@ -25,7 +21,7 @@ export interface Subscribable<T = any> {
   awaitCompletion(): Promise<void>;
   complete(): Promise<void>;
 
-  subscribe(callback?: ((value: T) => void) | void): Subscription;
+  subscribe(callback?: (value: T) => any): Subscription;
 
-  pipe(...operators: Operator[]): ReturnType<typeof Pipeline<T>>;
+  pipe(...operators: Operator[]): Subscribable<T>;
 }

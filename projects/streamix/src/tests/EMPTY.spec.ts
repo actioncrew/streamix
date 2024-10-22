@@ -9,12 +9,12 @@ describe('EmptyStream', () => {
       emittedValues.push(value);
     });
 
-    emptyStream.isStopped.then(() => {
+    emptyStream.onStop.once(() => {
       // Ensure no values were emitted
       expect(emittedValues).toHaveLength(0);
 
       // Ensure the stream is auto-completed
-      expect(emptyStream.isAutoComplete()).toBe(true);
+      expect(emptyStream.isAutoComplete).toBe(true);
 
       subscription.unsubscribe();
     })
@@ -28,12 +28,12 @@ describe('EMPTY constant', () => {
       emittedValues.push(value);
     });
 
-    EMPTY.isStopped.then(() => {
+    EMPTY.onStop.once(() => {
       // Ensure no values were emitted
       expect(emittedValues).toHaveLength(0);
 
       // Ensure the stream is auto-completed
-      expect(EMPTY.isAutoComplete()).toBe(true);
+      expect(EMPTY.isAutoComplete).toBe(true);
 
       subscription.unsubscribe();
     })

@@ -22,7 +22,7 @@ export class RangeStream<T = any> extends Stream<T> {
         this.current += this.step;
       }
       if (this.current >= this.endValue && !this.shouldComplete()) {
-        this.isAutoComplete.resolve(true);
+        this.isAutoComplete = true;
       }
     } catch (error) {
       await this.propagateError(error);

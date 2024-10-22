@@ -2,10 +2,11 @@
 export interface HookType {
   process(params?: any): Promise<void>;
   parallel(params?: any): Promise<void>;
-  chain(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType;
-  remove(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType;
+  chain(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType;
+  once(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType;
+  remove(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType;
   clear(this: HookType): HookType;
-  contains(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): boolean;
+  contains(this: HookType, ownerOrCallback: object | Function, callback?: Function): boolean;
   length: number;
 }
 
@@ -40,8 +41,9 @@ export function hook(): HookType {
     await Promise.all(promises);
   }
 
-  function chain(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType {
-    const ownerRef = new WeakRef(owner);
+  function chain(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
+    const ownerRef = new WeakRef(ownerOrCallback instanceof Function ? this : ownerOrCallback);
+    callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     if (!callbackMap.has(ownerRef)) {
       callbackMap.set(ownerRef, new Set());
     }
@@ -49,7 +51,20 @@ export function hook(): HookType {
     return this;
   }
 
-  function remove(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): HookType {
+  function once(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
+    const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
+    callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
+    const wrapper = async (params?: any) => {
+      await callback.call(owner, params);
+      remove.call(this, owner, wrapper);
+    };
+
+    return chain.call(this, owner, wrapper);
+  }
+
+  function remove(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
+    const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
+    callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     for (const [ownerRef, callbacks] of callbackMap) {
       if (ownerRef.deref() === owner) {
         callbacks.delete(callback);
@@ -62,7 +77,9 @@ export function hook(): HookType {
     return this;
   }
 
-  function contains(this: HookType, owner: object, callback: (params?: any) => void | Promise<void>): boolean {
+  function contains(this: HookType, ownerOrCallback: object | Function, callback?: Function): boolean {
+    const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
+    callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     for (const [ownerRef, callbacks] of callbackMap) {
       if (ownerRef.deref() === owner) {
         return callbacks.has(callback);
@@ -80,6 +97,7 @@ export function hook(): HookType {
     process,
     parallel,
     chain,
+    once,
     remove,
     clear,
     contains,

@@ -1,86 +1,119 @@
 import { Pipeline, Stream } from '../abstractions';
-import { hook } from '../utils';
+import { hook, PromisifiedType } from '../utils';
 import { Emission } from './emission';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
 
-export function Chunk<T = any>(stream: ReturnType<typeof Stream<T>>) {
-  let operators: Operator[] = [];
-  let head: Operator | undefined;
-  let tail: Operator | undefined;
+export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
+  operators: Operator[] = [];
+  head: Operator | undefined;
+  tail: Operator | undefined;
 
-  const onEmission = hook();
-  const subscribers = hook();
-  let currentValue: T | undefined;
+  constructor(public stream: Stream<T>) {
+    super();
+    Object.assign(this, stream);
+    this.subscribers = hook();
+    this.onEmission = hook();
+  }
 
-  const init = () => {
-    if (!stream.onEmission.contains(chunk, emit)) {
-      stream.onEmission.chain(chunk, emit);
+  override get isAutoComplete() {
+    return this.stream.isAutoComplete;
+  }
+
+  override set isAutoComplete(value: boolean) {
+    this.stream.isAutoComplete = value;
+  }
+
+  override get isStopRequested() {
+    return this.stream.isStopRequested;
+  }
+
+  override set isStopRequested(value: boolean) {
+    this.stream.isStopRequested = value;
+  }
+
+  override get isRunning() {
+    return this.stream.isRunning;
+  }
+
+  override set isRunning(value: boolean) {
+    this.stream.isRunning = value;
+  }
+
+  override get isStopped() {
+    return this.stream.isStopped;
+  }
+
+  override set isStopped(value: boolean) {
+    this.stream.isStopped = value;
+  }
+
+  override init() {
+    if (!this.stream.onEmission.contains(this, this.emit)) {
+      this.stream.onEmission.chain(this, this.emit);
     }
-  };
+  }
 
-  const startWithContext = (context: any) => {
-    context.init();
-    return stream.startWithContext(context);
-  };
+  override start() {
+    return this.stream.startWithContext(this);
+  }
 
-  const cleanup = async () => {
-    stream.onEmission.remove(chunk, emit);
-  };
+  override async cleanup() {
+    this.stream.onEmission.remove(this, this.emit);
+  }
 
-  const run = (): Promise<void> => {
-    return stream.run();
-  };
+  override run(): Promise<void> {
+    return this.stream.run();
+  }
 
-  const pipe = (...ops: Operator[]): Subscribable<T> => {
-    return Pipeline<T>(stream).pipe(...operators, ...ops);
-  };
+  override pipe(...operators: Operator[]): Subscribable<T> {
+    return new Pipeline<T>(this.stream.clone()).pipe(...this.operators, ...operators);
+  }
 
-  const bindOperators = (...ops: Operator[]): Subscribable<T> => {
-    operators = [];
-    head = undefined;
-    tail = undefined;
+  bindOperators(...operators: Operator[]): Subscribable<T> {
+    this.operators = []; this.head = undefined; this.tail = undefined;
 
-    ops.forEach((operator, index) => {
+    operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
-        operators.push(operator);
+        this.operators.push(operator);
 
-        if (!head) {
-          head = operator;
+        if (!this.head) {
+          this.head = operator;
         } else {
-          tail!.next = operator;
+          this.tail!.next = operator;
         }
-        tail = operator;
+        this.tail = operator;
 
-        if ('stream' in operator && index !== ops.length - 1) {
-          throw new Error('Only the last operator in a chunk can contain outerStream property.');
+        if ('stream' in operator && index !== operators.length - 1) {
+          throw new Error("Only the last operator in a chunk can contain outerStream property.");
         }
       }
     });
 
-    return chunk;
-  };
+    return this;
+  }
 
-  const emit = async ({ emission, source }: { emission: Emission; source: any }): Promise<void> => {
+  override async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      let next = source instanceof Stream ? head : undefined;
-      next = source instanceof Operator ? source.next : next;
+      let next = (source instanceof Stream) ? this.head : undefined;
+      next = (source instanceof Operator) ? source.next : next;
 
-      if (emission.isFailed) {
+      if(emission.isFailed) {
         throw emission.error;
       }
 
-      if (!emission.isPhantom) {
-        emission = await (next?.process(emission, chunk) ?? Promise.resolve(emission));
+      if(!emission.isPhantom) {
+        // Process the emission with the next operator, if any
+        emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
       }
 
-      if (emission.isFailed) {
+      if(emission.isFailed) {
         throw emission.error;
       }
-
+      // If emission is valid, notify subscribers
       if (!emission.isPhantom) {
-        await onEmission.parallel({ emission, source: chunk });
-        await subscribers.parallel(emission.value);
+        await this.onEmission.parallel({ emission, source: this });
+        await this.subscribers.parallel(emission.value);
       }
 
       emission.isComplete = true;
@@ -88,49 +121,11 @@ export function Chunk<T = any>(stream: ReturnType<typeof Stream<T>>) {
       emission.isFailed = true;
       emission.error = error;
 
-      stream.isFailed.resolve(error);
-      if (stream.onError.length > 0) {
-        await stream.onError.process({ error });
-      }
+      await this.onError.process({ error });
     }
-  };
+  }
 
-  // The chunk function that returns the current value
-  const chunk = () => currentValue;
-
-  // Attach properties and methods
-  chunk.stream = stream;
-  chunk.operators = operators;
-  chunk.head = head;
-  chunk.tail = tail;
-  chunk.onEmission = onEmission;
-  chunk.subscribers = subscribers;
-
-  chunk.isAutoComplete = stream.isAutoComplete;
-  chunk.isStopRequested = stream.isStopRequested;
-  chunk.isFailed = stream.isFailed;
-  chunk.isStopped = stream.isStopped;
-  chunk.isUnsubscribed = stream.isUnsubscribed;
-  chunk.isRunning = stream.isRunning;
-  chunk.subscribers = subscribers;
-  chunk.onStart = stream.onStart;
-  chunk.onComplete = stream.onComplete;
-  chunk.onStop = stream.onStop;
-  chunk.onError = stream.onError;
-  chunk.onEmission = onEmission;
-
-  chunk.init = init;
-  chunk.start = () => stream.startWithContext(chunk);
-  chunk.shouldComplete = stream.shouldComplete;
-  chunk.awaitCompletion = stream.awaitCompletion;
-  chunk.complete = stream.complete;
-  chunk.subscribe = stream.subscribe;
-  chunk.startWithContext = startWithContext;
-  chunk.cleanup = cleanup;
-  chunk.run = run;
-  chunk.pipe = pipe;
-  chunk.bindOperators = bindOperators;
-  chunk.emit = emit;
-
-  return chunk;
+  override get value() {
+    return this.stream.currentValue;
+  }
 }

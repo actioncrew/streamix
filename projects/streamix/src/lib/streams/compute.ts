@@ -15,7 +15,7 @@ export class ComputeStream extends Stream {
     try {
       this.promise = new Promise<void>(async (resolve, reject) => {
         terminateResolve = () => resolve();
-        if (this.isRunning()) {
+        if (this.isRunning) {
           const worker = await this.task.getIdleWorker();
           worker.postMessage(this.params);
           worker.onmessage = async (event: any) => {

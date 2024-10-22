@@ -17,17 +17,17 @@ class MockStream extends Stream {
 
   async run(): Promise<void> {
     if (this.failed && this.error) {
-      this.isFailed.resolve(this.error);
+      this.onError.process({error: this.error});
       return;
     }
 
     for (const emission of this.emissions) {
-      if (this.isStopRequested()) return;
+      if (this.isStopRequested) return;
       await this.onEmission.process({emission, source: this});
     }
 
     if (this.completed) {
-      this.isAutoComplete.resolve(true);
+      this.isAutoComplete = true;
     }
   }
 }
@@ -45,7 +45,7 @@ describe('DeferStream', () => {
       collectedEmissions.push(value);
     });
 
-    deferStream.isStopped.then(() => {
+    deferStream.onStop.once(() => {
       expect(factory).toHaveBeenCalled(); // Check if factory was called
       expect(collectedEmissions).toHaveLength(3); // Verify all emissions are collected
       expect(collectedEmissions).toEqual([1, 2, 3]); // Check emission values
@@ -55,19 +55,17 @@ describe('DeferStream', () => {
     });
   });
 
-  it('should handle stream completion', async () => {
+  it('should handle stream completion', (done) => {
     const factory = jest.fn(() => new MockStream([], true));
 
     const deferStream = defer(factory);
 
-    const completion = new Promise<void>((resolve) => {
-      deferStream.isAutoComplete.then(() => resolve());
-    });
+    deferStream.subscribe();
 
-    await deferStream.run();
-
-    expect(factory).toHaveBeenCalled();
-    await completion; // Ensure the stream completes
+    deferStream.onStop.once(() => {
+      expect(factory).toHaveBeenCalled();
+      done();
+    })
   });
 
   it('should handle stream errors', async () => {
@@ -84,8 +82,8 @@ describe('DeferStream', () => {
       deferStream.onError.chain(deferStream, (deferStream as any).callback);
     });
 
-    deferStream.start();
-    deferStream.isRunning.then(async () => {
+    deferStream.subscribe();
+    deferStream.onStop.once(async () => {
       expect(factory).toHaveBeenCalled();
       await failure; // Ensure the error is properly handled
     })
