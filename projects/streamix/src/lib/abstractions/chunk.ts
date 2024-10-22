@@ -124,4 +124,8 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
       await this.onError.process({ error });
     }
   }
+
+  override get value() {
+    return this.stream.currentValue;
+  }
 }
