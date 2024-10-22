@@ -1,4 +1,4 @@
-import { concatMap, ConcatMapOperator, from, of, Stream } from '../lib';
+import { concatMap, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
 
@@ -13,7 +13,7 @@ describe('ConcatMapOperator', () => {
   });
 
   it('should handle empty stream', async () => {
-    const operator = new ConcatMapOperator(project);
+    const operator = concatMap(project);
     operator.init(mockStream);
 
     const request = { value: null, isPhantom: false };
@@ -24,7 +24,7 @@ describe('ConcatMapOperator', () => {
   });
 
   it('should handle cancelled stream', async () => {
-    const operator = new ConcatMapOperator(project);
+    const operator = concatMap(project);
     operator.init(mockStream);
 
     const request = { value: 'data', isPhantom: true };
@@ -34,7 +34,7 @@ describe('ConcatMapOperator', () => {
   });
 
   it('should project value and subscribe to inner stream (integration test)', async () => {
-    const operator = new ConcatMapOperator(project);
+    const operator = concatMap(project);
     operator.init(mockStream);
 
     const request = { value: 'data', isPhantom: false };
@@ -45,7 +45,7 @@ describe('ConcatMapOperator', () => {
   });
 
   it('should handle multiple emissions sequentially', async () => {
-    const operator = new ConcatMapOperator(project);
+    const operator = concatMap(project);
     operator.init(mockStream);
 
     const requests = [
@@ -66,7 +66,7 @@ describe('ConcatMapOperator', () => {
     const errorProject = (value: any) => {
       return new ErrorInnerStream(value); // Replace with your error inner stream implementation
     };
-    const operator = new ConcatMapOperator(errorProject);
+    const operator = concatMap(errorProject);
     operator.init(mockStream);
 
     const request = { value: 'data', isPhantom: false };
@@ -90,7 +90,7 @@ describe('ConcatMapOperator', () => {
     let processedOrder: any[] = [];
     const mockStream$ = from(emissions).pipe(concatMap(value => of(value)));
 
-    mockStream$.subscribe((value) => {
+    mockStream$.subscribe((value: any) => {
       processedOrder.push(value);
     });
 
@@ -119,12 +119,12 @@ describe('ConcatMapOperator', () => {
 
     const results: any[] = [];
 
-    const operator = new ConcatMapOperator(projectFunction);
+    const operator = concatMap(projectFunction);
     operator.init(mockStream);
 
     const mockStream$ = from(outerEmissions).pipe(operator);
 
-    mockStream$.subscribe((value) => {
+    mockStream$.subscribe((value: any) => {
       results.push(value)
     });
 
