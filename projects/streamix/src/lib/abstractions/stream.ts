@@ -9,7 +9,7 @@ export abstract class Stream<T = any> implements Subscribable {
   isFailed = promisified<any>(undefined);
   isStopped = promisified<boolean>(false);
   isUnsubscribed = promisified<boolean>(false);
-  isRunning = promisified<boolean>(false);
+  isRunning = false;
 
   subscribers = hook();
 
@@ -49,8 +49,8 @@ export abstract class Stream<T = any> implements Subscribable {
   startWithContext(context: any) {
     context.init();
 
-    if (!this.isRunning()) {
-      this.isRunning.resolve(true);
+    if (!this.isRunning) {
+      this.isRunning = true;
 
       queueMicrotask(async () => {
         try {
@@ -73,7 +73,7 @@ export abstract class Stream<T = any> implements Subscribable {
           await this.onStop.process();
 
           this.isStopped.resolve(true);
-          this.isRunning.reset();
+          this.isRunning = false;
 
           await context.cleanup();
         }
@@ -151,7 +151,7 @@ export abstract class Stream<T = any> implements Subscribable {
     clonedStream.isFailed = promisified(this.isFailed());
     clonedStream.isStopped = promisified(this.isStopped());
     clonedStream.isUnsubscribed = promisified(this.isUnsubscribed());
-    clonedStream.isRunning = promisified(this.isRunning());
+    clonedStream.isRunning = this.isRunning;
 
     // Clone hooks by creating new hook instances (this assumes `hook()` creates a new hook object)
     clonedStream.subscribers = hook();

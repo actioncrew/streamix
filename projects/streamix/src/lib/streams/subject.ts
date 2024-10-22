@@ -28,7 +28,7 @@ export class Subject<T = any> extends Stream<T> {
     }
 
     // If the stream is not running yet, buffer the value
-    if (!this.isRunning()) {
+    if (!this.isRunning) {
       this.buffer.push(value!);
     } else {
       // If running, enqueue the emission for sequential processing

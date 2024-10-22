@@ -18,7 +18,7 @@ export class FromEventStream<T = any> extends Stream<T> {
   override startWithContext(context: any) {
     if(!this.listener) {
       this.listener = async (event: Event) => {
-        if (this.isRunning()) {
+        if (this.isRunning) {
           this.eventCounter.increment();
           await this.onEmission.process({ emission: { value: event }, source: this });
           this.eventCounter.decrement();

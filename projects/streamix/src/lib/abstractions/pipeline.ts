@@ -100,7 +100,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.isUnsubscribed;
   }
 
-  get isRunning(): PromisifiedType<boolean> {
+  get isRunning(): boolean {
     return this.last.isRunning;
   }
 

@@ -8,7 +8,7 @@ export interface Subscribable<T = any> {
   isFailed: PromisifiedType<any>;
   isStopped: PromisifiedType<boolean>;
   isUnsubscribed: PromisifiedType<boolean>;
-  isRunning: PromisifiedType<boolean>;
+  isRunning: boolean;
 
   subscribers: HookType;
   onStart: HookType;
