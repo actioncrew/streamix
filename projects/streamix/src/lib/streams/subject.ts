@@ -3,23 +3,20 @@ import { Stream } from '../../lib';
 export class Subject<T = any> extends Stream<T> {
   protected emissionAvailable = Promise.resolve();
   private buffer: T[] = [];
+  private processing = false;  // Tracks if we're currently processing emissions
 
   constructor() {
     super();
   }
 
   async run(): Promise<void> {
-    // Process the buffered values first when the stream starts running
+    // Process the buffered values when the stream starts running
     if (this.buffer.length > 0) {
-      for (const value of this.buffer) {
-        await this.processEmission(value);
-      }
-      this.buffer = [];  // Clear the buffer once all values have been emitted
+      await this.processBuffer();
     }
 
     // Await completion of the stream, processing values in real-time
     await this.awaitCompletion();
-
     return this.emissionAvailable;
   }
 
@@ -34,18 +31,41 @@ export class Subject<T = any> extends Stream<T> {
     if (!this.isRunning()) {
       this.buffer.push(value!);
     } else {
-      // If running, process the emission immediately
-      await this.processEmission(value);
+      // If running, enqueue the emission for sequential processing
+      await this.enqueueEmission(value);
     }
 
     return this.emissionAvailable;
   }
 
-  // Helper method to process emissions and chain them into emissionAvailable
+  // Processes buffered values in the correct order
+  private async processBuffer(): Promise<void> {
+    while (this.buffer.length > 0) {
+      const value = this.buffer.shift(); // Get the first buffered value
+      await this.processEmission(value); // Process each buffered emission sequentially
+    }
+  }
+
+  // Enqueues and processes a new emission in sequence
+  private async enqueueEmission(value?: T): Promise<void> {
+    if (this.processing) {
+      // Chain emissions to avoid overlapping async calls
+      this.emissionAvailable = this.emissionAvailable.then(() => this.processEmission(value));
+    } else {
+      // Start processing immediately if no other emission is being processed
+      await this.processEmission(value);
+    }
+  }
+
+  // Helper method to process emissions in order
   private async processEmission(value?: T): Promise<void> {
-    this.emissionAvailable = this.emissionAvailable.then(() =>
-      this.onEmission.process({ emission: { value }, source: this })
-    );
-    return this.emissionAvailable;
+    this.processing = true;
+
+    try {
+      await this.onEmission.process({ emission: { value }, source: this });
+    } finally {
+      // Ensure processing flag is reset when finished
+      this.processing = false;
+    }
   }
 }
