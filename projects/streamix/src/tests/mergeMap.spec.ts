@@ -11,8 +11,8 @@ class MockStream extends Stream {
     this.index = 0;
   }
 
-  override async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+  async run(): Promise<void> {
+    while (this.index < this.values.length && !this.isStopRequested) {
       let emission = { value: this.values[this.index] } as Emission;
       await this.onEmission.process({emission, source: this});
 
@@ -21,8 +21,8 @@ class MockStream extends Stream {
       }
       this.index++;
     }
-    if(!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+    if(!this.isStopRequested) {
+      this.isAutoComplete = true;
     }
   }
 }
@@ -41,7 +41,7 @@ describe('mergeMap operator', () => {
       results.push(value);
     });
 
-    mergedStream.isStopped.then(() => {
+    mergedStream.onStop.once(() => {
       results.sort((a, b) => a - b);
       expect(results).toEqual([2, 4, 4, 6, 8, 12]);
       done();
@@ -53,7 +53,7 @@ describe('mergeMap operator', () => {
 
   //   const project = (value: number) => {
   //     const innerStream = new MockStream([value, value * 2]);
-  //     setTimeout(() => innerStream.terminate(), 10); // Cancel inner stream after a delay
+  //     setTimeout(() => innerStream.complete(), 10); // Cancel inner stream after a delay
   //     return innerStream;
   //   };
 
@@ -65,7 +65,7 @@ describe('mergeMap operator', () => {
   //     results.push(value);
   //   });
 
-  //   mergedStream.isStopped.then(() => {
+  //   mergedStream.onStop.once(() => {
   //     expect(results).toEqual([1, 2]); // Only first inner stream emissions should be processed
   //     done();
   //   });
@@ -89,7 +89,7 @@ describe('mergeMap operator', () => {
   //     results.push(value);
   //   });
 
-  //   mergedStream.isStopped.then(() => {
+  //   mergedStream.onStop.once(() => {
   //     expect(results).toEqual([1, new Error('Error in inner stream'), 3, 6]);
   //     done();
   //   });

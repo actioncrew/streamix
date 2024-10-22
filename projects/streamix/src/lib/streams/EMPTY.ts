@@ -5,8 +5,8 @@ export class EmptyStream<T = any> extends Stream<T> {
     super();
   }
 
-  override async run(): Promise<void> {
-    this.isAutoComplete.resolve(true);
+  async run(): Promise<void> {
+    this.isAutoComplete = true;
   }
 }
 

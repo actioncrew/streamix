@@ -2,19 +2,32 @@ import { Converter } from '../abstractions/converter';
 import { Subscribable } from '../abstractions/subscribable';
 
 export class FirstValueFromConverter extends Converter<Subscribable, Promise<any>> {
+  private emissionHandler!: ({ emission }: any) => Promise<void>;
+
   async convert(stream: Subscribable): Promise<any> {
     return new Promise<any>((resolve, reject) => {
       let hasEmitted = false;
 
       try {
-        const unsubscribe = stream.subscribe((value) => {
+        this.emissionHandler = async ({ emission }: any) => {
           if (!hasEmitted) {
             hasEmitted = true;
-            unsubscribe.unsubscribe();
-            resolve(value);
+            stream.onEmission.remove(this, this.emissionHandler);
+            resolve(emission.value);
           }
-        })
-      } catch(error) {
+        };
+
+        stream.onEmission.chain(this, this.emissionHandler);
+
+        stream.onStop.once(() => {
+          stream.onEmission.remove(this, this.emissionHandler);
+
+          if (!hasEmitted) {
+            reject("Subscribable has not emitted any value.");
+          }
+        });
+
+      } catch (error) {
         reject(error);
       }
     });

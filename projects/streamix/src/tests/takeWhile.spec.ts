@@ -11,8 +11,8 @@ class MockStream extends Stream {
     this.index = 0;
   }
 
-override async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+async run(): Promise<void> {
+    while (this.index < this.values.length && !this.isStopRequested) {
       let emission = { value: this.values[this.index] } as Emission;
       await this.onEmission.process({emission, source: this});
 
@@ -22,8 +22,8 @@ override async run(): Promise<void> {
 
       this.index++;
     }
-    if(!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+    if(!this.isStopRequested) {
+      this.isAutoComplete = true;
     }
   }
 }
@@ -41,7 +41,7 @@ describe('takeWhile operator', () => {
       results.push(value);
     });
 
-    takenWhileStream.isStopped.then(() => {
+    takenWhileStream.onStop.once(() => {
       expect(results).toEqual([1, 2, 3]); // Should emit values until predicate returns false
       done();
     });
@@ -59,7 +59,7 @@ describe('takeWhile operator', () => {
       results.push(value);
     });
 
-    takenWhileStream.isStopped.then(() => {
+    takenWhileStream.onStop.once(() => {
       expect(results).toEqual([]); // Should not emit any values from an empty stream
       done();
     });
@@ -77,7 +77,7 @@ describe('takeWhile operator', () => {
       results.push(value);
     });
 
-    takenWhileStream.isStopped.then(() => {
+    takenWhileStream.onStop.once(() => {
       expect(results).toEqual([]); // Should not emit any values because predicate returns false immediately
       done();
     });

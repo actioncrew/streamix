@@ -11,12 +11,12 @@ class MockStream extends Stream {
     this.index = 0;
   }
 
-  override async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+  async run(): Promise<void> {
+    while (this.index < this.values.length && !this.isStopRequested) {
       await this.onEmission.process({emission: { value: this.values[this.index] }, source: this});
       this.index++;
     }
-    this.isAutoComplete.resolve(true);
+    this.isAutoComplete = true;
   }
 }
 
@@ -33,7 +33,7 @@ describe('map operator', () => {
       results.push(value);
     });
 
-    mappedStream.isStopped.then(() => {
+    mappedStream.onStop.once(() => {
       expect(results).toEqual([2, 4, 6]);
       done();
     });
@@ -56,7 +56,7 @@ describe('map operator', () => {
       results.push(value);
     });
 
-    mappedStream.isStopped.then(() => {
+    mappedStream.onStop.once(() => {
       expect(results).toEqual([2, 6]); // Only the first value should be emitted before error
       done();
     });

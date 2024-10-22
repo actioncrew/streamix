@@ -1,51 +1,60 @@
 import { Subject } from '../../lib';
-import { Emission, Operator, Subscribable, Subscription } from '../abstractions';
+import { Emission, Operator, Stream, StreamOperator, Subscribable } from '../abstractions';
 
-export class SwitchMapOperator extends Operator {
-  private project: (value: any) => Subscribable;
-  private activeInnerStream?: Subscribable;
-  private outerStream = new Subject();
-  private innerStreamSubscription?: Subscription;
+export class SwitchMapOperator extends Operator implements StreamOperator {
 
-  constructor(project: (value: any) => Subscribable) {
+  private activeInnerStream!: Subscribable | null;
+  private input!: Stream;
+  private output!: Subject;
+  private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
+  private isFinalizing!: boolean;
+
+  constructor(private readonly project: (value: any) => Subscribable) {
     super();
     this.project = project;
   }
 
-  private initializeOuterStream() {
-    this.outerStream.isCancelled.then(() => this.cleanup());
-    this.outerStream.isFailed.then(() => this.cleanup());
-    this.outerStream.isStopped.then(() => this.cleanup());
-  }
+  override init(stream: Stream) {
+    this.activeInnerStream = null;
+    this.input = stream;
+    this.output = new Subject();
+    this.handleInnerEmission = null;
+    this.isFinalizing = false;
 
-  override init(stream: Subscribable) {
-    this.initializeOuterStream();
-
-    stream.isStopped.then(async () => {
+    this.input.onStop.once(async () => {
       if (this.activeInnerStream) {
         await this.activeInnerStream.awaitCompletion();
       }
-      await this.cleanup();
+      await this.finalize();
     });
+
+    this.output.onStop.once(() => this.finalize());
   }
 
-  override async cleanup() {
+  get stream() {
+    return this.output;
+  }
+
+  async finalize() {
+    if (this.isFinalizing) { return; }
+    this.isFinalizing = true;
+
     await this.stopInnerStream();
-    if (this.outerStream && !this.outerStream.isStopped()) {
-      await this.outerStream.complete();
+    if (this.output && !this.output.isStopped) {
+      await this.output.complete();
     }
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
 
-    if (stream.isCancelled()) {
-      emission.isCancelled = true;
+    if (stream.shouldComplete()) {
+      emission.isPhantom = true;
       await this.stopInnerStream();
       return emission;
     }
 
     try {
-      return await this.processEmission(emission, this.outerStream);
+      return await this.processEmission(emission, this.output);
     } catch (error) {
       return Promise.reject(error);
     }
@@ -62,42 +71,41 @@ export class SwitchMapOperator extends Operator {
     await this.stopInnerStream();
     this.activeInnerStream = newInnerStream;
 
-    this.innerStreamSubscription = this.activeInnerStream.subscribe(async (value) => {
-      if (!stream.shouldTerminate() && !stream.shouldComplete()) {
-        await stream.next(value);
+    this.handleInnerEmission = async ({ emission }) => {
+      if (!stream.shouldComplete()) {
+        await stream.next(emission.value);
       }
-    });
+    };
 
-    this.activeInnerStream.isFailed.then((error) => {
+    this.activeInnerStream.onEmission.chain(this, this.handleInnerEmission);
+
+    this.activeInnerStream.onError.once((error: any) => {
       emission.error = error;
       emission.isFailed = true;
       this.removeInnerStream(this.activeInnerStream!);
     });
 
-    this.activeInnerStream.isStopped.then(() => {
-      this.removeInnerStream(this.activeInnerStream!);
-    }).catch((error) => {
-      emission.error = error;
-      emission.isFailed = true;
-      this.removeInnerStream(this.activeInnerStream!);
-    });
+    this.activeInnerStream.onStop.once(() => this.removeInnerStream(this.activeInnerStream!));
+
+    this.activeInnerStream.start();
 
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {
-      this.activeInnerStream!.isStopped.then(() => resolve(emission));
+      this.activeInnerStream!.onStop.once(() => resolve(emission));
     });
+
   }
 
   private removeInnerStream(innerStream: Subscribable) {
     if (this.activeInnerStream === innerStream) {
-      this.activeInnerStream = undefined;
+      this.activeInnerStream = null;
     }
   }
 
   private async stopInnerStream() {
     if (this.activeInnerStream) {
-      this.innerStreamSubscription?.unsubscribe();
-      this.activeInnerStream.terminate();
+      this.activeInnerStream.onEmission.remove(this, this.handleInnerEmission!);
+      this.activeInnerStream.complete();
       this.removeInnerStream(this.activeInnerStream);
     }
   }

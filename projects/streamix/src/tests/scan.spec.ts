@@ -11,8 +11,8 @@ class MockStream extends Stream {
     this.index = 0;
   }
 
-  override async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+  async run(): Promise<void> {
+    while (this.index < this.values.length && !this.isStopRequested) {
       let emission = { value: this.values[this.index] } as Emission;
       await this.onEmission.process({emission, source: this});
 
@@ -22,8 +22,8 @@ class MockStream extends Stream {
 
       this.index++;
     }
-    if(!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+    if(!this.isStopRequested) {
+      this.isAutoComplete = true;
     }
   }
 }
@@ -42,7 +42,7 @@ describe('scan operator', () => {
       results.push(value);
     });
 
-    scannedStream.isStopped.then(() => {
+    scannedStream.onStop.once(() => {
       expect(results).toEqual([1, 3, 6]);
       done();
     });
@@ -66,7 +66,7 @@ describe('scan operator', () => {
       results.push(value);
     });
 
-    scannedStream.isStopped.then(() => {
+    scannedStream.onStop.once(() => {
       expect(results).toEqual([1]); // Only the first value should be accumulated before error
       done();
     });

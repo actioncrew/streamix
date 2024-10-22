@@ -1,26 +1,28 @@
-import { Emission, Operator, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 
 export class DelayOperator extends Operator {
-  private readonly delayTime: number;
+  private applyDelay!: (emission: Emission) => Promise<Emission>;
+  private completionPromise!: Promise<void>;
 
-  constructor(delayTime: number) {
+  constructor(private readonly delayTime: number) {
     super();
     this.delayTime = delayTime;
   }
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-
-    // Apply the delay
-    await new Promise<Emission>((resolve) => {
+  override init(stream: Stream) {
+    this.applyDelay = (emission: Emission) => new Promise<Emission>((resolve) => {
       const timeout = setTimeout(() => resolve(emission), this.delayTime);
 
-      stream.isCancelled.then(() => {
-        emission.isCancelled = true;
+      this.completionPromise = stream.awaitCompletion().then(() => {
+        emission.isPhantom = true;
         clearTimeout(timeout);
         resolve(emission);
       });
     });
+  }
 
+  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
+    await this.applyDelay(emission)
     return emission;
   }
 }

@@ -2,6 +2,7 @@ import { Stream, Subscribable } from '../abstractions';
 
 export class ConcatStream<T = any> extends Stream<T> {
   private readonly sources: Subscribable[];
+
   private currentSourceIndex: number = 0;
   private handleEmissionFn: (event: { emission: { value: T }, source: Subscribable }) => void;
 
@@ -11,16 +12,16 @@ export class ConcatStream<T = any> extends Stream<T> {
     this.handleEmissionFn = ({ emission, source }) => this.handleEmission(emission.value);
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length; this.currentSourceIndex++) {
-      if (this.shouldComplete() || this.shouldTerminate()) {
+      if (this.shouldComplete()) {
         break;
       }
       await this.runCurrentSource();
     }
 
     if (!this.shouldComplete()) {
-      this.isAutoComplete.resolve(true);
+      this.isAutoComplete = true;
     }
   }
 
@@ -28,11 +29,11 @@ export class ConcatStream<T = any> extends Stream<T> {
     const currentSource = this.sources[this.currentSourceIndex];
     try {
       currentSource.onEmission.chain(this, this.handleEmissionFn);
-      currentSource.start(currentSource);
-      await Promise.race([currentSource.awaitCompletion(), currentSource.awaitTermination(), this.awaitTermination()]);
+      currentSource.start();
+      await currentSource.awaitCompletion();
     }
     catch(error) {
-      this.handleError(error);
+      this.propagateError(error);
     }
     finally{
       currentSource.onEmission.remove(this, this.handleEmissionFn);
@@ -41,7 +42,7 @@ export class ConcatStream<T = any> extends Stream<T> {
   }
 
   private async handleEmission(value: T): Promise<void> {
-    if (this.shouldComplete() || this.shouldTerminate()) {
+    if (this.shouldComplete()) {
       return;
     }
 
@@ -56,13 +57,6 @@ export class ConcatStream<T = any> extends Stream<T> {
       await source.complete();
     }
     return super.complete();
-  }
-
-  override async terminate(): Promise<void> {
-    for (const source of this.sources) {
-      await source.terminate();
-    }
-    return super.terminate();
   }
 }
 

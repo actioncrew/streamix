@@ -3,11 +3,9 @@ import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
 export class TapOperator extends Operator {
-  private readonly tapFunction: (value: any) => void;
 
-  constructor(tapFunction: (value: any) => void) {
+  constructor(private readonly tapFunction: (value: any) => void) {
     super();
-    this.tapFunction = tapFunction;
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

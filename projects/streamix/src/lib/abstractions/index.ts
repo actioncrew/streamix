@@ -3,7 +3,6 @@ export * from './emission';
 export * from './operator';
 export * from './stream';
 export * from './subscription';
-export * from './hook';
 export * from './subscribable';
 export * from './pipeline';
 export * from './chunk';

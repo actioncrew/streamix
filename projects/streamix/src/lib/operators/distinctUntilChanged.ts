@@ -3,12 +3,15 @@ import { Operator } from '../abstractions/operator';
 import { Subscribable } from '../abstractions/subscribable';
 
 export class DistinctUntilChangedOperator<T> extends Operator {
-  private lastEmittedValue: T | undefined;
-  private comparator?: (previous: T, current: T) => boolean;
+  private lastEmittedValue!: T | undefined;
 
-  constructor(comparator?: (previous: T, current: T) => boolean) {
+  constructor(private readonly comparator?: (previous: T, current: T) => boolean) {
     super();
     this.comparator = comparator;
+  }
+
+  override init() {
+    this.lastEmittedValue = undefined;
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<any> {

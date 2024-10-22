@@ -4,7 +4,7 @@ export class DefaultIfEmptyOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
   private hasEmitted = false;
 
-  constructor(private defaultValue: any) {
+  constructor(private readonly defaultValue: any) {
     super();
   }
 
@@ -21,7 +21,7 @@ export class DefaultIfEmptyOperator extends Operator implements HookOperator {
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     // If the emission is not a phantom, cancelled, or failed, mark it as emitted
-    if (!emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
+    if (!emission.isPhantom && !emission.isPhantom && !emission.isFailed) {
       this.hasEmitted = true;
     }
 

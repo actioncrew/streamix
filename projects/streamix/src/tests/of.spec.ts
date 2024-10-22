@@ -6,28 +6,29 @@ describe('OfStream', () => {
     const ofStream = new OfStream(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = ofStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
-    ofStream.isStopped.then(() => {
+    ofStream.onStop.once(() => {
       expect(emittedValues).toEqual([value]);
       subscription.unsubscribe();
     })
   });
 
-  it('should complete after emitting the value', async () => {
+  it('should complete after emitting the value', (done) => {
     const value = 'test_value';
     const ofStream = new OfStream(value);
 
     let isComplete = false;
-    ofStream.isAutoComplete.then(() => {
+    ofStream.subscribe(() => {
       isComplete = true;
     });
 
-    await ofStream.run();
-
-    expect(isComplete).toBe(true);
+    ofStream.onStop.once(() => {
+      expect(isComplete).toBe(true);
+      done();
+    })
   });
 
   it('should not emit value if unsubscribed before run', async () => {
@@ -35,8 +36,8 @@ describe('OfStream', () => {
     const ofStream = new OfStream(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = ofStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     subscription.unsubscribe();
@@ -49,29 +50,13 @@ describe('OfStream', () => {
     const ofStream = new OfStream(value);
 
     const emittedValues: any[] = [];
-    ofStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    ofStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
-    ofStream.terminate();
+    ofStream.complete();
     await ofStream.run();
 
     expect(emittedValues).toEqual([]);
-  });
-
-  it('should resolve isAutoComplete if unsubscribed before run', async () => {
-    const value = 'test_value';
-    const ofStream = new OfStream(value);
-
-    let isComplete = false;
-
-    const subscription = ofStream.subscribe(() => {});
-
-    await ofStream.isAutoComplete.then(() => {
-      isComplete = true;
-    });
-
-    subscription.unsubscribe();
-    expect(isComplete).toBe(true);
   });
 });

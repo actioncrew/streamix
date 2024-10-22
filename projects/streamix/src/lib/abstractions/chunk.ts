@@ -1,9 +1,8 @@
-import { Stream } from '../abstractions';
-import { hook } from '../utils';
+import { Pipeline, Stream } from '../abstractions';
+import { hook, PromisifiedType } from '../utils';
 import { Emission } from './emission';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
-import { Subscription } from './subscription';
 
 export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   operators: Operator[] = [];
@@ -17,8 +16,50 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.onEmission = hook();
   }
 
-  override start(context: any) {
-    return this.stream.start(context);
+  override get isAutoComplete() {
+    return this.stream.isAutoComplete;
+  }
+
+  override set isAutoComplete(value: boolean) {
+    this.stream.isAutoComplete = value;
+  }
+
+  override get isStopRequested() {
+    return this.stream.isStopRequested;
+  }
+
+  override set isStopRequested(value: boolean) {
+    this.stream.isStopRequested = value;
+  }
+
+  override get isRunning() {
+    return this.stream.isRunning;
+  }
+
+  override set isRunning(value: boolean) {
+    this.stream.isRunning = value;
+  }
+
+  override get isStopped() {
+    return this.stream.isStopped;
+  }
+
+  override set isStopped(value: boolean) {
+    this.stream.isStopped = value;
+  }
+
+  override init() {
+    if (!this.stream.onEmission.contains(this, this.emit)) {
+      this.stream.onEmission.chain(this, this.emit);
+    }
+  }
+
+  override start() {
+    return this.stream.startWithContext(this);
+  }
+
+  override async cleanup() {
+    this.stream.onEmission.remove(this, this.emit);
   }
 
   override run(): Promise<void> {
@@ -26,22 +67,24 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override pipe(...operators: Operator[]): Subscribable<T> {
+    return new Pipeline<T>(this.stream.clone()).pipe(...this.operators, ...operators);
+  }
+
+  bindOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
+
     operators.forEach((operator, index) => {
       if (operator instanceof Operator) {
-        let clone = operator.clone(); clone.init(this.stream)
-        this.operators.push(clone);
+        this.operators.push(operator);
 
-        // Manage head and tail for every operator
         if (!this.head) {
-          this.head = clone;
-          this.tail = clone;
+          this.head = operator;
         } else {
-          this.tail!.next = clone;
-          this.tail = clone;
+          this.tail!.next = operator;
         }
+        this.tail = operator;
 
-        if ('outerStream' in clone && index !== operators.length - 1) {
+        if ('stream' in operator && index !== operators.length - 1) {
           throw new Error("Only the last operator in a chunk can contain outerStream property.");
         }
       }
@@ -55,18 +98,20 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
       let next = (source instanceof Stream) ? this.head : undefined;
       next = (source instanceof Operator) ? source.next : next;
 
-      if (this.isCancelled()) {
-        emission.isCancelled = true;
+      if(emission.isFailed) {
+        throw emission.error;
       }
 
-      // Process the emission with the next operator, if any
-      emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
+      if(!emission.isPhantom) {
+        // Process the emission with the next operator, if any
+        emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
+      }
 
       if(emission.isFailed) {
         throw emission.error;
       }
       // If emission is valid, notify subscribers
-      if (!emission.isPhantom && !emission.isCancelled) {
+      if (!emission.isPhantom) {
         await this.onEmission.parallel({ emission, source: this });
         await this.subscribers.parallel(emission.value);
       }
@@ -76,10 +121,11 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
       emission.isFailed = true;
       emission.error = error;
 
-      this.isFailed.resolve(error);
-      if(this.onError.length > 0) {
-        await this.onError.process({ error });
-      }
+      await this.onError.process({ error });
     }
+  }
+
+  override get value() {
+    return this.stream.currentValue;
   }
 }

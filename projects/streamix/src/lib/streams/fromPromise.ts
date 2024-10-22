@@ -1,44 +1,41 @@
 import { Stream } from '../abstractions/stream';
 
 export class FromPromiseStream<T = any> extends Stream<T> {
-  private promise: Promise<T>;
   private resolved: boolean = false;
-  private value: T | undefined;
+  private promiseValue: T | undefined;
 
-  constructor(promise: Promise<T>) {
+  constructor(private readonly promise: Promise<T>) {
     super();
-    this.promise = promise;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
       if (!this.resolved) {
         const resolutionPromise = this.resolvePromise();
         await Promise.race([
           resolutionPromise,
-          this.awaitCompletion(),
-          this.awaitTermination()
+          this.awaitCompletion()
         ]);
 
-        // If we've been completed or terminated, don't continue
-        if (this.shouldComplete() || this.shouldTerminate()) {
+        // If we've been completed, don't continue
+        if (this.shouldComplete()) {
           return;
         }
       }
 
-      await this.onEmission.process({ emission: { value: this.value as T }, source: this });
-      this.isAutoComplete.resolve(true);
+      await this.onEmission.process({ emission: { value: this.promiseValue as T }, source: this });
+      this.isAutoComplete = true;
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     }
   }
 
   private async resolvePromise(): Promise<void> {
     try {
-      this.value = await this.promise;
+      this.promiseValue = await this.promise;
       this.resolved = true;
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     }
   }
 }

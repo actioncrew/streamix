@@ -10,9 +10,9 @@ describe('from function', () => {
       emittedValues.push(value);
     });
 
-    stream.isStopped.then(() => {
+    stream.onStop.once(() => {
       expect(emittedValues).toEqual(values);
-      expect(stream.isAutoComplete()).toBe(true);
+      expect(stream.isAutoComplete).toBe(true);
 
       subscription.unsubscribe();
     })
@@ -33,7 +33,7 @@ describe('from function', () => {
   //   }, 10);
 
   //   expect(emittedValues).toEqual([1]); // Only the first value should be emitted
-  //   expect(stream.isAutoComplete()).toBe(true);
+  //   expect(stream.isAutoComplete).toBe(true);
 
   //   subscription.unsubscribe();
   // });

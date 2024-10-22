@@ -4,11 +4,8 @@ import { Operator } from '../abstractions/operator';
 
 
 export class FilterOperator extends Operator {
-  private readonly predicate: (value: any) => boolean;
-
-  constructor(predicate: (value: any) => boolean) {
+  constructor(private readonly predicate: (value: any) => boolean) {
     super();
-    this.predicate = predicate;
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
