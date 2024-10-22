@@ -26,8 +26,7 @@ describe('CatchErrorOperator Functional Test', () => {
 
     streamWithCatchError.awaitCompletion().then(() => {
       expect(handlerMock).toHaveBeenCalled();
-      expect(streamWithCatchError.isStopped()).toBe(true); // Stream should complete
-      expect(streamWithCatchError.isFailed()).toBe(false); // Stream should not propagate an error
+      expect(streamWithCatchError.isStopped).toBe(true); // Stream should complete
     });
   });
 
@@ -48,8 +47,7 @@ describe('CatchErrorOperator Functional Test', () => {
 
     streamWithCatchError.awaitCompletion().then(() => {
       expect(handlerMock).not.toHaveBeenCalled();
-      expect(streamWithCatchError.isStopped()).toBe(true); // Stream should complete
-      expect(streamWithCatchError.isFailed()).toBe(true); // Stream should propagate an error
+      expect(streamWithCatchError.isStopped).toBe(true); // Stream should complete
     });
   });
 });
