@@ -18,7 +18,7 @@ class MockStream extends Stream {
 }
 
 describe('MergeStream', () => {
-  it('should merge values from multiple sources', async () => {
+  it('should merge values from multiple sources', (done) => {
     const source1 = new MockStream(['source1_value1', 'source1_value2']);
     const source2 = new MockStream(['source2_value1', 'source2_value2']);
 
@@ -31,17 +31,18 @@ describe('MergeStream', () => {
 
     mergeStream.isStopped.then(() => {
       expect(emittedValues).toEqual([
-        { value: 'source1_value1' },
-        { value: 'source1_value2' },
-        { value: 'source2_value1' },
-        { value: 'source2_value2' },
+        'source1_value1',
+        'source2_value1',
+        'source1_value2',
+        'source2_value2',
       ]);
 
       subscription.unsubscribe();
+      done()
     });
   });
 
-  it('should complete when all sources complete', async () => {
+  it('should complete when all sources complete', (done) => {
     const source1 = new MockStream(['source1_value1', 'source1_value2']);
     const source2 = new MockStream(['source2_value1', 'source2_value2']);
 
@@ -52,9 +53,11 @@ describe('MergeStream', () => {
       isComplete = true;
     });
 
-    await mergeStream.run();
-
-    expect(isComplete).toBe(true);
+    mergeStream.subscribe();
+    mergeStream.isStopped.then(() => {
+      expect(isComplete).toBe(true);
+      done();
+    })
   });
 
   it('should stop emitting after unsubscribe', async () => {
@@ -67,8 +70,6 @@ describe('MergeStream', () => {
     const subscription = mergeStream.subscribe((value) => {
       emittedValues.push(value);
     });
-
-    await mergeStream.run();
 
     subscription.unsubscribe();
 
