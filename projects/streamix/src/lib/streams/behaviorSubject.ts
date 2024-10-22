@@ -8,11 +8,13 @@ export class BehaviorSubject<T = any> extends Subject<T> {
     super();
     this.latestValue = initialValue;
 
-    // Emit the initial value when the stream starts running
+    // Ensure the initial value is processed once the stream starts
     queueMicrotask(() => {
-      this.emissionAvailable = this.isRunning.then(() => {
-        return this.onEmission.process({ emission: { value: this.initialValue }, source: this });
-      });
+      if (this.isRunning()) {
+        this.processEmission(this.initialValue);
+      } else {
+        this.buffer.push(this.initialValue); // Buffer the initial value if not running yet
+      }
     });
   }
 
@@ -21,17 +23,15 @@ export class BehaviorSubject<T = any> extends Subject<T> {
     // Store the latest value
     this.latestValue = value;
 
-    // Call the parent Subject's next method to handle the emission
+    // Emit the new value via the parent Subject's mechanism
     return super.next(value);
   }
 
   // Ensure latest value is emitted when a new subscriber subscribes
   override subscribe(callback?: ((value: T) => void) | void): Subscription {
-    // Emit the latest value immediately to the new subscriber
-    if (this.isRunning()) {
-      if (callback) {
-        callback(this.latestValue);
-      }
+    // Immediately emit the latest value to the new subscriber
+    if (callback) {
+      callback(this.latestValue);
     }
 
     // Proceed with normal subscription

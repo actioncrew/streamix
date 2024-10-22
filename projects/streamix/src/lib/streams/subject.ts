@@ -2,8 +2,8 @@ import { Stream } from '../../lib';
 
 export class Subject<T = any> extends Stream<T> {
   protected emissionAvailable = Promise.resolve();
-  private buffer: T[] = [];
-  private processing = false;  // Tracks if we're currently processing emissions
+  protected buffer: T[] = [];
+  protected processing = false;  // Tracks if we're currently processing emissions
 
   constructor() {
     super();
@@ -58,7 +58,7 @@ export class Subject<T = any> extends Stream<T> {
   }
 
   // Helper method to process emissions in order
-  private async processEmission(value?: T): Promise<void> {
+  protected async processEmission(value?: T): Promise<void> {
     this.processing = true;
 
     try {
