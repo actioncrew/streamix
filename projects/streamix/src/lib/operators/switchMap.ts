@@ -76,7 +76,7 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
 
     this.activeInnerStream.onEmission.chain(this, this.handleInnerEmission);
 
-    this.activeInnerStream.isFailed.then((error) => {
+    this.activeInnerStream.onError.once((error: any) => {
       emission.error = error;
       emission.isFailed = true;
       this.removeInnerStream(this.activeInnerStream!);

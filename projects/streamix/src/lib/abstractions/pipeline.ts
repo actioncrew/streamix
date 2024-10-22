@@ -88,10 +88,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.isStopRequested;
   }
 
-  get isFailed(): PromisifiedType<any> {
-    return this.last.isFailed;
-  }
-
   get isStopped(): PromisifiedType<boolean> {
     return this.last.isStopped;
   }

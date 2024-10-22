@@ -5,7 +5,6 @@ export interface Subscribable<T = any> {
   isAutoComplete: PromisifiedType<boolean>;
   isStopRequested: PromisifiedType<boolean>;
 
-  isFailed: PromisifiedType<any>;
   isStopped: PromisifiedType<boolean>;
   isUnsubscribed: PromisifiedType<boolean>;
   isRunning: boolean;

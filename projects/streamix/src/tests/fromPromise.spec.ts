@@ -39,7 +39,7 @@ describe('FromPromiseStream', () => {
     let receivedError: Error | undefined;
     const subscription = stream.subscribe(() => {});
 
-    stream.isFailed.then((err) => {
+    stream.onError.once((err: any) => {
       receivedError = err;
     });
 

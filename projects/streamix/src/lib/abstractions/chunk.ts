@@ -89,10 +89,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
       emission.isFailed = true;
       emission.error = error;
 
-      this.isFailed.resolve(error);
-      if(this.onError.length > 0) {
-        await this.onError.process({ error });
-      }
+      await this.onError.process({ error });
     }
   }
 }

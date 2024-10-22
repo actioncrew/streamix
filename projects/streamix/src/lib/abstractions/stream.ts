@@ -6,7 +6,6 @@ export abstract class Stream<T = any> implements Subscribable {
   isAutoComplete = promisified<boolean>(false);
   isStopRequested = promisified<boolean>(false);
 
-  isFailed = promisified<any>(undefined);
   isStopped = promisified<boolean>(false);
   isUnsubscribed = promisified<boolean>(false);
   isRunning = false;
@@ -63,11 +62,7 @@ export abstract class Stream<T = any> implements Subscribable {
           // Emit end value if defined
           await this.onComplete.process();
         } catch (error) {
-          this.isFailed.resolve(error);
-
-          if(this.onError.length > 0) {
             await this.onError.process({ error });
-          }
         } finally {
           // Handle finalize callback
           await this.onStop.process();
@@ -125,16 +120,12 @@ export abstract class Stream<T = any> implements Subscribable {
       emission.isFailed = true;
       emission.error = error;
 
-      this.isFailed.resolve(error);
-      if(this.onError.length > 0) {
-        await this.onError.process({ error });
-      }
+      await this.onError.process({ error });
     }
   }
 
   async propagateError(error: any): Promise<void> {
-    this.isFailed.resolve(error);
-    await this.onError.process({ emission: { isFailed: true, error }, source: this });
+    await this.onError.process({ error });
   }
 
   get value(): T | undefined {
@@ -148,7 +139,6 @@ export abstract class Stream<T = any> implements Subscribable {
     // Clone each promisified property to ensure they are independent
     clonedStream.isAutoComplete = promisified(this.isAutoComplete());
     clonedStream.isStopRequested = promisified(this.isStopRequested());
-    clonedStream.isFailed = promisified(this.isFailed());
     clonedStream.isStopped = promisified(this.isStopped());
     clonedStream.isUnsubscribed = promisified(this.isUnsubscribed());
     clonedStream.isRunning = this.isRunning;

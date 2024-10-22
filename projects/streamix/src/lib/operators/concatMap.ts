@@ -84,7 +84,7 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
 
       this.innerStream!.onEmission.chain(this, this.handleInnerEmission);
 
-      this.innerStream!.isFailed.then((error) => this.handleStreamError(emission, error, handleCompletion));
+      this.innerStream!.onError.once((error: any) => this.handleStreamError(emission, error, handleCompletion));
 
       this.innerStream!.isStopped.then(() => {
         handleCompletion();

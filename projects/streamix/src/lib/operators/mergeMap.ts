@@ -84,7 +84,7 @@ export class MergeMapOperator extends Operator implements StreamOperator {
 
       innerStream.onEmission.chain(this, this.handleInnerEmission);
 
-      innerStream.isFailed.then((error) => {
+      innerStream.onError.once((error: any) => {
         emission.error = error;
         emission.isFailed = true;
         innerStream.onEmission.remove(this, this.handleInnerEmission!);
