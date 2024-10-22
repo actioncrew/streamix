@@ -21,7 +21,7 @@ export class ConcatStream<T = any> extends Stream<T> {
     }
 
     if (!this.shouldComplete()) {
-      this.isAutoComplete.resolve(true);
+      this.isAutoComplete = true;
     }
   }
 

@@ -13,7 +13,7 @@ class MockStream extends Stream {
     for (const value of this.values) {
       await this.onEmission.process({emission: { value }, source:this});
     }
-    this.isAutoComplete.resolve(true);
+    this.isAutoComplete = true;
   }
 }
 

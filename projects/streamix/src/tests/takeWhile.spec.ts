@@ -23,7 +23,7 @@ async run(): Promise<void> {
       this.index++;
     }
     if(!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+      this.isAutoComplete = true;
     }
   }
 }

@@ -80,11 +80,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return new Pipeline<T>(this.stream.clone()).bindOperators(...this.operators, ...operators)
   }
 
-  get isAutoComplete(): PromisifiedType<boolean> {
+  get isAutoComplete(): boolean {
     return this.last.isAutoComplete;
   }
 
-  get isStopRequested(): PromisifiedType<boolean> {
+  get isStopRequested(): boolean {
     return this.last.isStopRequested;
   }
 
@@ -126,11 +126,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
     return {
       unsubscribe: async () => {
-          this.subscribers.remove(this, boundCallback);
-          if (this.subscribers.length === 0) {
-              this.isStopRequested.resolve(true);
-              await this.complete();
-          }
+        this.subscribers.remove(this, boundCallback);
+        if (this.subscribers.length === 0) {
+          await this.complete();
+        }
       }
     };
   }

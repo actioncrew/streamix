@@ -14,7 +14,7 @@ export class OfStream<T = any> extends Stream<T> {
         this.emitted = true;
       }
       if(this.emitted) {
-        this.isAutoComplete.resolve(true);
+        this.isAutoComplete = true;
       }
     } catch (error) {
       await this.propagateError(error);

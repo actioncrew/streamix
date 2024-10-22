@@ -2,8 +2,8 @@ import { Emission, Operator, Subscription } from '../abstractions';
 import { HookType, PromisifiedType } from '../utils';
 
 export interface Subscribable<T = any> {
-  isAutoComplete: PromisifiedType<boolean>;
-  isStopRequested: PromisifiedType<boolean>;
+  isAutoComplete: boolean;
+  isStopRequested: boolean;
 
   isStopped: boolean;
   isRunning: boolean;

@@ -16,7 +16,7 @@ class MockStream extends Stream {
       await this.onEmission.process({emission:{ value }, source:this});
     }
 
-    this.isAutoComplete.resolve(true);
+    this.isAutoComplete = true;
   }
 }
 

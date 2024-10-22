@@ -14,7 +14,7 @@ export class FromStream<T = any> extends Stream<T> {
       if (done) {
         this.done = true;
         if (!this.shouldComplete()) {
-          this.isAutoComplete.resolve(true);
+          this.isAutoComplete = true;
         }
       } else {
         let emission = { value } as Emission;

@@ -20,7 +20,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     return this.stream.isAutoComplete;
   }
 
-  override set isAutoComplete(value: PromisifiedType<boolean>) {
+  override set isAutoComplete(value: boolean) {
     this.stream.isAutoComplete = value;
   }
 
@@ -28,7 +28,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     return this.stream.isStopRequested;
   }
 
-  override set isStopRequested(value: PromisifiedType<boolean>) {
+  override set isStopRequested(value: boolean) {
     this.stream.isStopRequested = value;
   }
 

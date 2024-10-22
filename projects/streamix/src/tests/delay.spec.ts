@@ -82,6 +82,6 @@ class TestStream extends Stream {
       await this.onEmission.process({emission:{ value: this.values[this.index] }, source: this});
       this.index++;
     }
-    this.isAutoComplete.resolve(true);
+    this.isAutoComplete = true;
   }
 }

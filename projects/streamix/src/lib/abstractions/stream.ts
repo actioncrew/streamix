@@ -3,8 +3,9 @@ import { hook, promisified, PromisifiedType } from '../utils';
 
 export abstract class Stream<T = any> implements Subscribable {
 
-  _isAutoComplete = promisified<boolean>(false);
-  _isStopRequested = promisified<boolean>(false);
+  _completionPromise = promisified<void>();
+  _isAutoComplete = false;
+  _isStopRequested = false;
 
   _isStopped = false;
   _isRunning = false;
@@ -25,7 +26,10 @@ export abstract class Stream<T = any> implements Subscribable {
     return this._isAutoComplete;
   }
 
-  set isAutoComplete(value: PromisifiedType<boolean>) {
+  set isAutoComplete(value: boolean) {
+    if(value) {
+      this._completionPromise.resolve();
+    }
     this._isAutoComplete = value;
   }
 
@@ -33,7 +37,10 @@ export abstract class Stream<T = any> implements Subscribable {
     return this._isStopRequested;
   }
 
-  set isStopRequested(value: PromisifiedType<boolean>) {
+  set isStopRequested(value: boolean) {
+    if(value) {
+      this._completionPromise.resolve();
+    }
     this._isAutoComplete = value;
   }
 
@@ -54,18 +61,18 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   shouldComplete() {
-    return this.isAutoComplete() || this.isStopRequested();
+    return this.isAutoComplete || this.isStopRequested;
   }
 
   awaitCompletion() {
-    return promisified.race([this.isAutoComplete, this.isStopRequested]);
+    return this._completionPromise.promise();
   }
 
   complete(): Promise<void> {
-    if(!this.isAutoComplete()) {
+    if(!this.isAutoComplete) {
       return new Promise<void>((resolve) => {
         this.onStop.once(() => resolve());
-        this.isStopRequested.resolve(true);
+        this.isStopRequested = true;
       });
     }
     return Promise.resolve();
@@ -125,11 +132,10 @@ export abstract class Stream<T = any> implements Subscribable {
 
     return {
       unsubscribe: async () => {
-          this.subscribers.remove(this, boundCallback);
-          if (this.subscribers.length === 0) {
-              this.isStopRequested.resolve(true);
-              await this.complete();
-          }
+        this.subscribers.remove(this, boundCallback);
+        if (this.subscribers.length === 0) {
+          await this.complete();
+        }
       }
     };
   }
@@ -170,8 +176,9 @@ export abstract class Stream<T = any> implements Subscribable {
     const clonedStream = Object.assign(Object.create(this), this);
 
     // Clone each promisified property to ensure they are independent
-    clonedStream._isAutoComplete = promisified(this.isAutoComplete());
-    clonedStream._isStopRequested = promisified(this.isStopRequested());
+    clonedStream._completionPromise = promisified(this._completionPromise);
+    clonedStream._isAutoComplete = this.isAutoComplete;
+    clonedStream._isStopRequested = this.isStopRequested;
     clonedStream._isStopped = this.isStopped;
     clonedStream._isRunning = this.isRunning;
 
