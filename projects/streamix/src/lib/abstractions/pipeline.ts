@@ -92,10 +92,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.isStopped;
   }
 
-  get isUnsubscribed(): PromisifiedType<boolean> {
-    return this.last.isUnsubscribed;
-  }
-
   get isRunning(): boolean {
     return this.last.isRunning;
   }
@@ -132,7 +128,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
       unsubscribe: async () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
-              this.isUnsubscribed.resolve(true);
+              this.isStopRequested.resolve(true);
               await this.complete();
           }
       }

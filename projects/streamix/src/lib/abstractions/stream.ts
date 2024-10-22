@@ -7,7 +7,6 @@ export abstract class Stream<T = any> implements Subscribable {
   isStopRequested = promisified<boolean>(false);
 
   isStopped = promisified<boolean>(false);
-  isUnsubscribed = promisified<boolean>(false);
   isRunning = false;
 
   subscribers = hook();
@@ -23,11 +22,11 @@ export abstract class Stream<T = any> implements Subscribable {
   abstract run(): Promise<void>;
 
   shouldComplete() {
-    return this.isAutoComplete() || this.isUnsubscribed() || this.isStopRequested();
+    return this.isAutoComplete() || this.isStopRequested();
   }
 
   awaitCompletion() {
-    return promisified.race([this.isAutoComplete, this.isUnsubscribed, this.isStopRequested]);
+    return promisified.race([this.isAutoComplete, this.isStopRequested]);
   }
 
   complete(): Promise<void> {
@@ -94,7 +93,7 @@ export abstract class Stream<T = any> implements Subscribable {
       unsubscribe: async () => {
           this.subscribers.remove(this, boundCallback);
           if (this.subscribers.length === 0) {
-              this.isUnsubscribed.resolve(true);
+              this.isStopRequested.resolve(true);
               await this.complete();
           }
       }
@@ -140,7 +139,6 @@ export abstract class Stream<T = any> implements Subscribable {
     clonedStream.isAutoComplete = promisified(this.isAutoComplete());
     clonedStream.isStopRequested = promisified(this.isStopRequested());
     clonedStream.isStopped = promisified(this.isStopped());
-    clonedStream.isUnsubscribed = promisified(this.isUnsubscribed());
     clonedStream.isRunning = this.isRunning;
 
     // Clone hooks by creating new hook instances (this assumes `hook()` creates a new hook object)
