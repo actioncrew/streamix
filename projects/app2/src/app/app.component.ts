@@ -156,7 +156,7 @@ export class AppComponent implements OnInit {
 
     return range(0, this.width * this.height, 1000).pipe(
       map(index => ({ index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
-      concatMap((params) => compute(task, params)),
+      mergeMap((params) => compute(task, params)),
       tap((result: any) => {
         result.forEach(({ px, py, r, g, b }: any) => {
           const i = py * this.width + px;
