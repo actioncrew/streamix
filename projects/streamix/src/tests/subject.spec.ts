@@ -47,7 +47,7 @@ describe('Subject', () => {
     });
 
     subject.next('value1');
-    subject.isStopRequested.resolve(true);
+    subject.isStopRequested = true;
     subject.next('value2');
 
     subject.onStop.once(() => {
@@ -82,7 +82,7 @@ describe('Subject', () => {
       emittedValues.push(value);
     });
 
-    subject.isStopRequested.resolve(true);
+    subject.isStopRequested = true;
     subject.next('value1');
 
     subject.onStop.once(() => {

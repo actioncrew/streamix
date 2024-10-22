@@ -81,7 +81,7 @@ class TestStream extends Stream {
   }
 
   async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+    while (this.index < this.values.length && !this.isStopRequested) {
       await this.onEmission.process({emission:{ value: this.values[this.index] }, source: this});
       this.index++;
     }

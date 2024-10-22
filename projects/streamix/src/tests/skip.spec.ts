@@ -13,7 +13,7 @@ class MockStream extends Stream {
 
   async run(): Promise<void> {
 
-    while (this.index < this.values.length && !this.isStopRequested()) {
+    while (this.index < this.values.length && !this.isStopRequested) {
       let emission = { value: this.values[this.index] } as Emission;
       await this.onEmission.process({emission, source: this});
 
@@ -23,7 +23,7 @@ class MockStream extends Stream {
 
       this.index++;
     }
-    if (!this.isStopRequested()) {
+    if (!this.isStopRequested) {
       this.isAutoComplete = true;
     }
   }

@@ -49,11 +49,11 @@ describe('MergeStream', () => {
     const mergeStream = new MergeStream(source1, source2);
 
     let isComplete = false;
-    mergeStream.isAutoComplete.then(() => {
+
+    mergeStream.subscribe(() => {
       isComplete = true;
     });
 
-    mergeStream.subscribe();
     mergeStream.onStop.once(() => {
       expect(isComplete).toBe(true);
       done();

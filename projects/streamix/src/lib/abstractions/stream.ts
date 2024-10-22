@@ -41,7 +41,7 @@ export abstract class Stream<T = any> implements Subscribable {
     if(value) {
       this._completionPromise.resolve();
     }
-    this._isAutoComplete = value;
+    this._isStopRequested = value;
   }
 
   get isRunning() {

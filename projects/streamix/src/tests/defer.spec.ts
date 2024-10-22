@@ -22,7 +22,7 @@ class MockStream extends Stream {
     }
 
     for (const emission of this.emissions) {
-      if (this.isStopRequested()) return;
+      if (this.isStopRequested) return;
       await this.onEmission.process({emission, source: this});
     }
 

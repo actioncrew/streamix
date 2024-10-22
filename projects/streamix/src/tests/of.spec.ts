@@ -16,18 +16,19 @@ describe('OfStream', () => {
     })
   });
 
-  it('should complete after emitting the value', async () => {
+  it('should complete after emitting the value', (done) => {
     const value = 'test_value';
     const ofStream = new OfStream(value);
 
     let isComplete = false;
-    ofStream.isAutoComplete.then(() => {
+    ofStream.subscribe(() => {
       isComplete = true;
     });
 
-    await ofStream.run();
-
-    expect(isComplete).toBe(true);
+    ofStream.onStop.once(() => {
+      expect(isComplete).toBe(true);
+      done();
+    })
   });
 
   it('should not emit value if unsubscribed before run', async () => {
@@ -57,21 +58,5 @@ describe('OfStream', () => {
     await ofStream.run();
 
     expect(emittedValues).toEqual([]);
-  });
-
-  it('should resolve isAutoComplete if unsubscribed before run', async () => {
-    const value = 'test_value';
-    const ofStream = new OfStream(value);
-
-    let isComplete = false;
-
-    const subscription = ofStream.subscribe(() => {});
-
-    await ofStream.isAutoComplete.then(() => {
-      isComplete = true;
-    });
-
-    subscription.unsubscribe();
-    expect(isComplete).toBe(true);
   });
 });
