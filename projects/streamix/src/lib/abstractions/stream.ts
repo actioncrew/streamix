@@ -1,13 +1,13 @@
 import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
-import { hook, promisified } from '../utils';
+import { hook, promisified, PromisifiedType } from '../utils';
 
 export abstract class Stream<T = any> implements Subscribable {
 
-  isAutoComplete = promisified<boolean>(false);
-  isStopRequested = promisified<boolean>(false);
+  _isAutoComplete = promisified<boolean>(false);
+  _isStopRequested = promisified<boolean>(false);
 
-  isStopped = promisified<boolean>(false);
-  isRunning = false;
+  _isStopped = false;
+  _isRunning = false;
 
   subscribers = hook();
 
@@ -21,6 +21,38 @@ export abstract class Stream<T = any> implements Subscribable {
 
   abstract run(): Promise<void>;
 
+  get isAutoComplete() {
+    return this._isAutoComplete;
+  }
+
+  set isAutoComplete(value: PromisifiedType<boolean>) {
+    this._isAutoComplete = value;
+  }
+
+  get isStopRequested() {
+    return this._isStopRequested;
+  }
+
+  set isStopRequested(value: PromisifiedType<boolean>) {
+    this._isAutoComplete = value;
+  }
+
+  get isRunning() {
+    return this._isRunning;
+  }
+
+  set isRunning(value: boolean) {
+    this._isRunning = value;
+  }
+
+  get isStopped() {
+    return this._isStopped;
+  }
+
+  set isStopped(value: boolean) {
+    this._isStopped = value;
+  }
+
   shouldComplete() {
     return this.isAutoComplete() || this.isStopRequested();
   }
@@ -30,8 +62,13 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   complete(): Promise<void> {
-    this.isStopRequested.resolve(true);
-    return this.isStopped.then(() => Promise.resolve());
+    if(!this.isAutoComplete()) {
+      return new Promise<void>((resolve) => {
+        this.onStop.once(() => resolve());
+        this.isStopRequested.resolve(true);
+      });
+    }
+    return Promise.resolve();
   }
 
   init() {
@@ -49,7 +86,6 @@ export abstract class Stream<T = any> implements Subscribable {
 
     if (!this.isRunning) {
       this.isRunning = true;
-
       queueMicrotask(async () => {
         try {
           // Emit start value if defined
@@ -65,9 +101,7 @@ export abstract class Stream<T = any> implements Subscribable {
         } finally {
           // Handle finalize callback
           await this.onStop.process();
-
-          this.isStopped.resolve(true);
-          this.isRunning = false;
+          this.isStopped = true; this.isRunning = false;
 
           await context.cleanup();
         }
@@ -136,10 +170,10 @@ export abstract class Stream<T = any> implements Subscribable {
     const clonedStream = Object.assign(Object.create(this), this);
 
     // Clone each promisified property to ensure they are independent
-    clonedStream.isAutoComplete = promisified(this.isAutoComplete());
-    clonedStream.isStopRequested = promisified(this.isStopRequested());
-    clonedStream.isStopped = promisified(this.isStopped());
-    clonedStream.isRunning = this.isRunning;
+    clonedStream._isAutoComplete = promisified(this.isAutoComplete());
+    clonedStream._isStopRequested = promisified(this.isStopRequested());
+    clonedStream._isStopped = this.isStopped;
+    clonedStream._isRunning = this.isRunning;
 
     // Clone hooks by creating new hook instances (this assumes `hook()` creates a new hook object)
     clonedStream.subscribers = hook();

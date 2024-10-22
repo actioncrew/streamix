@@ -10,7 +10,7 @@ describe('OfStream', () => {
       emittedValues.push(value);
     });
 
-    ofStream.isStopped.then(() => {
+    ofStream.onStop.once(() => {
       expect(emittedValues).toEqual([value]);
       subscription.unsubscribe();
     })

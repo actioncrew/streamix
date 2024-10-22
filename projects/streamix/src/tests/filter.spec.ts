@@ -14,7 +14,7 @@ describe('FilterOperator', () => {
       expect(value).toBeGreaterThanOrEqual(2); // Only even numbers should be emitted
     });
 
-    filteredStream.isStopped.then(() => {
+    filteredStream.onStop.once(() => {
       if (!didEmit) {
         done(new Error('No values emitted'));
       } else {
@@ -37,7 +37,7 @@ describe('FilterOperator', () => {
     });
 
     // Manually check for completion after a timeout
-    filteredStream.isStopped.then(() => {
+    filteredStream.onStop.once(() => {
       if (didEmit) {
         done(new Error('Should not emit if no values pass the predicate'));
       } else {
@@ -59,7 +59,7 @@ describe('FilterOperator', () => {
     });
 
     // Manually check for completion and expected number of emissions after a timeout
-    filteredStream.isStopped.then(() => {
+    filteredStream.onStop.once(() => {
       if (count === 3) {
         done();
       } else {

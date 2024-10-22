@@ -1,5 +1,5 @@
 import { Pipeline, Stream } from '../abstractions';
-import { hook } from '../utils';
+import { hook, PromisifiedType } from '../utils';
 import { Emission } from './emission';
 import { Operator } from './operator';
 import { Subscribable } from './subscribable';
@@ -14,6 +14,38 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     Object.assign(this, stream);
     this.subscribers = hook();
     this.onEmission = hook();
+  }
+
+  override get isAutoComplete() {
+    return this.stream.isAutoComplete;
+  }
+
+  override set isAutoComplete(value: PromisifiedType<boolean>) {
+    this.stream.isAutoComplete = value;
+  }
+
+  override get isStopRequested() {
+    return this.stream.isStopRequested;
+  }
+
+  override set isStopRequested(value: PromisifiedType<boolean>) {
+    this.stream.isStopRequested = value;
+  }
+
+  override get isRunning() {
+    return this.stream.isRunning;
+  }
+
+  override set isRunning(value: boolean) {
+    this.stream.isRunning = value;
+  }
+
+  override get isStopped() {
+    return this.stream.isStopped;
+  }
+
+  override set isStopped(value: boolean) {
+    this.stream.isStopped = value;
   }
 
   override init() {

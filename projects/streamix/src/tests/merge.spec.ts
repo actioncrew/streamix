@@ -29,7 +29,7 @@ describe('MergeStream', () => {
       emittedValues.push(value);
     });
 
-    mergeStream.isStopped.then(() => {
+    mergeStream.onStop.once(() => {
       expect(emittedValues).toEqual([
         'source1_value1',
         'source2_value1',
@@ -54,7 +54,7 @@ describe('MergeStream', () => {
     });
 
     mergeStream.subscribe();
-    mergeStream.isStopped.then(() => {
+    mergeStream.onStop.once(() => {
       expect(isComplete).toBe(true);
       done();
     })

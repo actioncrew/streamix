@@ -88,7 +88,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.last.isStopRequested;
   }
 
-  get isStopped(): PromisifiedType<boolean> {
+  get isStopped(): boolean {
     return this.last.isStopped;
   }
 
@@ -152,7 +152,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
   const subject = new Subject<T>();
   const subscription = source.subscribe((value) => subject.next(value));
-  source.isStopped.then(() => subject.complete());
+  source.onStop.once(() => subject.complete());
 
   const pipeline = new Pipeline<T>(subject);
   const originalSubscribe = pipeline.subscribe.bind(pipeline);

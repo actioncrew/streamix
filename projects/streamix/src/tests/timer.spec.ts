@@ -10,7 +10,7 @@ describe('TimerStream', () => {
       emittedValues.push(value);
     });
 
-    timerStream.isStopped.then(() => {
+    timerStream.onStop.once(() => {
       // Check that values are emitted at approximately the correct interval
       expect(emittedValues.length).toBeGreaterThan(1);
       for (let i = 1; i < emittedValues.length; i++) {

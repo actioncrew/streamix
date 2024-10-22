@@ -16,13 +16,13 @@ describe('DelayOperator', () => {
       expect(elapsedTime).toBeGreaterThanOrEqual(emitCount * delayTime);
     });
 
-    delayedStream.isStopped.then(() => {
+    delayedStream.onStop.once(() => {
       if (emitCount === 3) {
         done();
       } else {
         done(new Error('Not all values were emitted'));
       }
-    }).catch(done);
+    });
   });
 
   it('should stop emitting if the stream is cancelled', (done) => {
@@ -40,7 +40,7 @@ describe('DelayOperator', () => {
       }
     });
 
-    delayedStream.isStopped.then(() => {
+    delayedStream.onStop.once(() => {
       expect(emitCount).toBeLessThan(3);
       done();
     });
@@ -58,10 +58,10 @@ describe('DelayOperator', () => {
       emitCount++;
     });
 
-    delayedStream.isStopped.then(() => {
+    delayedStream.onStop.once(() => {
       expect(emitCount).toBe(5);
       done();
-    }).catch(done);
+    });
   });
 });
 

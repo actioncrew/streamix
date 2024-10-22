@@ -11,7 +11,7 @@ describe('DefaultIfEmptyOperator', () => {
       emittedValues.push(value);
     });
 
-    processedStream.isStopped.then(() => {
+    processedStream.onStop.once(() => {
       expect(emittedValues).toEqual([defaultValue]);
       done();
     });
@@ -33,7 +33,7 @@ describe('DefaultIfEmptyOperator', () => {
     stream.next('Value 2');
     processedStream.complete();
 
-    processedStream.isStopped.then(() => {
+    processedStream.onStop.once(() => {
       expect(emittedValues).toEqual(['Value 1', 'Value 2']);
       done();
     });
@@ -56,7 +56,7 @@ describe('DefaultIfEmptyOperator', () => {
     stream.next('value 1');
     processedStream.complete();
 
-    processedStream.isStopped.then(() => {
+    processedStream.onStop.once(() => {
       expect(emittedValues).toEqual([defaultValue]);
       done();
     });
@@ -66,7 +66,6 @@ describe('DefaultIfEmptyOperator', () => {
     const stream = new Subject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(
-      // Adding some initial values
       concatMap(() => of('Value 3')), // This operator simulates a new stream
       defaultIfEmpty(defaultValue) // This operator provides a default value if the stream is empty
     );
@@ -77,14 +76,15 @@ describe('DefaultIfEmptyOperator', () => {
       emittedValues.push(value);
     });
 
-    stream.next('Value 1');
-    stream.next('Value 2');
+    (processedStream as any).stream.next('Value 1');
+    (processedStream as any).stream.next('Value 2');
 
-    processedStream.complete();
-
-    processedStream.isStopped.then(() => {
+    processedStream.onStop.once(() => {
       expect(emittedValues).toEqual(['Value 3', 'Value 3']);
       done();
     })
+
+    processedStream.complete();
+
   });
 });

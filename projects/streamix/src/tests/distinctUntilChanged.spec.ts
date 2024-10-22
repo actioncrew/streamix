@@ -55,7 +55,7 @@ describe('distinctUntilChanged', () => {
       count++;
     });
 
-    distinctStream.isStopped.then(() => {
+    distinctStream.onStop.once(() => {
       expect(count).toBe(3); // Only three distinct values should be emitted
       done();
     }); // Adjust timeout based on your test stream implementation
@@ -95,7 +95,7 @@ describe('distinctUntilChanged', () => {
       emittedValues.push(value);
     });
 
-    distinctStream.isStopped.then(() => {
+    distinctStream.onStop.once(() => {
       // Ensure emitted values are distinct based on reference
       expect(emittedValues).toEqual(expectedValues);
       done();

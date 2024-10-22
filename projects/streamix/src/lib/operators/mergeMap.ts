@@ -13,8 +13,7 @@ export class MergeMapOperator extends Operator implements StreamOperator {
   private emissionNumber!: number;
   private executionNumber!: CounterType;
   private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
-  private inputStoppedPromise!: Promise<void>;
-  private outputStoppedPromise!: Promise<void>;
+  private isFinalizing!: boolean;
 
   constructor(private readonly project: (value: any) => Subscribable) {
     super();
@@ -33,13 +32,9 @@ export class MergeMapOperator extends Operator implements StreamOperator {
     this.emissionNumber = 0;
     this.executionNumber = counter(0);
     this.handleInnerEmission = null;
-
-    this.inputStoppedPromise = this.input.isStopped.then(() =>
-      this.executionNumber.waitFor(this.emissionNumber)
-        .then(() => this.output?.complete())
-    );
-
-    this.outputStoppedPromise = this.output.isStopped.then(() => this.stopAllStreams());
+    this.isFinalizing = false;
+    this.input.onStop.once(() => this.executionNumber.waitFor(this.emissionNumber).then(() => this.finalize()));
+    this.output.onStop.once(() => this.finalize());
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
@@ -91,16 +86,10 @@ export class MergeMapOperator extends Operator implements StreamOperator {
         handleCompletion();
       });
 
-      innerStream.isStopped
-        .then(() => {
-          innerStream.onEmission.remove(this, this.handleInnerEmission!);
-          handleCompletion();
-        })
-        .catch((error) => {
-          emission.error = error;
-          emission.isFailed = true;
-          handleCompletion();
-        });
+      innerStream.onStop.once(() => {
+        innerStream.onEmission.remove(this, this.handleInnerEmission!);
+        handleCompletion();
+      });
 
       // Start the inner stream to ensure it begins emitting values
       innerStream.start();
@@ -110,7 +99,7 @@ export class MergeMapOperator extends Operator implements StreamOperator {
 
     processingPromise.finally(() => {
       if (stream.shouldComplete()) {
-        this.stopAllStreams();
+        this.finalize();
       }
     });
   }
@@ -122,7 +111,10 @@ export class MergeMapOperator extends Operator implements StreamOperator {
     }
   }
 
-  private async stopAllStreams() {
+  private async finalize() {
+    if (this.isFinalizing) { return; }
+    this.isFinalizing = true;
+
     await Promise.all(this.activeInnerStreams.map(async (stream) => {
       await stream.complete();
     }));

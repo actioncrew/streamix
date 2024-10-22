@@ -7,8 +7,7 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
   private input!: Stream;
   private output!: Subject;
   private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
-  private inputStoppedPromise!: Promise<void>;
-  private outputStoppedPromise!: Promise<void>;
+  private isFinalizing!: boolean;
 
   constructor(private readonly project: (value: any) => Subscribable) {
     super();
@@ -20,15 +19,16 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
     this.input = stream;
     this.output = new Subject();
     this.handleInnerEmission = null;
+    this.isFinalizing = false;
 
-    this.inputStoppedPromise = this.input.isStopped.then(async () => {
+    this.input.onStop.once(async () => {
       if (this.activeInnerStream) {
         await this.activeInnerStream.awaitCompletion();
       }
       await this.finalize();
     });
 
-    this.outputStoppedPromise = this.output.isStopped.then(() => this.finalize());
+    this.output.onStop.once(() => this.finalize());
   }
 
   get stream() {
@@ -36,8 +36,11 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
   }
 
   async finalize() {
+    if (this.isFinalizing) { return; }
+    this.isFinalizing = true;
+
     await this.stopInnerStream();
-    if (this.output && !this.output.isStopped()) {
+    if (this.output && !this.output.isStopped) {
       await this.output.complete();
     }
   }
@@ -82,19 +85,13 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
       this.removeInnerStream(this.activeInnerStream!);
     });
 
-    this.activeInnerStream.isStopped.then(() => {
-      this.removeInnerStream(this.activeInnerStream!);
-    }).catch((error) => {
-      emission.error = error;
-      emission.isFailed = true;
-      this.removeInnerStream(this.activeInnerStream!);
-    });
+    this.activeInnerStream.onStop.once(() => this.removeInnerStream(this.activeInnerStream!));
 
     this.activeInnerStream.start();
 
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {
-      this.activeInnerStream!.isStopped.then(() => resolve(emission));
+      this.activeInnerStream!.onStop.once(() => resolve(emission));
     });
 
   }

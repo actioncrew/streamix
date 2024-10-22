@@ -41,7 +41,7 @@ describe('take operator', () => {
       results.push(value);
     });
 
-    takenStream.isStopped.then(() => {
+    takenStream.onStop.once(() => {
       expect(results).toEqual([1, 2, 3]); // Should emit only the first three values
       done();
     });
@@ -59,7 +59,7 @@ describe('take operator', () => {
       results.push(value);
     });
 
-    takenStream.isStopped.then(() => {
+    takenStream.onStop.once(() => {
       expect(results).toEqual([1, 2]); // Should emit all values because count is greater than number of emissions
       done();
     });
@@ -77,7 +77,7 @@ describe('take operator', () => {
       results.push(value);
     });
 
-    takenStream.isStopped.then(() => {
+    takenStream.onStop.once(() => {
       expect(results).toEqual([]); // Should emit no values because the stream is empty
       done();
     });

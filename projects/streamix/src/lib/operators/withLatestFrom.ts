@@ -33,13 +33,13 @@ export class WithLatestFromOperator extends Operator {
     });
 
     // Cleanup on stream termination
-    stream.isStopped.then(() => this.finalize());
+    stream.onStop.once(() => this.finalize());
   }
 
   async finalize() {
     // Remove emission handlers for each stream
     this.streams.forEach((stream, index) => {
-      if(stream.isStopped()) {
+      if(stream.isStopped) {
         stream.onEmission.remove(this, this.handleEmissionFns[index]);
       }
     });

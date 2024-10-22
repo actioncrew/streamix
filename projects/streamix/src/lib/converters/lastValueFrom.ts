@@ -17,14 +17,14 @@ export class LastValueFromConverter extends Converter<Subscribable, Promise<any>
 
         stream.onEmission.chain(this, this.emissionHandler);
 
-        stream.isStopped.then(() => {
+        stream.onStop.once(() => {
           stream.onEmission.remove(this, this.emissionHandler);
           if (hasEmitted) {
             resolve(lastValue!);
           } else {
             reject("Subscribable has not emitted any value.");
           }
-        }).catch(reject); // Handle any errors
+        }); // Handle any errors
       } catch (error) {
         reject(error);
       }

@@ -10,7 +10,7 @@ describe('from function', () => {
       emittedValues.push(value);
     });
 
-    stream.isStopped.then(() => {
+    stream.onStop.once(() => {
       expect(emittedValues).toEqual(values);
       expect(stream.isAutoComplete()).toBe(true);
 

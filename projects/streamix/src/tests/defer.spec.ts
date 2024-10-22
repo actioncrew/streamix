@@ -45,7 +45,7 @@ describe('DeferStream', () => {
       collectedEmissions.push(value);
     });
 
-    deferStream.isStopped.then(() => {
+    deferStream.onStop.once(() => {
       expect(factory).toHaveBeenCalled(); // Check if factory was called
       expect(collectedEmissions).toHaveLength(3); // Verify all emissions are collected
       expect(collectedEmissions).toEqual([1, 2, 3]); // Check emission values
@@ -62,7 +62,7 @@ describe('DeferStream', () => {
 
     deferStream.subscribe();
 
-    deferStream.isStopped.then(() => {
+    deferStream.onStop.once(() => {
       expect(factory).toHaveBeenCalled();
       done();
     })
@@ -83,7 +83,7 @@ describe('DeferStream', () => {
     });
 
     deferStream.subscribe();
-    deferStream.isStopped.then(async () => {
+    deferStream.onStop.once(async () => {
       expect(factory).toHaveBeenCalled();
       await failure; // Ensure the error is properly handled
     })

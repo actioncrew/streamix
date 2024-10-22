@@ -19,7 +19,7 @@ describe('fromEvent function', () => {
     stream.complete();
 
     // Wait for events to be processed
-    stream.isStopped.then(() => {
+    stream.onStop.once(() => {
       expect(emittedEvents.length).toBe(2); // Check that two click events were emitted
 
       subscription.unsubscribe();
