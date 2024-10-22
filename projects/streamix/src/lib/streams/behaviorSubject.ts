@@ -3,11 +3,14 @@ import { Subject } from "./subject";
 
 export class BehaviorSubject<T = any> extends Subject<T> {
   private latestValue: T;
+  private hasEmittedInitialValue = false; // Track if the initial value has already been emitted
 
   constructor(private readonly initialValue: T) {
     super();
     this.latestValue = initialValue;
-    this.buffer.push(this.initialValue); // Buffer the initial value if not running yet
+
+    // No need to emit the initial value in the constructor,
+    // we'll emit it when someone subscribes
   }
 
   // Override the next method to update the latest value and emit it
@@ -15,15 +18,19 @@ export class BehaviorSubject<T = any> extends Subject<T> {
     // Store the latest value
     this.latestValue = value;
 
-    // Emit the new value via the parent Subject's mechanism
+    // Call the parent Subject's next method to handle the emission
     return super.next(value);
   }
 
   // Ensure latest value is emitted when a new subscriber subscribes
   override subscribe(callback?: ((value: T) => void) | void): Subscription {
-    // Immediately emit the latest value to the new subscriber
+    // Emit the latest value immediately to the new subscriber
     if (callback) {
-      callback(this.latestValue);
+      // Emit the latest value only once per subscription
+      if (!this.hasEmittedInitialValue) {
+        callback(this.latestValue);
+        this.hasEmittedInitialValue = true;
+      }
     }
 
     // Proceed with normal subscription
