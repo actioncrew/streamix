@@ -12,7 +12,7 @@ class MockStream extends Stream {
   }
 
   async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+    while (this.index < this.values.length && !this.isStopRequested) {
       let emission = { value: this.values[this.index] } as Emission;
       await this.onEmission.process({emission, source: this});
 
@@ -22,8 +22,8 @@ class MockStream extends Stream {
 
       this.index++;
     }
-    if(!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+    if(!this.isStopRequested) {
+      this.isAutoComplete = true;
     }
   }
 }
@@ -41,7 +41,7 @@ describe('tap operator', () => {
       results.push(value);
     });
 
-    tappedStream.isStopped.then(() => {
+    tappedStream.onStop.once(() => {
       console.log(tappedStream);
       // Check if side effect function was called for each emission
       expect(sideEffectFn).toHaveBeenCalledTimes(5);

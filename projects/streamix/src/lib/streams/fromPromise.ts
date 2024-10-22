@@ -24,7 +24,7 @@ export class FromPromiseStream<T = any> extends Stream<T> {
       }
 
       await this.onEmission.process({ emission: { value: this.promiseValue as T }, source: this });
-      this.isAutoComplete.resolve(true);
+      this.isAutoComplete = true;
     } catch (error) {
       await this.propagateError(error);
     }

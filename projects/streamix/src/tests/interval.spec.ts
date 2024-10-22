@@ -10,7 +10,7 @@ describe('IntervalStream', () => {
       emittedValues.push(value);
     });
 
-    intervalStream.isStopped.then(() => {
+    intervalStream.onStop.once(() => {
       // Check that values are emitted at approximately the correct interval
       expect(emittedValues.length).toBeGreaterThan(1);
       for (let i = 1; i < emittedValues.length; i++) {

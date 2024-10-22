@@ -1,81 +1,157 @@
 import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
-import { hook, promisified } from '../utils';
+import { hook, promisified, PromisifiedType } from '../utils';
 
-export function Stream<T = any>() {
+export abstract class Stream<T = any> implements Subscribable {
 
-  const isAutoComplete = promisified<boolean>(false);
-  const isStopRequested = promisified<boolean>(false);
+  _completionPromise = promisified<void>();
+  _isAutoComplete = false;
+  _isStopRequested = false;
 
-  const isFailed = promisified<any>(undefined);
-  const isStopped = promisified<boolean>(false);
-  const isUnsubscribed = promisified<boolean>(false);
-  const isRunning = promisified<boolean>(false);
+  _isStopped = false;
+  _isRunning = false;
 
-  const subscribers = hook();
-  const onStart = hook();
-  const onComplete = hook();
-  const onStop = hook();
-  const onError = hook();
-  const onEmission = hook();
+  subscribers = hook();
 
-  let currentValue: T | undefined;
+  onStart = hook();
+  onComplete = hook();
+  onStop = hook();
+  onError = hook();
+  onEmission = hook();
 
-  const init = () => {
-    if (!onEmission.contains(stream, emit)) {
-      onEmission.chain(stream, emit);
+  currentValue: T | undefined;
+
+  abstract run(): Promise<void>;
+
+  get isAutoComplete() {
+    return this._isAutoComplete;
+  }
+
+  set isAutoComplete(value: boolean) {
+    if(value) {
+      this._completionPromise.resolve();
     }
-  };
+    this._isAutoComplete = value;
+  }
 
-  const startWithContext = (context: any) => {
+  get isStopRequested() {
+    return this._isStopRequested;
+  }
+
+  set isStopRequested(value: boolean) {
+    if(value) {
+      this._completionPromise.resolve();
+    }
+    this._isStopRequested = value;
+  }
+
+  get isRunning() {
+    return this._isRunning;
+  }
+
+  set isRunning(value: boolean) {
+    this._isRunning = value;
+  }
+
+  get isStopped() {
+    return this._isStopped;
+  }
+
+  set isStopped(value: boolean) {
+    this._isStopped = value;
+  }
+
+  shouldComplete() {
+    return this.isAutoComplete || this.isStopRequested;
+  }
+
+  awaitCompletion() {
+    return this._completionPromise.promise();
+  }
+
+  complete(): Promise<void> {
+    if(!this.isAutoComplete) {
+      return new Promise<void>((resolve) => {
+        this.onStop.once(() => resolve());
+        this.isStopRequested = true;
+      });
+    }
+    return Promise.resolve();
+  }
+
+  init() {
+    if (!this.onEmission.contains(this, this.emit)) {
+      this.onEmission.chain(this, this.emit);
+    }
+  }
+
+  start(): void {
+    return this.startWithContext(this);
+  }
+
+  startWithContext(context: any) {
     context.init();
 
-    if (isRunning() === false) {
-      isRunning.resolve(true);
-
+    if (!this.isRunning) {
+      this.isRunning = true;
       queueMicrotask(async () => {
         try {
-          await onStart.process();
-          await context.run();
+          // Emit start value if defined
+          await this.onStart.process();
 
-          await onComplete.process();
+          // Start the actual stream logic
+          await this.run();
+
+          // Emit end value if defined
+          await this.onComplete.process();
         } catch (error) {
-          isFailed.resolve(error);
-
-          if (onError.length > 0) {
-            await onError.process({ error });
-          }
+            await this.onError.process({ error });
         } finally {
-          await onStop.process();
-          isStopped.resolve(true);
-          isRunning.reset();
+          // Handle finalize callback
+          await this.onStop.process();
+          this.isStopped = true; this.isRunning = false;
 
           await context.cleanup();
         }
       });
     }
-  };
+  }
 
-  const run = async (): Promise<void> => {
-    throw new Error('Abstract method')
-  };
+  async cleanup() {
+    this.onEmission.remove(this, this.emit);
+  }
 
-  const cleanup = async () => {
-    onEmission.remove(stream, emit);
-  };
+  subscribe(callback?: ((value: T) => void) | void): Subscription {
+    const boundCallback = (value: T) => {
+      this.currentValue = value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+    };
 
-  const complete = (): Promise<void> => {
-    isStopRequested.resolve(true);
-    return isStopped.then(() => Promise.resolve());
-  };
+    this.subscribers.chain(this, boundCallback);
 
-  const emit = async ({ emission, source }: { emission: Emission; source: any }): Promise<void> => {
+    this.start();
+
+    return {
+      unsubscribe: async () => {
+        this.subscribers.remove(this, boundCallback);
+        if (this.subscribers.length === 0) {
+          await this.complete();
+        }
+      }
+    };
+  }
+
+  pipe(...operators: Operator[]): Subscribable<T> {
+    return new Pipeline(this.clone()).pipe(...operators);
+  }
+
+  async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      if (emission.isFailed) {
+      if(emission.isFailed) {
         throw emission.error;
       }
 
       if (!emission.isPhantom) {
-        await subscribers.parallel(emission.value);
+        await this.subscribers.parallel(emission.value);
       }
 
       emission.isComplete = true;
@@ -83,62 +159,40 @@ export function Stream<T = any>() {
       emission.isFailed = true;
       emission.error = error;
 
-      isFailed.resolve(error);
-      if (onError.length > 0) {
-        await onError.process({ error });
-      }
+      await this.onError.process({ error });
     }
-  };
+  }
 
-  const subscribe = (callback?: (value: T) => void): Subscription => {
-    const boundCallback = (value: T) => {
-      currentValue = value;
-      return callback ? Promise.resolve(callback(value)) : Promise.resolve();
-    };
+  async propagateError(error: any): Promise<void> {
+    await this.onError.process({ error });
+  }
 
-    subscribers.chain(stream, boundCallback);
-    startWithContext(stream);
+  get value(): T | undefined {
+    return this.currentValue;
+  }
 
-    return {
-      unsubscribe: async () => {
-        subscribers.remove(stream, boundCallback);
-        if (subscribers.length === 0) {
-          isUnsubscribed.resolve(true);
-          await complete();
-        }
-      }
-    };
-  };
+  clone() {
+    // Create a new instance of the Stream class (assuming it's a class)
+    const clonedStream = Object.assign(Object.create(this), this);
 
-  // Returning the stream function that holds the current value
-  const stream = () => currentValue;
+    // Clone each promisified property to ensure they are independent
+    clonedStream._completionPromise = promisified(this._completionPromise);
+    clonedStream._isAutoComplete = this.isAutoComplete;
+    clonedStream._isStopRequested = this.isStopRequested;
+    clonedStream._isStopped = this.isStopped;
+    clonedStream._isRunning = this.isRunning;
 
-  // Attach properties to the function
-  stream.isAutoComplete = isAutoComplete;
-  stream.isStopRequested = isStopRequested;
-  stream.isFailed = isFailed;
-  stream.isStopped = isStopped;
-  stream.isUnsubscribed = isUnsubscribed;
-  stream.isRunning = isRunning;
-  stream.subscribers = subscribers;
-  stream.onStart = onStart;
-  stream.onComplete = onComplete;
-  stream.onStop = onStop;
-  stream.onError = onError;
-  stream.onEmission = onEmission;
+    // Clone hooks by creating new hook instances (this assumes `hook()` creates a new hook object)
+    clonedStream.subscribers = hook();
+    clonedStream.onStart = hook();
+    clonedStream.onComplete = hook();
+    clonedStream.onStop = hook();
+    clonedStream.onError = hook();
+    clonedStream.onEmission = hook();
 
-  stream.shouldComplete = () => isAutoComplete() || isUnsubscribed() || isStopRequested();
-  stream.awaitCompletion = () => promisified.race([isAutoComplete, isUnsubscribed, isStopRequested]);
+    // If hooks have specific subscribers or behaviors, copy them over if needed.
+    // Be careful with hooks that might hold references to functions or objects you don’t want to share.
 
-  stream.run = run;
-  stream.complete = complete;
-  stream.init = init;
-  stream.subscribe = subscribe;
-  stream.emit = emit;
-  stream.cleanup = cleanup;
-  stream.start = () => stream.startWithContext(stream);
-  stream.pipe = (...operators: Operator[]) => Pipeline<T>(stream).pipe(...operators);
-  stream.startWithContext = startWithContext;
-
-  return stream;
+    return clonedStream;
+  }
 }

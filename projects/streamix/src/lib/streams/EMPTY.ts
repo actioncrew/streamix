@@ -6,7 +6,7 @@ export class EmptyStream<T = any> extends Stream<T> {
   }
 
   async run(): Promise<void> {
-    this.isAutoComplete.resolve(true);
+    this.isAutoComplete = true;
   }
 }
 

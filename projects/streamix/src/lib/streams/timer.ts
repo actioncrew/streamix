@@ -21,7 +21,7 @@ export class TimerStream extends Stream<number> {
       if (this.intervalMs !== undefined && this.intervalMs > 0) {
         await this.startInterval();
       } else {
-        this.isAutoComplete.resolve(true);
+        this.isAutoComplete = true;
       }
     } catch (error) {
       await this.propagateError(error);

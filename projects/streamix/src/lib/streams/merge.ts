@@ -24,7 +24,7 @@ export class MergeStream<T = any> extends Stream<T> {
       ]);
 
       if (!this.shouldComplete() && this.sources.every(source => source.shouldComplete())) {
-        this.isAutoComplete.resolve(true);
+        this.isAutoComplete = true;
       }
     } catch (error) {
       await this.propagateError(error);

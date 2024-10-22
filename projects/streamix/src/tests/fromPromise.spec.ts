@@ -1,7 +1,7 @@
 import { fromPromise } from '../lib';
 
 describe('FromPromiseStream', () => {
-  it('should emit value from resolved promise', async () => {
+  it('should emit value from resolved promise', (done) => {
     const value = 'test_value';
     const promise = Promise.resolve(value);
     const stream = fromPromise(promise);
@@ -11,27 +11,29 @@ describe('FromPromiseStream', () => {
       emittedValues.push(value);
     });
 
-    stream.isStopped.then(() => {
+    stream.onStop.once(() => {
       expect(emittedValues).toEqual([value]);
+      done();
     })
   });
 
-  it('should complete after emitting value', async () => {
+  it('should complete after emitting value', (done) => {
     const value = 'test_value';
     const promise = Promise.resolve(value);
     const stream = fromPromise(promise);
 
     let completed = false;
-    stream.isAutoComplete.then(() => {
+    stream.subscribe(() => {
       completed = true;
     });
 
-    stream.isStopped.then(() => {
+    stream.onStop.once(() => {
       expect(completed).toBe(true);
+      done();
     });
   });
 
-  it('should handle promise rejection', async () => {
+  it('should handle promise rejection', (done) => {
     const error = new Error('Test error');
     const promise = Promise.reject(error);
     const stream = fromPromise(promise);
@@ -39,13 +41,14 @@ describe('FromPromiseStream', () => {
     let receivedError: Error | undefined;
     const subscription = stream.subscribe(() => {});
 
-    stream.isFailed.then((err) => {
-      receivedError = err;
+    stream.onError.once(({ error }: any) => {
+      receivedError = error;
     });
 
-    stream.isStopped.then(() => {
+    stream.onStop.once(() => {
       expect(receivedError).toBe(error);
       subscription.unsubscribe();
+      done();
     })
   });
 
@@ -61,7 +64,7 @@ describe('FromPromiseStream', () => {
 
     subscription.unsubscribe(); // Unsubscribe before running
 
-    stream.isStopped.then(() => {
+    stream.onStop.once(() => {
       expect(emittedValues).toEqual([]);
     })
   });

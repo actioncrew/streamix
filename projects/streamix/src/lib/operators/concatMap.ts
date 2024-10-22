@@ -4,8 +4,6 @@ import { CounterType, Subject, counter } from '../../lib';
 export class ConcatMapOperator extends Operator implements StreamOperator {
   private innerStream!: Subscribable | null;
   private processingPromise!: Promise<void> | null;
-  private inputStoppedPromise!: Promise<void>;
-  private outputStoppedPromise!: Promise<void>;
 
   private queue!: Emission[];
   private input!: Subscribable;
@@ -13,6 +11,7 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
   private emissionNumber!: number;
   private executionNumber!: CounterType;
   private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
+  private isFinalizing!: boolean;
 
   constructor(private readonly project: (value: any) => Subscribable) {
     super();
@@ -28,8 +27,9 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
     this.emissionNumber = 0;
     this.executionNumber = counter(0);
     this.processingPromise = null;
-    this.inputStoppedPromise = this.input.isStopped.then(() => this.executionNumber.waitFor(this.emissionNumber)).then(() => this.finalize());
-    this.outputStoppedPromise = this.output.isStopped.then(() => this.finalize());
+    this.isFinalizing = false;
+    this.input.onStop.once(() => this.executionNumber.waitFor(this.emissionNumber).then(() => this.finalize()));
+    this.output.onStop.once(() => this.finalize());
   }
 
   get stream() {
@@ -73,24 +73,26 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
         this.handleInnerEmission = null;
         this.executionNumber.increment();
 
-        // Continue with the next emission in the queue
-        await this.processQueue();
         resolve();
+        // Continue processing the queue
+        await this.processQueue();
       };
 
+      // This will handle emissions from the inner stream
       this.handleInnerEmission = async ({ emission: innerEmission }) => {
         await stream.next(innerEmission.value);
       };
 
+      // Subscribe to inner stream emissions
       this.innerStream!.onEmission.chain(this, this.handleInnerEmission);
 
-      this.innerStream!.isFailed.then((error) => this.handleStreamError(emission, error, handleCompletion));
+      // Handle errors from the inner stream
+      this.innerStream!.onError.once((error: any) => this.handleStreamError(emission, error, handleCompletion));
 
-      this.innerStream!.isStopped.then(() => {
-        handleCompletion();
-      }).catch((error) => this.handleStreamError(emission, error, handleCompletion));
+      // Ensure the inner stream is not stopped before processing
+      this.innerStream!.onStop.once(() => handleCompletion());
 
-      // Start inner stream processing
+      // Start the inner stream
       this.innerStream!.start();
     });
   }
@@ -103,6 +105,9 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
   }
 
   async finalize() {
+    if (this.isFinalizing) { return; }
+    this.isFinalizing = true;
+
     if (this.innerStream && this.handleInnerEmission) {
       this.innerStream.onEmission.remove(this, this.handleInnerEmission);
     }
@@ -112,7 +117,7 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
   }
 
   private async stopStreams(...streams: (Subscribable | null | undefined)[]) {
-    await Promise.all(streams.filter(Boolean).map(stream => stream!.complete()));
+    await Promise.all(streams.filter(stream => stream?.isRunning).map(stream => stream!.complete()));
   }
 }
 

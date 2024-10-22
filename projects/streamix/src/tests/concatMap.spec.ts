@@ -94,7 +94,7 @@ describe('ConcatMapOperator', () => {
       processedOrder.push(value);
     });
 
-    mockStream$.isStopped.then(() => {
+    mockStream$.onStop.once(() => {
       expect(processedOrder).toEqual(['data1', 'data2', 'data3', 'data4', 'data5']);
       done();
     });
@@ -128,7 +128,7 @@ describe('ConcatMapOperator', () => {
       results.push(value)
     });
 
-    mockStream$.isStopped.then(() => {
+    mockStream$.onStop.once(() => {
       expect(results.length).toEqual(6);
       expect(results).toEqual([
         'inner1a', 'inner1b', 'inner1c',

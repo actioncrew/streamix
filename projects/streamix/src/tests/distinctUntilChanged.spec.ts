@@ -12,7 +12,7 @@ class TestStream extends Stream {
   }
 
   async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+    while (this.index < this.values.length && !this.isStopRequested) {
       let emission = { value: this.values[this.index] } as Emission;
       await this.onEmission.process({emission, source: this});
 
@@ -22,8 +22,8 @@ class TestStream extends Stream {
 
       this.index++;
     }
-    if(!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+    if(!this.isStopRequested) {
+      this.isAutoComplete = true;
     }
   }
 }
@@ -55,7 +55,7 @@ describe('distinctUntilChanged', () => {
       count++;
     });
 
-    distinctStream.isStopped.then(() => {
+    distinctStream.onStop.once(() => {
       expect(count).toBe(3); // Only three distinct values should be emitted
       done();
     }); // Adjust timeout based on your test stream implementation
@@ -95,7 +95,7 @@ describe('distinctUntilChanged', () => {
       emittedValues.push(value);
     });
 
-    distinctStream.isStopped.then(() => {
+    distinctStream.onStop.once(() => {
       // Ensure emitted values are distinct based on reference
       expect(emittedValues).toEqual(expectedValues);
       done();
