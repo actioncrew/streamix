@@ -1,13 +1,13 @@
 import { Chunk, Stream } from '../abstractions';
 import { Subject } from '../';
 import { hook, HookType, PromisifiedType } from '../utils';
-import { Operator } from './operator';
+import { OperatorType } from './operator';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
 export class Pipeline<T = any> implements Subscribable<T> {
   private chunks: Chunk<T>[] = [];
-  private operators: Operator[] = [];
+  private operators: OperatorType[] = [];
   private onPipelineError: HookType;
   private currentValue: T | undefined;
 
@@ -47,23 +47,21 @@ export class Pipeline<T = any> implements Subscribable<T> {
     await this.onPipelineError.process(error);
   }
 
-  private bindOperators(...operators: Operator[]): Subscribable<T> {
+  private bindOperators(...operators: OperatorType[]): Subscribable<T> {
     this.operators = operators;
     let currentChunk = this.first;
-    let chunkOperators: Operator[] = [];
+    let chunkOperators: OperatorType[] = [];
 
     operators.forEach(operator => {
-      if (operator instanceof Operator) {
-        operator = operator.clone();
-        operator.init(currentChunk.stream);
-        chunkOperators.push(operator);
+      operator = operator.clone();
+      operator.init(currentChunk.stream);
+      chunkOperators.push(operator);
 
-        if ('stream' in operator) {
-          currentChunk.bindOperators(...chunkOperators);
-          chunkOperators = [];
-          currentChunk = new Chunk(operator.stream as any);
-          this.chunks.push(currentChunk);
-        }
+      if ('stream' in operator) {
+        currentChunk.bindOperators(...chunkOperators);
+        chunkOperators = [];
+        currentChunk = new Chunk(operator.stream as any);
+        this.chunks.push(currentChunk);
       }
     });
 
@@ -76,7 +74,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this;
   }
 
-  pipe(...operators: Operator[]): Subscribable<T> {
+  pipe(...operators: OperatorType[]): Subscribable<T> {
     return new Pipeline<T>(this.stream.clone()).bindOperators(...this.operators, ...operators)
   }
 

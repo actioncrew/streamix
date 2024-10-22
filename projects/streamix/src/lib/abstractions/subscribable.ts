@@ -1,4 +1,4 @@
-import { Emission, Operator, Subscription } from '../abstractions';
+import { Emission, OperatorType, Subscription } from '../abstractions';
 import { HookType, PromisifiedType } from '../utils';
 
 export interface Subscribable<T = any> {
@@ -23,5 +23,5 @@ export interface Subscribable<T = any> {
 
   subscribe(callback?: (value: T) => any): Subscription;
 
-  pipe(...operators: Operator[]): Subscribable<T>;
+  pipe(...operators: OperatorType[]): Subscribable<T>;
 }

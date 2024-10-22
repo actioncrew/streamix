@@ -1,13 +1,13 @@
 import { Pipeline, Stream } from '../abstractions';
 import { hook, PromisifiedType } from '../utils';
 import { Emission } from './emission';
-import { Operator } from './operator';
+import { isOperatorType, OperatorType } from './operator';
 import { Subscribable } from './subscribable';
 
 export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
-  operators: Operator[] = [];
-  head: Operator | undefined;
-  tail: Operator | undefined;
+  operators: OperatorType[] = [];
+  head: OperatorType | undefined;
+  tail: OperatorType | undefined;
 
   constructor(public stream: Stream<T>) {
     super();
@@ -66,27 +66,25 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     return this.stream.run();
   }
 
-  override pipe(...operators: Operator[]): Subscribable<T> {
+  override pipe(...operators: OperatorType[]): Subscribable<T> {
     return new Pipeline<T>(this.stream.clone()).pipe(...this.operators, ...operators);
   }
 
-  bindOperators(...operators: Operator[]): Subscribable<T> {
+  bindOperators(...operators: OperatorType[]): Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
 
     operators.forEach((operator, index) => {
-      if (operator instanceof Operator) {
-        this.operators.push(operator);
+      this.operators.push(operator);
 
-        if (!this.head) {
-          this.head = operator;
-        } else {
-          this.tail!.next = operator;
-        }
-        this.tail = operator;
+      if (!this.head) {
+        this.head = operator;
+      } else {
+        this.tail!.next = operator;
+      }
+      this.tail = operator;
 
-        if ('stream' in operator && index !== operators.length - 1) {
-          throw new Error("Only the last operator in a chunk can contain outerStream property.");
-        }
+      if ('stream' in operator && index !== operators.length - 1) {
+        throw new Error("Only the last operator in a chunk can contain outerStream property.");
       }
     });
 
@@ -96,7 +94,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   override async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
       let next = (source instanceof Stream) ? this.head : undefined;
-      next = (source instanceof Operator) ? source.next : next;
+      next = isOperatorType(source) ? source.next : next;
 
       if(emission.isFailed) {
         throw emission.error;
