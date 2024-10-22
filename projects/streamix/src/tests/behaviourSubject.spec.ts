@@ -11,12 +11,13 @@ describe('BehaviorSubject', () => {
     });
 
     behaviorSubject.next('value1');
-    behaviorSubject.complete();
 
     // Simulate a new subscriber after the value has been updated
-    behaviorSubject.isStopped.then(() => {
+    behaviorSubject.onStop.once(() => {
       expect(emittedValues).toEqual([initialValue, 'value1']);
       subscription.unsubscribe();
     });
+
+    behaviorSubject.complete();
   });
 });

@@ -3,19 +3,15 @@ import { Stream } from '../abstractions/stream';
 
 export class RangeStream<T = any> extends Stream<T> {
   private current: number;
-  private end: number;
-  private step: number;
 
-  constructor(start: number, end: number, step: number = 1) {
+  constructor(private readonly startValue: number, private readonly endValue: number, private readonly step: number = 1) {
     super();
-    this.current = start;
-    this.end = end;
-    this.step = step;
+    this.current = startValue;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
-      while (this.current < this.end && !this.shouldComplete() && !this.shouldTerminate()) {
+      while (this.current < this.endValue && !this.shouldComplete()) {
         let emission = { value: this.current } as Emission;
         await this.onEmission.process({ emission, source: this });
 
@@ -25,11 +21,11 @@ export class RangeStream<T = any> extends Stream<T> {
 
         this.current += this.step;
       }
-      if (this.current >= this.end && !this.shouldComplete() && !this.shouldTerminate()) {
-        this.isAutoComplete.resolve(true);
+      if (this.current >= this.endValue && !this.shouldComplete()) {
+        this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     }
   }
 }

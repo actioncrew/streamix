@@ -1,79 +1,76 @@
 import { Stream } from '../abstractions/stream';
 
 export class TimerStream extends Stream<number> {
-  private delayMs: number;
-  private intervalMs: number;
-  private value: number = 0;
+  private timerValue: number = 0;
   private timeoutId: any | undefined;
   private intervalId: any | undefined;
 
-  constructor(delayMs: number = 0, intervalMs?: number) {
+  constructor(private readonly delayMs: number = 0, private intervalMs?: number) {
     super();
-    this.delayMs = delayMs;
     this.intervalMs = intervalMs ?? delayMs;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
       if (await this.initialDelay()) {
-        return; // Stream was completed or terminated during the delay
+        return; // Stream was completed during the delay
       }
 
       await this.emitValue();
 
-      if (this.intervalMs > 0) {
+      if (this.intervalMs !== undefined && this.intervalMs > 0) {
         await this.startInterval();
       } else {
-        this.isAutoComplete.resolve(true);
+        this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     } finally {
-      this.cleanup();
+      this.finalize();
     }
   }
 
   private async initialDelay(): Promise<boolean> {
     if (this.delayMs === 0) {
-      return this.shouldComplete() || this.shouldTerminate();
+      return this.shouldComplete();
     }
 
     return new Promise<boolean>((resolve) => {
       this.timeoutId = setTimeout(() => {
         this.timeoutId = undefined;
-        resolve(this.shouldComplete() || this.shouldTerminate());
+        resolve(this.shouldComplete());
       }, this.delayMs);
     });
   }
 
   private async emitValue(): Promise<void> {
-    if (this.shouldComplete() || this.shouldTerminate()) {
+    if (this.shouldComplete()) {
       return;
     }
-    await this.onEmission.process({ emission: { value: this.value }, source: this });
-    this.value++;
+    await this.onEmission.process({ emission: { value: this.timerValue }, source: this });
+    this.timerValue++;
   }
 
   private startInterval(): Promise<void> {
     return new Promise<void>((resolve) => {
       this.intervalId = setInterval(async () => {
         try {
-          if (this.shouldComplete() || this.shouldTerminate()) {
-            this.cleanup();
+          if (this.shouldComplete()) {
+            this.finalize();
             resolve();
             return;
           }
           await this.emitValue();
         } catch (error) {
-          this.handleError(error);
-          this.cleanup();
+          this.propagateError(error);
+          this.finalize();
           resolve();
         }
       }, this.intervalMs);
     });
   }
 
-  private cleanup(): void {
+  private finalize() {
     if (this.timeoutId) {
       clearTimeout(this.timeoutId);
       this.timeoutId = undefined;
@@ -85,13 +82,8 @@ export class TimerStream extends Stream<number> {
   }
 
   override async complete(): Promise<void> {
-    this.cleanup();
+    this.finalize();
     return super.complete();
-  }
-
-  override async terminate(): Promise<void> {
-    this.cleanup();
-    return super.terminate();
   }
 }
 

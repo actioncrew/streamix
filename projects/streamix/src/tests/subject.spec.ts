@@ -13,7 +13,7 @@ describe('Subject', () => {
     subject.next('value2');
     subject.complete();
 
-    subject.isStopped.then(() => {
+    subject.onStop.once(() => {
       expect(emittedValues).toEqual(['value1', 'value2']);
       subscription.unsubscribe();
     })
@@ -32,7 +32,7 @@ describe('Subject', () => {
     subscription.unsubscribe();
     subject.next('value2');
 
-    subject.isStopped.then(() => {
+    subject.onStop.once(() => {
       expect(emittedValues).toEqual(['value1']);
       subscription.unsubscribe();
     })
@@ -47,10 +47,10 @@ describe('Subject', () => {
     });
 
     subject.next('value1');
-    subject.isStopRequested.resolve(true);
+    subject.isStopRequested = true;
     subject.next('value2');
 
-    subject.isStopped.then(() => {
+    subject.onStop.once(() => {
       expect(emittedValues).toEqual(['value1']);
       subscription.unsubscribe();
     })
@@ -65,10 +65,10 @@ describe('Subject', () => {
     });
 
     subject.next('value1');
-    subject.terminate();
+    subject.complete();
     subject.next('value2');
 
-    subject.isStopped.then(() => {
+    subject.onStop.once(() => {
       expect(emittedValues).toEqual(['value1']);
       subscription.unsubscribe();
     })
@@ -82,10 +82,10 @@ describe('Subject', () => {
       emittedValues.push(value);
     });
 
-    subject.isStopped.resolve(true);
+    subject.isStopRequested = true;
     subject.next('value1');
 
-    subject.isStopped.then(() => {
+    subject.onStop.once(() => {
       expect(emittedValues).toEqual([]);
       subscription.unsubscribe();
     })
@@ -104,7 +104,7 @@ describe('Subject', () => {
 
     subject.complete();
 
-    subject.isStopped.then(() => {
+    subject.onStop.once(() => {
       subscription.unsubscribe();
     })
   });
@@ -117,14 +117,14 @@ describe('Subject', () => {
       expect(value === counter++).toBeTruthy();
     });
 
+    subject.onStop.once(() => {
+      subscription.unsubscribe();
+    })
+
     for (let i = 0; i < 10000; i++) {
       await subject.next(i);
     }
 
     await subject.complete();
-
-    subject.isStopped.then(() => {
-      subscription.unsubscribe();
-    })
   });
 });

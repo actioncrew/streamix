@@ -1,25 +1,23 @@
 import { Stream } from '../abstractions/stream';
 
 export class OfStream<T = any> extends Stream<T> {
-  private readonly value: T;
   private emitted: boolean = false;
 
-  constructor(value: any) {
+  constructor(private readonly inputValue: T) {
     super();
-    this.value = value;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
-      if (!this.emitted && !this.shouldComplete() && !this.shouldTerminate()) {
-        await this.onEmission.process({ emission: { value: this.value }, source: this });
+      if (!this.emitted && !this.shouldComplete()) {
+        await this.onEmission.process({ emission: { value: this.inputValue }, source: this });
         this.emitted = true;
       }
       if(this.emitted) {
-        this.isAutoComplete.resolve(true);
+        this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     }
   }
 }

@@ -46,7 +46,7 @@ describe('CombineLatestStream with TimerStreams', () => {
       }
     });
 
-    combinedTimers.isStopped.then(() => done());
+    combinedTimers.onStop.once(() => done());
   });
 
   it('should handle completion of one stream', (done) => {

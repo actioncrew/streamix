@@ -1,14 +1,12 @@
 import { Stream, Subscribable } from '../abstractions';
 
 export class MergeStream<T = any> extends Stream<T> {
-  private sources: Subscribable[];
-  private activeSources: number;
+  private readonly sources: Subscribable[];
   private handleEmissionFns: Array<(event: { emission: { value: T }, source: Subscribable }) => void> = [];
 
   constructor(...sources: Subscribable[]) {
     super();
     this.sources = sources;
-    this.activeSources = sources.length;
 
     this.sources.forEach((source, index) => {
       this.handleEmissionFns[index] = ({ emission }) => this.handleEmission(emission.value);
@@ -16,30 +14,27 @@ export class MergeStream<T = any> extends Stream<T> {
     });
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     try {
-      this.sources.forEach(source => source.start(source));
+      this.sources.forEach(source => source.start());
 
       await Promise.race([
-        Promise.all(this.sources.map(source =>
-          Promise.race([source.awaitCompletion(), source.awaitTermination()])
-        )),
-        this.awaitCompletion(),
-        this.awaitTermination()
+        Promise.all(this.sources.map(source => source.awaitCompletion())),
+        this.awaitCompletion()
       ]);
 
-      if (!this.shouldComplete() && !this.shouldTerminate() && this.sources.every(source => source.shouldComplete())) {
-        this.isAutoComplete.resolve(true);
+      if (!this.shouldComplete() && this.sources.every(source => source.shouldComplete())) {
+        this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.handleError(error);
+      await this.propagateError(error);
     } finally {
       await this.cleanup();
     }
   }
 
   private async handleEmission(value: T): Promise<void> {
-    if (this.shouldComplete() || this.shouldTerminate()) {
+    if (this.shouldComplete()) {
       return;
     }
 
@@ -49,7 +44,7 @@ export class MergeStream<T = any> extends Stream<T> {
     });
   }
 
-  private async cleanup(): Promise<void> {
+  private async finalize(): Promise<void> {
     for (let i = 0; i < this.sources.length; i++) {
       const source = this.sources[i];
       source.onEmission.remove(this, this.handleEmissionFns[i]);
@@ -58,13 +53,8 @@ export class MergeStream<T = any> extends Stream<T> {
   }
 
   override async complete(): Promise<void> {
-    await this.cleanup();
+    await this.finalize();
     return super.complete();
-  }
-
-  override async terminate(): Promise<void> {
-    await this.cleanup();
-    return super.terminate();
   }
 }
 

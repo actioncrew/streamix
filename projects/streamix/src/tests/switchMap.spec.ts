@@ -11,8 +11,8 @@ class MockStream extends Stream {
     this.index = 0;
   }
 
-  override async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested()) {
+  async run(): Promise<void> {
+    while (this.index < this.values.length && !this.isStopRequested) {
       try {
         let emission = { value: this.values[this.index] } as Emission;
         await this.onEmission.process({emission, source: this});
@@ -26,8 +26,8 @@ class MockStream extends Stream {
         this.index++;
       }
     }
-    if(!this.isStopRequested()) {
-      this.isAutoComplete.resolve(true);
+    if(!this.isStopRequested) {
+      this.isAutoComplete = true;
     }
   }
 }
@@ -45,7 +45,7 @@ describe('switchMap operator', () => {
       results.push(value);
     });
 
-    switchedStream.isStopped.then(() => {
+    switchedStream.onStop.once(() => {
       expect(results).toEqual([10, 100, 20, 200, 30, 300]); // Should switch to new inner streams and emit all values
       done();
     });
@@ -68,7 +68,7 @@ describe('switchMap operator', () => {
       results.push(value);
     });
 
-    switchedStream.isStopped.then(() => {
+    switchedStream.onStop.once(() => {
       expect(results).toEqual([10, 100, 30, 300]); // Should emit values from successful inner streams only
       done();
     });

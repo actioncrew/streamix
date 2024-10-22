@@ -2,34 +2,28 @@ import { Emission } from '../abstractions';
 import { Stream } from '../abstractions/stream';
 
 export class FromStream<T = any> extends Stream<T> {
-  private readonly iterator: IterableIterator<any>;
   private done: boolean = false;
 
-  constructor(iterator: IterableIterator<any>) {
+  constructor(private readonly iterator: IterableIterator<any>) {
     super();
-    this.iterator = iterator;
   }
 
-  override async run(): Promise<void> {
-    try {
-      while (!this.done && !this.isStopRequested()) {
-        const { value, done } = this.iterator.next();
-        if (done) {
-          this.done = true;
-          if (!this.isStopRequested()) {
-            this.isAutoComplete.resolve(true);
-          }
-        } else {
-          let emission = { value } as Emission;
-          await this.onEmission.process({ emission, source: this });
+  async run(): Promise<void> {
+    while (!this.done && !this.shouldComplete()) {
+      const { value, done } = this.iterator.next();
+      if (done) {
+        this.done = true;
+        if (!this.shouldComplete()) {
+          this.isAutoComplete = true;
+        }
+      } else {
+        let emission = { value } as Emission;
+        await this.onEmission.process({ emission, source: this });
 
-          if (emission.isFailed) {
-            throw emission.error;
-          }
+        if (emission.isFailed) {
+          throw emission.error;
         }
       }
-    } catch (error) {
-      this.isFailed.resolve(error);
     }
   }
 }

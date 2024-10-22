@@ -1,12 +1,10 @@
-import { Emission, Operator, Stream, Subscribable } from '../abstractions';
-import { HookOperator } from '../abstractions/hook';
-
+import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
 
 export class EndWithOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
   private hasEmitted = false;
 
-  constructor(private value: any) {
+  constructor(private readonly value: any) {
     super();
   }
 

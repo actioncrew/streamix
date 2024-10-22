@@ -1,10 +1,16 @@
 import { Subject } from '../../lib';
-import { Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
+import { Operator, StreamOperator } from '../abstractions/operator';
 
-export class IifOperator extends Operator {
-  private outerStream = new Subject();
+export class IifOperator extends Operator implements StreamOperator {
+
+  private outerStream!: Subject;
+  private currentStream!: Subscribable | null;
+  private finalizePromise!: Promise<void> | null;
+
+  private hasStartedTrueStream!: boolean;
+  private hasStartedFalseStream!: boolean;
 
   constructor(
     private readonly condition: (emission: Emission) => boolean,
@@ -14,40 +20,58 @@ export class IifOperator extends Operator {
     super();
   }
 
-  private initializeOuterStream() {
-    this.outerStream.isCancelled.then(() => this.cleanup());
-    this.outerStream.isFailed.then(() => this.cleanup());
-    this.outerStream.isStopped.then(() => this.cleanup());
+  get stream() {
+    return this.outerStream;
   }
 
-  override init(stream: Subscribable) {
-    this.initializeOuterStream();
+  override init(stream: Stream) {
+    this.outerStream = new Subject();
+    this.currentStream = null;
+
+    this.hasStartedTrueStream = false;
+    this.hasStartedFalseStream = false;
+
+    this.trueStream.onEmission.chain(this, this.handleInnerEmission);
+    this.falseStream.onEmission.chain(this, this.handleInnerEmission);
+
+    this.finalizePromise = Promise.all([
+      this.trueStream.awaitCompletion(),
+      this.falseStream.awaitCompletion()
+    ]).then(() => this.finalize());
   }
 
-  override async cleanup() {
+  async finalize() {
+    this.trueStream.onEmission.remove(this, this.handleInnerEmission);
+    this.falseStream.onEmission.remove(this, this.handleInnerEmission);
     await this.outerStream.complete();
   }
 
+  private async handleInnerEmission({ emission, source }: { emission: Emission, source: Subscribable }) {
+    if (this.currentStream === source) {
+      await this.outerStream.next(emission.value);
+    }
+  };
+
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    // Check the condition for every emission
     const selectedStream = this.condition(emission) ? this.trueStream : this.falseStream;
 
-    // Unsubscribe from any previous inner stream to avoid potential memory leaks
-    let innerSubscription = selectedStream.subscribe(async (value) => {
-      await this.outerStream.next(value);
-    });
+    if (this.currentStream !== selectedStream) {
+      // Switch to the new stream
+      this.currentStream = selectedStream;
+    }
 
-    // Cleanup when the selected stream completes or terminates
-    Promise.race([selectedStream.awaitCompletion(), selectedStream.awaitTermination()]).then(() => {
-      innerSubscription.unsubscribe();
-      this.outerStream.complete();
-    });
+    if (!this.hasStartedTrueStream) {
+      this.trueStream.start();
+      this.hasStartedTrueStream = true;
+    }
+
+    if (!this.hasStartedFalseStream) {
+      this.falseStream.start();
+      this.hasStartedFalseStream = true;
+    }
 
     emission.isPhantom = true;
-
-    return new Promise<Emission>((resolve) => {
-      selectedStream.isStopped.then(() => resolve(emission));
-    });
+    return emission; // Return the modified emission
   }
 }
 

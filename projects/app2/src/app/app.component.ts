@@ -1,4 +1,4 @@
-import { compute, define, finalize, map, mergeMap, range, scan, Subscribable, tap } from '@actioncrew/streamix';
+import { compute, coroutine, finalize, map, mergeMap, range, scan, Subscribable, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 const BATCH_SIZE = 1000;
@@ -152,7 +152,7 @@ export class AppComponent implements OnInit {
     const imageData = this.ctx.createImageData(this.width, this.height);
     const data = imageData.data;
     // Create ComputeOperator instance
-    const task = define(computeMandelbrotInChunks, computeMandelbrot, computeColor);
+    const task = coroutine(computeMandelbrotInChunks, computeMandelbrot, computeColor);
 
     return range(0, this.width * this.height, 1000).pipe(
       map(index => ({ index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
@@ -174,7 +174,7 @@ export class AppComponent implements OnInit {
       }, 0),
       finalize(() => {
         this.ctx.putImageData(imageData, 0, 0);
-        task.cleanup();
+        task.finalize();
         this.hideProgressOverlay();
       })
     );

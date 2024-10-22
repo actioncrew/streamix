@@ -3,11 +3,8 @@ import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
 export class MapOperator extends Operator {
-  private readonly transform: (value: any) => any;
-
-  constructor(transform: (value: any) => any) {
+  constructor(private readonly transform: (value: any) => any) {
     super();
-    this.transform = transform;
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

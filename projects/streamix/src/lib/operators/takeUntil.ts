@@ -1,20 +1,19 @@
-import { Subscription } from '../abstractions';
+import { Stream, Subscription } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 import { Subscribable } from '../abstractions/subscribable';
 
 export class TakeUntilOperator extends Operator {
-  private readonly notifier: Subscribable;
-  private subscription: Subscription | undefined;
-  private stopRequested;
+  private subscription!: Subscription;
+  private stopRequested!: boolean;
 
-  constructor(notifier: Subscribable) {
+  constructor(private readonly notifier: Subscribable) {
     super();
-    this.notifier = notifier;
-    this.stopRequested = false;
   }
 
-  override init() {
+  override init(stream: Stream) {
+    this.stopRequested = false;
+
     this.subscription = this.notifier.subscribe(() => {
       this.stopRequested = true;
       this.subscription?.unsubscribe();
@@ -23,14 +22,11 @@ export class TakeUntilOperator extends Operator {
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     if (this.stopRequested) {
-      stream.isStopRequested.resolve(true);
+      stream.complete();
       emission.isPhantom = true;
       return emission;
     }
 
-    if(stream.isCancelled()) {
-      emission.isCancelled = true;
-    }
     return emission;
   }
 }

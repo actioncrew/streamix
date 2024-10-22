@@ -6,11 +6,11 @@ describe('IntervalStream', () => {
     const intervalStream = new IntervalStream(intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = intervalStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = intervalStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
-    intervalStream.isStopped.then(() => {
+    intervalStream.onStop.once(() => {
       // Check that values are emitted at approximately the correct interval
       expect(emittedValues.length).toBeGreaterThan(1);
       for (let i = 1; i < emittedValues.length; i++) {
@@ -28,8 +28,8 @@ describe('IntervalStream', () => {
     const intervalStream = new IntervalStream(intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = intervalStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    const subscription = intervalStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
     subscription.unsubscribe();
@@ -45,11 +45,11 @@ describe('IntervalStream', () => {
     const intervalStream = new IntervalStream(intervalMs);
 
     const emittedValues: number[] = [];
-    intervalStream.subscribe((emission) => {
-      emittedValues.push(emission.value);
+    intervalStream.subscribe((value) => {
+      emittedValues.push(value);
     });
 
-    intervalStream.terminate();
+    intervalStream.complete();
 
     const previousLength = emittedValues.length;
     await new Promise((resolve) => setTimeout(resolve, intervalMs * 2)); // Wait for potential additional emissions

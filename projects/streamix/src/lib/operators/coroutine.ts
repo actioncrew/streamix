@@ -1,17 +1,28 @@
-import { Emission, Operator, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { EMPTY } from '../streams';
 
-export class DefineOperator extends Operator {
-  private workerPool: Worker[] = [];
-  private workerQueue: Array<(worker: Worker) => void> = [];
-  private maxWorkers: number = navigator.hardwareConcurrency || 4;
+export class CoroutineOperator extends Operator {
+  private readonly functions: Function[];
+  private readonly maxWorkers: number = navigator.hardwareConcurrency || 4;
+
+  private workerPool!: Worker[];
+  private workerQueue!: Array<(worker: Worker) => void>;
 
   constructor(...functions: Function[]) {
     super();
-    if (functions.length === 0) {
+    this.functions = functions;
+    this.init(EMPTY);
+  }
+
+  override init(stream: Stream) {
+    this.workerPool = [];
+    this.workerQueue = [];
+
+    if (this.functions.length === 0) {
       throw new Error("At least one function (the main task) is required.");
     }
 
-    const [mainTask, ...dependencies] = functions;
+    const [mainTask, ...dependencies] = this.functions;
 
     const injectedDependencies = dependencies.map(fn => {
       let fnBody = fn.toString();
@@ -88,7 +99,7 @@ export class DefineOperator extends Operator {
     });
   }
 
-  override async cleanup(): Promise<void> {
+  async finalize(): Promise<void> {
     // Terminate all workers and clear the pool and queue
     this.workerPool.forEach(worker => worker.terminate());
     this.workerPool = [];
@@ -96,4 +107,4 @@ export class DefineOperator extends Operator {
   }
 }
 
-export const define = (...functions: Function[]) => new DefineOperator(...functions);
+export const coroutine = (...functions: Function[]) => new CoroutineOperator(...functions);

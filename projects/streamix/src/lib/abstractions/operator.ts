@@ -2,30 +2,34 @@ import { Chunk, Stream } from '../abstractions';
 import { Emission } from './emission';
 import { Subscribable } from './subscribable';
 
+
+export interface HookOperator {
+  callback: (params?: any) => void | Promise<void>;
+}
+
+export interface StreamOperator {
+  get stream(): Subscribable;
+}
+
+
 export abstract class Operator {
   next?: Operator;
 
-  init(stream: Stream): void {
+  init(stream: Stream) {
+  }
+
+  async cleanup(): Promise<void> {
   }
 
   abstract handle(emission: Emission, stream: Subscribable): Promise<Emission>;
 
-  async cleanup(): Promise<void> {
-    throw new Error("Not implemented");
-  }
-
   async process(emission: Emission, chunk: Chunk): Promise<Emission> {
     try {
       let actualStream = chunk.stream;
-      if (actualStream.isCancelled() === false) {
-        emission = await this.handle(emission, actualStream);
-        if (this.next && !emission.isPhantom && !emission.isCancelled && !emission.isFailed) {
-          return this.next.process(emission, chunk);
-        } else {
-          return emission;
-        }
+      emission = await this.handle(emission, actualStream);
+      if (this.next && !emission.isPhantom && !emission.isFailed) {
+        return this.next.process(emission, chunk);
       } else {
-        emission.isCancelled = true;
         return emission;
       }
     } catch (error) {

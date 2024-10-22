@@ -16,13 +16,13 @@ describe('DelayOperator', () => {
       expect(elapsedTime).toBeGreaterThanOrEqual(emitCount * delayTime);
     });
 
-    delayedStream.isStopped.then(() => {
+    delayedStream.onStop.once(() => {
       if (emitCount === 3) {
         done();
       } else {
         done(new Error('Not all values were emitted'));
       }
-    }).catch(done);
+    });
   });
 
   it('should stop emitting if the stream is cancelled', (done) => {
@@ -36,11 +36,11 @@ describe('DelayOperator', () => {
     delayedStream.subscribe((value) => {
       emitCount++;
       if (emitCount === 2) {
-        delayedStream.terminate();
+        delayedStream.complete();
       }
     });
 
-    delayedStream.isStopped.then(() => {
+    delayedStream.onStop.once(() => {
       expect(emitCount).toBeLessThan(3);
       done();
     });
@@ -58,10 +58,10 @@ describe('DelayOperator', () => {
       emitCount++;
     });
 
-    delayedStream.isStopped.then(() => {
+    delayedStream.onStop.once(() => {
       expect(emitCount).toBe(5);
       done();
-    }).catch(done);
+    });
   });
 });
 
@@ -76,12 +76,12 @@ class TestStream extends Stream {
     this.values = values;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
 
-    while (this.index < this.values.length && !this.isStopRequested()) {
+    while (this.index < this.values.length && !this.isStopRequested) {
       await this.onEmission.process({emission:{ value: this.values[this.index] }, source: this});
       this.index++;
     }
-    this.isAutoComplete.resolve(true);
+    this.isAutoComplete = true;
   }
 }

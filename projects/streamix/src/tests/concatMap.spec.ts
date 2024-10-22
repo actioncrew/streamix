@@ -1,4 +1,4 @@
-import { ConcatMapOperator, from, of, Stream } from '../lib';
+import { concatMap, ConcatMapOperator, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
 
@@ -16,7 +16,7 @@ describe('ConcatMapOperator', () => {
     const operator = new ConcatMapOperator(project);
     operator.init(mockStream);
 
-    const request = { value: null, isCancelled: false };
+    const request = { value: null, isPhantom: false };
 
     const result = await operator.handle(request, mockStream);
 
@@ -27,17 +27,17 @@ describe('ConcatMapOperator', () => {
     const operator = new ConcatMapOperator(project);
     operator.init(mockStream);
 
-    const request = { value: 'data', isCancelled: true };
+    const request = { value: 'data', isPhantom: true };
     const result = await operator.handle(request, mockStream);
 
-    expect(result).toEqual({ ...request, isCancelled: true });
+    expect(result).toEqual({ ...request, isPhantom: true });
   });
 
   it('should project value and subscribe to inner stream (integration test)', async () => {
     const operator = new ConcatMapOperator(project);
     operator.init(mockStream);
 
-    const request = { value: 'data', isCancelled: false };
+    const request = { value: 'data', isPhantom: false };
     const expectedValue = 'innerValue'; // Expected value from inner stream
     const result = await operator.handle(request, mockStream);
 
@@ -49,8 +49,8 @@ describe('ConcatMapOperator', () => {
     operator.init(mockStream);
 
     const requests = [
-      { value: 'data1', isCancelled: false },
-      { value: 'data2', isCancelled: false },
+      { value: 'data1', isPhantom: false },
+      { value: 'data2', isPhantom: false },
     ];
 
     const results = await Promise.all(
@@ -69,7 +69,7 @@ describe('ConcatMapOperator', () => {
     const operator = new ConcatMapOperator(errorProject);
     operator.init(mockStream);
 
-    const request = { value: 'data', isCancelled: false };
+    const request = { value: 'data', isPhantom: false };
 
     try {
       await operator.handle(request, mockStream);
@@ -79,10 +79,6 @@ describe('ConcatMapOperator', () => {
   });
 
   it('should complete inner stream before processing next emission', (done) => {
-
-    const operator = new ConcatMapOperator(value => of(value));
-    operator.init(mockStream);
-
     const emissions = [
       'data1',
       'data2',
@@ -92,13 +88,13 @@ describe('ConcatMapOperator', () => {
     ];
 
     let processedOrder: any[] = [];
-    const mockStream$ = from(emissions).pipe(operator);
+    const mockStream$ = from(emissions).pipe(concatMap(value => of(value)));
 
     mockStream$.subscribe((value) => {
       processedOrder.push(value);
     });
 
-    mockStream$.isStopped.then(() => {
+    mockStream$.onStop.once(() => {
       expect(processedOrder).toEqual(['data1', 'data2', 'data3', 'data4', 'data5']);
       done();
     });
@@ -132,7 +128,7 @@ describe('ConcatMapOperator', () => {
       results.push(value)
     });
 
-    mockStream$.isStopped.then(() => {
+    mockStream$.onStop.once(() => {
       expect(results.length).toEqual(6);
       expect(results).toEqual([
         'inner1a', 'inner1b', 'inner1c',
@@ -145,23 +141,23 @@ describe('ConcatMapOperator', () => {
 
 // Example Inner Stream Implementation (Replace with your actual implementation)
 class MyInnerStream extends Stream {
-  private value: any;
+  private innerValue: any;
 
   constructor(value: any) {
     super();
-    this.value = value;
+    this.innerValue = value;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     // Simulate inner stream behavior (emission, completion, error)
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
-    this.onEmission.process({emission:{ value: this.value }, source: this}); // Emit the projected value
+    this.onEmission.process({emission:{ value: this.innerValue }, source: this}); // Emit the projected value
   }
 }
 
 // Example Real Stream Implementation (Replace with your actual implementation)
 class MyRealStream extends Stream {
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     // Simulate your real stream behavior (emitting values)
     this.onEmission.process({emission: { value: 'streamValue1' }, source: this});
   }
@@ -169,14 +165,14 @@ class MyRealStream extends Stream {
 
 // Example Error Inner Stream Implementation (Replace with your actual implementation)
 class ErrorInnerStream extends Stream {
-  private value: any;
+  private innerValue: any;
 
   constructor(value: any) {
     super();
-    this.value = value;
+    this.innerValue = value;
   }
 
-  override async run(): Promise<void> {
+  async run(): Promise<void> {
     throw new Error('Inner Stream Error');
   }
 }
