@@ -55,19 +55,17 @@ describe('DeferStream', () => {
     });
   });
 
-  it('should handle stream completion', async () => {
+  it('should handle stream completion', (done) => {
     const factory = jest.fn(() => new MockStream([], true));
 
     const deferStream = defer(factory);
 
-    const completion = new Promise<void>((resolve) => {
-      deferStream.isAutoComplete.then(() => resolve());
-    });
+    deferStream.subscribe();
 
-    await deferStream.run();
-
-    expect(factory).toHaveBeenCalled();
-    await completion; // Ensure the stream completes
+    deferStream.isStopped.then(() => {
+      expect(factory).toHaveBeenCalled();
+      done();
+    })
   });
 
   it('should handle stream errors', async () => {
@@ -84,8 +82,8 @@ describe('DeferStream', () => {
       deferStream.onError.chain(deferStream, (deferStream as any).callback);
     });
 
-    deferStream.start();
-    deferStream.isRunning.then(async () => {
+    deferStream.subscribe();
+    deferStream.isStopped.then(async () => {
       expect(factory).toHaveBeenCalled();
       await failure; // Ensure the error is properly handled
     })
