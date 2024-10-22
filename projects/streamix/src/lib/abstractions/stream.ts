@@ -1,4 +1,4 @@
-import { Emission, OperatorType, Pipeline, Subscribable, Subscription } from '../abstractions';
+import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
 import { hook, promisified, PromisifiedType } from '../utils';
 
 export abstract class Stream<T = any> implements Subscribable {
@@ -140,7 +140,7 @@ export abstract class Stream<T = any> implements Subscribable {
     };
   }
 
-  pipe(...operators: OperatorType[]): Subscribable<T> {
+  pipe(...operators: Operator[]): Subscribable<T> {
     return new Pipeline(this.clone()).pipe(...operators);
   }
 

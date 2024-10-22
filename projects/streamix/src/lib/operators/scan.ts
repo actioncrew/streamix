@@ -1,29 +1,25 @@
-import { Stream, Subscribable } from '../abstractions';
+import { Stream, Subscribable, createOperator } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
 
-export class ScanOperator extends Operator {
+export const scan = (accumulator: (acc: any, value: any, index?: number) => any, seed: any) => {
+  let accumulatedValue = seed; // Initialize the accumulated value
+  let index = 0; // Initialize the index
 
-  private accumulatedValue!: any;
-  private index!: number;
+  const init = (stream: Stream) => {
+    accumulatedValue = seed; // Reset accumulated value on initialization
+    index = 0; // Reset index on initialization
+  };
 
-  constructor(private readonly accumulator: (acc: any, value: any, index?: number) => any, private readonly seed: any) {
-    super();
-    this.accumulator = accumulator;
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    accumulatedValue = accumulator(accumulatedValue, emission.value!, index++); // Update the accumulated value
+    emission.value = accumulatedValue; // Set the updated value to the emission
+    return emission; // Return the modified emission
+  };
 
-  }
+  // Create the operator with the handle function
+  const operator = createOperator(handle);
+  operator.name = 'scan';
+  operator.init = init;
 
-  override init(stream: Stream) {
-    this.accumulatedValue = this.seed;
-    this.index = 0;
-  }
-
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!, this.index++);
-    emission.value = this.accumulatedValue;
-    return emission;
-  }
-}
-
-export const scan = (accumulator: (acc: any, value: any, index?: number) => any, seed: any) => new ScanOperator(accumulator, seed);
-
+  return operator; // Return the operator
+};

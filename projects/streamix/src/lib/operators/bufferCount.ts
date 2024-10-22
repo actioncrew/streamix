@@ -1,7 +1,7 @@
 import { Stream, Subscribable, Emission } from '../abstractions';
-import { OperatorType, createOperator } from '../abstractions/operator';
+import { Operator, createOperator } from '../abstractions/operator';
 
-export const bufferCount = (bufferSize: number): OperatorType => {
+export const bufferCount = (bufferSize: number): Operator => {
   let buffer: any[] = [];
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
@@ -18,5 +18,6 @@ export const bufferCount = (bufferSize: number): OperatorType => {
   };
 
   const operator = createOperator(handle); // Create the operator using createOperator
+  operator.name = 'bufferCount';
   return operator;
 };
