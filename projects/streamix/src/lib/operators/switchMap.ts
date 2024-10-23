@@ -5,12 +5,12 @@ export const switchMap = (project: (value: any) => Subscribable) => {
   let activeInnerStream: Subscribable | null = null;
   let isFinalizing = false;
 
-  const output = new Subject();
+  const output = new Subject<Emission>();
 
   const init = (stream: Stream) => {
     stream.onStop.once(() => finalize());
     output.onStop.once(() => finalize());
-  }
+  };
 
   const finalize = async () => {
     if (isFinalizing) return;
@@ -24,7 +24,8 @@ export const switchMap = (project: (value: any) => Subscribable) => {
 
   const stopInnerStream = async () => {
     if (activeInnerStream) {
-      activeInnerStream.complete();
+      activeInnerStream.onEmission.remove(handleInnerEmission); // Remove the inner emission handler
+      await activeInnerStream.complete();
       activeInnerStream = null;
     }
   };
@@ -39,7 +40,13 @@ export const switchMap = (project: (value: any) => Subscribable) => {
     return processEmission(emission, output);
   };
 
-  const processEmission = async (emission: Emission, stream: Subject): Promise<Emission> => {
+  const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
+    if (!output.shouldComplete()) {
+      await output.next(innerEmission.value);
+    }
+  };
+
+  const processEmission = async (emission: Emission, stream: Subject<Emission>): Promise<Emission> => {
     const newInnerStream = project(emission.value);
 
     if (activeInnerStream === newInnerStream) {
@@ -50,13 +57,7 @@ export const switchMap = (project: (value: any) => Subscribable) => {
     await stopInnerStream();
     activeInnerStream = newInnerStream;
 
-    const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
-      if (!stream.shouldComplete()) {
-        await stream.next(innerEmission.value);
-      }
-    };
-
-    activeInnerStream.onEmission.chain(handleInnerEmission);
+    activeInnerStream.onEmission.chain(handleInnerEmission); // Chain the inner emission handler
 
     activeInnerStream.onError.once((error: any) => {
       emission.error = error;
@@ -76,6 +77,7 @@ export const switchMap = (project: (value: any) => Subscribable) => {
 
   const removeInnerStream = (innerStream: Subscribable) => {
     if (activeInnerStream === innerStream) {
+      activeInnerStream.onEmission.remove(handleInnerEmission); // Ensure we remove the handler
       activeInnerStream = null;
     }
   };
