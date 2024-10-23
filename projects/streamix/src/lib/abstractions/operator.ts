@@ -29,12 +29,10 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
 
     init: function(stream: Stream) {
       // Initialization logic can be added here
-      console.log('Operator initialized with stream:', stream);
     },
 
     cleanup: async function() {
       // Cleanup logic can be added here
-      console.log('Cleaning up operator');
     },
 
     process: async function (emission: Emission, chunk: Chunk): Promise<Emission> {
