@@ -1,78 +1,61 @@
 import { Subject } from '../../lib';
-import { Stream, Subscribable } from '../abstractions';
+import { createOperator, Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator, StreamOperator } from '../abstractions/operator';
 
-export class IifOperator extends Operator implements StreamOperator {
+export const iif = (
+  condition: (emission: Emission) => boolean,
+  trueStream: Subscribable,
+  falseStream: Subscribable
+) => {
+  let output: Subject = new Subject();
+  let currentStream: Subscribable | null = null;
 
-  private outerStream!: Subject;
-  private currentStream!: Subscribable | null;
-  private finalizePromise!: Promise<void> | null;
+  let hasStartedTrueStream = false;
+  let hasStartedFalseStream = false;
 
-  private hasStartedTrueStream!: boolean;
-  private hasStartedFalseStream!: boolean;
-
-  constructor(
-    private readonly condition: (emission: Emission) => boolean,
-    private readonly trueStream: Subscribable,
-    private readonly falseStream: Subscribable
-  ) {
-    super();
-  }
-
-  get stream() {
-    return this.outerStream;
-  }
-
-  override init(stream: Stream) {
-    this.outerStream = new Subject();
-    this.currentStream = null;
-
-    this.hasStartedTrueStream = false;
-    this.hasStartedFalseStream = false;
-
-    this.trueStream.onEmission.chain(this, this.handleInnerEmission);
-    this.falseStream.onEmission.chain(this, this.handleInnerEmission);
-
-    this.finalizePromise = Promise.all([
-      this.trueStream.awaitCompletion(),
-      this.falseStream.awaitCompletion()
-    ]).then(() => this.finalize());
-  }
-
-  async finalize() {
-    this.trueStream.onEmission.remove(this, this.handleInnerEmission);
-    this.falseStream.onEmission.remove(this, this.handleInnerEmission);
-    await this.outerStream.complete();
-  }
-
-  private async handleInnerEmission({ emission, source }: { emission: Emission, source: Subscribable }) {
-    if (this.currentStream === source) {
-      await this.outerStream.next(emission.value);
+  const handleInnerEmission = async ({ emission, source }: { emission: Emission, source: Subscribable }) => {
+    if (currentStream === source) {
+      await output.next(emission.value);
     }
   };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    const selectedStream = this.condition(emission) ? this.trueStream : this.falseStream;
+  const finalize = async () => {
+    trueStream.onEmission.remove(handleInnerEmission);
+    falseStream.onEmission.remove(handleInnerEmission);
+    await output.complete();
+  };
 
-    if (this.currentStream !== selectedStream) {
-      // Switch to the new stream
-      this.currentStream = selectedStream;
+  trueStream.onEmission.chain(handleInnerEmission);
+  falseStream.onEmission.chain(handleInnerEmission);
+
+  const finalizePromise = Promise.all([
+    trueStream.awaitCompletion(),
+    falseStream.awaitCompletion()
+  ]).then(() => finalize());
+
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    const selectedStream = condition(emission) ? trueStream : falseStream;
+
+    if (currentStream !== selectedStream) {
+      currentStream = selectedStream;
     }
 
-    if (!this.hasStartedTrueStream) {
-      this.trueStream.start();
-      this.hasStartedTrueStream = true;
+    if (!hasStartedTrueStream) {
+      trueStream.start();
+      hasStartedTrueStream = true;
     }
 
-    if (!this.hasStartedFalseStream) {
-      this.falseStream.start();
-      this.hasStartedFalseStream = true;
+    if (!hasStartedFalseStream) {
+      falseStream.start();
+      hasStartedFalseStream = true;
     }
 
     emission.isPhantom = true;
-    return emission; // Return the modified emission
-  }
-}
+    return emission;
+  };
 
-export const iif = (condition: (emission: Emission) => boolean, trueStream: Subscribable, falseStream: Subscribable) => new IifOperator(condition, trueStream, falseStream);
+  const operator = createOperator(handle) as any;
+  operator.name = 'iif';
+  operator.stream = output;
+  return operator;
+};

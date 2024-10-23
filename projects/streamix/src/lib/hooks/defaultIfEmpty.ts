@@ -1,4 +1,4 @@
-import { Emission, Subscribable, Stream } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
 export const defaultIfEmpty = (defaultValue: any) => {
   let boundStream: Stream;
@@ -24,8 +24,8 @@ export const defaultIfEmpty = (defaultValue: any) => {
     return emission; // Pass the emission forward
   };
 
-  return {
-    init,
-    handle
-  };
+  const operator = createOperator(handle);
+  operator.name = 'defaultIfEmpty';
+  operator.init = init;
+  return operator;
 };

@@ -1,114 +1,88 @@
 import { Subject } from '../../lib';
-import { Emission, Operator, Stream, StreamOperator, Subscribable } from '../abstractions';
+import { createOperator, Emission, Stream, Subscribable } from '../abstractions';
 
-export class SwitchMapOperator extends Operator implements StreamOperator {
+export const switchMap = (project: (value: any) => Subscribable) => {
+  let activeInnerStream: Subscribable | null = null;
+  let isFinalizing = false;
 
-  private activeInnerStream!: Subscribable | null;
-  private input!: Stream;
-  private output!: Subject;
-  private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
-  private isFinalizing!: boolean;
+  const output = new Subject();
 
-  constructor(private readonly project: (value: any) => Subscribable) {
-    super();
-    this.project = project;
+  const init = (stream: Stream) => {
+    stream.onStop.once(() => finalize());
+    output.onStop.once(() => finalize());
   }
 
-  override init(stream: Stream) {
-    this.activeInnerStream = null;
-    this.input = stream;
-    this.output = new Subject();
-    this.handleInnerEmission = null;
-    this.isFinalizing = false;
+  const finalize = async () => {
+    if (isFinalizing) return;
+    isFinalizing = true;
 
-    this.input.onStop.once(async () => {
-      if (this.activeInnerStream) {
-        await this.activeInnerStream.awaitCompletion();
-      }
-      await this.finalize();
-    });
-
-    this.output.onStop.once(() => this.finalize());
-  }
-
-  get stream() {
-    return this.output;
-  }
-
-  async finalize() {
-    if (this.isFinalizing) { return; }
-    this.isFinalizing = true;
-
-    await this.stopInnerStream();
-    if (this.output && !this.output.isStopped) {
-      await this.output.complete();
+    await stopInnerStream();
+    if (!output.isStopped) {
+      await output.complete();
     }
-  }
+  };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
+  const stopInnerStream = async () => {
+    if (activeInnerStream) {
+      activeInnerStream.complete();
+      activeInnerStream = null;
+    }
+  };
 
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
     if (stream.shouldComplete()) {
       emission.isPhantom = true;
-      await this.stopInnerStream();
+      await stopInnerStream();
       return emission;
     }
 
-    try {
-      return await this.processEmission(emission, this.output);
-    } catch (error) {
-      return Promise.reject(error);
-    }
-  }
+    return processEmission(emission, output);
+  };
 
-  private async processEmission(emission: Emission, stream: Subject): Promise<Emission> {
-    const newInnerStream = this.project(emission.value);
+  const processEmission = async (emission: Emission, stream: Subject): Promise<Emission> => {
+    const newInnerStream = project(emission.value);
 
-    if (this.activeInnerStream === newInnerStream) {
+    if (activeInnerStream === newInnerStream) {
       emission.isPhantom = true;
       return emission;
     }
 
-    await this.stopInnerStream();
-    this.activeInnerStream = newInnerStream;
+    await stopInnerStream();
+    activeInnerStream = newInnerStream;
 
-    this.handleInnerEmission = async ({ emission }) => {
+    const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
       if (!stream.shouldComplete()) {
-        await stream.next(emission.value);
+        await stream.next(innerEmission.value);
       }
     };
 
-    this.activeInnerStream.onEmission.chain(this, this.handleInnerEmission);
+    activeInnerStream.onEmission.chain(handleInnerEmission);
 
-    this.activeInnerStream.onError.once((error: any) => {
+    activeInnerStream.onError.once((error: any) => {
       emission.error = error;
       emission.isFailed = true;
-      this.removeInnerStream(this.activeInnerStream!);
+      removeInnerStream(activeInnerStream!);
     });
 
-    this.activeInnerStream.onStop.once(() => this.removeInnerStream(this.activeInnerStream!));
+    activeInnerStream.onStop.once(() => removeInnerStream(activeInnerStream!));
 
-    this.activeInnerStream.start();
+    activeInnerStream.start();
 
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {
-      this.activeInnerStream!.onStop.once(() => resolve(emission));
+      activeInnerStream!.onStop.once(() => resolve(emission));
     });
+  };
 
-  }
-
-  private removeInnerStream(innerStream: Subscribable) {
-    if (this.activeInnerStream === innerStream) {
-      this.activeInnerStream = null;
+  const removeInnerStream = (innerStream: Subscribable) => {
+    if (activeInnerStream === innerStream) {
+      activeInnerStream = null;
     }
-  }
+  };
 
-  private async stopInnerStream() {
-    if (this.activeInnerStream) {
-      this.activeInnerStream.onEmission.remove(this, this.handleInnerEmission!);
-      this.activeInnerStream.complete();
-      this.removeInnerStream(this.activeInnerStream);
-    }
-  }
-}
-
-export const switchMap = (project: (value: any) => Subscribable) => new SwitchMapOperator(project);
+  const operator = createOperator(handle) as any;
+  operator.name = 'switchMap';
+  operator.init = init;
+  operator.stream = output;
+  return operator;
+};

@@ -1,4 +1,4 @@
-import { Emission, Subscribable, Stream } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
 export const startWith = (value: any) => {
   let boundStream: Stream;
@@ -17,8 +17,8 @@ export const startWith = (value: any) => {
     return emission; // Simply pass the emission without modification
   };
 
-  return {
-    init,
-    handle
-  };
+  const operator = createOperator(handle);
+  operator.name = 'startWith';
+  operator.init = init;
+  return operator;
 };

@@ -1,30 +1,29 @@
-import { Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
-export class DelayOperator extends Operator {
-  private applyDelay!: (emission: Emission) => Promise<Emission>;
-  private completionPromise!: Promise<void>;
+export const delay = (delayTime: number) => {
+  let applyDelay: (emission: Emission) => Promise<Emission>;
+  let completionPromise: Promise<void>;
 
-  constructor(private readonly delayTime: number) {
-    super();
-    this.delayTime = delayTime;
-  }
+  const init = (stream: Stream) => {
+    applyDelay = (emission: Emission) => new Promise<Emission>((resolve) => {
+      const timeout = setTimeout(() => resolve(emission), delayTime);
 
-  override init(stream: Stream) {
-    this.applyDelay = (emission: Emission) => new Promise<Emission>((resolve) => {
-      const timeout = setTimeout(() => resolve(emission), this.delayTime);
-
-      this.completionPromise = stream.awaitCompletion().then(() => {
-        emission.isPhantom = true;
+      // Handle stream completion to clear the timeout
+      completionPromise = stream.awaitCompletion().then(() => {
+        emission.isPhantom = true; // Mark emission as phantom when stream completes
         clearTimeout(timeout);
         resolve(emission);
       });
     });
-  }
+  };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    await this.applyDelay(emission)
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    await applyDelay(emission); // Apply the delay to the emission
     return emission;
-  }
-}
+  };
 
-export const delay = (delayTime: number) => new DelayOperator(delayTime);
+  const operator = createOperator(handle);
+  operator.name = 'delay';
+  operator.init = init;
+  return operator;
+};

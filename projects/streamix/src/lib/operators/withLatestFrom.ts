@@ -1,81 +1,68 @@
-import { Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { createOperator, Emission, Stream, Subscribable } from '../abstractions';
 import { asyncValue } from '../utils';
 
-export class WithLatestFromOperator extends Operator {
-  private readonly streams: Subscribable[];
+export const withLatestFrom = (...streams: Subscribable[]) => {
+  let latestValues = streams.map(() => asyncValue());
+  let handleEmissionFns: Array<(event: { emission: Emission; source: Subscribable }) => void> = [];
+  let started = false;
 
-  private latestValues!: ReturnType<typeof asyncValue<any>>[];
-  private handleEmissionFns!: Array<(event: { emission: Emission; source: Subscribable }) => void>;
-  private input!: Stream;
-  private started!: boolean;
+  const handleStreamEmissions = (source: Subscribable, index: number) => {
+    const latestValue = latestValues[index];
+    const handleEmission = async ({ emission }: { emission: Emission }) => {
+      latestValue.set(emission.value);
+    };
 
-  constructor(...streams: Subscribable[]) {
-    super();
-    this.streams = streams;
-  }
+    source.onEmission.chain(handleEmission);
+    handleEmissionFns.push(handleEmission);
+  };
 
-  override init(stream: Stream) {
-    this.latestValues = [];
-    this.handleEmissionFns = [];
-    this.input = stream;
-    this.started = false;
+  const init = (stream: Stream) => {
+    streams.forEach((source, index) => handleStreamEmissions(source, index));
 
-    this.streams.forEach((source, index) => {
-      const latestValue = asyncValue();
-      this.latestValues.push(latestValue);
+    stream.onStop.once(finalize); // Cleanup on stream termination
+  };
 
-      // Register the emission handler
-      this.handleEmissionFns.push(async ({ emission }: { emission: Emission }) => {
-        latestValue.set(emission.value);
-      });
-
-      source.onEmission.chain(this, this.handleEmissionFns[index]);
-    });
-
-    // Cleanup on stream termination
-    stream.onStop.once(() => this.finalize());
-  }
-
-  async finalize() {
-    // Remove emission handlers for each stream
-    this.streams.forEach((stream, index) => {
-      if(stream.isStopped) {
-        stream.onEmission.remove(this, this.handleEmissionFns[index]);
+  const finalize = () => {
+    streams.forEach((source, index) => {
+      if (source.isStopped) {
+        source.onEmission.remove(handleEmissionFns[index]);
       }
     });
 
-    // Reset latest values and handlers
-    this.latestValues = [];
-    this.handleEmissionFns = [];
-  }
+    latestValues = [];
+    handleEmissionFns = [];
+  };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if(!this.started) {
-      this.started = true;
-      this.streams.forEach(source => source.start());
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    if (!started) {
+      started = true;
+      streams.forEach(source => source.start());
     }
 
-    if(stream.shouldComplete()) {
-      await Promise.all(this.streams.map(source => source.complete()));
+    if (stream.shouldComplete()) {
+      await Promise.all(streams.map(source => source.complete()));
     }
 
-    const latestValuesPromise = Promise.all(this.latestValues.map(async (value) => await value()));
+    const latestValuesPromise = Promise.all(latestValues.map(async (value) => await value()));
     const terminationPromises = Promise.race([
       stream.awaitCompletion(),
-      ...this.streams.map(source => source.awaitCompletion()),
+      ...streams.map(source => source.awaitCompletion()),
     ]);
 
     await Promise.race([latestValuesPromise, terminationPromises]);
 
-    if (this.latestValues.every((value) => value.hasValue())) {
-      emission.value = [emission.value, ...this.latestValues.map(value => value.value())];
+    if (latestValues.every((value) => value.hasValue())) {
+      emission.value = [emission.value, ...latestValues.map(value => value.value())];
     } else {
       emission.isFailed = true;
       emission.error = new Error("Some streams are completed without emitting value.");
-      this.finalize();
+      finalize();
     }
     return emission;
-  }
-}
+  };
 
-export const withLatestFrom = (...streams: Subscribable[]) => new WithLatestFromOperator(...streams);
+  const operator = createOperator(handle);
+  operator.name = 'withLatestFrom';
+  operator.init = init;
+  return operator;
+};

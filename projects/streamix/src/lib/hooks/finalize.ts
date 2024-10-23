@@ -15,7 +15,7 @@ export const finalize = (callback: () => void | Promise<void>) => {
   };
 
   const operator = createOperator(handle);
-  operator.init = init;
   operator.name = 'finalize';
+  operator.init = init;
   return operator;
 };
