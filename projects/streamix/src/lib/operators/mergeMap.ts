@@ -112,8 +112,6 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
   const operator = createOperator(handle) as any;
   operator.name = 'mergeMap';
   operator.init = init;
-  operator.finalize = finalize;
   operator.stream = output;
-
   return operator;
 };

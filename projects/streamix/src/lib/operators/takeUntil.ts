@@ -1,34 +1,31 @@
-import { Stream, Subscription } from '../abstractions';
+import { createOperator, Stream, Subscription } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
 import { Subscribable } from '../abstractions/subscribable';
 
-export class TakeUntilOperator extends Operator {
-  private subscription!: Subscription;
-  private stopRequested!: boolean;
+export const takeUntil = (notifier: Subscribable) => {
+  let stopRequested = false;
+  let subscription: Subscription | null = null;
 
-  constructor(private readonly notifier: Subscribable) {
-    super();
-  }
+  const init = (stream: Stream) => {
+    stopRequested = false;
 
-  override init(stream: Stream) {
-    this.stopRequested = false;
-
-    this.subscription = this.notifier.subscribe(() => {
-      this.stopRequested = true;
-      this.subscription?.unsubscribe();
+    subscription = notifier.subscribe(() => {
+      stopRequested = true;
+      subscription?.unsubscribe(); // Unsubscribe from the notifier when triggered
     });
-  }
+  };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (this.stopRequested) {
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    if (stopRequested) {
       stream.complete();
-      emission.isPhantom = true;
+      emission.isPhantom = true; // Mark emission as phantom
       return emission;
     }
+    return emission; // Return the emission if not stopped
+  };
 
-    return emission;
-  }
-}
-
-export const takeUntil = (notifier: Subscribable) => new TakeUntilOperator(notifier);
+  const operator = createOperator(handle);
+  operator.name = 'take';
+  operator.init = init;
+  return operator;
+};

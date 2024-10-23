@@ -1,23 +1,22 @@
-import { Subscribable } from '../abstractions';
+import { createOperator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
 
-export class TakeWhileOperator extends Operator {
+export const takeWhile = (predicate: (value: any, index?: number) => boolean) => {
+  let index = 0; // To track the index of emissions
 
-  constructor(private readonly predicate: (value: any, index?: number) => boolean) {
-    super();
-  }
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    const shouldContinue = predicate(emission.value, index++);
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    const shouldContinue = this.predicate(emission.value);
     if (!shouldContinue) {
-      emission.isPhantom = true;
-      stream.complete();
-      return emission
+      emission.isPhantom = true; // Mark emission as phantom
+      stream.complete(); // Complete the stream if the condition fails
+      return emission;
     }
 
-    return emission;
-  }
-}
+    return emission; // Return the emission if the condition is met
+  };
 
-export const takeWhile = (predicate: (value: any, index?: number) => boolean) => new TakeWhileOperator(predicate);
+  const operator = createOperator(handle);
+  operator.name = 'takeWhile';
+  return operator;
+};

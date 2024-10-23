@@ -20,6 +20,5 @@ export const scan = (accumulator: (acc: any, value: any, index?: number) => any,
   const operator = createOperator(handle);
   operator.name = 'scan';
   operator.init = init;
-
   return operator; // Return the operator
 };
