@@ -15,6 +15,10 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
 
   constructor(public stream: Stream<T>) {
     super();
+
+    if (!this.stream.onEmission.contains(this, this.emit)) {
+      this.stream.onEmission.chain(this, this.emit);
+    }
   }
 
   override get subscribers() {
@@ -110,18 +114,8 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     }
   }
 
-  override async cleanup() {
-    this.stream.onEmission.remove(this, this.emit);
-  }
-
-  override init() {
-    if (!this.stream.onEmission.contains(this, this.emit)) {
-      this.stream.onEmission.chain(this, this.emit);
-    }
-  }
-
   override start() {
-    return this.stream.startWithContext(this);
+    return this.stream.start();
   }
 
   override run(): Promise<void> {

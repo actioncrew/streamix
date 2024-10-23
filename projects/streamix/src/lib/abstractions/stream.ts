@@ -102,19 +102,7 @@ export abstract class Stream<T = any> implements Subscribable {
     return Promise.resolve();
   }
 
-  init() {
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
-    }
-  }
-
   start(): void {
-    return this.startWithContext(this);
-  }
-
-  startWithContext(context: any) {
-    context.init();
-
     if (!this.isRunning) {
       this.isRunning = true;
       queueMicrotask(async () => {
@@ -133,15 +121,9 @@ export abstract class Stream<T = any> implements Subscribable {
           this.isStopped = true; this.isRunning = false;
           // Handle finalize callback
           await this.onStop.process();
-
-          await context.cleanup();
         }
       });
     }
-  }
-
-  async cleanup() {
-    this.onEmission.remove(this, this.emit);
   }
 
   subscribe(callback?: ((value: T) => void) | void): Subscription {
@@ -149,6 +131,10 @@ export abstract class Stream<T = any> implements Subscribable {
       this.#currentValue = value;
       return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
     };
+
+    if (!this.onEmission.contains(this, this.emit)) {
+      this.onEmission.chain(this, this.emit);
+    }
 
     this.subscribers.chain(this, boundCallback);
 
@@ -158,6 +144,7 @@ export abstract class Stream<T = any> implements Subscribable {
       unsubscribe: async () => {
         this.subscribers.remove(this, boundCallback);
         if (this.subscribers.length === 0) {
+          this.onEmission.remove(this, this.emit);
           await this.complete();
         }
       }
