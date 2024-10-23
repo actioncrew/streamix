@@ -3,61 +3,85 @@ import { hook, promisified, PromisifiedType } from '../utils';
 
 export abstract class Stream<T = any> implements Subscribable {
 
-  _completionPromise = promisified<void>();
-  _isAutoComplete = false;
-  _isStopRequested = false;
+  #completionPromise = promisified<void>();
+  #isAutoComplete = false;
+  #isStopRequested = false;
 
-  _isStopped = false;
-  _isRunning = false;
+  #isStopped = false;
+  #isRunning = false;
 
-  subscribers = hook();
+  #subscribers = hook();
 
-  onStart = hook();
-  onComplete = hook();
-  onStop = hook();
-  onError = hook();
-  onEmission = hook();
+  #onStart = hook();
+  #onComplete = hook();
+  #onStop = hook();
+  #onError = hook();
+  #onEmission = hook();
 
-  currentValue: T | undefined;
+  #currentValue: T | undefined;
 
   abstract run(): Promise<void>;
 
+  get subscribers() {
+    return this.#subscribers;
+  }
+
+  get onStart() {
+    return this.#onStart;
+  }
+
+  get onComplete() {
+    return this.#onComplete;
+  }
+
+  get onStop() {
+    return this.#onStop;
+  }
+
+  get onError() {
+    return this.#onError;
+  }
+
+  get onEmission() {
+    return this.#onEmission;
+  }
+
   get isAutoComplete() {
-    return this._isAutoComplete;
+    return this.#isAutoComplete;
   }
 
   set isAutoComplete(value: boolean) {
     if(value) {
-      this._completionPromise.resolve();
+      this.#completionPromise.resolve();
     }
-    this._isAutoComplete = value;
+    this.#isAutoComplete = value;
   }
 
   get isStopRequested() {
-    return this._isStopRequested;
+    return this.#isStopRequested;
   }
 
   set isStopRequested(value: boolean) {
     if(value) {
-      this._completionPromise.resolve();
+      this.#completionPromise.resolve();
     }
-    this._isStopRequested = value;
+    this.#isStopRequested = value;
   }
 
   get isRunning() {
-    return this._isRunning;
+    return this.#isRunning;
   }
 
   set isRunning(value: boolean) {
-    this._isRunning = value;
+    this.#isRunning = value;
   }
 
   get isStopped() {
-    return this._isStopped;
+    return this.#isStopped;
   }
 
   set isStopped(value: boolean) {
-    this._isStopped = value;
+    this.#isStopped = value;
   }
 
   shouldComplete() {
@@ -65,7 +89,7 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   awaitCompletion() {
-    return this._completionPromise.promise();
+    return this.#completionPromise.promise();
   }
 
   complete(): Promise<void> {
@@ -122,7 +146,7 @@ export abstract class Stream<T = any> implements Subscribable {
 
   subscribe(callback?: ((value: T) => void) | void): Subscription {
     const boundCallback = (value: T) => {
-      this.currentValue = value;
+      this.#currentValue = value;
       return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
     };
 
@@ -168,6 +192,6 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   get value(): T | undefined {
-    return this.currentValue;
+    return this.#currentValue;
   }
 }

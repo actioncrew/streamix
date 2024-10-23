@@ -1,4 +1,4 @@
-import { Pipeline, Stream } from '../abstractions';
+import { Pipeline, Stream, Subscription } from '../abstractions';
 import { hook, PromisifiedType } from '../utils';
 import { Emission } from './emission';
 import { isOperatorType, OperatorType } from '../abstractions';
@@ -9,11 +9,36 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   head: OperatorType | undefined;
   tail: OperatorType | undefined;
 
+  #onEmission = hook();
+  #subscribers = hook();
+  #currentValue: T | undefined;
+
   constructor(public stream: Stream<T>) {
     super();
-    Object.assign(this, stream);
-    this.subscribers = hook();
-    this.onEmission = hook();
+  }
+
+  override get subscribers() {
+    return this.#subscribers;
+  }
+
+  override get onStart() {
+    return this.stream.onStart;
+  }
+
+  override get onComplete() {
+    return this.stream.onComplete;
+  }
+
+  override get onStop() {
+    return this.stream.onStop;
+  }
+
+  override get onError() {
+    return this.stream.onError;
+  }
+
+  override get onEmission() {
+    return this.#onEmission;
   }
 
   override get isAutoComplete() {
@@ -48,6 +73,47 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     this.stream.isStopped = value;
   }
 
+  override get value() {
+    return this.#currentValue;
+  }
+
+  override async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
+    try {
+      let next = (source instanceof Stream) ? this.head : undefined;
+      next = isOperatorType(source) ? source.next : next;
+
+      if (emission.isFailed) {
+        throw emission.error;
+      }
+
+      if (!emission.isPhantom) {
+        // Process the emission with the next operator, if any
+        emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
+      }
+
+      if (emission.isFailed) {
+        throw emission.error;
+      }
+
+      // If emission is valid, notify subscribers
+      if (!emission.isPhantom) {
+        await this.onEmission.parallel({ emission, source: this });
+        await this.subscribers.parallel(emission.value);
+      }
+
+      emission.isComplete = true;
+    } catch (error: any) {
+      emission.isFailed = true;
+      emission.error = error;
+
+      await this.onError.process({ error });
+    }
+  }
+
+  override async cleanup() {
+    this.stream.onEmission.remove(this, this.emit);
+  }
+
   override init() {
     if (!this.stream.onEmission.contains(this, this.emit)) {
       this.stream.onEmission.chain(this, this.emit);
@@ -56,10 +122,6 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
 
   override start() {
     return this.stream.startWithContext(this);
-  }
-
-  override async cleanup() {
-    this.stream.onEmission.remove(this, this.emit);
   }
 
   override run(): Promise<void> {
@@ -71,7 +133,9 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   bindOperators(...operators: OperatorType[]): Subscribable<T> {
-    this.operators = []; this.head = undefined; this.tail = undefined;
+    this.operators = [];
+    this.head = undefined;
+    this.tail = undefined;
 
     operators.forEach((operator, index) => {
       this.operators.push(operator);
@@ -91,39 +155,35 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     return this;
   }
 
-  override async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
-    try {
-      let next = (source instanceof Stream) ? this.head : undefined;
-      next = isOperatorType(source) ? source.next : next;
-
-      if(emission.isFailed) {
-        throw emission.error;
-      }
-
-      if(!emission.isPhantom) {
-        // Process the emission with the next operator, if any
-        emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
-      }
-
-      if(emission.isFailed) {
-        throw emission.error;
-      }
-      // If emission is valid, notify subscribers
-      if (!emission.isPhantom) {
-        await this.onEmission.parallel({ emission, source: this });
-        await this.subscribers.parallel(emission.value);
-      }
-
-      emission.isComplete = true;
-    } catch (error: any) {
-      emission.isFailed = true;
-      emission.error = error;
-
-      await this.onError.process({ error });
-    }
+  override shouldComplete(): boolean {
+    return this.stream.shouldComplete();
   }
 
-  override get value() {
-    return this.stream.currentValue;
+  override awaitCompletion(): Promise<void> {
+    return this.stream.awaitCompletion();
+  }
+
+  override async complete(): Promise<void> {
+    await this.stream.complete();
+  }
+
+  override subscribe(callback?: (value: T) => void): Subscription {
+    const boundCallback = (value: T) => {
+      this.#currentValue = value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+    };
+
+    this.subscribers.chain(this, boundCallback);
+
+    this.start();
+
+    return {
+      unsubscribe: async () => {
+        this.subscribers.remove(this, boundCallback);
+        if (this.subscribers.length === 0) {
+          await this.complete();
+        }
+      }
+    };
   }
 }
