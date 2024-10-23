@@ -1,29 +1,24 @@
-import { Emission, HookOperator, Stream, Subscribable } from '../abstractions';
-import { Operator } from '../abstractions/operator';
+import { Emission, Subscribable, Stream } from '../abstractions';
 
+export const startWith = (value: any) => {
+  let boundStream: Stream;
 
-export class StartWithOperator extends Operator implements HookOperator {
-  private boundStream!: Stream;
+  const init = (stream: Stream) => {
+    boundStream = stream;
+    boundStream.onStart.chain(callback); // Trigger the callback when the stream starts
+  };
 
-  constructor(private readonly value: any) {
-    super();
-  }
+  const callback = async (): Promise<void> => {
+    // Emit the provided initial value when the stream starts
+    await boundStream.onEmission.process({ emission: { value }, source: boundStream });
+  };
 
-  override init(stream: Stream) {
-    this.boundStream = stream;
-    this.boundStream.onStart.chain(this, this.callback);
-  }
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    return emission; // Simply pass the emission without modification
+  };
 
-  async callback(params?: any): Promise<void> {
-    return this.boundStream.onEmission.process({ emission: { value: this.value }, source: this.boundStream });
-  }
-
-  override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    return emission;
-  }
-}
-
-export function startWith(value: any) {
-  return new StartWithOperator(value);
-}
-
+  return {
+    init,
+    handle
+  };
+};
