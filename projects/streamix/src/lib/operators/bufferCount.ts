@@ -1,5 +1,5 @@
 import { Stream, Subscribable, Emission } from '../abstractions';
-import { OperatorType, createOperator } from '../abstractions/operator';
+import { OperatorType, createOperator } from '../abstractions';
 
 export const bufferCount = (bufferSize: number): OperatorType => {
   let buffer: any[] = [];

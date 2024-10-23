@@ -1,7 +1,7 @@
 import { Chunk, Stream } from '../abstractions';
 import { Subject } from '../';
 import { hook, HookType, PromisifiedType } from '../utils';
-import { OperatorType } from './operator';
+import { OperatorType } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
