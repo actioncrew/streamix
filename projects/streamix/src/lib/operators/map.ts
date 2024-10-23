@@ -8,8 +8,8 @@ export class MapOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    emission.value = this.transform(emission.value);
-    return emission;
+    const value = this.transform(emission.value);
+    return { value };
   }
 }
 
