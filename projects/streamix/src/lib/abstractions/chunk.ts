@@ -1,13 +1,13 @@
 import { Pipeline, Stream } from '../abstractions';
 import { hook, PromisifiedType } from '../utils';
 import { Emission } from './emission';
-import { isOperatorType, Operator } from './operator';
+import { isOperatorType, OperatorType } from './operator';
 import { Subscribable } from './subscribable';
 
 export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
-  operators: Operator[] = [];
-  head: Operator | undefined;
-  tail: Operator | undefined;
+  operators: OperatorType[] = [];
+  head: OperatorType | undefined;
+  tail: OperatorType | undefined;
 
   constructor(public stream: Stream<T>) {
     super();
@@ -66,11 +66,11 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     return this.stream.run();
   }
 
-  override pipe(...operators: Operator[]): Subscribable<T> {
+  override pipe(...operators: OperatorType[]): Subscribable<T> {
     return new Pipeline<T>(this.stream.clone()).pipe(...this.operators, ...operators);
   }
 
-  bindOperators(...operators: Operator[]): Subscribable<T> {
+  bindOperators(...operators: OperatorType[]): Subscribable<T> {
     this.operators = []; this.head = undefined; this.tail = undefined;
 
     operators.forEach((operator, index) => {

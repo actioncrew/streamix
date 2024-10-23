@@ -1,4 +1,4 @@
-import { createOperator, Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { createOperator, Emission, HookOperatorType, OperatorType, Stream, Subscribable } from '../abstractions';
 
 export const finalize = (callback: () => void | Promise<void>) => {
   let boundStream: Stream;
