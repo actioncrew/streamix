@@ -176,11 +176,11 @@ export abstract class Stream<T = any> implements Subscribable {
     const clonedStream = Object.assign(Object.create(this), this);
 
     // Clone each promisified property to ensure they are independent
-    clonedStream._completionPromise = promisified(this._completionPromise);
-    clonedStream._isAutoComplete = this.isAutoComplete;
-    clonedStream._isStopRequested = this.isStopRequested;
-    clonedStream._isStopped = this.isStopped;
-    clonedStream._isRunning = this.isRunning;
+    clonedStream._completionPromise = promisified<void>();
+    clonedStream._isAutoComplete = false;
+    clonedStream._isStopRequested = false;
+    clonedStream._isStopped = false;
+    clonedStream._isRunning = false;
 
     // Clone hooks by creating new hook instances (this assumes `hook()` creates a new hook object)
     clonedStream.subscribers = hook();
