@@ -106,9 +106,9 @@ export abstract class Stream<T = any> implements Subscribable {
         } catch (error) {
             await this.onError.process({ error });
         } finally {
+          this.isStopped = true; this.isRunning = false;
           // Handle finalize callback
           await this.onStop.process();
-          this.isStopped = true; this.isRunning = false;
 
           await context.cleanup();
         }
