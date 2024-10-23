@@ -77,25 +77,24 @@ describe('withLatestFrom operator', () => {
     });
   });
 
-  it('should handle cases where other stream emits multiple times before main stream', (done) => {
+  it('should handle cancellation of the main stream', (done) => {
     const mainStream = new MockStream([1, 2, 3]);
-    const otherStream = new MockStream(['A', 'B', 'C', 'D']);
+    const otherStream = new MockStream(['A', 'B', 'C']);
 
-    const combinedStream = mainStream.pipe(delay(1000), withLatestFrom(otherStream));
+    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
 
     let results: any[] = [];
 
-    combinedStream.onStop.once(() => {
-      expect(results).toEqual([
-        [1, 'A'], // Other stream emits up to 'D', then main stream emits 1
-        [2, 'D'], // Main stream emits 2, other stream still emits 'D'
-        [3, 'D']  // Main stream emits 3, other stream still emits 'D'
-      ]);
-      done();
-    });
-
     combinedStream.subscribe((value) => {
       results.push(value);
+    });
+
+    // Cancel the main stream immediately
+    combinedStream.complete();
+
+    combinedStream.onStop.once(() => {
+      expect(results).toEqual([]);
+      done();
     });
   });
 });
