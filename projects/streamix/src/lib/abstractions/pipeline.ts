@@ -77,7 +77,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline<T>(this.stream.clone()).bindOperators(...this.operators, ...operators)
+    return new Pipeline<T>(this.stream).bindOperators(...this.operators, ...operators)
   }
 
   get isAutoComplete(): boolean {
