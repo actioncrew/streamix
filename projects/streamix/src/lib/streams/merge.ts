@@ -28,8 +28,6 @@ export class MergeStream<T = any> extends Stream<T> {
       }
     } catch (error) {
       await this.propagateError(error);
-    } finally {
-      await this.cleanup();
     }
   }
 

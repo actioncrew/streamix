@@ -15,7 +15,7 @@ export class FromEventStream<T = any> extends Stream<T> {
     this.target.removeEventListener(this.eventName, this.listener);
   }
 
-  override startWithContext(context: any) {
+  override start() {
     if(!this.listener) {
       this.listener = async (event: Event) => {
         if (this.isRunning) {
@@ -28,7 +28,7 @@ export class FromEventStream<T = any> extends Stream<T> {
       this.target.addEventListener(this.eventName, this.listener);
     }
 
-    return super.startWithContext(context);
+    return super.start();
   }
 }
 

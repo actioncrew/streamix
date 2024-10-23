@@ -48,7 +48,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   start() {
     for (let i = this.chunks.length - 1; i >= 0; i--) {
-      this.chunks[i].stream.startWithContext(this.chunks[i]);
+      this.chunks[i].stream.start();
     }
   }
 
