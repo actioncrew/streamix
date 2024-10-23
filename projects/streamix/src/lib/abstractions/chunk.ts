@@ -1,7 +1,7 @@
 import { Pipeline, Stream } from '../abstractions';
 import { hook, PromisifiedType } from '../utils';
 import { Emission } from './emission';
-import { isOperatorType, OperatorType } from './operator';
+import { isOperatorType, OperatorType } from '../abstractions';
 import { Subscribable } from './subscribable';
 
 export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {

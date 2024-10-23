@@ -1,6 +1,6 @@
 import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { createOperator, OperatorType } from '../abstractions/operator';
+import { createOperator, OperatorType } from '../abstractions';
 
 export const map = (transform: (value: any) => any) => {
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
