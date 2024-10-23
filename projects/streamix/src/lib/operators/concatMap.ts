@@ -1,4 +1,3 @@
-// concatMap.ts
 import { Subscribable, Emission, createOperator } from '../abstractions';
 import { CounterType, Subject, counter } from '../../lib';
 
@@ -11,9 +10,11 @@ export const concatMap = (project: (value: any) => Subscribable) => {
   let executionNumber: CounterType = counter(0);
   let isFinalizing: boolean = false;
 
+  let input!: Subscribable | undefined;
   const output = new Subject();
 
-  const init = (input: Subscribable) => {
+  const init = (stream: Subscribable) => {
+    input = stream;
     input.onStop.once(() => {
       executionNumber.waitFor(emissionNumber).then(finalize);
     });
@@ -93,7 +94,7 @@ export const concatMap = (project: (value: any) => Subscribable) => {
     if (innerStream) {
       innerStream.onEmission.remove(handleInnerEmission); // Clean up inner stream subscription
     }
-    await stopStreams(innerStream, output); // Stop relevant streams
+    await stopStreams(innerStream, input, output); // Stop relevant streams
     innerStream = null; // Clear inner stream reference
   };
 
