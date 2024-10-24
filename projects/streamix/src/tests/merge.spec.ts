@@ -1,23 +1,9 @@
-import { createStream, merge, Stream } from '../lib';
-
-// MockStream class to simulate a stream with predefined values
-export function mockStream(values: any[]): Stream {
-  // Create the custom run function for MockStream
-  const run = async (stream: Stream): Promise<void> => {
-    for (const value of values) {
-      await stream.onEmission.process({ emission: { value }, source: stream }); // Emit the value
-    }
-    stream.isAutoComplete = true; // Set auto completion flag
-  };
-
-  // Create the stream using createStream and the custom run function
-  return createStream(run);
-}
+import { from, merge, Stream } from '../lib';
 
 describe('MergeStream', () => {
   it('should merge values from multiple sources', (done) => {
-    const source1 = mockStream(['source1_value1', 'source1_value2']);
-    const source2 = mockStream(['source2_value1', 'source2_value2']);
+    const source1 = from(['source1_value1', 'source1_value2']);
+    const source2 = from(['source2_value1', 'source2_value2']);
 
     const mergeStream = merge(source1, source2);
 
@@ -40,8 +26,8 @@ describe('MergeStream', () => {
   });
 
   it('should complete when all sources complete', (done) => {
-    const source1 = mockStream(['source1_value1', 'source1_value2']);
-    const source2 = mockStream(['source2_value1', 'source2_value2']);
+    const source1 = from(['source1_value1', 'source1_value2']);
+    const source2 = from(['source2_value1', 'source2_value2']);
 
     const mergeStream = merge(source1, source2);
 
@@ -58,8 +44,8 @@ describe('MergeStream', () => {
   });
 
   it('should stop emitting after unsubscribe', async () => {
-    const source1 = mockStream(['source1_value1', 'source1_value2']);
-    const source2 = mockStream(['source2_value1', 'source2_value2']);
+    const source1 = from(['source1_value1', 'source1_value2']);
+    const source2 = from(['source2_value1', 'source2_value2']);
 
     const mergeStream = merge(source1, source2);
 
