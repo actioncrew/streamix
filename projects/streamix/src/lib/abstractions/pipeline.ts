@@ -20,6 +20,16 @@ export class Pipeline<T = any> implements Subscribable<T> {
   #onEmission = hook();
 
   constructor(public stream: Stream<T>) {
+    const chunk = new Chunk(stream);
+
+    chunk.onStart.chain((params: any) => this.#onStart.parallel(params));
+    chunk.onEmission.chain((params: any) => this.#onEmission.parallel(params));
+    chunk.onComplete.chain((params: any) => this.#onComplete.parallel(params));
+    chunk.onStop.chain((params: any) => this.#onStop.parallel(params));
+    chunk.onError.chain((params: any) => this.#onError.parallel(params));
+
+    chunk.subscribers.chain((value: any) => this.subscribers.parallel(value));
+    this.chunks.push(chunk);
   }
 
   get subscribers(): HookType {
@@ -54,24 +64,30 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   private bindOperators(...operators: OperatorType[]): Subscribable<T> {
     this.operators = operators;
-    let currentChunk = new Chunk(this.stream);
-    this.chunks.push(currentChunk);
+    let chunk = this.first;
     let chunkOperators: OperatorType[] = [];
+
+    chunk.onStart.clear();
+    chunk.onEmission.clear();
+    chunk.onComplete.clear();
+    chunk.onStop.clear();
+    chunk.subscribers.clear();
+    chunk.onError.clear();
 
     operators.forEach(operator => {
       operator = operator.clone();
-      operator.init(currentChunk.stream);
+      operator.init(chunk.stream);
       chunkOperators.push(operator);
 
       if ('stream' in operator) {
-        currentChunk.bindOperators(...chunkOperators);
+        chunk.bindOperators(...chunkOperators);
         chunkOperators = [];
-        currentChunk = new Chunk(operator.stream as any);
-        this.chunks.push(currentChunk);
+        chunk = new Chunk(operator.stream as any);
+        this.chunks.push(chunk);
       }
     });
 
-    currentChunk.bindOperators(...chunkOperators);
+    chunk.bindOperators(...chunkOperators);
 
     // Chain error hooks to propagate errors across chunks
     this.chunks.forEach((chunk) => {
@@ -125,9 +141,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   subscribe(callback?: (value: T) => void): Subscription {
-    if(this.chunks.length === 0) {
-      this.bindOperators();
-    }
 
     const boundCallback = (value: T) => {
       this.#currentValue = value;
