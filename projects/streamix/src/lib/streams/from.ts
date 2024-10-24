@@ -7,17 +7,17 @@ export function from<T = any>(input: any[] | IterableIterator<any>): Stream<T> {
   let done = false;
 
   // Create the stream with a custom run function
-  const stream = createStream<T>(async function() {
-    while (!done && !stream.shouldComplete()) {
+  const stream = createStream<T>(async function(this: Stream<T>) {
+    while (!done && !this.shouldComplete()) {
       const { value, done: isDone } = iterator.next();
       if (isDone) {
         done = true;
-        if (!stream.shouldComplete()) {
-          stream.isAutoComplete = true; // Mark the stream for auto-completion
+        if (!this.shouldComplete()) {
+          this.isAutoComplete = true; // Mark the stream for auto-completion
         }
       } else {
         const emission = { value } as Emission;
-        await stream.onEmission.process({ emission, source: stream });
+        await this.onEmission.process({ emission, source: this });
 
         if (emission.isFailed) {
           throw emission.error;

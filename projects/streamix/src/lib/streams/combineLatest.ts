@@ -1,10 +1,10 @@
 import { createStream, Stream, Subscribable } from '../abstractions';
 
-export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> {
+export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined }));
   const handlers: Array<(event: { emission: { value: T }, source: Subscribable }) => void> = [];
 
-  const stream = createStream<T[]>(async function(this: Stream<T[]>): Promise<void> {
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     sources.forEach(source => source.start());
 
     try {

@@ -6,14 +6,14 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
 
   // Define the run method
   // Create and return the stream with the defined run function
-  const stream = createStream<T>(async (): Promise<void> => {
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     try {
       // Create a new inner stream from the factory
       innerStream = factory();
 
       // Set up emission handling for the inner stream
-      handleEmissionFn = ({ emission }) => handleEmission(stream, emission.value);
-      innerStream.onEmission.chain(stream, handleEmissionFn);
+      handleEmissionFn = ({ emission }) => handleEmission(this, emission.value);
+      innerStream.onEmission.chain(this, handleEmissionFn);
 
       // Start the inner stream
       innerStream.start();
@@ -22,7 +22,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       await innerStream.awaitCompletion();
 
     } catch (error) {
-      await stream.onError.process({ error });
+      await this.onError.process({ error });
     } finally {
       await cleanupInnerStream();
     }

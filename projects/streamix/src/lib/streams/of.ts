@@ -2,14 +2,14 @@ import { createStream, Stream } from '../abstractions';
 
 export function of<T = any>(value: T): Stream<T> {
   // Create the custom run function for the OfStream
-  const stream = createStream<T>(async (): Promise<void> => {
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     try {
-      if (!stream.shouldComplete()) {
-        await stream.onEmission.process({ emission: { value }, source: stream });
-        stream.isAutoComplete = true; // Set auto-complete after emitting the value
+      if (!this.shouldComplete()) {
+        await this.onEmission.process({ emission: { value }, source: this });
+        this.isAutoComplete = true; // Set auto-complete after emitting the value
       }
     } catch (error) {
-      await stream.onError.process({ error }); // Handle any errors during emission
+      await this.onError.process({ error }); // Handle any errors during emission
     }
   });
 

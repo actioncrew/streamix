@@ -4,7 +4,7 @@ import { createStream } from '../abstractions/stream';
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
   // Create a custom run function for the FromPromiseStream
-  const stream = createStream<T>(async (): Promise<void> => {
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     let resolvedValue: Awaited<T> | void; // Renamed to avoid conflict
     let isResolved = false;
 
@@ -12,19 +12,19 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
       // Await the promise directly
       resolvedValue = await Promise.race([
         promise,
-        stream.awaitCompletion() // Allow the stream to complete while waiting
+        this.awaitCompletion() // Allow the stream to complete while waiting
       ]);
 
       // Set the resolved flag to true
       isResolved = true;
 
       // If the stream is not complete, emit the value
-      if (!stream.shouldComplete()) {
-        await stream.onEmission.process({ emission: { value: resolvedValue }, source: stream });
-        stream.isAutoComplete = true; // Mark the stream for auto completion
+      if (!this.shouldComplete()) {
+        await this.onEmission.process({ emission: { value: resolvedValue }, source: this });
+        this.isAutoComplete = true; // Mark the stream for auto completion
       }
     } catch (error) {
-      await stream.onError.process({ error }); // Handle any errors
+      await this.onError.process({ error }); // Handle any errors
     }
   });
 
