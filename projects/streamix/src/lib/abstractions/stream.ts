@@ -1,184 +1,165 @@
-import { Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
-import { hook, promisified, PromisifiedType } from '../utils';
+import { createPipeline, Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
+import { hook, HookType, promisified } from '../utils';
 
-export abstract class Stream<T = any> implements Subscribable {
+export type Stream<T = any> = Subscribable<T> & {
+  emit: (args: { emission: Emission; source: any }) => Promise<void>;
+  run: () => Promise<void>; // Run stream logic
+};
 
-  #completionPromise = promisified<void>();
-  #isAutoComplete = false;
-  #isStopRequested = false;
+export function isStream<T>(obj: any): obj is Stream<T> {
+  return (
+    obj !== null &&
+    typeof obj === 'object' &&
+    typeof obj.run === 'function'
+  );
+}
 
-  #isStopped = false;
-  #isRunning = false;
+// Function to create a Stream
+export function createStream<T = any>(runFn: () => Promise<void>): Stream<T> {
+  const completionPromise = promisified<void>();
 
-  #subscribers = hook();
+  let isAutoComplete = false;
+  let isStopRequested = false;
+  let isStopped = false;
+  let isRunning = false;
+  let currentValue: T | undefined;
 
-  #onStart = hook();
-  #onComplete = hook();
-  #onStop = hook();
-  #onError = hook();
-  #onEmission = hook();
+  const subscribers = hook();
+  const onStart = hook();
+  const onComplete = hook();
+  const onStop = hook();
+  const onError = hook();
+  const onEmission = hook();
 
-  #currentValue: T | undefined;
-
-  abstract run(): Promise<void>;
-
-  get subscribers() {
-    return this.#subscribers;
-  }
-
-  get onStart() {
-    return this.#onStart;
-  }
-
-  get onComplete() {
-    return this.#onComplete;
-  }
-
-  get onStop() {
-    return this.#onStop;
-  }
-
-  get onError() {
-    return this.#onError;
-  }
-
-  get onEmission() {
-    return this.#onEmission;
-  }
-
-  get isAutoComplete() {
-    return this.#isAutoComplete;
-  }
-
-  set isAutoComplete(value: boolean) {
-    if(value) {
-      this.#completionPromise.resolve();
+  const run = async () => {
+    try {
+      await onStart.process(); // Trigger start hook
+      await runFn(); // Run the stream logic
+      await onComplete.process(); // Trigger complete hook
+    } catch (error) {
+      await onError.process({ error }); // Handle any errors
+    } finally {
+      isStopped = true;
+      isRunning = false;
+      await onStop.process(); // Finalize the stop hook
     }
-    this.#isAutoComplete = value;
-  }
+  };
 
-  get isStopRequested() {
-    return this.#isStopRequested;
-  }
-
-  set isStopRequested(value: boolean) {
-    if(value) {
-      this.#completionPromise.resolve();
+  const start = () => {
+    if (!isRunning) {
+      isRunning = true;
+      queueMicrotask(run);
     }
-    this.#isStopRequested = value;
-  }
+  };
 
-  get isRunning() {
-    return this.#isRunning;
-  }
-
-  set isRunning(value: boolean) {
-    this.#isRunning = value;
-  }
-
-  get isStopped() {
-    return this.#isStopped;
-  }
-
-  set isStopped(value: boolean) {
-    this.#isStopped = value;
-  }
-
-  shouldComplete() {
-    return this.isAutoComplete || this.isStopRequested;
-  }
-
-  awaitCompletion() {
-    return this.#completionPromise.promise();
-  }
-
-  complete(): Promise<void> {
-    if(!this.isAutoComplete) {
+  const complete = async (): Promise<void> => {
+    if (!isAutoComplete) {
       return new Promise<void>((resolve) => {
-        this.onStop.once(() => resolve());
-        this.isStopRequested = true;
+        onStop.once(() => resolve());
+        isStopRequested = true;
+        completionPromise.resolve();
       });
     }
     return Promise.resolve();
-  }
+  };
 
-  start(): void {
-    if (!this.isRunning) {
-      this.isRunning = true;
-      queueMicrotask(async () => {
-        try {
-          // Emit start value if defined
-          await this.onStart.process();
+  const awaitCompletion = () => completionPromise.promise();
 
-          // Start the actual stream logic
-          await this.run();
-
-          // Emit end value if defined
-          await this.onComplete.process();
-        } catch (error) {
-            await this.onError.process({ error });
-        } finally {
-          this.isStopped = true; this.isRunning = false;
-          // Handle finalize callback
-          await this.onStop.process();
-        }
-      });
-    }
-  }
-
-  subscribe(callback?: ((value: T) => void) | void): Subscription {
-    const boundCallback = (value: T) => {
-      this.#currentValue = value;
-      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
-    };
-
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
-    }
-
-    this.subscribers.chain(this, boundCallback);
-
-    this.start();
-
-    return {
-      unsubscribe: async () => {
-        this.subscribers.remove(this, boundCallback);
-        if (this.subscribers.length === 0) {
-          this.onEmission.remove(this, this.emit);
-          await this.complete();
-        }
-      }
-    };
-  }
-
-  pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline(this).pipe(...operators);
-  }
-
-  async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
+  const emit = async ({ emission, source }: { emission: Emission; source: any }): Promise<void> => {
     try {
-      if(emission.isFailed) {
-        throw emission.error;
-      }
+      if (emission.isFailed) throw emission.error;
 
       if (!emission.isPhantom) {
-        await this.subscribers.parallel(emission.value);
+        await subscribers.parallel(emission.value);
       }
 
       emission.isComplete = true;
     } catch (error: any) {
       emission.isFailed = true;
       emission.error = error;
-
-      await this.onError.process({ error });
+      await onError.process({ error });
     }
-  }
+  };
 
-  async propagateError(error: any): Promise<void> {
-    await this.onError.process({ error });
-  }
+  const subscribe = (callback?: (value: T) => void): Subscription => {
+    const boundCallback = (value: T) => {
+      currentValue = value;
+      return callback ? Promise.resolve(callback(value)) : Promise.resolve();
+    };
 
-  get value(): T | undefined {
-    return this.#currentValue;
-  }
+    if (!onEmission.contains(emit)) {
+      onEmission.chain(emit);
+    }
+
+    subscribers.chain(boundCallback);
+    start();
+
+    return {
+      unsubscribe: async () => {
+        subscribers.remove(boundCallback);
+        if (subscribers.length === 0) {
+          onEmission.remove(emit);
+          await complete();
+        }
+      }
+    };
+  };
+
+  const pipe = (...operators: Operator[]): Pipeline<T> => {
+    return createPipeline<T>(createStream(runFn)).pipe(...operators);
+  };
+
+  const shouldComplete = () => isAutoComplete || isStopRequested;
+
+  return {
+    emit,
+    start,
+    subscribe,
+    pipe,
+    run,
+    awaitCompletion,
+    complete,
+    shouldComplete,
+    get value() {
+      return currentValue;
+    },
+    get subscribers() {
+      return subscribers;
+    },
+    get onStart() {
+      return onStart;
+    },
+    get onComplete() {
+      return onComplete;
+    },
+    get onStop() {
+      return onStop;
+    },
+    get onError() {
+      return onError;
+    },
+    get onEmission() {
+      return onEmission;
+    },
+    get isAutoComplete() {
+      return isAutoComplete;
+    },
+    set isAutoComplete(value: boolean) {
+      if (value) completionPromise.resolve();
+      isAutoComplete = value;
+    },
+    get isStopRequested() {
+      return isStopRequested;
+    },
+    set isStopRequested(value: boolean) {
+      if (value) completionPromise.resolve();
+      isStopRequested = value;
+    },
+    get isRunning() {
+      return isRunning;
+    },
+    get isStopped() {
+      return isStopped;
+    }
+  };
 }
