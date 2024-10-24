@@ -1,4 +1,4 @@
-import { Emission, OperatorType, Subscribable, createOperator } from '../abstractions';
+import { Emission, Operator, Subscribable, createOperator } from '../abstractions';
 import { EMPTY } from '../streams';
 
 export const coroutine = (...functions: Function[]) => {
