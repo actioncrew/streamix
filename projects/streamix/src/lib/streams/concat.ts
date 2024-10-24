@@ -2,7 +2,7 @@ import { createStream, Stream, Subscribable } from '../abstractions';
 
 export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   // Create the custom run function for the ConcatStream
-  const run = async (stream: Stream<T>): Promise<void> => {
+  const stream = createStream<T>(async (): Promise<void> => {
     for (let currentSourceIndex = 0; currentSourceIndex < sources.length; currentSourceIndex++) {
       if (stream.shouldComplete()) {
         break; // Exit if completion is requested
@@ -13,7 +13,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
     if (!stream.shouldComplete()) {
       stream.isAutoComplete = true; // Set auto completion flag if not completed
     }
-  };
+  });
 
   // Function to run the current source
   const runCurrentSource = async (stream: Stream<T>, currentSource: Subscribable): Promise<void> => {
@@ -39,5 +39,5 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   };
 
   // Create the stream using createStream and the custom run function
-  return createStream<T>(run);
+  return stream;
 }
