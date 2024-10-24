@@ -18,7 +18,7 @@ describe('OfStream', () => {
 
   it('should complete after emitting the value', (done) => {
     const value = 'test_value';
-    const ofStream = new OfStream(value);
+    const ofStream = of(value);
 
     let isComplete = false;
     ofStream.subscribe(() => {

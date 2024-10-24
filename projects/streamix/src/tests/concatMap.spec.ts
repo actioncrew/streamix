@@ -1,4 +1,4 @@
-import { concatMap, createStream, from, of, Stream } from '../lib';
+import { concatMap, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
 
@@ -7,9 +7,9 @@ describe('ConcatMapOperator', () => {
 
   beforeEach(() => {
     project = (value: any) => {
-      return myInnerStream(value); // Replace with your inner stream implementation
+      return new MyInnerStream(value); // Replace with your inner stream implementation
     };
-    mockStream = myRealStream(); // Replace with your real stream implementation
+    mockStream = new MyRealStream(); // Replace with your real stream implementation
   });
 
   it('should handle empty stream', async () => {
@@ -64,7 +64,7 @@ describe('ConcatMapOperator', () => {
 
   it('should handle errors in inner stream', async () => {
     const errorProject = (value: any) => {
-      return errorInnerStream(value); // Replace with your error inner stream implementation
+      return new ErrorInnerStream(value); // Replace with your error inner stream implementation
     };
     const operator = concatMap(errorProject);
     operator.init(mockStream);
@@ -140,38 +140,39 @@ describe('ConcatMapOperator', () => {
 });
 
 // Example Inner Stream Implementation (Replace with your actual implementation)
-export function myInnerStream(value: any): Stream {
-  // Create the custom run function for MyInnerStream
-  const run = async (stream: Stream): Promise<void> => {
+class MyInnerStream extends Stream {
+  private innerValue: any;
+
+  constructor(value: any) {
+    super();
+    this.innerValue = value;
+  }
+
+  async run(): Promise<void> {
     // Simulate inner stream behavior (emission, completion, error)
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
-    await stream.onEmission.process({ emission: { value }, source: stream }); // Emit the projected value
-  };
-
-  // Create the stream using createStream and the custom run function
-  return createStream(run);
+    this.onEmission.process({emission:{ value: this.innerValue }, source: this}); // Emit the projected value
+  }
 }
 
 // Example Real Stream Implementation (Replace with your actual implementation)
-export function myRealStream(): Stream {
-  // Create the custom run function for MyRealStream
-  const run = async (stream: Stream): Promise<void> => {
+class MyRealStream extends Stream {
+  async run(): Promise<void> {
     // Simulate your real stream behavior (emitting values)
-    await stream.onEmission.process({ emission: { value: 'streamValue1' }, source: stream });
-  };
-
-  // Create the stream using createStream and the custom run function
-  return createStream(run);
+    this.onEmission.process({emission: { value: 'streamValue1' }, source: this});
+  }
 }
 
-
 // Example Error Inner Stream Implementation (Replace with your actual implementation)
-export function errorInnerStream(value: any): Stream {
-  // Create the custom run function for ErrorInnerStream
-  const run = async (stream: Stream): Promise<void> => {
-    throw new Error('Inner Stream Error');
-  };
+class ErrorInnerStream extends Stream {
+  private innerValue: any;
 
-  // Create the stream using createStream and the custom run function
-  return createStream(run);
+  constructor(value: any) {
+    super();
+    this.innerValue = value;
+  }
+
+  async run(): Promise<void> {
+    throw new Error('Inner Stream Error');
+  }
 }
