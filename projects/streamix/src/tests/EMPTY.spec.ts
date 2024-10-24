@@ -1,8 +1,8 @@
-import { EMPTY, EmptyStream } from '../lib';
+import { EMPTY } from '../lib';
 
 describe('EmptyStream', () => {
   it('should auto-complete without emitting any values', async () => {
-    const emptyStream = new EmptyStream();
+    const emptyStream = EMPTY;
 
     let emittedValues: any[] = [];
     const subscription = emptyStream.subscribe((value) => {

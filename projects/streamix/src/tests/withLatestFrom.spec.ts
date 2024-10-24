@@ -1,37 +1,9 @@
-import { delay, Emission, Stream, withLatestFrom } from '../lib';
-
-// Mock implementation for AbstractStream
-class MockStream extends Stream {
-  private values: any[];
-  private index: number;
-
-  constructor(values: any[]) {
-    super();
-    this.values = values;
-    this.index = 0;
-  }
-
-  async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.onEmission.process({emission, source: this});
-
-      if (emission.isFailed) {
-        throw emission.error;
-      }
-
-      this.index++;
-    }
-    if(!this.isStopRequested) {
-      this.isAutoComplete = true;
-    }
-  }
-}
+import { Emission, from, Stream, withLatestFrom } from '../lib';
 
 describe('withLatestFrom operator', () => {
   it('should combine emissions with latest value from other stream', (done) => {
-    const mainStream = new MockStream([1, 2, 3]);
-    const otherStream = new MockStream(['A', 'B', 'C', 'D', 'E']);
+    const mainStream = from([1, 2, 3]);
+    const otherStream = from(['A', 'B', 'C', 'D', 'E']);
 
     const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
 
@@ -56,8 +28,8 @@ describe('withLatestFrom operator', () => {
   });
 
   it('should handle cases where other stream contains one value', (done) => {
-    const mainStream = new MockStream([1, 2, 3]);
-    const otherStream = new MockStream(['A']);
+    const mainStream = from([1, 2, 3]);
+    const otherStream = from(['A']);
 
     const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
 
@@ -78,8 +50,8 @@ describe('withLatestFrom operator', () => {
   });
 
   it('should handle cancellation of the main stream', (done) => {
-    const mainStream = new MockStream([1, 2, 3]);
-    const otherStream = new MockStream(['A', 'B', 'C']);
+    const mainStream = from([1, 2, 3]);
+    const otherStream = from(['A', 'B', 'C']);
 
     const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
 

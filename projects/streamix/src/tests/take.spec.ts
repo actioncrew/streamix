@@ -1,36 +1,8 @@
-import { Emission, Stream, take } from '../lib';
-
-// Mock implementation for AbstractStream
-class MockStream extends Stream {
-  private values: any[];
-  private index: number;
-
-  constructor(values: any[]) {
-    super();
-    this.values = values;
-    this.index = 0;
-  }
-
-  async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.onEmission.process({emission, source:this});
-
-      if (emission.isFailed) {
-        throw emission.error;
-      }
-
-      this.index++;
-    }
-    if(!this.isStopRequested) {
-      this.isAutoComplete = true;
-    }
-  }
-}
+import { from, take } from '../lib';
 
 describe('take operator', () => {
   it('should take specified number of emissions', (done) => {
-    const testStream = new MockStream([1, 2, 3, 4, 5]);
+    const testStream = from([1, 2, 3, 4, 5]);
     const count = 3;
 
     const takenStream = testStream.pipe(take(count));
@@ -48,7 +20,7 @@ describe('take operator', () => {
   });
 
   it('should handle case where count is greater than number of emissions', (done) => {
-    const testStream = new MockStream([1, 2]);
+    const testStream = from([1, 2]);
     const count = 5;
 
     const takenStream = testStream.pipe(take(count));
@@ -66,7 +38,7 @@ describe('take operator', () => {
   });
 
   it('should handle empty stream', (done) => {
-    const testStream = new MockStream([]);
+    const testStream = from([]);
     const count = 3;
 
     const takenStream = testStream.pipe(take(count));

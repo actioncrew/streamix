@@ -1,28 +1,11 @@
-import { MergeStream, Stream } from '../lib';
-
-// MockStream class to simulate a stream with predefined values
-class MockStream extends Stream {
-  private values: any[];
-
-  constructor(values: any[]) {
-    super();
-    this.values = values;
-  }
-
-  async run(): Promise<void> {
-    for (const value of this.values) {
-      await this.onEmission.process({emission: { value }, source:this});
-    }
-    this.isAutoComplete = true;
-  }
-}
+import { from, merge, Stream } from '../lib';
 
 describe('MergeStream', () => {
   it('should merge values from multiple sources', (done) => {
-    const source1 = new MockStream(['source1_value1', 'source1_value2']);
-    const source2 = new MockStream(['source2_value1', 'source2_value2']);
+    const source1 = from(['source1_value1', 'source1_value2']);
+    const source2 = from(['source2_value1', 'source2_value2']);
 
-    const mergeStream = new MergeStream(source1, source2);
+    const mergeStream = merge(source1, source2);
 
     const emittedValues: any[] = [];
     const subscription = mergeStream.subscribe((value) => {
@@ -43,10 +26,10 @@ describe('MergeStream', () => {
   });
 
   it('should complete when all sources complete', (done) => {
-    const source1 = new MockStream(['source1_value1', 'source1_value2']);
-    const source2 = new MockStream(['source2_value1', 'source2_value2']);
+    const source1 = from(['source1_value1', 'source1_value2']);
+    const source2 = from(['source2_value1', 'source2_value2']);
 
-    const mergeStream = new MergeStream(source1, source2);
+    const mergeStream = merge(source1, source2);
 
     let isComplete = false;
 
@@ -61,10 +44,10 @@ describe('MergeStream', () => {
   });
 
   it('should stop emitting after unsubscribe', async () => {
-    const source1 = new MockStream(['source1_value1', 'source1_value2']);
-    const source2 = new MockStream(['source2_value1', 'source2_value2']);
+    const source1 = from(['source1_value1', 'source1_value2']);
+    const source2 = from(['source2_value1', 'source2_value2']);
 
-    const mergeStream = new MergeStream(source1, source2);
+    const mergeStream = merge(source1, source2);
 
     const emittedValues: any[] = [];
     const subscription = mergeStream.subscribe((value) => {

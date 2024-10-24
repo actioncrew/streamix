@@ -1,41 +1,32 @@
-import { defer, Emission, Stream } from '../lib';
+import { createStream, defer, Emission, Stream } from '../lib';
 
 // Mocking Stream class
-class MockStream extends Stream {
-  private emissions: Emission[] = [];
-  private completed = false;
-  private failed = false;
-  private error?: Error;
-
-  constructor(emissions: Emission[], completed = false, failed = false, error?: Error) {
-    super();
-    this.emissions = emissions;
-    this.completed = completed;
-    this.failed = failed;
-    this.error = error;
-  }
-
-  async run(): Promise<void> {
-    if (this.failed && this.error) {
-      this.onError.process({error: this.error});
+export function mockStream(emissions: Emission[], completed = false, failed = false, error?: Error): Stream {
+  // Create the custom run function for the MockStream
+  const run = async (stream: Stream): Promise<void> => {
+    if (failed && error) {
+      await stream.onError.process({ error });
       return;
     }
 
-    for (const emission of this.emissions) {
-      if (this.isStopRequested) return;
-      await this.onEmission.process({emission, source: this});
+    for (const emission of emissions) {
+      if (stream.isStopRequested) return; // Exit if stop is requested
+      await stream.onEmission.process({ emission, source: stream });
     }
 
-    if (this.completed) {
-      this.isAutoComplete = true;
+    if (completed) {
+      stream.isAutoComplete = true; // Set auto-completion flag
     }
-  }
+  };
+
+  // Create the stream using createStream and the custom run function
+  return createStream(run);
 }
 
 describe('DeferStream', () => {
   it('should create a new stream each time it is subscribed to', (done) => {
     const emissions: Emission[] = [{ value: 1 }, { value: 2 }, { value: 3 }];
-    const factory = jest.fn(() => new MockStream(emissions, true));
+    const factory = jest.fn(() => mockStream(emissions, true));
 
     const deferStream = defer(factory);
 
@@ -56,7 +47,7 @@ describe('DeferStream', () => {
   });
 
   it('should handle stream completion', (done) => {
-    const factory = jest.fn(() => new MockStream([], true));
+    const factory = jest.fn(() => mockStream([], true));
 
     const deferStream = defer(factory);
 
@@ -70,7 +61,7 @@ describe('DeferStream', () => {
 
   it('should handle stream errors', async () => {
     const error = new Error('Test Error');
-    const factory = jest.fn(() => new MockStream([], false, true, error));
+    const factory = jest.fn(() => mockStream([], false, true, error));
 
     const deferStream = defer(factory);
 
