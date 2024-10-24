@@ -105,7 +105,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const pipe = (...operators: Operator[]): Pipeline<T> => {
-    return createPipeline<T>(createStream(runFn)).pipe(...operators);
+    return createPipeline<T>(streamInstance).pipe(...operators);
   };
 
   const shouldComplete = () => isAutoComplete || isStopRequested;
