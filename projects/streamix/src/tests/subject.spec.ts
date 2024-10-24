@@ -1,8 +1,8 @@
-import { Subject } from '../lib';
+import { createSubject } from '../lib';
 
 describe('Subject', () => {
   it('should emit values to subscribers', async () => {
-    const subject = new Subject<any>();
+    const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -20,7 +20,7 @@ describe('Subject', () => {
   });
 
   it('should not emit values after unsubscribed', async () => {
-    const subject = new Subject<any>();
+    const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -39,7 +39,7 @@ describe('Subject', () => {
   });
 
   it('should not emit values after stopped', async () => {
-    const subject = new Subject<any>();
+    const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -57,7 +57,7 @@ describe('Subject', () => {
   });
 
   it('should clear emission queue on cancel', async () => {
-    const subject = new Subject<any>();
+    const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -75,7 +75,7 @@ describe('Subject', () => {
   });
 
   it('should not allow pushing values to a stopped Subject', async () => {
-    const subject = new Subject<any>();
+    const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
     const subscription = subject.subscribe(value => {
@@ -91,7 +91,7 @@ describe('Subject', () => {
     })
   });
   it('stress test, synchronous case', async () => {
-    const subject = new Subject<any>();
+    const subject = createSubject<any>();
 
     let counter = 0;
     const subscription = subject.subscribe(value => {
@@ -110,7 +110,7 @@ describe('Subject', () => {
   });
 
   it('stress test, asynchronous case', async () => {
-    const subject = new Subject<any>();
+    const subject = createSubject<any>();
 
     let counter = 0;
     const subscription = subject.subscribe(value => {

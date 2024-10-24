@@ -5,7 +5,7 @@ export const switchMap = (project: (value: any) => Subscribable) => {
   let activeInnerStream: Subscribable | null = null;
   let isFinalizing = false;
 
-  const output = new Subject<Emission>();
+  const output = createSubject<Emission>();
 
   const init = (stream: Stream) => {
     stream.onStop.once(() => finalize());
