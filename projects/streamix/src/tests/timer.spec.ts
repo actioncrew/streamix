@@ -1,9 +1,9 @@
-import { TimerStream } from '../lib';
+import { timer } from '../lib';
 
 describe('TimerStream', () => {
   it('should emit values at specified interval', async () => {
     const intervalMs = 100;
-    const timerStream = new TimerStream(0, intervalMs);
+    const timerStream = timer(0, intervalMs);
 
     const emittedValues: number[] = [];
     timerStream.subscribe((value) => {
@@ -23,7 +23,7 @@ describe('TimerStream', () => {
 
   it('should stop emitting after unsubscribe', async () => {
     const intervalMs = 100;
-    const timerStream = new TimerStream(0, intervalMs);
+    const timerStream = timer(0, intervalMs);
 
     const emittedValues: number[] = [];
     const subscription = timerStream.subscribe((value) => {
@@ -40,7 +40,7 @@ describe('TimerStream', () => {
 
   it('should stop emitting after cancel', async () => {
     const intervalMs = 100;
-    const timerStream = new TimerStream(0, intervalMs);
+    const timerStream = timer(0, intervalMs);
 
     const emittedValues: number[] = [];
     timerStream.subscribe((value) => {

@@ -1,4 +1,4 @@
-import { Subject } from '../../lib';
+import { createSubject, Subject } from '../../lib';
 import { createOperator, Emission, Stream, Subscribable } from '../abstractions';
 
 export const switchMap = (project: (value: any) => Subscribable) => {
