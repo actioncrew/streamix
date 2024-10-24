@@ -15,7 +15,7 @@ export function isStream<T>(obj: any): obj is Stream<T> {
 }
 
 // Function to create a Stream
-export function createStream<T = any>(runFn: () => Promise<void>): Stream<T> {
+export function createStream<T = any>(runFn: (params?: any) => Promise<void>): Stream<T> {
   const completionPromise = promisified<void>();
 
   let isAutoComplete = false;
