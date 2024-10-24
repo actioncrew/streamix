@@ -2,7 +2,7 @@ import { createStream, Stream } from '../abstractions';
 
 export function of<T = any>(value: T): Stream<T> {
   // Create the custom run function for the OfStream
-  const run = async (stream: Stream<T>): Promise<void> => {
+  const stream = createStream<T>(async (): Promise<void> => {
     try {
       if (!stream.shouldComplete()) {
         await stream.onEmission.process({ emission: { value }, source: stream });
@@ -11,8 +11,8 @@ export function of<T = any>(value: T): Stream<T> {
     } catch (error) {
       await stream.onError.process({ error }); // Handle any errors during emission
     }
-  };
+  });
 
   // Create the stream using createStream and the custom run function
-  return createStream<T>(run);
+  return stream;
 }

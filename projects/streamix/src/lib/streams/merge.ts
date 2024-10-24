@@ -3,7 +3,7 @@ import { createStream, Stream, Subscribable } from '../abstractions';
 
 export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
   // Create the custom run function for the MergeStream
-  const run = async (stream: Stream<T>): Promise<void> => {
+  const stream = createStream<T>(async (): Promise<void> => {
     // Start all sources
     sources.forEach(source => source.start());
 
@@ -37,8 +37,8 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
     if (!stream.shouldComplete() && sources.every(source => source.shouldComplete())) {
       stream.isAutoComplete = true; // Set auto completion flag if not completed
     }
-  };
+  });
 
   // Create the stream using createStream and the custom run function
-  return createStream<T>(run);
+  return stream;
 }

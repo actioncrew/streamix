@@ -5,7 +5,7 @@ import { counter } from '../utils';
 // Function to create a FromEventStream
 export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
   // Create a custom run function for the FromEventStream
-  const run = async (stream: Stream<T>): Promise<void> => {
+  const stream = createStream<T>(async (): Promise<void> => {
     const eventCounter = counter(0); // To track event processing
     const listener = async (event: Event) => {
       if (stream.isRunning) {
@@ -25,8 +25,8 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
       // Remove the event listener when the stream is complete or stopped
       target.removeEventListener(eventName, listener);
     }
-  };
+  });
 
   // Create and return the FromEventStream using createStream
-  return createStream<T>(run);
+  return stream;
 }

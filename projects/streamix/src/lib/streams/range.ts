@@ -2,7 +2,7 @@ import { createStream, Stream } from '../abstractions';
 
 export function range<T = any>(start: number, end: number, step: number = 1): Stream<T> {
   // Create the custom run function for the RangeStream
-  const run = async (stream: Stream<T>): Promise<void> => {
+  const stream = createStream<T>(async (): Promise<void> => {
     let current = start; // Initialize the current value
 
     try {
@@ -19,8 +19,8 @@ export function range<T = any>(start: number, end: number, step: number = 1): St
     } catch (error) {
       await stream.onError.process({ error }); // Handle any errors during emission
     }
-  };
+  });
 
   // Create the stream using createStream and the custom run function
-  return createStream<T>(run);
+  return stream;
 }
