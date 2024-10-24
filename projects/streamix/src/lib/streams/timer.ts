@@ -6,10 +6,10 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   let intervalId: any;
   const actualIntervalMs = intervalMs ?? delayMs;
 
-  const stream = createStream<number>(async function(): Promise<void> {
+  const stream = createStream<number>(async function(this: Stream<number>): Promise<void> {
     try {
       if (delayMs === 0) {
-        if (stream.shouldComplete()) return;
+        if (this.shouldComplete()) return;
       } else {
         await new Promise<void>((resolve) => {
           timeoutId = setTimeout(() => {
@@ -18,13 +18,13 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
           }, delayMs);
         });
 
-        if (stream.shouldComplete()) return;
+        if (this.shouldComplete()) return;
       }
 
       // Initial emission
-      await stream.onEmission.process({
+      await this.onEmission.process({
         emission: { value: timerValue },
-        source: stream
+        source: this
       });
       timerValue++;
 
@@ -32,31 +32,31 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
         await new Promise<void>((resolve) => {
           intervalId = setInterval(async () => {
             try {
-              if (stream.shouldComplete()) {
+              if (this.shouldComplete()) {
                 clearInterval(intervalId);
                 intervalId = undefined;
                 resolve();
                 return;
               }
 
-              await stream.onEmission.process({
+              await this.onEmission.process({
                 emission: { value: timerValue },
-                source: stream
+                source: this
               });
               timerValue++;
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              await stream.onError.process({ error });
+              await this.onError.process({ error });
               resolve();
             }
           }, actualIntervalMs);
         });
       } else {
-        stream.isAutoComplete = true;
+        this.isAutoComplete = true;
       }
     } catch (error) {
-      await stream.onError.process({ error });
+      await this.onError.process({ error });
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

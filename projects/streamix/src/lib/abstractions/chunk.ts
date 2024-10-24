@@ -12,8 +12,8 @@ export type Chunk<T = any> = Subscribable<T> & {
 };
 
 // Function to create a Chunk
-export function createChunk<T = any>(stream: Stream<T>, initialOperators: Operator[] = []): Chunk<T> {
-  let operators: Operator[] = [...initialOperators];
+export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
+  let operators: Operator[] = [];
   let head: Operator | undefined;
   let tail: Operator | undefined;
   let currentValue: T | undefined;

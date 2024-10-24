@@ -1,5 +1,5 @@
-import { createPipeline, Emission, Operator, Pipeline, Subscribable, Subscription } from '../abstractions';
-import { hook, HookType, promisified } from '../utils';
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable } from "../abstractions";
+import { hook, promisified } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
@@ -14,8 +14,7 @@ export function isStream<T>(obj: any): obj is Stream<T> {
   );
 }
 
-// Function to create a Stream
-export function createStream<T = any>(runFn: (params?: any) => Promise<void>): Stream<T> {
+export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => Promise<void>): Stream<T> {
   const completionPromise = promisified<void>();
 
   let isAutoComplete = false;
@@ -34,7 +33,7 @@ export function createStream<T = any>(runFn: (params?: any) => Promise<void>): S
   const run = async () => {
     try {
       await onStart.process(); // Trigger start hook
-      await runFn(); // Run the stream logic
+      await runFn.call(streamInstance); // Pass the stream instance to the run function
       await onComplete.process(); // Trigger complete hook
     } catch (error) {
       await onError.process({ error }); // Handle any errors
@@ -53,21 +52,21 @@ export function createStream<T = any>(runFn: (params?: any) => Promise<void>): S
   };
 
   const complete = async (): Promise<void> => {
-    if (!isAutoComplete) {
+    if (!isStopRequested) {
       return new Promise<void>((resolve) => {
         onStop.once(() => resolve());
         isStopRequested = true;
         completionPromise.resolve();
       });
     }
-    return Promise.resolve();
+    return completionPromise.promise(); // Ensure the completion resolves correctly
   };
 
   const awaitCompletion = () => completionPromise.promise();
 
   const emit = async ({ emission, source }: { emission: Emission; source: any }): Promise<void> => {
     try {
-      if (emission.isFailed) throw emission.error;
+      if (emission.isFailed && emission.error) throw emission.error;
 
       if (!emission.isPhantom) {
         await subscribers.parallel(emission.value);
@@ -111,7 +110,7 @@ export function createStream<T = any>(runFn: (params?: any) => Promise<void>): S
 
   const shouldComplete = () => isAutoComplete || isStopRequested;
 
-  return {
+  const streamInstance = {
     emit,
     start,
     subscribe,
@@ -162,4 +161,6 @@ export function createStream<T = any>(runFn: (params?: any) => Promise<void>): S
       return isStopped;
     }
   };
+
+  return streamInstance; // Return the stream instance
 }

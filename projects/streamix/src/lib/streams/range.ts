@@ -2,22 +2,22 @@ import { createStream, Stream } from '../abstractions';
 
 export function range<T = any>(start: number, end: number, step: number = 1): Stream<T> {
   // Create the custom run function for the RangeStream
-  const stream = createStream<T>(async (): Promise<void> => {
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     let current = start; // Initialize the current value
 
     try {
-      while (current < end && !stream.shouldComplete()) {
-        await stream.onEmission.process({ emission: { value: current }, source: stream });
+      while (current < end && !this.shouldComplete()) {
+        await this.onEmission.process({ emission: { value: current }, source: this });
 
         current += step; // Increment the current value by the step
       }
 
       // Set auto-completion if we have reached or exceeded the end value
-      if (current >= end && !stream.shouldComplete()) {
-        stream.isAutoComplete = true;
+      if (current >= end && !this.shouldComplete()) {
+        this.isAutoComplete = true;
       }
     } catch (error) {
-      await stream.onError.process({ error }); // Handle any errors during emission
+      await this.onError.process({ error }); // Handle any errors during emission
     }
   });
 
