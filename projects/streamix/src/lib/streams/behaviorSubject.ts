@@ -15,6 +15,8 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
     await originalNext(value); // Call the original next method from Subject
   };
 
+
+  const originalSubscribe = subject.subscribe.bind(subject); // Preserve the original next method
   // Ensure the latest value is emitted when a new subscriber subscribes
   subject.subscribe = (callback?: (value: T) => void): Subscription => {
     if (callback) {
@@ -23,7 +25,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
         hasEmittedInitialValue = true;
       }
     }
-    return subject.subscribe(callback); // Call the original subscribe method
+    return originalSubscribe(callback); // Call the original subscribe method
   };
 
   return subject;
