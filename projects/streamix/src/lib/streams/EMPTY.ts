@@ -1,13 +1,19 @@
-import { Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions/stream';
 
-export class EmptyStream<T = any> extends Stream<T> {
-  constructor() {
-    super();
-  }
+// Function to create an EmptyStream
+export const empty = <T = any>(): Stream<T> => {
+  // Custom run function for the EmptyStream
+  const run = async (stream: Stream<T>): Promise<void> => {
+    // Set the auto-completion flag
+    stream.isAutoComplete = true;
 
-  async run(): Promise<void> {
-    this.isAutoComplete = true;
-  }
-}
+    // Complete the stream immediately since it produces no emissions
+    await stream.complete();
+  };
 
-export const EMPTY = new EmptyStream();
+  // Create and return the EmptyStream using createStream
+  return createStream<T>(run);
+};
+
+// Export a singleton instance of EmptyStream
+export const EMPTY = empty();

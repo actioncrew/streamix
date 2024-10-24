@@ -1,65 +1,43 @@
-import { Stream, Subscribable } from '../abstractions';
+import { createStream, Stream, Subscribable } from '../abstractions';
 
-export class ConcatStream<T = any> extends Stream<T> {
-  private readonly sources: Subscribable[];
-
-  private currentSourceIndex: number = 0;
-  private handleEmissionFn: (event: { emission: { value: T }, source: Subscribable }) => void;
-
-  constructor(...sources: Subscribable[]) {
-    super();
-    this.sources = sources;
-    this.handleEmissionFn = ({ emission, source }) => this.handleEmission(emission.value);
-  }
-
-  async run(): Promise<void> {
-    for (this.currentSourceIndex = 0; this.currentSourceIndex < this.sources.length; this.currentSourceIndex++) {
-      if (this.shouldComplete()) {
-        break;
+export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
+  // Create the custom run function for the ConcatStream
+  const run = async (stream: Stream<T>): Promise<void> => {
+    for (let currentSourceIndex = 0; currentSourceIndex < sources.length; currentSourceIndex++) {
+      if (stream.shouldComplete()) {
+        break; // Exit if completion is requested
       }
-      await this.runCurrentSource();
+      await runCurrentSource(stream, sources[currentSourceIndex]);
     }
 
-    if (!this.shouldComplete()) {
-      this.isAutoComplete = true;
+    if (!stream.shouldComplete()) {
+      stream.isAutoComplete = true; // Set auto completion flag if not completed
     }
-  }
+  };
 
-  private async runCurrentSource(): Promise<void> {
-    const currentSource = this.sources[this.currentSourceIndex];
+  // Function to run the current source
+  const runCurrentSource = async (stream: Stream<T>, currentSource: Subscribable): Promise<void> => {
+    const handleEmissionFn = async ({ emission }: { emission: { value: T }; source: Subscribable }) => {
+      if (!stream.shouldComplete()) {
+        await stream.onEmission.process({
+          emission: { value: emission.value },
+          source: stream,
+        });
+      }
+    };
+
     try {
-      currentSource.onEmission.chain(this, this.handleEmissionFn);
-      currentSource.start();
-      await currentSource.awaitCompletion();
+      currentSource.onEmission.chain(stream, handleEmissionFn); // Chain emissions
+      currentSource.start(); // Start the current source
+      await currentSource.awaitCompletion(); // Wait for the current source to complete
+    } catch (error) {
+      await stream.onError.process({ error }); // Propagate error if occurs
+    } finally {
+      currentSource.onEmission.remove(stream, handleEmissionFn); // Clean up emission handler
+      await currentSource.complete(); // Complete the current source
     }
-    catch(error) {
-      this.propagateError(error);
-    }
-    finally{
-      currentSource.onEmission.remove(this, this.handleEmissionFn);
-      await currentSource.complete();
-    }
-  }
+  };
 
-  private async handleEmission(value: T): Promise<void> {
-    if (this.shouldComplete()) {
-      return;
-    }
-
-    await this.onEmission.process({
-      emission: { value },
-      source: this,
-    });
-  }
-
-  override async complete(): Promise<void> {
-    for (const source of this.sources) {
-      await source.complete();
-    }
-    return super.complete();
-  }
-}
-
-export function concat<T = any>(...sources: Subscribable[]): ConcatStream<T> {
-  return new ConcatStream<T>(...sources);
+  // Create the stream using createStream and the custom run function
+  return createStream<T>(run);
 }

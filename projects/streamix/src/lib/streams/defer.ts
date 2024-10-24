@@ -1,62 +1,46 @@
-import { Subscribable } from '../abstractions';
-import { Stream } from '../abstractions/stream';
+import { createStream, Stream, Subscribable } from '../abstractions';
 
-export class DeferStream<T = any> extends Stream<T> {
-  private innerStream?: Subscribable;
-  private handleEmissionFn: (event: { emission: { value: T }, source: Subscribable }) => void;
+export function defer<T = any>(factory: () => Subscribable): Stream<T> {
+  // Create the custom run function for DeferStream
+  const run = async (stream: Stream<T>): Promise<void> => {
+    let innerStream: Subscribable | undefined;
 
-  constructor(private readonly factory: () => Subscribable) {
-    super();
-    this.handleEmissionFn = ({ emission, source }) => this.handleEmission(emission.value);
-  }
+    // Define the emission handling function
+    const handleEmission = async ({ emission }: { emission: { value: T }; source: Subscribable }) => {
+      if (!stream.shouldComplete()) {
+        await stream.onEmission.process({
+          emission: { value: emission.value },
+          source: stream,
+        });
+      }
+    };
 
-  async run(): Promise<void> {
     try {
       // Create a new stream from the factory function each time this stream is run
-      this.innerStream = this.factory();
+      innerStream = factory();
 
-      // Set up emission handling
-      this.innerStream.onEmission.chain(this, this.handleEmissionFn);
-
-      // Start the inner stream
-      this.innerStream.start();
+      // Chain the emission handler to the inner stream
+      innerStream.onEmission.chain(stream, handleEmission);
+      innerStream.start(); // Start the inner stream
 
       // Wait for completion or termination
-      await Promise.race([this.innerStream.awaitCompletion()]);
+      await innerStream.awaitCompletion();
 
     } catch (error) {
-      await this.propagateError(error);
+      await stream.onError.process({ error }); // Handle error
     } finally {
-      await this.cleanupInnerStream();
+      await cleanupInnerStream(innerStream, stream, handleEmission); // Cleanup
     }
-  }
+  };
 
-  private async handleEmission(value: T): Promise<void> {
-    if (this.shouldComplete()) {
-      return;
+  // Cleanup function for the inner stream
+  const cleanupInnerStream = async (innerStream: Subscribable | undefined, stream: Stream<T>, handleEmission: (event: { emission: { value: T }; source: Subscribable }) => void): Promise<void> => {
+    if (innerStream) {
+      innerStream.onEmission.remove(stream, handleEmission); // Remove emission handler
+      await innerStream.complete(); // Complete the inner stream
     }
+  };
 
-    await this.onEmission.process({
-      emission: { value },
-      source: this,
-    });
-  }
-
-  private async cleanupInnerStream(): Promise<void> {
-    if (this.innerStream) {
-      this.innerStream.onEmission.remove(this, this.handleEmissionFn);
-      await this.innerStream.complete();
-      this.innerStream = undefined;
-    }
-  }
-
-  override async complete(): Promise<void> {
-    await this.cleanupInnerStream();
-    return super.complete();
-  }
-}
-
-// Factory function to create a new stream instance
-export function defer<T = any>(factory: () => Subscribable): Stream<T> {
-  return new DeferStream<T>(factory);
+  // Create the stream using createStream and the custom run function
+  return createStream<T>(run);
 }

@@ -1,37 +1,32 @@
 import { Stream, Subscription } from '../abstractions';
+import { createStream } from '../abstractions/stream';
 import { counter } from '../utils';
 
-export class FromEventStream<T = any> extends Stream<T> {
-  private eventCounter = counter(0);
-  private listener!: (event: Event) => void;
-  private usedContext!: any;
+// Function to create a FromEventStream
+export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
+  // Create a custom run function for the FromEventStream
+  const run = async (stream: Stream<T>): Promise<void> => {
+    const eventCounter = counter(0); // To track event processing
+    const listener = async (event: Event) => {
+      if (stream.isRunning) {
+        eventCounter.increment();
+        await stream.onEmission.process({ emission: { value: event }, source: stream });
+        eventCounter.decrement();
+      }
+    };
 
-  constructor(private readonly target: EventTarget, private readonly eventName: string) {
-    super();
-  }
+    // Add the event listener to the target
+    target.addEventListener(eventName, listener);
 
-  async run(): Promise<void> {
-    await this.awaitCompletion();
-    this.target.removeEventListener(this.eventName, this.listener);
-  }
-
-  override start() {
-    if(!this.listener) {
-      this.listener = async (event: Event) => {
-        if (this.isRunning) {
-          this.eventCounter.increment();
-          await this.onEmission.process({ emission: { value: event }, source: this });
-          this.eventCounter.decrement();
-        }
-      };
-
-      this.target.addEventListener(this.eventName, this.listener);
+    try {
+      // Wait for the stream to complete or be stopped
+      await stream.awaitCompletion();
+    } finally {
+      // Remove the event listener when the stream is complete or stopped
+      target.removeEventListener(eventName, listener);
     }
+  };
 
-    return super.start();
-  }
-}
-
-export function fromEvent<T = any>(target: EventTarget, eventName: string) {
-  return new FromEventStream<T>(target, eventName);
+  // Create and return the FromEventStream using createStream
+  return createStream<T>(run);
 }

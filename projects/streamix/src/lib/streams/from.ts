@@ -1,39 +1,35 @@
 import { Emission } from '../abstractions';
-import { Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions/stream';
 
-export class FromStream<T = any> extends Stream<T> {
-  private done: boolean = false;
+// Function to create a FromStream
+export const from = <T = any>(input: T[] | IterableIterator<T>): Stream<T> => {
+  // Create an iterator based on the input
+  const iterator: IterableIterator<T> = Array.isArray(input)
+    ? input[Symbol.iterator]() // Convert array to iterator
+    : (input as IterableIterator<T>);
 
-  constructor(private readonly iterator: IterableIterator<any>) {
-    super();
-  }
+  // Custom run function for the FromStream
+  const run = async (stream: Stream<T>): Promise<void> => {
+    let done = false;
 
-  async run(): Promise<void> {
-    while (!this.done && !this.shouldComplete()) {
-      const { value, done } = this.iterator.next();
-      if (done) {
-        this.done = true;
-        if (!this.shouldComplete()) {
-          this.isAutoComplete = true;
+    while (!done && !stream.shouldComplete()) {
+      const { value, done: iterationDone } = iterator.next();
+      if (iterationDone) {
+        done = true;
+        if (!stream.shouldComplete()) {
+          stream.isAutoComplete = true; // Mark stream as auto-completing
         }
       } else {
-        let emission = { value } as Emission;
-        await this.onEmission.process({ emission, source: this });
+        const emission: Emission = { value };
+        await stream.onEmission.process({ emission, source: stream });
 
         if (emission.isFailed) {
           throw emission.error;
         }
       }
     }
-  }
-}
+  };
 
-export function from<T = any>(input: any[] | IterableIterator<any>) {
-  if (Array.isArray(input)) {
-    return new FromStream<T>(input[Symbol.iterator]()); // Convert array to iterator
-  } else if (typeof input[Symbol.iterator] === 'function') {
-    return new FromStream<T>(input as IterableIterator<any>);
-  } else {
-    throw new TypeError('Input must be an array or an iterable iterator');
-  }
-}
+  // Create and return the FromStream using createStream
+  return createStream<T>(run);
+};
