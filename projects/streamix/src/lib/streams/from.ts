@@ -1,26 +1,22 @@
 import { Emission } from '../abstractions';
 import { createStream, Stream } from '../abstractions/stream';
 
-// Function to create a FromStream
-export const from = <T = any>(input: T[] | IterableIterator<T>): Stream<T> => {
-  // Create an iterator based on the input
-  const iterator: IterableIterator<T> = Array.isArray(input)
-    ? input[Symbol.iterator]() // Convert array to iterator
-    : (input as IterableIterator<T>);
+export function from<T = any>(input: any[] | IterableIterator<any>): Stream<T> {
+  const iterator = Array.isArray(input) ? input[Symbol.iterator]() : input;
 
-  // Custom run function for the FromStream
-  const run = async (stream: Stream<T>): Promise<void> => {
-    let done = false;
+  let done = false;
 
+  // Create the stream with a custom run function
+  const stream = createStream<T>(async function() {
     while (!done && !stream.shouldComplete()) {
-      const { value, done: iterationDone } = iterator.next();
-      if (iterationDone) {
+      const { value, done: isDone } = iterator.next();
+      if (isDone) {
         done = true;
         if (!stream.shouldComplete()) {
-          stream.isAutoComplete = true; // Mark stream as auto-completing
+          stream.isAutoComplete = true; // Mark the stream for auto-completion
         }
       } else {
-        const emission: Emission = { value };
+        const emission = { value } as Emission;
         await stream.onEmission.process({ emission, source: stream });
 
         if (emission.isFailed) {
@@ -28,8 +24,7 @@ export const from = <T = any>(input: T[] | IterableIterator<T>): Stream<T> => {
         }
       }
     }
-  };
+  });
 
-  // Create and return the FromStream using createStream
-  return createStream<T>(run);
-};
+  return stream;
+}
