@@ -1,39 +1,93 @@
-import { Subscription } from "../abstractions";
-import { Subject } from "./subject";
+import { createStream, Stream } from '../../lib';
+import { Subscription } from '../abstractions';
 
-export class BehaviorSubject<T = any> extends Subject<T> {
-  private latestValue: T;
-  private hasEmittedInitialValue = false; // Track if the initial value has already been emitted
+export interface Subject<T = any> extends Stream<T> {
+  next(value?: T): Promise<void>;
+}
 
-  constructor(private readonly initialValue: T) {
-    super();
-    this.latestValue = initialValue;
+export function createSubject<T = any>(): Subject<T> {
+  let buffer: T[] = [];
+  let processing = false;
+  let emissionAvailable = Promise.resolve();
 
-    // No need to emit the initial value in the constructor,
-    // we'll emit it when someone subscribes
+  async function run(): Promise<void> {
+    if (buffer.length > 0) {
+      await processBuffer();
+    }
+    await awaitCompletion();
+    return emissionAvailable;
   }
 
-  // Override the next method to update the latest value and emit it
-  override async next(value: T): Promise<void> {
-    // Store the latest value
-    this.latestValue = value;
+  const subject = createStream<T>(run) as Subject<T>;
+  const { awaitCompletion, isRunning, isStopped, isStopRequested, onEmission } = subject;
 
-    // Call the parent Subject's next method to handle the emission
-    return super.next(value);
+  async function processBuffer(): Promise<void> {
+    while (buffer.length > 0) {
+      const value = buffer.shift();
+      await processEmission(value);
+    }
   }
 
-  // Ensure latest value is emitted when a new subscriber subscribes
-  override subscribe(callback?: ((value: T) => void) | void): Subscription {
-    // Emit the latest value immediately to the new subscriber
-    if (callback) {
-      // Emit the latest value only once per subscription
-      if (!this.hasEmittedInitialValue) {
-        callback(this.latestValue);
-        this.hasEmittedInitialValue = true;
-      }
+  async function enqueueEmission(value?: T): Promise<void> {
+    if (processing) {
+      emissionAvailable = emissionAvailable.then(() => processEmission(value));
+    } else {
+      await processEmission(value);
+    }
+  }
+
+  async function processEmission(value?: T): Promise<void> {
+    processing = true;
+
+    try {
+      await onEmission.process({ emission: { value }, source: subject });
+    } finally {
+      processing = false;
+    }
+  }
+
+  subject.next = async (value?: T): Promise<void> => {
+    if (isStopRequested || isStopped) {
+      console.warn('Cannot push value to a stopped Subject.');
+      return Promise.resolve();
     }
 
-    // Proceed with normal subscription
-    return super.subscribe(callback);
-  }
+    if (!isRunning) {
+      buffer.push(value!);
+    } else {
+      await enqueueEmission(value);
+    }
+
+    return emissionAvailable;
+  };
+
+  return subject;
+}
+
+// Create function for the BehaviorSubject
+export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
+  const subject = createSubject<T>() as Subject<T>;
+  let latestValue = initialValue;
+  let hasEmittedInitialValue = false;
+
+  // Override the next method to update the latest value and emit it
+  const originalNext = subject.next.bind(subject); // Preserve the original next method
+
+  subject.next = async (value?: T): Promise<void> => {
+    latestValue = value!;  // Update the latest value
+    await originalNext(value); // Call the original next method from Subject
+  };
+
+  // Ensure the latest value is emitted when a new subscriber subscribes
+  subject.subscribe = (callback?: (value: T) => void): Subscription => {
+    if (callback) {
+      if (!hasEmittedInitialValue) {
+        callback(latestValue);
+        hasEmittedInitialValue = true;
+      }
+    }
+    return subject.subscribe(callback); // Call the original subscribe method
+  };
+
+  return subject;
 }

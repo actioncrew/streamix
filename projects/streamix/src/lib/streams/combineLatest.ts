@@ -1,58 +1,62 @@
-import { Stream, Subscribable } from '../abstractions';
+import { createStream, Stream, Subscribable } from '../abstractions';
 
-export class CombineLatestStream<T = any> extends Stream<T[]> {
-  private values: { hasValue: boolean; value: any }[];
-  private handleEmissionFns: Array<(event: { emission: { value: any }, source: Subscribable }) => void> = [];
+export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> {
+  // Buffer to hold the latest values from each source
+  const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined }));
 
-  constructor(private readonly sources: Subscribable[]) {
-    super();
-    this.values = sources.map(() => ({ hasValue: false, value: undefined }));
-
-    this.sources.forEach((source, index) => {
-      this.handleEmissionFns[index] = (event) => this.handleEmission(index, event.emission.value);
-      source.onEmission.chain(this, this.handleEmissionFns[index]);
-    });
-  }
-
-  async run(): Promise<void> {
-    this.sources.forEach((source) => source.start());
+  // Custom run method for the CombineLatestStream
+  const run = async (stream: Stream<T[]>): Promise<void> => {
+    // Start all sources
+    sources.forEach(source => source.start());
 
     try {
-      await Promise.race([this.awaitCompletion(),
-        Promise.all(this.sources.map(source => source.awaitCompletion()))
+      await Promise.race([
+        stream.awaitCompletion(), // Await completion of this stream
+        Promise.all(sources.map(source => source.awaitCompletion())) // Await completion of all sources
       ]);
-
     } catch (error) {
-      await this.propagateError(error);
+      await stream.onError.process({ error });
     } finally {
-      this.complete();
+      stream.complete();
     }
-  }
+  };
 
-  private async handleEmission(index: number, value: any): Promise<void> {
-    if (this.shouldComplete()) {
+  // Create the stream with the custom run function
+  const stream = createStream<T[]>(run);
+
+  // Helper method to handle emissions from sources
+  const handleEmission = async (index: number, value: T): Promise<void> => {
+    if (stream.shouldComplete()) {
       return;
     }
 
-    this.values[index] = { hasValue: true, value };
+    values[index] = { hasValue: true, value }; // Store the emitted value
 
-    if (this.values.every(v => v.hasValue)) {
-      await this.onEmission.process({
-        emission: { value: this.values.map(({ value }) => value) },
-        source: this,
+    // Emit combined values if all sources have emitted at least once
+    if (values.every(v => v.hasValue)) {
+      await stream.onEmission.process({
+        emission: { value: values.map(({ value }) => value!) }, // Use non-null assertion to ensure type safety
+        source: stream,
       });
     }
-  }
+  };
 
-  override async complete(): Promise<void> {
-    this.sources.forEach((source, index) => {
-      source.onEmission.remove(this, this.handleEmissionFns[index]);
+  // Set up emission handlers for each source
+  sources.forEach((source, index) => {
+    const handle = (event: { emission: { value: T }, source: Subscribable }) =>
+      handleEmission(index, event.emission.value);
+    source.onEmission.chain(stream, handle);
+  });
+
+  // Override the complete method to clean up
+  const originalComplete = stream.complete.bind(stream); // Preserve the original complete method
+  stream.complete = async (): Promise<void> => {
+    sources.forEach((source) => {
+      source.onEmission.remove(stream, handleEmission);
       source.complete();
     });
-    return super.complete();
-  }
-}
+    return originalComplete(); // Call the preserved complete method
+  };
 
-export function combineLatest<T = any>(sources: Subscribable[]): CombineLatestStream<T> {
-  return new CombineLatestStream<T>(sources);
+  return stream;
 }
