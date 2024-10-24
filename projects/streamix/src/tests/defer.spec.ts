@@ -3,7 +3,7 @@ import { createStream, defer, Emission, Stream } from '../lib';
 // Mocking Stream class
 export function mockStream(emissions: Emission[], completed = false, failed = false, error?: Error): Stream {
   // Create the custom run function for the MockStream
-  const run = async (stream: Stream): Promise<void> => {
+  const stream = createStream(async (): Promise<void> => {
     if (failed && error) {
       await stream.onError.process({ error });
       return;
@@ -17,10 +17,9 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
     if (completed) {
       stream.isAutoComplete = true; // Set auto-completion flag
     }
-  };
+  });
 
-  // Create the stream using createStream and the custom run function
-  return createStream(run);
+  return stream;
 }
 
 describe('DeferStream', () => {
