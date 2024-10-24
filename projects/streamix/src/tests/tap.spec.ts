@@ -1,4 +1,4 @@
-import {catchError, Emission, endWith, finalize, from, startWith, Stream, tap } from '../lib';
+import {catchError, endWith, finalize, from, startWith, tap } from '../lib';
 
 
 describe('tap operator', () => {
@@ -6,7 +6,7 @@ describe('tap operator', () => {
     const testStream = from([1, 2, 3]);
     const sideEffectFn = jest.fn();
 
-    const tappedStream = testStream.pipe(tap(sideEffectFn));
+    const tappedStream = testStream.pipe(tap(sideEffectFn), startWith(0), endWith(4), catchError(console.log), finalize(() => console.log("hurra")));
 
     let results: any[] = [];
 
