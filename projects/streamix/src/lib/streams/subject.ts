@@ -13,11 +13,11 @@ export function createSubject<T = any>(): Subject<T> {
   const stream = createStream<T>(async function (this: any): Promise<void> {
     // Process the buffered values when the stream starts running
     if (buffer.length > 0) {
-      await stream.processBuffer();
+      await this.processBuffer();
     }
 
     // Await completion of the stream, processing values in real-time
-    await stream.awaitCompletion();
+    await this.awaitCompletion();
     return emissionAvailable; // Return the current promise
   }) as any;
 
