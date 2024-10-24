@@ -1,37 +1,10 @@
-import { Emission, mergeMap, Stream } from '../lib';
-
-// Mock AbstractStream implementation for testing purposes
-class MockStream extends Stream {
-  private values: any[];
-  private index: number;
-
-  constructor(values: any[]) {
-    super();
-    this.values = values;
-    this.index = 0;
-  }
-
-  async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.onEmission.process({emission, source: this});
-
-      if(emission.isFailed) {
-        throw emission.error;
-      }
-      this.index++;
-    }
-    if(!this.isStopRequested) {
-      this.isAutoComplete = true;
-    }
-  }
-}
+import { Emission, mergeMap, from } from '../lib';
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = from([1, 2, 3]);
 
-    const project = (value: number) => new MockStream([value * 2, value * 4]);
+    const project = (value: number) => from([value * 2, value * 4]);
 
     const mergedStream = testStream.pipe(mergeMap(project));
 

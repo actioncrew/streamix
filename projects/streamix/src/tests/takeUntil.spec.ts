@@ -1,32 +1,4 @@
-import { Emission, from, of, Stream, take, takeUntil, timer } from '../lib';
-
-// Mock implementation for AbstractStream
-class MockStream extends Stream {
-  private values: any[];
-  private index: number;
-
-  constructor(values: any[]) {
-    super();
-    this.values = values;
-    this.index = 0;
-  }
-
-  async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.onEmission.process({emission, source: this});
-
-      if (emission.isFailed) {
-        throw emission.error;
-      }
-
-      this.index++;
-    }
-    if(!this.isStopRequested) {
-      this.isAutoComplete = true;
-    }
-  }
-}
+import { from, of, take, takeUntil, timer } from '../lib';
 
 describe('takeUntil operator', () => {
   it('should take emissions until notifier emits', (done) => {
@@ -66,8 +38,8 @@ describe('takeUntil operator', () => {
   });
 
   it('should handle empty stream', (done) => {
-    const testStream = new MockStream([]);
-    const notifier = new MockStream(['stop']);
+    const testStream = from([]);
+    const notifier = from(['stop']);
 
     const takenUntilStream = testStream.pipe(takeUntil(notifier));
 

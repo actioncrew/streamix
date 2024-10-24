@@ -1,37 +1,8 @@
-import { Emission, skip, Stream } from '../lib';
-
-// Mock implementation for AbstractStream
-class MockStream extends Stream {
-  private values: any[];
-  private index: number;
-
-  constructor(values: any[]) {
-    super();
-    this.values = values;
-    this.index = 0;
-  }
-
-  async run(): Promise<void> {
-
-    while (this.index < this.values.length && !this.isStopRequested) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.onEmission.process({emission, source: this});
-
-      if (emission.isFailed) {
-        throw emission.error;
-      }
-
-      this.index++;
-    }
-    if (!this.isStopRequested) {
-      this.isAutoComplete = true;
-    }
-  }
-}
+import { from, skip } from '../lib';
 
 describe('skip operator', () => {
   it('should skip the specified number of emissions', (done) => {
-    const testStream = new MockStream([1, 2, 3, 4, 5]);
+    const testStream = from([1, 2, 3, 4, 5]);
     const countToSkip = 3;
 
     const skippedStream = testStream.pipe(skip(countToSkip));
@@ -49,7 +20,7 @@ describe('skip operator', () => {
   });
 
   it('should handle skip count larger than stream length', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = from([1, 2, 3]);
     const countToSkip = 5; // More than the number of values in the stream
 
     const skippedStream = testStream.pipe(skip(countToSkip));
@@ -67,7 +38,7 @@ describe('skip operator', () => {
   });
 
   it('should handle skip count of zero', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = from([1, 2, 3]);
     const countToSkip = 0;
 
     const skippedStream = testStream.pipe(skip(countToSkip));
