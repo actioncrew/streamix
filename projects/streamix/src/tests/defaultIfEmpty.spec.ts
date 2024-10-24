@@ -1,4 +1,4 @@
-import { concatMap, createSubject, defaultIfEmpty, EMPTY, of, Subject } from '../lib';
+import { concatMap, createSubject, defaultIfEmpty, EMPTY, of } from '../lib';
 
 describe('DefaultIfEmptyOperator', () => {
   test('should emit the default value if no values are emitted', (done) => {
@@ -76,8 +76,8 @@ describe('DefaultIfEmptyOperator', () => {
       emittedValues.push(value);
     });
 
-    (processedStream as any).stream.next('Value 1');
-    (processedStream as any).stream.next('Value 2');
+    stream.next('Value 1');
+    stream.next('Value 2');
 
     processedStream.onStop.once(() => {
       expect(emittedValues).toEqual(['Value 3', 'Value 3']);
