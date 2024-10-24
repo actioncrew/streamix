@@ -3,7 +3,7 @@ import { coroutine } from '../operators';
 
 export function compute(task: ReturnType<typeof coroutine>, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
-  const run = async (stream: Stream<any>): Promise<void> => {
+  const stream = createStream<any>(async (): Promise<void> => {
     let promise: Promise<void>;
 
     promise = new Promise<void>(async (resolve, reject) => {
@@ -40,8 +40,8 @@ export function compute(task: ReturnType<typeof coroutine>, params: any): Stream
         await stream.complete(); // Complete the stream
       }
     }
-  };
+  });
 
   // Create the stream using createStream and the custom run function
-  return createStream<any>(run);
+  return stream;
 }
