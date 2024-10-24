@@ -34,8 +34,6 @@ export class Subject<T = any> extends Stream<T> {
       // If running, enqueue the emission for sequential processing
       await this.enqueueEmission(value);
     }
-
-    return this.emissionAvailable;
   }
 
   // Processes buffered values in the correct order
