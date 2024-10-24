@@ -126,7 +126,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   subscribe(callback?: (value: T) => void): Subscription {
     if(this.chunks.length === 0) {
-      this.pipe();
+      this.bindOperators();
     }
 
     const boundCallback = (value: T) => {
