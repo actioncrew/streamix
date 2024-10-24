@@ -1,92 +1,82 @@
+import { createStream } from '../abstractions/stream';
 import { Stream } from '../abstractions/stream';
 
-export class TimerStream extends Stream<number> {
-  private timerValue: number = 0;
-  private timeoutId: any | undefined;
-  private intervalId: any | undefined;
+export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
+  let timerValue = 0;
+  let timeoutId: any | undefined;
+  let intervalId: any | undefined;
 
-  constructor(private readonly delayMs: number = 0, private intervalMs?: number) {
-    super();
-    this.intervalMs = intervalMs ?? delayMs;
-  }
-
-  async run(): Promise<void> {
+  const run = async (stream: Stream<number>): Promise<void> => {
     try {
-      if (await this.initialDelay()) {
+      if (await initialDelay(stream)) {
         return; // Stream was completed during the delay
       }
 
-      await this.emitValue();
+      await emitValue(stream);
 
-      if (this.intervalMs !== undefined && this.intervalMs > 0) {
-        await this.startInterval();
+      if (intervalMs !== undefined && intervalMs > 0) {
+        await startInterval(stream);
       } else {
-        this.isAutoComplete = true;
+        stream.isAutoComplete = true; // Mark the stream for auto completion
       }
     } catch (error) {
-      await this.propagateError(error);
+      await stream.onError.process({ error });
     } finally {
-      this.finalize();
+      finalize();
     }
-  }
+  };
 
-  private async initialDelay(): Promise<boolean> {
-    if (this.delayMs === 0) {
-      return this.shouldComplete();
+  const initialDelay = async (stream: Stream<number>): Promise<boolean> => {
+    if (delayMs === 0) {
+      return stream.shouldComplete();
     }
 
     return new Promise<boolean>((resolve) => {
-      this.timeoutId = setTimeout(() => {
-        this.timeoutId = undefined;
-        resolve(this.shouldComplete());
-      }, this.delayMs);
+      timeoutId = setTimeout(() => {
+        timeoutId = undefined;
+        resolve(stream.shouldComplete());
+      }, delayMs);
     });
-  }
+  };
 
-  private async emitValue(): Promise<void> {
-    if (this.shouldComplete()) {
+  const emitValue = async (stream: Stream<number>): Promise<void> => {
+    if (stream.shouldComplete()) {
       return;
     }
-    await this.onEmission.process({ emission: { value: this.timerValue }, source: this });
-    this.timerValue++;
-  }
+    await stream.onEmission.process({ emission: { value: timerValue }, source: stream });
+    timerValue++;
+  };
 
-  private startInterval(): Promise<void> {
+  const startInterval = (stream: Stream<number>): Promise<void> => {
     return new Promise<void>((resolve) => {
-      this.intervalId = setInterval(async () => {
+      intervalId = setInterval(async () => {
         try {
-          if (this.shouldComplete()) {
-            this.finalize();
+          if (stream.shouldComplete()) {
+            finalize();
             resolve();
             return;
           }
-          await this.emitValue();
+          await emitValue(stream);
         } catch (error) {
-          this.propagateError(error);
-          this.finalize();
+          await stream.onError.process({ error });
+          finalize();
           resolve();
         }
-      }, this.intervalMs);
+      }, intervalMs);
     });
-  }
+  };
 
-  private finalize() {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-      this.timeoutId = undefined;
+  const finalize = (): void => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = undefined;
     }
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = undefined;
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = undefined;
     }
-  }
+  };
 
-  override async complete(): Promise<void> {
-    this.finalize();
-    return super.complete();
-  }
-}
-
-export function timer(delayMs: number = 0, intervalMs?: number): TimerStream {
-  return new TimerStream(delayMs, intervalMs);
+  // Create and return the stream using createStream
+  return createStream<number>(run);
 }

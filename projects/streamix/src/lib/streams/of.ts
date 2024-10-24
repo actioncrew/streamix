@@ -1,27 +1,18 @@
-import { Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions';
 
-export class OfStream<T = any> extends Stream<T> {
-  private emitted: boolean = false;
-
-  constructor(private readonly inputValue: T) {
-    super();
-  }
-
-  async run(): Promise<void> {
+export function of<T = any>(value: T): Stream<T> {
+  // Create the custom run function for the OfStream
+  const run = async (stream: Stream<T>): Promise<void> => {
     try {
-      if (!this.emitted && !this.shouldComplete()) {
-        await this.onEmission.process({ emission: { value: this.inputValue }, source: this });
-        this.emitted = true;
-      }
-      if(this.emitted) {
-        this.isAutoComplete = true;
+      if (!stream.shouldComplete()) {
+        await stream.onEmission.process({ emission: { value }, source: stream });
+        stream.isAutoComplete = true; // Set auto-complete after emitting the value
       }
     } catch (error) {
-      await this.propagateError(error);
+      await stream.onError.process({ error }); // Handle any errors during emission
     }
-  }
-}
+  };
 
-export function of<T = any>(value: T) {
-  return new OfStream<T>(value);
+  // Create the stream using createStream and the custom run function
+  return createStream<T>(run);
 }
