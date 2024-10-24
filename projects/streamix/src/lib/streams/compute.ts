@@ -10,11 +10,9 @@ export class ComputeStream extends Stream {
   }
 
   async run(): Promise<void> {
-    let terminateResolve: (() => void) = () => {};
 
     try {
       this.promise = new Promise<void>(async (resolve, reject) => {
-        terminateResolve = () => resolve();
         if (this.isRunning) {
           const worker = await this.task.getIdleWorker();
           worker.postMessage(this.params);
