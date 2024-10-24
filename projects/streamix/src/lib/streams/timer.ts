@@ -1,72 +1,76 @@
-import { createStream } from '../abstractions/stream';
-import { Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
-  let timeoutId: any | undefined;
-  let intervalId: any | undefined;
+  let timeoutId: any;
+  let intervalId: any;
+  const actualIntervalMs = intervalMs ?? delayMs;
 
-  const run = async (stream: Stream<number>): Promise<void> => {
+  const stream = createStream<number>(async function(): Promise<void> {
     try {
-      if (await initialDelay(stream)) {
-        return; // Stream was completed during the delay
+      if (delayMs === 0) {
+        if (stream.shouldComplete()) return;
+      } else {
+        await new Promise<void>((resolve) => {
+          timeoutId = setTimeout(() => {
+            timeoutId = undefined;
+            resolve();
+          }, delayMs);
+        });
+
+        if (stream.shouldComplete()) return;
       }
 
-      await emitValue(stream);
+      // Initial emission
+      await stream.onEmission.process({
+        emission: { value: timerValue },
+        source: stream
+      });
+      timerValue++;
 
-      if (intervalMs !== undefined && intervalMs > 0) {
-        await startInterval(stream);
+      if (actualIntervalMs > 0) {
+        await new Promise<void>((resolve) => {
+          intervalId = setInterval(async () => {
+            try {
+              if (stream.shouldComplete()) {
+                clearInterval(intervalId);
+                intervalId = undefined;
+                resolve();
+                return;
+              }
+
+              await stream.onEmission.process({
+                emission: { value: timerValue },
+                source: stream
+              });
+              timerValue++;
+            } catch (error) {
+              clearInterval(intervalId);
+              intervalId = undefined;
+              await stream.onError.process({ error });
+              resolve();
+            }
+          }, actualIntervalMs);
+        });
       } else {
-        stream.isAutoComplete = true; // Mark the stream for auto completion
+        stream.isAutoComplete = true;
       }
     } catch (error) {
       await stream.onError.process({ error });
     } finally {
-      finalize();
-    }
-  };
-
-  const initialDelay = async (stream: Stream<number>): Promise<boolean> => {
-    if (delayMs === 0) {
-      return stream.shouldComplete();
-    }
-
-    return new Promise<boolean>((resolve) => {
-      timeoutId = setTimeout(() => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
         timeoutId = undefined;
-        resolve(stream.shouldComplete());
-      }, delayMs);
-    });
-  };
-
-  const emitValue = async (stream: Stream<number>): Promise<void> => {
-    if (stream.shouldComplete()) {
-      return;
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = undefined;
+      }
     }
-    await stream.onEmission.process({ emission: { value: timerValue }, source: stream });
-    timerValue++;
-  };
+  });
 
-  const startInterval = (stream: Stream<number>): Promise<void> => {
-    return new Promise<void>((resolve) => {
-      intervalId = setInterval(async () => {
-        try {
-          if (stream.shouldComplete()) {
-            finalize();
-            resolve();
-            return;
-          }
-          await emitValue(stream);
-        } catch (error) {
-          await stream.onError.process({ error });
-          finalize();
-          resolve();
-        }
-      }, intervalMs);
-    });
-  };
-
-  const finalize = (): void => {
+  const originalComplete = stream.complete.bind(stream);
+  stream.complete = async function(): Promise<void> {
     if (timeoutId) {
       clearTimeout(timeoutId);
       timeoutId = undefined;
@@ -75,8 +79,8 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       clearInterval(intervalId);
       intervalId = undefined;
     }
+    return originalComplete();
   };
 
-  // Create and return the stream using createStream
-  return createStream<number>(run);
+  return stream;
 }
