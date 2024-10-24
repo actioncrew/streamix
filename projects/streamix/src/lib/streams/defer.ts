@@ -25,7 +25,7 @@ export class DeferStream<T = any> extends Stream<T> {
       await Promise.race([this.innerStream.awaitCompletion()]);
 
     } catch (error) {
-      await this.propagateError(error);
+      await this.onError.process({ error });
     } finally {
       await this.cleanupInnerStream();
     }

@@ -33,7 +33,7 @@ export class ConcatStream<T = any> extends Stream<T> {
       await currentSource.awaitCompletion();
     }
     catch(error) {
-      this.propagateError(error);
+      this.onError.process({ error });
     }
     finally{
       currentSource.onEmission.remove(this, this.handleEmissionFn);

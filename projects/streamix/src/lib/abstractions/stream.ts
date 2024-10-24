@@ -174,10 +174,6 @@ export abstract class Stream<T = any> implements Subscribable {
     }
   }
 
-  async propagateError(error: any): Promise<void> {
-    await this.onError.process({ error });
-  }
-
   get value(): T | undefined {
     return this.#currentValue;
   }
