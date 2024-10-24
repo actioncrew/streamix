@@ -1,5 +1,5 @@
-import { Subject } from '../../lib';
-import { createOperator, Stream, Subscribable } from '../abstractions';
+import { createSubject, Subject } from '../../lib';
+import { createOperator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 
 export const iif = (
@@ -7,7 +7,7 @@ export const iif = (
   trueStream: Subscribable,
   falseStream: Subscribable
 ) => {
-  let output: Subject = new Subject();
+  let output: Subject = createSubject();
   let currentStream: Subscribable | null = null;
 
   let hasStartedTrueStream = false;

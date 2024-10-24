@@ -1,5 +1,5 @@
 import { Subscribable, Emission, createOperator } from '../abstractions';
-import { CounterType, Subject, counter } from '../../lib';
+import { CounterType, Subject, counter, createSubject } from '../../lib';
 
 export const concatMap = (project: (value: any) => Subscribable) => {
   let innerStream: Subscribable | null = null;
@@ -11,7 +11,7 @@ export const concatMap = (project: (value: any) => Subscribable) => {
   let isFinalizing: boolean = false;
 
   let input!: Subscribable | undefined;
-  const output = new Subject();
+  const output = createSubject();
 
   const init = (stream: Subscribable) => {
     input = stream;

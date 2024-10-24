@@ -3,7 +3,7 @@ import { Emission, createOperator, Subscribable } from '../abstractions';
 import { CounterType, counter } from '../utils';
 
 export const mergeMap = (project: (value: any) => Subscribable) => {
-  let output = new Subject();
+  let output = createSubject();
   let activeInnerStreams: Subscribable[] = [];
   let processingPromises: Promise<void>[] = [];
 
