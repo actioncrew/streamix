@@ -4,7 +4,7 @@ import { createStream } from '../abstractions/stream';
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
   // Create a custom run function for the FromPromiseStream
-  const run = async (stream: Stream<T>): Promise<void> => {
+  const stream = createStream<T>(async (): Promise<void> => {
     let resolvedValue: Awaited<T> | void; // Renamed to avoid conflict
     let isResolved = false;
 
@@ -26,8 +26,8 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
     } catch (error) {
       await stream.onError.process({ error }); // Handle any errors
     }
-  };
+  });
 
   // Create and return the FromPromiseStream using createStream
-  return createStream<T>(run);
+  return stream;
 }
