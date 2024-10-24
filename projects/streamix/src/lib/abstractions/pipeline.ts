@@ -3,6 +3,7 @@ import { hook, HookType } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscription } from './subscription';
 import { Subscribable } from './subscribable'; // Import the Subscribable interface
+import { createSubject } from '../streams';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
@@ -164,4 +165,29 @@ export function createPipeline<T>(stream: Stream<T>): Pipeline<T> {
     chainHooks(pipeline); // Initialize hooks after creating the pipeline
 
     return pipeline;
+}
+
+export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
+  const subject = createSubject<T>();
+  const subscription = source.subscribe((value) => subject.next(value));
+  source.onStop.once(() => subject.complete());
+
+  const pipeline = createPipeline<T>(subject);
+  const originalSubscribe = pipeline.subscribe.bind(pipeline);
+  let subscribers = 0;
+
+  pipeline.subscribe = (observer: (value: T) => void) => {
+    const originalSubscription = originalSubscribe(observer);
+    subscribers++;
+    return {
+      unsubscribe: async () => {
+        originalSubscription.unsubscribe();
+        if(--subscribers === 0) {
+          subscription.unsubscribe();
+        }
+      }
+    };
+  };
+
+  return pipeline;
 }
