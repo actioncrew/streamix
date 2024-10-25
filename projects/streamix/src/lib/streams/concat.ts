@@ -38,6 +38,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
     }
   };
 
+  stream.name = "concat";
   // Create the stream using createStream and the custom run function
   return stream;
 }

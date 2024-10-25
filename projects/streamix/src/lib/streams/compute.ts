@@ -42,6 +42,7 @@ export function compute(task: ReturnType<typeof coroutine>, params: any): Stream
     }
   });
 
+  stream.name = "compute";
   // Create the stream using createStream and the custom run function
   return stream;
 }

@@ -21,6 +21,7 @@ export function range<T = any>(start: number, end: number, step: number = 1): St
     }
   });
 
+  stream.name = "range";
   // Create the stream using createStream and the custom run function
   return stream;
 }

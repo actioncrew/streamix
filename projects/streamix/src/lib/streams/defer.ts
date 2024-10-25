@@ -56,5 +56,6 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
     return originalComplete();
   };
 
+  stream.name = "defer";
   return stream;
 }

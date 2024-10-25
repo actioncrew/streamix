@@ -11,6 +11,7 @@ export const empty = <T = any>(): Stream<T> => {
     await this.complete();
   });
 
+  stream.name = "EMPTY";
   // Create and return the EmptyStream using createStream
   return stream;
 };

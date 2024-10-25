@@ -67,5 +67,6 @@ export function createSubject<T = any>(): Subject<T> {
     }
   };
 
+  stream.name = "subject";
   return stream;
 }

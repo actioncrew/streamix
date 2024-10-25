@@ -13,6 +13,8 @@ export function of<T = any>(value: T): Stream<T> {
     }
   });
 
+
+  stream.name = "of";
   // Create the stream using createStream and the custom run function
   return stream;
 }
