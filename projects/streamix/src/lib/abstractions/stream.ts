@@ -93,15 +93,16 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     subscribers.chain(boundCallback);
     start();
 
-    return {
-      unsubscribe: async () => {
-        subscribers.remove(boundCallback);
-        if (subscribers.length === 0) {
-          onEmission.remove(emit);
-          await complete();
-        }
+    const value: any = () => currentValue;
+    value.unsubscribe = async () => {
+      subscribers.remove(boundCallback);
+      if (subscribers.length === 0) {
+        onEmission.remove(emit);
+        await complete();
       }
     };
+
+    return value;
   };
 
   const pipe = (...operators: Operator[]): Pipeline<T> => {
