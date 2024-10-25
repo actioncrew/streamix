@@ -7,6 +7,7 @@ export type Subject<T = any> = Stream<T> & {
 export function createSubject<T = any>(): Subject<T> {
   const buffer: T[] = [];
   let isProcessing = false;
+  let emissionAvailable = Promise.resolve(); // Initialize emissionAvailable
 
   // Create a stream using createStream and the custom run function
   const stream = createStream<T>(async function (this: any): Promise<void> {
@@ -17,6 +18,7 @@ export function createSubject<T = any>(): Subject<T> {
 
     // Await completion of the stream, processing values in real-time
     await this.awaitCompletion();
+    return emissionAvailable; // Return the current promise
   }) as any;
 
   stream.next = async function (this: any, value?: T): Promise<void> {
@@ -33,6 +35,8 @@ export function createSubject<T = any>(): Subject<T> {
       // If running, enqueue the emission for sequential processing
       await this.enqueueEmission(value);
     }
+
+    return emissionAvailable; // Return the current promise
   };
 
   stream.processBuffer = async function (this: any): Promise<void> {
@@ -44,8 +48,8 @@ export function createSubject<T = any>(): Subject<T> {
 
   stream.enqueueEmission = async function (this: any, value?: T): Promise<void> {
     if (isProcessing) {
-      // If another emission is processing, just queue this emission
-      buffer.push(value!);
+      // Chain emissions to avoid overlapping async calls
+      emissionAvailable = emissionAvailable.then(() => this.processEmission(value));
     } else {
       // Start processing immediately if no other emission is being processed
       await this.processEmission(value);
@@ -58,11 +62,8 @@ export function createSubject<T = any>(): Subject<T> {
     try {
       await this.onEmission.process({ emission: { value }, source: this });
     } finally {
-      // Ensure processing flag is reset when finished and process any buffered values
+      // Ensure processing flag is reset when finished
       isProcessing = false;
-      if (buffer.length > 0) {
-        await this.processBuffer();
-      }
     }
   };
 
