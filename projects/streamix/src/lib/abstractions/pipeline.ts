@@ -153,17 +153,15 @@ export class Pipeline<T = any> implements Subscribable<T> {
     // Start the pipeline if needed
     this.start();
 
-    return {
-      unsubscribe: async () => {
-        // Remove the bound callback from the pipeline's subscribers
-        this.subscribers.remove(this, boundCallback);
-
-        // If there are no more pipeline subscribers, complete the pipeline
-        if (this.subscribers.length === 0) {
-          await this.complete();
-        }
+    const value: any = () => this.#currentValue;
+    value.unsubscribe = async () => {
+      this.subscribers.remove(this, boundCallback);
+      if (this.subscribers.length === 0) {
+        await this.complete();
       }
     };
+
+    return value;
   }
 
   private get first(): Chunk<T> {
@@ -192,14 +190,16 @@ export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
   pipeline.subscribe = (observer: (value: T) => void) => {
     const originalSubscription = originalSubscribe(observer);
     subscribers++;
-    return {
-      unsubscribe: async () => {
-        originalSubscription.unsubscribe();
-        if(--subscribers === 0) {
-          subscription.unsubscribe();
-        }
+
+    const value: any = () => originalSubscribe();
+    value.unsubscribe = async () => {
+      originalSubscription.unsubscribe();
+      if(--subscribers === 0) {
+        subscription.unsubscribe();
       }
     };
+
+    return value;
   };
 
   return pipeline;

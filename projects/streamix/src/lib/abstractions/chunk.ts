@@ -171,13 +171,14 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
 
     this.start();
 
-    return {
-      unsubscribe: async () => {
-        this.subscribers.remove(this, boundCallback);
-        if (this.subscribers.length === 0) {
-          await this.complete();
-        }
+    const value: any = () => this.#currentValue;
+    value.unsubscribe = async () => {
+      this.subscribers.remove(this, boundCallback);
+      if (this.subscribers.length === 0) {
+        await this.stream.complete();
       }
     };
+
+    return value;
   }
 }

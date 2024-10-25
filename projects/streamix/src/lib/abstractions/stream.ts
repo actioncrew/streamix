@@ -140,15 +140,16 @@ export abstract class Stream<T = any> implements Subscribable {
 
     this.start();
 
-    return {
-      unsubscribe: async () => {
-        this.subscribers.remove(this, boundCallback);
-        if (this.subscribers.length === 0) {
-          this.onEmission.remove(this, this.emit);
-          await this.complete();
-        }
+    const value: any = () => this.#currentValue;
+    value.unsubscribe = async () => {
+      this.subscribers.remove(this, boundCallback);
+      if (this.subscribers.length === 0) {
+        this.onEmission.remove(this, this.emit);
+        await this.complete();
       }
     };
+
+    return value;
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
