@@ -28,5 +28,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
     return originalSubscribe(callback); // Call the original subscribe method
   };
 
+  subject.name = "behaviorSubject";
   return subject;
 }

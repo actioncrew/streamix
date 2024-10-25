@@ -4,6 +4,7 @@ import { hook, promisified } from "../utils";
 export type Stream<T = any> = Subscribable<T> & {
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
   run: () => Promise<void>; // Run stream logic
+  name?: string;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -112,6 +113,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const shouldComplete = () => isAutoComplete || isStopRequested;
 
   const streamInstance = {
+    type: "stream" as "stream",
     emit,
     start,
     subscribe,

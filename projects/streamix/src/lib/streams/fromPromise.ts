@@ -28,6 +28,8 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
     }
   });
 
+
+  stream.name = "fromPromise";
   // Create and return the FromPromiseStream using createStream
   return stream;
 }

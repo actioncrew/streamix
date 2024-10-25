@@ -97,6 +97,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
   };
 
   const chunk: Chunk<T> = {
+    type: "chunk" as "chunk",
     stream,
     bindOperators,
     subscribe,

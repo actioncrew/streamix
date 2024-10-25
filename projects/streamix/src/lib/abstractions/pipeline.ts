@@ -113,6 +113,7 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   };
 
   const pipeline: Pipeline<T> = {
+    type: "pipeline" as "pipeline",
     stream,
     chunks,
     operators,

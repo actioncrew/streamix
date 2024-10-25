@@ -15,12 +15,13 @@ export type Operator = {
   handle: (emission: Emission, chunk: Chunk) => Promise<Emission>;
   clone: () => Operator;
   next?: Operator; // Optional chaining for next operators
-  name: string;
+  type: string;
+  name?: string;
 };
 
 // Assuming OperatorType has a certain structure, we can use type guards
 export function isOperatorType(obj: any): obj is Operator {
-  return obj && typeof obj === 'object' && typeof obj.handle === 'function';
+  return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.run === 'undefined';
 }
 
 export const createOperator = (handleFn: (emission: Emission, stream: Subscribable) => Promise<Emission>): Operator => {
@@ -62,7 +63,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
     },
 
     handle: handleFn,
-    name: 'operator'
+    type: 'operator'
   };
 
   return operator;

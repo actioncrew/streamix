@@ -26,5 +26,6 @@ export function from<T = any>(input: any[] | IterableIterator<any>): Stream<T> {
     }
   });
 
+  stream.name = "from";
   return stream;
 }

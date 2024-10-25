@@ -39,6 +39,7 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
     }
   });
 
+  stream.name = "merge";
   // Create the stream using createStream and the custom run function
   return stream;
 }

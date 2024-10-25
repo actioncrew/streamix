@@ -45,5 +45,6 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
     return originalComplete();
   };
 
+  stream.name = "combineLatest";
   return stream;
 }

@@ -50,5 +50,6 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
     return subscription;
   };
 
+  stream.name = "fromEvent";
   return stream;
 }

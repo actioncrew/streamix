@@ -1,7 +1,10 @@
 import { Emission, Operator, Pipeline, Subscription } from '../abstractions';
 import { HookType, PromisifiedType } from '../utils';
 
+
 export interface Subscribable<T = any> {
+  type: "stream" | "chunk" | "pipeline";
+
   isAutoComplete: boolean;
   isStopRequested: boolean;
 

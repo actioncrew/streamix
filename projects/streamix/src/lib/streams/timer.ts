@@ -82,5 +82,6 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
     return originalComplete();
   };
 
+  stream.name = "timer";
   return stream;
 }
