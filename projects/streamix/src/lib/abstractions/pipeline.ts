@@ -96,14 +96,14 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
     subscribers.chain(pipeline, boundCallback);
     start();
 
-    return {
-      unsubscribe: async () => {
-        subscribers.remove(pipeline, boundCallback);
-        if (subscribers.length === 0) {
-          await complete();
-        }
+    const value: any = () => currentValue;
+    value.unsubscribe = async () => {
+      subscribers.remove(pipeline, boundCallback);
+      if (subscribers.length === 0) {
+        await complete();
       }
-    };
+    }
+    return value as Subscription;
   };
 
   const complete = async (): Promise<void> => {
@@ -185,14 +185,16 @@ export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
   pipeline.subscribe = (observer: (value: T) => void) => {
     const originalSubscription = originalSubscribe(observer);
     subscribers++;
-    return {
-      unsubscribe: async () => {
-        originalSubscription.unsubscribe();
-        if (--subscribers === 0) {
-          subscription.unsubscribe();
-        }
+
+    const value: any = () => originalSubscribe();
+    value.unsubscribe = async () => {
+      originalSubscription.unsubscribe();
+      if (--subscribers === 0) {
+        subscription.unsubscribe();
       }
-    };
+    }
+
+    return value;
   };
 
   return pipeline;
