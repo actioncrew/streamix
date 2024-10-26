@@ -7,7 +7,6 @@ import { Subscribable } from './subscribable';
 export type Chunk<T = any> = Subscribable<T> & {
   stream: Stream<T>;
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
-  run: () => Promise<void>; // Run stream logic
   bindOperators(...operators: Operator[]): Chunk<T>; // Method to bind operators
 };
 
@@ -102,7 +101,6 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     bindOperators,
     subscribe,
     start: () => stream.start(),
-    run: () => stream.run(),
     emit,
     pipe: (...newOperators: Operator[]) => createPipeline<T>(stream).pipe(...operators, ...newOperators),
     shouldComplete: () => stream.shouldComplete(),
