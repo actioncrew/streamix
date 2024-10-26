@@ -65,6 +65,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private bindOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = operators;
     let chunk = this.first;
+    this.chunks.splice(1, this.chunks.length - 1);
     let chunkOperators: Operator[] = [];
 
     chunk.onStart.clear();
