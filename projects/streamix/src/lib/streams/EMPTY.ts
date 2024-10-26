@@ -6,9 +6,6 @@ export const empty = <T = any>(): Stream<T> => {
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     // Set the auto-completion flag
     this.isAutoComplete = true;
-
-    // Complete the stream immediately since it produces no emissions
-    await this.complete();
   });
 
   stream.name = "EMPTY";
