@@ -10,11 +10,7 @@ export type Pipeline<T> = Subscribable<T> & {
   stream: Stream<T>;
   chunks: Chunk<T>[];
   operators: Operator[];
-  currentValue?: T;
-  pipe: (...operators: Operator[]) => Pipeline<T>;
   bindOperators: (...operators: Operator[]) => Pipeline<T>;
-  start: () => void;
-  complete: () => Promise<void>;
 };
 
 export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
@@ -50,6 +46,7 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   const bindOperators = (...ops: Operator[]): Pipeline<T> => {
     operators = ops;
     let chunk = getFirstChunk();
+    chunks.splice(1, chunks.length - 1);
     let chunkOperators: Operator[] = [];
 
     chunk.onStart.clear();
