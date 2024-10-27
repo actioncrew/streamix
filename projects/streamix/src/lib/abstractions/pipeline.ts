@@ -156,10 +156,8 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
+      await this.complete();
       this.subscribers.remove(this, boundCallback);
-      if (this.subscribers.length === 0) {
-        await this.complete();
-      }
     };
 
     return value;

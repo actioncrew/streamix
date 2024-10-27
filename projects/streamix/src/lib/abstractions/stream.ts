@@ -94,9 +94,9 @@ export abstract class Stream<T = any> implements Subscribable {
 
   complete(): Promise<void> {
     if(!this.isAutoComplete) {
+      this.isStopRequested = true;
       return new Promise<void>((resolve) => {
         this.onStop.once(() => resolve());
-        this.isStopRequested = true;
       });
     }
     return Promise.resolve();
@@ -142,10 +142,10 @@ export abstract class Stream<T = any> implements Subscribable {
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
+      await this.complete();
       this.subscribers.remove(this, boundCallback);
       if (this.subscribers.length === 0) {
         this.onEmission.remove(this, this.emit);
-        await this.complete();
       }
     };
 

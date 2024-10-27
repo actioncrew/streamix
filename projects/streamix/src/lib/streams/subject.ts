@@ -1,23 +1,35 @@
 import { Stream } from '../../lib';
+import { promisified, PromisifiedType } from '../utils/promisified';
 
 export class Subject<T = any> extends Stream<T> {
-  protected emissionAvailable = Promise.resolve();
-  protected buffer: T[] = [];
-  protected processing = false;  // Tracks if we're currently processing emissions
+  protected emissionAvailable: PromisifiedType<void> = promisified();
+  protected buffer: PromisifiedType<T>[] = [];
 
   constructor() {
     super();
   }
 
   async run(): Promise<void> {
-    // Process the buffered values when the stream starts running
-    if (this.buffer.length > 0) {
-      await this.processBuffer();
-    }
+    while (true) {
+      // Wait for the next emission or completion signal
+      await Promise.race([this.emissionAvailable.promise(), this.awaitCompletion()]);
 
-    // Await completion of the stream, processing values in real-time
-    await this.awaitCompletion();
-    return this.emissionAvailable;
+      if(!this.shouldComplete() || this.buffer.length > 0) {
+        // Process each buffered value sequentially
+        while (this.buffer.length > 0) {
+          const promisifiedValue = this.buffer.shift()!;
+          const value = promisifiedValue()!;
+          await this.onEmission.process({ emission: { value }, source: this });
+          promisifiedValue.resolve(value);
+        }
+
+        // Reset emissionAvailable after processing all buffered values
+        if(this.shouldComplete()) {
+          break;
+        }
+
+      } else { break; }
+    }
   }
 
   async next(value?: T): Promise<void> {
@@ -27,43 +39,9 @@ export class Subject<T = any> extends Stream<T> {
       return Promise.resolve();
     }
 
-    // If the stream is not running yet, buffer the value
-    if (!this.isRunning) {
-      this.buffer.push(value!);
-    } else {
-      // If running, enqueue the emission for sequential processing
-      await this.enqueueEmission(value);
-    }
-  }
-
-  // Processes buffered values in the correct order
-  private async processBuffer(): Promise<void> {
-    while (this.buffer.length > 0) {
-      const value = this.buffer.shift(); // Get the first buffered value
-      await this.processEmission(value); // Process each buffered emission sequentially
-    }
-  }
-
-  // Enqueues and processes a new emission in sequence
-  private async enqueueEmission(value?: T): Promise<void> {
-    if (this.processing) {
-      // Chain emissions to avoid overlapping async calls
-      this.emissionAvailable = this.emissionAvailable.then(() => this.processEmission(value));
-    } else {
-      // Start processing immediately if no other emission is being processed
-      await this.processEmission(value);
-    }
-  }
-
-  // Helper method to process emissions in order
-  protected async processEmission(value?: T): Promise<void> {
-    this.processing = true;
-
-    try {
-      await this.onEmission.process({ emission: { value }, source: this });
-    } finally {
-      // Ensure processing flag is reset when finished
-      this.processing = false;
-    }
+    const promisifiedValue = promisified<T>(value);
+    this.buffer.push(promisifiedValue);
+    this.emissionAvailable.resolve();
+    return promisifiedValue.then(() => Promise.resolve());
   }
 }
