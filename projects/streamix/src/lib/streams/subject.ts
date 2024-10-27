@@ -14,7 +14,7 @@ export function createSubject<T = any>(): Subject<T> {
       // Wait for the next emission or completion signal
       await Promise.race([emissionAvailable.promise(), this.awaitCompletion()]);
 
-      if(!this.shouldComplete() || this.buffer.length > 0) {
+      if(!this.shouldComplete() || buffer.length > 0) {
         // Process each buffered value sequentially
         while (buffer.length > 0) {
           const promisifiedValue = buffer.shift()!;
