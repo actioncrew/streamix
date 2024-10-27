@@ -61,7 +61,7 @@ export function createSubject<T = any>(): Subject<T> {
     }
 
     // Wait until there is space in the buffer
-    if (bufferCount === bufferSize) {
+    if (bufferCount !== 0) {
       await spaceAvailable.promise();
     }
 
@@ -71,11 +71,6 @@ export function createSubject<T = any>(): Subject<T> {
     buffer[tail] = promisifiedValue;
     tail = (tail + 1) % bufferSize;
     bufferCount++;
-
-    // Reset the spaceAvailable promise if buffer is now full
-    if (bufferCount === bufferSize) {
-      spaceAvailable.reset();
-    }
 
     emissionAvailable.resolve();
     return promisifiedValue.then(() => Promise.resolve());
