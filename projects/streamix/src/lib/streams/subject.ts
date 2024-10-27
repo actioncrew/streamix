@@ -10,12 +10,9 @@ export function createSubject<T = any>(): Subject<T> {
   let head = 0;
   let tail = 0;
   let bufferCount = 0;
-  
-  let emissionAvailable = promisified<void>(); // Initialize emissionAvailable
-  let spaceAvailable = promisified<void>(); // Initialize spaceAvailable for when buffer is full
 
-  // Initially, space is available
-  spaceAvailable.resolve();
+  let emissionAvailable = promisified<void>(); // Initialize emissionAvailable
+  let spaceAvailable = promisified<void>(); // Initialize spaceAvailable
 
   // Create a stream using createStream and the custom run function
   const stream = createStream<T>(async function (this: any): Promise<void> {
@@ -36,7 +33,7 @@ export function createSubject<T = any>(): Subject<T> {
             head = (head + 1) % bufferSize;
             bufferCount--;
 
-            // Signal that space is now available
+            // Resolve the spaceAvailable promise if there's space now
             if (bufferCount < bufferSize) {
               spaceAvailable.resolve();
             }
@@ -53,7 +50,7 @@ export function createSubject<T = any>(): Subject<T> {
     }
   }) as any;
 
-  stream.next = async function(this: Stream, value?: T): Promise<void> {
+  stream.next = async function (this: Stream, value?: T): Promise<void> {
     // If the stream is stopped, we shouldn't allow further emissions
     if (this.isStopRequested || this.isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
@@ -61,8 +58,10 @@ export function createSubject<T = any>(): Subject<T> {
     }
 
     // Wait until there is space in the buffer
-    if (bufferCount !== 0) {
+    if (bufferCount === bufferSize) {
+      // Wait for space to become available
       await spaceAvailable.promise();
+      spaceAvailable.reset();
     }
 
     const promisifiedValue = promisified<T>(value);
@@ -72,9 +71,11 @@ export function createSubject<T = any>(): Subject<T> {
     tail = (tail + 1) % bufferSize;
     bufferCount++;
 
+    // If the buffer was empty, we resolve emissionAvailable
     emissionAvailable.resolve();
+
     return promisifiedValue.then(() => Promise.resolve());
-  }
+  };
 
   stream.name = "subject";
   return stream;
