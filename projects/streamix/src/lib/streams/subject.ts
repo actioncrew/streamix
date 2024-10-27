@@ -58,10 +58,10 @@ export function createSubject<T = any>(): Subject<T> {
     }
 
     // Wait until there is space in the buffer
-    if (bufferCount === bufferSize) {
+    while (bufferCount === bufferSize) {
       // Wait for space to become available
       await spaceAvailable.promise();
-      spaceAvailable.reset();
+      spaceAvailable.reset(); // Reset the spaceAvailable promise
     }
 
     const promisifiedValue = promisified<T>(value);
