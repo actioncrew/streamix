@@ -1,18 +1,19 @@
 import { Stream } from '../../lib';
 import { promisified, PromisifiedType } from '../utils/promisified';
 
-export function createLock() {
-  let promise = Promise.resolve();
+export class Lock {
+  private promise: Promise<void> = Promise.resolve(); // Initialize with a resolved promise
 
-  return {
-    async acquire(): Promise<() => void> {
-      const release = promise; // Get the current promise to wait on
-      let resolve: () => void;
-      promise = new Promise<void>(res => (resolve = res!)); // Create a new promise
-      await release; // Wait for the previous promise to resolve
-      return resolve!; // Return the resolve function
-    }
-  };
+  async acquire(): Promise<() => void> {
+    const release = this.promise; // Save the current promise to wait for it to resolve
+    let resolve: () => void;
+
+    // Create a new promise that will be resolved when the lock is released
+    this.promise = new Promise<void>((res) => (resolve = res!));
+
+    await release; // Wait for the previous promise to resolve
+    return resolve!; // Return the resolve function for releasing the lock
+  }
 }
 
 export type Subject<T = any> = Stream<T> & {
