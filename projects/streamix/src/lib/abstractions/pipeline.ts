@@ -95,10 +95,8 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
+      await complete();
       subscribers.remove(pipeline, boundCallback);
-      if (subscribers.length === 0) {
-        await complete();
-      }
     }
     return value as Subscription;
   };

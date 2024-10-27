@@ -53,10 +53,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    if (!isStopRequested) {
+    if (!isAutoComplete) {
+      isStopRequested = true;
       return new Promise<void>((resolve) => {
         onStop.once(() => resolve());
-        isStopRequested = true;
         completionPromise.resolve();
       });
     }
@@ -96,10 +96,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
+      await complete();
       subscribers.remove(boundCallback);
       if (subscribers.length === 0) {
         onEmission.remove(emit);
-        await complete();
       }
     };
 
