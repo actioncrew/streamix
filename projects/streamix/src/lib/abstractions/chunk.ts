@@ -86,10 +86,8 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
+      await stream.complete();
       subscribers.remove(boundCallback);
-      if (subscribers.length === 0) {
-        await stream.complete();
-      }
     };
 
     return value;
