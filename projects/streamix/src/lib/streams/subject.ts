@@ -4,6 +4,20 @@ export type Subject<T = any> = Stream<T> & {
   next(value?: T): Promise<void>;
 };
 
+export function createLock() {
+  let currentPromise = Promise.resolve();
+  let resolveNext: (() => void) | undefined;
+
+  async function acquire(): Promise<void> {
+    const release = currentPromise;
+    currentPromise = new Promise<void>((res) => (resolveNext = res));
+    await release;
+    return resolveNext!;
+  }
+
+  return { acquire };
+}
+
 export function createSubject<T = any>(): Subject<T> {
   const buffer: Array<PromisifiedType<T> | null> = new Array(16).fill(null);
   const bufferSize = 16;
@@ -16,16 +30,7 @@ export function createSubject<T = any>(): Subject<T> {
   spaceAvailable.resolve(); // Initially, space is available
 
   // Lock promise for managing concurrent access to `next`
-  let lock = Promise.resolve();
-
-  const acquireLock = () => {
-    const release = () => {
-      lock = lock.then(() => Promise.resolve()); // Reset lock when released
-    };
-    const acquired = lock.then(() => release);
-    lock = lock.then(() => new Promise((resolve) => setTimeout(resolve, 0))); // Block further `next` calls temporarily
-    return acquired;
-  };
+  let lock = createLock();
 
   const stream = createStream<T>(async function (this: any): Promise<void> {
     while (true) {
@@ -65,30 +70,25 @@ export function createSubject<T = any>(): Subject<T> {
     }
 
     // Acquire lock for buffer access
-    const release = await acquireLock();
-
-    try {
-      if (bufferCount === bufferSize) {
-        await spaceAvailable.promise();
-      }
-
-      const promisifiedValue = promisified<T>(value);
-      buffer[tail] = promisifiedValue;
-      tail = (tail + 1) % bufferSize;
-      bufferCount++;
-
-      // Reset spaceAvailable if buffer is now full
-      if (bufferCount === bufferSize) {
-        spaceAvailable = promisified<void>();
-      }
-
-      emissionAvailable.resolve();
-
-      return promisifiedValue.then(() => Promise.resolve());
-    } finally {
-      // Release lock
-      release();
+    await lock.acquire();
+    
+    if (bufferCount === bufferSize) {
+      await spaceAvailable.promise();
     }
+
+    const promisifiedValue = promisified<T>(value);
+    buffer[tail] = promisifiedValue;
+    tail = (tail + 1) % bufferSize;
+    bufferCount++;
+
+    // Reset spaceAvailable if buffer is now full
+    if (bufferCount === bufferSize) {
+      spaceAvailable = promisified<void>();
+    }
+
+    emissionAvailable.resolve();
+
+    return promisifiedValue.then(() => Promise.resolve());
   };
 
   stream.name = "subject";
