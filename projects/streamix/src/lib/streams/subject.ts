@@ -1,57 +1,59 @@
 import { Stream } from '../../lib';
 import { promisified, PromisifiedType } from '../utils/promisified';
 
-class Lock {
-  private promise: Promise<void> = Promise.resolve(); // Initialize with a resolved promise
+export function createLock() {
+  let promise = Promise.resolve();
 
-  async acquire(): Promise<() => void> {
-    const release = this.promise; // Save the current promise to wait for it to resolve
-    let resolve: () => void;
-
-    // Create a new promise that will be resolved when the lock is released
-    this.promise = new Promise<void>((res) => (resolve = res!));
-
-    await release; // Wait for the previous promise to resolve
-    return resolve!; // Return the resolve function for releasing the lock
-  }
+  return {
+    async acquire(): Promise<() => void> {
+      const release = promise; // Get the current promise to wait on
+      let resolve: () => void;
+      promise = new Promise<void>(res => (resolve = res!)); // Create a new promise
+      await release; // Wait for the previous promise to resolve
+      return resolve!; // Return the resolve function
+    }
+  };
 }
 
-export class Subject<T = any> extends Stream<T> {
-  protected emissionAvailable: PromisifiedType<void> = promisified<void>();
-  protected spaceAvailable: PromisifiedType<void> = promisified<void>(); // Tracks when space becomes available
-  protected buffer: Array<PromisifiedType<T> | null> = new Array(16).fill(null);
-  protected head = 0;
-  protected tail = 0;
-  protected bufferSize = 16;
-  protected bufferCount = 0;
-  private lock = new Lock(); // Ensures only one next call at a time
+export type Subject<T = any> = Stream<T> & {
+  next(value?: T): Promise<void>;
+};
 
-  constructor() {
-    super();
-    this.spaceAvailable.resolve(); // Initially, space is available
-  }
+export function createSubject<T = any>(): Subject<T> {
+  const buffer: Array<PromisifiedType<T> | null> = new Array(16).fill(null);
+  const bufferSize = 16;
+  let head = 0;
+  let tail = 0;
+  let bufferCount = 0;
 
-  async run(): Promise<void> {
+  let emissionAvailable = promisified<void>(); // Initialize emissionAvailable
+  let spaceAvailable = promisified<void>(); // Initialize spaceAvailable
+
+  // Functional lock instance
+  const lock = createLock();
+
+  // Create a stream using createStream and the custom run function
+  const stream = createStream<T>(async function (this: any): Promise<void> {
     while (true) {
       // Wait for the next emission or completion signal
-      await Promise.race([this.emissionAvailable.promise(), this.awaitCompletion()]);
+      await Promise.race([emissionAvailable.promise(), this.awaitCompletion()]);
 
-      if (!this.shouldComplete() || this.bufferCount > 0) {
+      if (!this.shouldComplete() || bufferCount > 0) {
         // Process each buffered value sequentially
-        while (this.bufferCount > 0) {
-          const promisifiedValue = this.buffer[this.head];
+        while (bufferCount > 0) {
+          const promisifiedValue = buffer[head];
           if (promisifiedValue) {
             const value = promisifiedValue()!;
             await this.onEmission.process({ emission: { value }, source: this });
             promisifiedValue.resolve(value);
 
             // Move head forward in cyclic buffer and decrement buffer count
-            this.head = (this.head + 1) % this.bufferSize;
-            this.bufferCount--;
+            head = (head + 1) % bufferSize;
+            bufferCount--;
 
             // Resolve the spaceAvailable promise if there's space now
-            if (this.bufferCount < this.bufferSize) {
-              this.spaceAvailable.resolve();
+            if (bufferCount < bufferSize) {
+              spaceAvailable.resolve();
             }
           }
         }
@@ -64,39 +66,43 @@ export class Subject<T = any> extends Stream<T> {
         break;
       }
     }
-  }
+  }) as any;
 
-  async next(value?: T): Promise<void> {
-    const releaseLock = await this.lock.acquire();
+  stream.next = async function (this: Stream, value?: T): Promise<void> {
+    // If the stream is stopped, we shouldn't allow further emissions
+    if (this.isStopRequested || this.isStopped) {
+      console.warn('Cannot push value to a stopped Subject.');
+      return Promise.resolve();
+    }
+
+    // Acquire the lock before proceeding
+    const releaseLock = await lock.acquire();
 
     try {
-      // If the stream is stopped, we shouldn't allow further emissions
-      if (this.isStopRequested || this.isStopped) {
-        console.warn('Cannot push value to a stopped Subject.');
-        return Promise.resolve();
-      }
-
       // Wait until there is space in the buffer
-      while (this.bufferCount === this.bufferSize) {
-        await this.spaceAvailable.promise();
-        this.spaceAvailable.reset(); // Reset the spaceAvailable promise
+      if (bufferCount === bufferSize) {
+        // Wait for space to become available
+        await spaceAvailable.promise();
       }
 
       const promisifiedValue = promisified<T>(value);
 
       // Place the new value at the tail and advance the tail position
-      this.buffer[this.tail] = promisifiedValue;
-      this.tail = (this.tail + 1) % this.bufferSize;
-      this.bufferCount++;
+      buffer[tail] = promisifiedValue;
+      tail = (tail + 1) % bufferSize;
+      bufferCount++;
 
-      // Signal that an emission is available
-      this.emissionAvailable.resolve();
-
-      // Return a promise that resolves when the value is emitted
-      return promisifiedValue.then(() => Promise.resolve());
+      // If the buffer was empty, we resolve emissionAvailable
+      if (bufferCount === 1) {
+        emissionAvailable.resolve(); // Only resolve if this is the first element
+      }
     } finally {
-      // Release the lock so the next call can proceed
-      releaseLock();
+      releaseLock(); // Release the lock
     }
-  }
+
+    return promisifiedValue.then(() => Promise.resolve());
+  };
+
+  stream.name = "subject";
+  return stream;
 }
