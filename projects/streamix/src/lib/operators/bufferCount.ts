@@ -1,33 +1,23 @@
-import { Stream, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
+import { Stream, Subscribable, Emission } from '../abstractions';
+import { Operator, createOperator } from '../abstractions';
 
-export class BufferCountOperator extends Operator {
+export const bufferCount = (bufferSize: number): Operator => {
+  let buffer: any[] = [];
 
-  private buffer!: any[];
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    buffer.push(emission.value);
 
-  constructor(private readonly bufferSize: number) {
-    super();
-    this.bufferSize = bufferSize;
-  }
-
-  override init(stream: Stream) {
-    this.buffer = [];
-  }
-
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-
-    this.buffer.push(emission.value);
-
-    if (this.buffer.length >= this.bufferSize) {
-      const bufferedArray = this.buffer;
-      this.buffer = [];
-      return { value: bufferedArray };
+    if (buffer.length >= bufferSize) {
+      const bufferedArray = buffer;
+      buffer = [];  // Clear the buffer after emitting
+      return { value: bufferedArray }; // Emit the full buffer
     }
 
-    // Return a phantom emission if buffer is not yet full
+    // If buffer isn't full, return a phantom emission
     return { isPhantom: true };
-  }
-}
+  };
 
-export const bufferCount = (bufferSize: number) => new BufferCountOperator(bufferSize);
+  const operator = createOperator(handle); // Create the operator using createOperator
+  operator.name = 'bufferCount';
+  return operator;
+};

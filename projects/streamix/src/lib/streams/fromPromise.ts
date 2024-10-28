@@ -1,45 +1,35 @@
 import { Stream } from '../abstractions/stream';
+import { createStream } from '../abstractions/stream';
 
-export class FromPromiseStream<T = any> extends Stream<T> {
-  private resolved: boolean = false;
-  private promiseValue: T | undefined;
+// Function to create a FromPromiseStream
+export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
+  // Create a custom run function for the FromPromiseStream
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+    let resolvedValue: Awaited<T> | void; // Renamed to avoid conflict
+    let isResolved = false;
 
-  constructor(private readonly promise: Promise<T>) {
-    super();
-  }
-
-  async run(): Promise<void> {
     try {
-      if (!this.resolved) {
-        const resolutionPromise = this.resolvePromise();
-        await Promise.race([
-          resolutionPromise,
-          this.awaitCompletion()
-        ]);
+      // Await the promise directly
+      resolvedValue = await Promise.race([
+        promise,
+        this.awaitCompletion() // Allow the stream to complete while waiting
+      ]);
 
-        // If we've been completed, don't continue
-        if (this.shouldComplete()) {
-          return;
-        }
+      // Set the resolved flag to true
+      isResolved = true;
+
+      // If the stream is not complete, emit the value
+      if (!this.shouldComplete()) {
+        await this.onEmission.parallel({ emission: { value: resolvedValue }, source: this });
+        this.isAutoComplete = true; // Mark the stream for auto completion
       }
-
-      await this.onEmission.process({ emission: { value: this.promiseValue as T }, source: this });
-      this.isAutoComplete = true;
     } catch (error) {
-      await this.propagateError(error);
+      await this.onError.parallel({ error }); // Handle any errors
     }
-  }
+  });
 
-  private async resolvePromise(): Promise<void> {
-    try {
-      this.promiseValue = await this.promise;
-      this.resolved = true;
-    } catch (error) {
-      await this.propagateError(error);
-    }
-  }
-}
 
-export function fromPromise<T = any>(promise: Promise<T>): FromPromiseStream<T> {
-  return new FromPromiseStream<T>(promise);
+  stream.name = "fromPromise";
+  // Create and return the FromPromiseStream using createStream
+  return stream;
 }

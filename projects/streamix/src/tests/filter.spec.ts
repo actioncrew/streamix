@@ -1,8 +1,8 @@
-import { filter, Stream } from '../lib';
+import { filter, from, Stream } from '../lib';
 
 describe('FilterOperator', () => {
   it('should allow values that pass the predicate', (done) => {
-    const testStream = new TestStream([1, 2, 3, 4, 5]);
+    const testStream = from([1, 2, 3, 4, 5]);
     const predicate = (value: number) => value % 2 === 0; // Allow only even numbers
 
     const filteredStream = testStream.pipe(filter(predicate));
@@ -24,7 +24,7 @@ describe('FilterOperator', () => {
   });
 
   it('should not emit values that fail the predicate', (done) => {
-    const testStream = new TestStream([1, 2, 3]);
+    const testStream = from([1, 2, 3]);
     const predicate = (value: number) => value > 3; // Allow only values greater than 3
 
     const filteredStream = testStream.pipe(filter(predicate));
@@ -47,7 +47,7 @@ describe('FilterOperator', () => {
   });
 
   it('should emit all allowed values before stopping', (done) => {
-    const testStream = new TestStream([1, 2, 3, 4, 5]);
+    const testStream = from([1, 2, 3, 4, 5]);
     const predicate = (value: number) => value <= 3; // Allow values less than or equal to 3
 
     let count = 0;
@@ -68,23 +68,3 @@ describe('FilterOperator', () => {
     });
   });
 });
-
-// Assuming you have a TestStream implementation for testing purposes
-class TestStream extends Stream {
-  private index: number;
-  private values: any[];
-
-  constructor(values: any[]) {
-    super();
-    this.index = 0;
-    this.values = values;
-  }
-
-  async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested) {
-      await this.onEmission.process({emission:{ value: this.values[this.index] }, source: this});
-      this.index++;
-    }
-    this.isAutoComplete = true;
-  }
-}

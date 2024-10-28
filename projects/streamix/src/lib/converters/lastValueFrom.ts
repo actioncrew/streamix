@@ -1,37 +1,31 @@
-import { Converter } from '../abstractions/converter';
 import { Subscribable } from '../abstractions/subscribable';
 
-export class LastValueFromConverter extends Converter<Subscribable, Promise<any>> {
-  private emissionHandler!: ({ emission }: any) => Promise<void>;
+export function lastValueFrom(stream: Subscribable): Promise<any> {
+  return new Promise<any>((resolve, reject) => {
+    let hasEmitted = false;
+    let lastValue: any;
 
-  async convert(stream: Subscribable): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      let hasEmitted = false;
-      let lastValue: any;
+    const emissionHandler = async ({ emission }: any) => {
+      lastValue = emission.value;
+      hasEmitted = true;
+    };
 
-      try {
-        this.emissionHandler = async ({ emission }: any) => {
-          lastValue = emission.value;
-          hasEmitted = true;
-        };
+    try {
+      // Chain the emission handler to capture each emission's value
+      stream.onEmission.chain(emissionHandler);
 
-        stream.onEmission.chain(this, this.emissionHandler);
+      // Set up onStop handler to resolve with last value or reject if no emission occurred
+      stream.onStop.once(() => {
+        stream.onEmission.remove(emissionHandler);
 
-        stream.onStop.once(() => {
-          stream.onEmission.remove(this, this.emissionHandler);
-          if (hasEmitted) {
-            resolve(lastValue!);
-          } else {
-            reject("Subscribable has not emitted any value.");
-          }
-        }); // Handle any errors
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-}
-
-export function lastValueFrom(stream: Subscribable) {
-  return new LastValueFromConverter().convert(stream);
+        if (hasEmitted) {
+          resolve(lastValue);
+        } else {
+          reject("Subscribable has not emitted any value.");
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
 }

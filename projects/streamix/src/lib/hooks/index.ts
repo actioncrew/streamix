@@ -1,7 +1,6 @@
-export * from './startWith';
-export * from './endWith';
 export * from './catchError';
-export * from './finalize';
 export * from './defaultIfEmpty';
+export * from './finalize';
+export * from './endWith';
 export * from './reduce';
-
+export * from './startWith';

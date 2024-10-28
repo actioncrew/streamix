@@ -1,37 +1,44 @@
 import { Stream, Subscription } from '../abstractions';
 import { counter } from '../utils';
+import { createStream } from '../abstractions/stream';
 
-export class FromEventStream<T = any> extends Stream<T> {
-  private eventCounter = counter(0);
-  private listener!: (event: Event) => void;
-  private usedContext!: any;
+export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
+  let eventCounter = counter(0);
+  let listener!: (event: Event) => void;
 
-  constructor(private readonly target: EventTarget, private readonly eventName: string) {
-    super();
-  }
+  const run = async function(this: Stream<T>): Promise<void> {
+    // Clean up the event listener on completion
+    this.onStop.once(() => {
+      target.removeEventListener(eventName, listener);
+    });
 
-  async run(): Promise<void> {
+    // Wait for completion
     await this.awaitCompletion();
-    this.target.removeEventListener(this.eventName, this.listener);
-  }
+  };
 
-  override startWithContext(context: any) {
-    if(!this.listener) {
-      this.listener = async (event: Event) => {
+  // Create the stream using createStream
+  const stream = createStream<T>(run);
+  const originalSubscribe = stream.subscribe.bind(stream); // Store the original start method
+
+  stream.subscribe = function(this: Stream<T>, params?: any): Subscription {
+    if (!listener) {
+      listener = async (event: Event) => {
         if (this.isRunning) {
-          this.eventCounter.increment();
-          await this.onEmission.process({ emission: { value: event }, source: this });
-          this.eventCounter.decrement();
+          eventCounter.increment();
+          // Emit the event to the stream
+          await this.onEmission.parallel({ emission: { value: event }, source: this });
+          eventCounter.decrement();
         }
       };
 
-      this.target.addEventListener(this.eventName, this.listener);
+      // Add the event listener to the target
+      target.addEventListener(eventName, listener);
     }
 
-    return super.startWithContext(context);
-  }
-}
+    // Call the original start method
+    return originalSubscribe(params);
+  };
 
-export function fromEvent<T = any>(target: EventTarget, eventName: string) {
-  return new FromEventStream<T>(target, eventName);
+  stream.name = "fromEvent";
+  return stream;
 }

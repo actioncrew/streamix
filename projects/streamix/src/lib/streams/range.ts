@@ -1,35 +1,27 @@
-import { Emission } from '../abstractions';
-import { Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions';
 
-export class RangeStream<T = any> extends Stream<T> {
-  private current: number;
+export function range<T = any>(start: number, end: number, step: number = 1): Stream<T> {
+  // Create the custom run function for the RangeStream
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+    let current = start; // Initialize the current value
 
-  constructor(private readonly startValue: number, private readonly endValue: number, private readonly step: number = 1) {
-    super();
-    this.current = startValue;
-  }
-
-  async run(): Promise<void> {
     try {
-      while (this.current < this.endValue && !this.shouldComplete()) {
-        let emission = { value: this.current } as Emission;
-        await this.onEmission.process({ emission, source: this });
+      while (current < end && !this.shouldComplete()) {
+        await this.onEmission.parallel({ emission: { value: current }, source: this });
 
-        if (emission.isFailed) {
-          throw emission.error;
-        }
-
-        this.current += this.step;
+        current += step; // Increment the current value by the step
       }
-      if (this.current >= this.endValue && !this.shouldComplete()) {
+
+      // Set auto-completion if we have reached or exceeded the end value
+      if (current >= end && !this.shouldComplete()) {
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.propagateError(error);
+      await this.onError.parallel({ error }); // Handle any errors during emission
     }
-  }
-}
+  });
 
-export function range<T = any>(start: number, end: number, step: number = 1) {
-  return new RangeStream<T>(start, end, step);
+  stream.name = "range";
+  // Create the stream using createStream and the custom run function
+  return stream;
 }

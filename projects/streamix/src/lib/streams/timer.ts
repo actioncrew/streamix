@@ -1,92 +1,87 @@
-import { Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions';
 
-export class TimerStream extends Stream<number> {
-  private timerValue: number = 0;
-  private timeoutId: any | undefined;
-  private intervalId: any | undefined;
+export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
+  let timerValue = 0;
+  let timeoutId: any;
+  let intervalId: any;
+  const actualIntervalMs = intervalMs ?? delayMs;
 
-  constructor(private readonly delayMs: number = 0, private intervalMs?: number) {
-    super();
-    this.intervalMs = intervalMs ?? delayMs;
-  }
-
-  async run(): Promise<void> {
+  const stream = createStream<number>(async function(this: Stream<number>): Promise<void> {
     try {
-      if (await this.initialDelay()) {
-        return; // Stream was completed during the delay
+      if (delayMs === 0) {
+        if (this.shouldComplete()) return;
+      } else {
+        await new Promise<void>((resolve) => {
+          timeoutId = setTimeout(() => {
+            timeoutId = undefined;
+            resolve();
+          }, delayMs);
+        });
+
+        if (this.shouldComplete()) return;
       }
 
-      await this.emitValue();
+      // Initial emission
+      await this.onEmission.parallel({
+        emission: { value: timerValue },
+        source: this
+      });
+      timerValue++;
 
-      if (this.intervalMs !== undefined && this.intervalMs > 0) {
-        await this.startInterval();
+      if (actualIntervalMs > 0) {
+        await new Promise<void>((resolve) => {
+          intervalId = setInterval(async () => {
+            try {
+              if (this.shouldComplete()) {
+                clearInterval(intervalId);
+                intervalId = undefined;
+                resolve();
+                return;
+              }
+
+              await this.onEmission.parallel({
+                emission: { value: timerValue },
+                source: this
+              });
+              timerValue++;
+            } catch (error) {
+              clearInterval(intervalId);
+              intervalId = undefined;
+              await this.onError.parallel({ error });
+              resolve();
+            }
+          }, actualIntervalMs);
+        });
       } else {
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.propagateError(error);
+      await this.onError.parallel({ error });
     } finally {
-      this.finalize();
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = undefined;
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = undefined;
+      }
     }
-  }
+  });
 
-  private async initialDelay(): Promise<boolean> {
-    if (this.delayMs === 0) {
-      return this.shouldComplete();
+  const originalComplete = stream.complete.bind(stream);
+  stream.complete = async function(): Promise<void> {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = undefined;
     }
-
-    return new Promise<boolean>((resolve) => {
-      this.timeoutId = setTimeout(() => {
-        this.timeoutId = undefined;
-        resolve(this.shouldComplete());
-      }, this.delayMs);
-    });
-  }
-
-  private async emitValue(): Promise<void> {
-    if (this.shouldComplete()) {
-      return;
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = undefined;
     }
-    await this.onEmission.process({ emission: { value: this.timerValue }, source: this });
-    this.timerValue++;
-  }
+    return originalComplete();
+  };
 
-  private startInterval(): Promise<void> {
-    return new Promise<void>((resolve) => {
-      this.intervalId = setInterval(async () => {
-        try {
-          if (this.shouldComplete()) {
-            this.finalize();
-            resolve();
-            return;
-          }
-          await this.emitValue();
-        } catch (error) {
-          this.propagateError(error);
-          this.finalize();
-          resolve();
-        }
-      }, this.intervalMs);
-    });
-  }
-
-  private finalize() {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-      this.timeoutId = undefined;
-    }
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = undefined;
-    }
-  }
-
-  override async complete(): Promise<void> {
-    this.finalize();
-    return super.complete();
-  }
-}
-
-export function timer(delayMs: number = 0, intervalMs?: number): TimerStream {
-  return new TimerStream(delayMs, intervalMs);
+  stream.name = "timer";
+  return stream;
 }

@@ -1,18 +1,14 @@
-import { Subscribable } from '../abstractions';
+import { createOperator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
 
-export class TapOperator extends Operator {
+export const tap = (tapFunction: (value: any) => void) => {
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    tapFunction(emission.value); // Call the tap function with the emission value
+    return emission; // Return the original emission
+  };
 
-  constructor(private readonly tapFunction: (value: any) => void) {
-    super();
-  }
-
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    this.tapFunction(emission.value);
-    return emission;
-  }
-}
-
-export const tap = (tapFunction: (value: any) => void) => new TapOperator(tapFunction);
-
+  // Create the operator with the handle function
+  const operator = createOperator(handle);
+  operator.name = 'tap';
+  return operator;
+};
