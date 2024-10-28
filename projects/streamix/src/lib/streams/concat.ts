@@ -29,11 +29,11 @@ export class ConcatStream<T = any> extends Stream<T> {
     const currentSource = this.sources[this.currentSourceIndex];
     try {
       currentSource.onEmission.chain(this, this.handleEmissionFn);
-      currentSource.start();
+      currentSource.subscribe();
       await currentSource.awaitCompletion();
     }
     catch(error) {
-      this.propagateError(error);
+      this.onError.parallel({ error });
     }
     finally{
       currentSource.onEmission.remove(this, this.handleEmissionFn);
@@ -46,7 +46,7 @@ export class ConcatStream<T = any> extends Stream<T> {
       return;
     }
 
-    await this.onEmission.process({
+    await this.onEmission.parallel({
       emission: { value },
       source: this,
     });

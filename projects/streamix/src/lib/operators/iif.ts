@@ -61,12 +61,12 @@ export class IifOperator extends Operator implements StreamOperator {
     }
 
     if (!this.hasStartedTrueStream) {
-      this.trueStream.start();
+      this.trueStream.subscribe();
       this.hasStartedTrueStream = true;
     }
 
     if (!this.hasStartedFalseStream) {
-      this.falseStream.start();
+      this.falseStream.subscribe();
       this.hasStartedFalseStream = true;
     }
 

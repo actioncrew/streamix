@@ -1,36 +1,8 @@
-import { Emission, scan, Stream } from '../lib';
-
-// Mock implementation for AbstractStream
-class MockStream extends Stream {
-  private values: any[];
-  private index: number;
-
-  constructor(values: any[]) {
-    super();
-    this.values = values;
-    this.index = 0;
-  }
-
-  async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.onEmission.process({emission, source: this});
-
-      if (emission.isFailed) {
-        throw emission.error;
-      }
-
-      this.index++;
-    }
-    if(!this.isStopRequested) {
-      this.isAutoComplete = true;
-    }
-  }
-}
+import { from, scan } from '../lib';
 
 describe('scan operator', () => {
   it('should accumulate values correctly', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = from([1, 2, 3]);
     const accumulator = (acc: number, value: number) => acc + value;
     const seed = 0;
 
@@ -49,7 +21,7 @@ describe('scan operator', () => {
   });
 
   it('should handle errors in accumulation', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = from([1, 2, 3]);
     const accumulator = (acc: number, value: number) => {
       if (value === 2) {
         throw new Error('Error in accumulation');

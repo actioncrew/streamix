@@ -24,7 +24,7 @@ export class TimerStream extends Stream<number> {
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.propagateError(error);
+      await this.onError.parallel({ error });
     } finally {
       this.finalize();
     }
@@ -47,7 +47,7 @@ export class TimerStream extends Stream<number> {
     if (this.shouldComplete()) {
       return;
     }
-    await this.onEmission.process({ emission: { value: this.timerValue }, source: this });
+    await this.onEmission.parallel({ emission: { value: this.timerValue }, source: this });
     this.timerValue++;
   }
 
@@ -62,7 +62,7 @@ export class TimerStream extends Stream<number> {
           }
           await this.emitValue();
         } catch (error) {
-          this.propagateError(error);
+          this.onError.parallel({ error });
           this.finalize();
           resolve();
         }

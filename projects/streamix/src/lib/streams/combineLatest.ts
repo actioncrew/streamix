@@ -15,7 +15,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
   }
 
   async run(): Promise<void> {
-    this.sources.forEach((source) => source.start());
+    this.sources.forEach((source) => source.subscribe());
 
     try {
       await Promise.race([this.awaitCompletion(),
@@ -23,7 +23,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
       ]);
 
     } catch (error) {
-      await this.propagateError(error);
+      await this.onError.parallel({ error });
     } finally {
       this.complete();
     }
@@ -37,7 +37,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
     this.values[index] = { hasValue: true, value };
 
     if (this.values.every(v => v.hasValue)) {
-      await this.onEmission.process({
+      await this.onEmission.parallel({
         emission: { value: this.values.map(({ value }) => value) },
         source: this,
       });

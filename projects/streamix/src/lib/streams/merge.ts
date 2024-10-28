@@ -16,7 +16,7 @@ export class MergeStream<T = any> extends Stream<T> {
 
   async run(): Promise<void> {
     try {
-      this.sources.forEach(source => source.start());
+      this.sources.forEach(source => source.subscribe());
 
       await Promise.race([
         Promise.all(this.sources.map(source => source.awaitCompletion())),
@@ -27,9 +27,7 @@ export class MergeStream<T = any> extends Stream<T> {
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.propagateError(error);
-    } finally {
-      await this.cleanup();
+      await this.onError.parallel({ error });
     }
   }
 
@@ -38,7 +36,7 @@ export class MergeStream<T = any> extends Stream<T> {
       return;
     }
 
-    await this.onEmission.process({
+    await this.onEmission.parallel({
       emission: { value },
       source: this,
     });

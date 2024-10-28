@@ -17,13 +17,13 @@ class MockStream extends Stream {
 
   async run(): Promise<void> {
     if (this.failed && this.error) {
-      this.onError.process({error: this.error});
+      this.onError.parallel({error: this.error});
       return;
     }
 
     for (const emission of this.emissions) {
       if (this.isStopRequested) return;
-      await this.onEmission.process({emission, source: this});
+      await this.onEmission.parallel({emission, source: this});
     }
 
     if (this.completed) {

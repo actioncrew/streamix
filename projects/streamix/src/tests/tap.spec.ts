@@ -1,36 +1,9 @@
-import { catchError, Emission, endWith, finalize, startWith, Stream, tap } from '../lib';
+import {catchError, Emission, endWith, finalize, from, startWith, Stream, tap } from '../lib';
 
-// Mock implementation for AbstractStream
-class MockStream extends Stream {
-  private values: any[];
-  private index: number;
-
-  constructor(values: any[]) {
-    super();
-    this.values = values;
-    this.index = 0;
-  }
-
-  async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.onEmission.process({emission, source: this});
-
-      if (emission.isFailed) {
-        throw emission.error;
-      }
-
-      this.index++;
-    }
-    if(!this.isStopRequested) {
-      this.isAutoComplete = true;
-    }
-  }
-}
 
 describe('tap operator', () => {
   it('should perform side effects for each emission', (done) => {
-    const testStream = new MockStream([1, 2, 3]);
+    const testStream = from([1, 2, 3]);
     const sideEffectFn = jest.fn();
 
     const tappedStream = testStream.pipe(tap(sideEffectFn), startWith(0), endWith(4), catchError(console.log), finalize(() => console.log("hurra")));

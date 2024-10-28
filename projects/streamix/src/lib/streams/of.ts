@@ -10,14 +10,14 @@ export class OfStream<T = any> extends Stream<T> {
   async run(): Promise<void> {
     try {
       if (!this.emitted && !this.shouldComplete()) {
-        await this.onEmission.process({ emission: { value: this.inputValue }, source: this });
+        await this.onEmission.parallel({ emission: { value: this.inputValue }, source: this });
         this.emitted = true;
       }
       if(this.emitted) {
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.propagateError(error);
+      await this.onError.parallel({ error });
     }
   }
 }

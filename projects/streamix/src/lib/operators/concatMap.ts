@@ -93,7 +93,7 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
       this.innerStream!.onStop.once(() => handleCompletion());
 
       // Start the inner stream
-      this.innerStream!.start();
+      this.innerStream!.subscribe();
     });
   }
 

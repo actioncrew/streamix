@@ -15,12 +15,12 @@ export class FromEventStream<T = any> extends Stream<T> {
     this.target.removeEventListener(this.eventName, this.listener);
   }
 
-  override startWithContext(context: any) {
+  override subscribe(callback?: (value: T) => any) {
     if(!this.listener) {
       this.listener = async (event: Event) => {
         if (this.isRunning) {
           this.eventCounter.increment();
-          await this.onEmission.process({ emission: { value: event }, source: this });
+          await this.onEmission.parallel({ emission: { value: event }, source: this });
           this.eventCounter.decrement();
         }
       };
@@ -28,7 +28,7 @@ export class FromEventStream<T = any> extends Stream<T> {
       this.target.addEventListener(this.eventName, this.listener);
     }
 
-    return super.startWithContext(context);
+    return super.subscribe(callback);
   }
 }
 

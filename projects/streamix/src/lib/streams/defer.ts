@@ -19,13 +19,13 @@ export class DeferStream<T = any> extends Stream<T> {
       this.innerStream.onEmission.chain(this, this.handleEmissionFn);
 
       // Start the inner stream
-      this.innerStream.start();
+      this.innerStream.subscribe();
 
       // Wait for completion or termination
       await Promise.race([this.innerStream.awaitCompletion()]);
 
     } catch (error) {
-      await this.propagateError(error);
+      await this.onError.parallel({ error });
     } finally {
       await this.cleanupInnerStream();
     }
@@ -36,7 +36,7 @@ export class DeferStream<T = any> extends Stream<T> {
       return;
     }
 
-    await this.onEmission.process({
+    await this.onEmission.parallel({
       emission: { value },
       source: this,
     });

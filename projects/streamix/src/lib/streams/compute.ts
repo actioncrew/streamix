@@ -10,21 +10,19 @@ export class ComputeStream extends Stream {
   }
 
   async run(): Promise<void> {
-    let terminateResolve: (() => void) = () => {};
 
     try {
       this.promise = new Promise<void>(async (resolve, reject) => {
-        terminateResolve = () => resolve();
         if (this.isRunning) {
           const worker = await this.task.getIdleWorker();
           worker.postMessage(this.params);
           worker.onmessage = async (event: any) => {
-            await this.onEmission.process({ emission: { value: event.data }, source: this });
+            await this.onEmission.parallel({ emission: { value: event.data }, source: this });
             this.task.returnWorker(worker);
             resolve();
           };
           worker.onerror = async (error: any) => {
-            await this.onEmission.process({ emission: { isFailed: true, error }, source: this });
+            await this.onEmission.parallel({ emission: { isFailed: true, error }, source: this });
             this.task.returnWorker(worker);
             reject(error);
           };
