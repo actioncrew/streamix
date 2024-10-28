@@ -24,7 +24,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let isRunning = false;
   let currentValue: T | undefined;
 
-  const subscribers = hook();
   const onStart = hook();
   const onComplete = hook();
   const onStop = hook();
@@ -65,42 +64,35 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const awaitCompletion = () => completionPromise.promise();
 
-  const emit = async ({ emission, source }: { emission: Emission; source: any }): Promise<void> => {
+  const emit = async (args: { emission: Emission; source: any }): Promise<void> => {
     try {
-      if (emission.isFailed && emission.error) throw emission.error;
+      if (args.emission.isFailed && args.emission.error) throw args.emission.error;
 
-      if (!emission.isPhantom) {
-        await subscribers.parallel(emission.value);
+      if (!args.emission.isPhantom) {
+        await onEmission.parallel(args);
       }
 
-      emission.isComplete = true;
+      args.emission.isComplete = true;
     } catch (error: any) {
-      emission.isFailed = true;
-      emission.error = error;
+      args.emission.isFailed = true;
+      args.emission.error = error;
       await onError.process({ error });
     }
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
-    const boundCallback = (value: T) => {
-      currentValue = value;
-      return callback ? Promise.resolve(callback(value)) : Promise.resolve();
+    const boundCallback = ({ emission, source }: any) => {
+      currentValue = emission.value;
+      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
     };
 
-    if (!onEmission.contains(emit)) {
-      onEmission.chain(emit);
-    }
-
-    subscribers.chain(boundCallback);
+    onEmission.chain(boundCallback);
     start();
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
       await complete();
-      subscribers.remove(boundCallback);
-      if (subscribers.length === 0) {
-        onEmission.remove(emit);
-      }
+      onEmission.remove(boundCallback);
     };
 
     return value;
@@ -124,9 +116,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     shouldComplete,
     get value() {
       return currentValue;
-    },
-    get subscribers() {
-      return subscribers;
     },
     get onStart() {
       return onStart;

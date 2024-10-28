@@ -18,7 +18,6 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
   let currentValue: T | undefined;
 
   const onEmission = hook();
-  const subscribers = hook();
 
   const initEmissionChain = () => {
     if (!stream.onEmission.contains(emit)) {
@@ -40,8 +39,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
       if (emission.isFailed) throw emission.error;
 
       if (!emission.isPhantom) {
-        await onEmission.parallel({ emission, source: stream });
-        await subscribers.parallel(emission.value);
+        await onEmission.parallel({ emission, source });
       }
 
       emission.isComplete = true;
@@ -76,18 +74,18 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
-    const boundCallback = (value: T) => {
-      currentValue = value;
-      return callback ? Promise.resolve(callback(value)) : Promise.resolve();
+    const boundCallback = ({ emission, source }: any) => {
+      currentValue = emission.value;
+      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
     };
 
-    subscribers.chain(boundCallback);
+    onEmission.chain(boundCallback);
     stream.start();
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
       await stream.complete();
-      subscribers.remove(boundCallback);
+      onEmission.remove(boundCallback);
     };
 
     return value;
@@ -106,9 +104,6 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     complete: () => stream.complete(),
     get value() {
       return currentValue;
-    },
-    get subscribers() {
-      return subscribers;
     },
     get onStart() {
       return stream.onStart;

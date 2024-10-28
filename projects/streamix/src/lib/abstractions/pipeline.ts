@@ -18,7 +18,6 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   let operators: Operator[] = [];
   let currentValue: T | undefined;
 
-  const subscribers = hook();
   const onStart = hook();
   const onComplete = hook();
   const onStop = hook();
@@ -31,7 +30,6 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   chunk.onComplete.chain((params: any) => onComplete.parallel(params));
   chunk.onStop.chain((params: any) => onStop.parallel(params));
   chunk.onError.chain((params: any) => onError.parallel(params));
-  chunk.subscribers.chain((value: any) => subscribers.parallel(value));
   chunks.push(chunk);
 
   const getFirstChunk = () => chunks[0];
@@ -53,7 +51,6 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
     chunk.onEmission.clear();
     chunk.onComplete.clear();
     chunk.onStop.clear();
-    chunk.subscribers.clear();
     chunk.onError.clear();
 
     ops.forEach((operator) => {
@@ -75,7 +72,6 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
     getLastChunk().onEmission.chain((params: any) => onEmission.parallel(params));
     getLastChunk().onComplete.chain((params: any) => onComplete.parallel(params));
     getLastChunk().onStop.chain((params: any) => onStop.parallel(params));
-    getLastChunk().subscribers.chain((value: any) => subscribers.parallel(value));
 
     return pipeline;
   };
@@ -85,18 +81,18 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
-    const boundCallback = (value: T) => {
-      currentValue = value;
-      return callback ? Promise.resolve(callback(value)) : Promise.resolve();
+    const boundCallback = ({ emission, source }: any) => {
+      currentValue = emission.value;
+      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
     };
 
-    subscribers.chain(pipeline, boundCallback);
+    onEmission.chain(pipeline, boundCallback);
     start();
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
       await complete();
-      subscribers.remove(pipeline, boundCallback);
+      onEmission.remove(pipeline, boundCallback);
     }
     return value as Subscription;
   };
@@ -134,11 +130,6 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
     shouldComplete: () => getLastChunk().shouldComplete(),
     awaitCompletion: () => getLastChunk().awaitCompletion(),
     complete,
-
-    // Getter for subscribers hook
-    get subscribers() {
-      return subscribers;
-    },
 
     // Getter for onStart hook
     get onStart() {
