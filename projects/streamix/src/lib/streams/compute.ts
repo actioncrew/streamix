@@ -14,14 +14,14 @@ export function compute(task: ReturnType<typeof coroutine>, params: any): Stream
 
         // Handle messages from the worker
         worker.onmessage = async (event: any) => {
-          await this.onEmission.process({ emission: { value: event.data }, source: this });
+          await this.onEmission.parallel({ emission: { value: event.data }, source: this });
           task.returnWorker(worker);
           resolve();
         };
 
         // Handle errors from the worker
         worker.onerror = async (error: any) => {
-          await this.onEmission.process({ emission: { isFailed: true, error }, source: this });
+          await this.onEmission.parallel({ emission: { isFailed: true, error }, source: this });
           task.returnWorker(worker);
           reject(error);
         };

@@ -7,7 +7,7 @@ export function range<T = any>(start: number, end: number, step: number = 1): St
 
     try {
       while (current < end && !this.shouldComplete()) {
-        await this.onEmission.process({ emission: { value: current }, source: this });
+        await this.onEmission.parallel({ emission: { value: current }, source: this });
 
         current += step; // Increment the current value by the step
       }
@@ -17,7 +17,7 @@ export function range<T = any>(start: number, end: number, step: number = 1): St
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.onError.process({ error }); // Handle any errors during emission
+      await this.onError.parallel({ error }); // Handle any errors during emission
     }
   });
 

@@ -11,7 +11,7 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
       return new Promise<void>((resolve) => {
         const handleEmissionFn = async ({ emission }: { emission: { value: T }; source: Subscribable }) => {
           if (!this.shouldComplete()) {
-            await this.onEmission.process({
+            await this.onEmission.parallel({
               emission: { value: emission.value },
               source: this,
             });

@@ -22,7 +22,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       await innerStream.awaitCompletion();
 
     } catch (error) {
-      await this.onError.process({ error });
+      await this.onError.parallel({ error });
     } finally {
       await cleanupInnerStream();
     }
@@ -34,7 +34,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       return;
     }
 
-    await stream.onEmission.process({
+    await stream.onEmission.parallel({
       emission: { value },
       source: stream,
     });

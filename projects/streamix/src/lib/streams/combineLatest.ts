@@ -13,7 +13,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
         Promise.all(sources.map(source => source.awaitCompletion()))
       ]);
     } catch (error) {
-      await this.onError.process({ error });
+      await this.onError.parallel({ error });
     } finally {
       this.complete();
     }
@@ -26,7 +26,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
       values[index] = { hasValue: true, value: event.emission.value };
 
       if (values.every(v => v.hasValue)) {
-        return stream.onEmission.process({
+        return stream.onEmission.parallel({
           emission: { value: values.map(v => v.value!) },
           source: stream,
         });

@@ -5,11 +5,11 @@ export function of<T = any>(value: T): Stream<T> {
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     try {
       if (!this.shouldComplete()) {
-        await this.onEmission.process({ emission: { value }, source: this });
+        await this.onEmission.parallel({ emission: { value }, source: this });
         this.isAutoComplete = true; // Set auto-complete after emitting the value
       }
     } catch (error) {
-      await this.onError.process({ error }); // Handle any errors during emission
+      await this.onError.parallel({ error }); // Handle any errors during emission
     }
   });
 

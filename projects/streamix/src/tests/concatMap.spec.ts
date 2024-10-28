@@ -145,7 +145,7 @@ export function myInnerStream(value: any): Stream {
   const run = async (stream: Stream): Promise<void> => {
     // Simulate inner stream behavior (emission, completion, error)
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
-    await stream.onEmission.process({ emission: { value }, source: stream }); // Emit the projected value
+    await stream.onEmission.parallel({ emission: { value }, source: stream }); // Emit the projected value
   };
 
   // Create the stream using createStream and the custom run function
@@ -157,7 +157,7 @@ export function myRealStream(): Stream {
   // Create the custom run function for MyRealStream
   const run = async (stream: Stream): Promise<void> => {
     // Simulate your real stream behavior (emitting values)
-    await stream.onEmission.process({ emission: { value: 'streamValue1' }, source: stream });
+    await stream.onEmission.parallel({ emission: { value: 'streamValue1' }, source: stream });
   };
 
   // Create the stream using createStream and the custom run function
