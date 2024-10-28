@@ -19,7 +19,7 @@ export class DeferStream<T = any> extends Stream<T> {
       this.innerStream.onEmission.chain(this, this.handleEmissionFn);
 
       // Start the inner stream
-      this.innerStream.start();
+      this.innerStream.subscribe();
 
       // Wait for completion or termination
       await Promise.race([this.innerStream.awaitCompletion()]);

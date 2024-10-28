@@ -109,10 +109,6 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     }
   }
 
-  override start() {
-    return this.stream.start();
-  }
-
   override run(): Promise<void> {
     return this.stream.run();
   }
@@ -164,7 +160,7 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
 
     this.#onEmission.chain(this, boundCallback);
 
-    this.start();
+    this.stream.subscribe();
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {

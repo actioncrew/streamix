@@ -48,12 +48,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.#onEmission;
   }
 
-  start() {
-    for (let i = this.chunks.length - 1; i >= 0; i--) {
-      this.chunks[i].start();
-    }
-  }
-
   private bindOperators(...operators: Operator[]): Subscribable<T> {
     this.operators = operators;
     let chunk = this.first;
@@ -140,7 +134,9 @@ export class Pipeline<T = any> implements Subscribable<T> {
     this.#onEmission.chain(this, boundCallback);
 
     // Start the pipeline if needed
-    this.start();
+    for (let i = this.chunks.length - 1; i >= 0; i--) {
+      this.chunks[i].subscribe();
+    }
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {

@@ -97,28 +97,25 @@ export abstract class Stream<T = any> implements Subscribable {
     return Promise.resolve();
   }
 
-  start(): void {
-    if (!this.isRunning) {
-      this.isRunning = true;
-      queueMicrotask(async () => {
-        try {
-          // Emit start value if defined
-          await this.onStart.parallel();
+  queueMicrotask(): void {
+    queueMicrotask(async () => {
+      try {
+        // Emit start value if defined
+        await this.onStart.parallel();
 
-          // Start the actual stream logic
-          await this.run();
+        // Start the actual stream logic
+        await this.run();
 
-          // Emit end value if defined
-          await this.onComplete.parallel();
-        } catch (error) {
-            await this.onError.parallel({ error });
-        } finally {
-          this.isStopped = true; this.isRunning = false;
-          // Handle finalize callback
-          await this.onStop.parallel();
-        }
-      });
-    }
+        // Emit end value if defined
+        await this.onComplete.parallel();
+      } catch (error) {
+          await this.onError.parallel({ error });
+      } finally {
+        this.isStopped = true; this.isRunning = false;
+        // Handle finalize callback
+        await this.onStop.parallel();
+      }
+    });
   }
 
   subscribe(callback?: ((value: T) => void) | void): Subscription {
@@ -129,7 +126,10 @@ export abstract class Stream<T = any> implements Subscribable {
 
     this.#onEmission.chain(this, boundCallback);
 
-    this.start();
+    if (!this.isRunning) {
+      this.isRunning = true;
+      this.queueMicrotask()
+    }
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {

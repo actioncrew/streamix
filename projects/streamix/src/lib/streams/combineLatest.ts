@@ -15,7 +15,7 @@ export class CombineLatestStream<T = any> extends Stream<T[]> {
   }
 
   async run(): Promise<void> {
-    this.sources.forEach((source) => source.start());
+    this.sources.forEach((source) => source.subscribe());
 
     try {
       await Promise.race([this.awaitCompletion(),

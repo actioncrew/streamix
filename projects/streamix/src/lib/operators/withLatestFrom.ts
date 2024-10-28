@@ -52,7 +52,7 @@ export class WithLatestFromOperator extends Operator {
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     if(!this.started) {
       this.started = true;
-      this.streams.forEach(source => source.start());
+      this.streams.forEach(source => source.subscribe());
     }
 
     if(stream.shouldComplete()) {

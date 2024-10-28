@@ -92,7 +92,7 @@ export class MergeMapOperator extends Operator implements StreamOperator {
       });
 
       // Start the inner stream to ensure it begins emitting values
-      innerStream.start();
+      innerStream.subscribe();
     });
 
     this.processingPromises.push(processingPromise);

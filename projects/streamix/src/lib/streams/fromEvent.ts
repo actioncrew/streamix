@@ -15,7 +15,7 @@ export class FromEventStream<T = any> extends Stream<T> {
     this.target.removeEventListener(this.eventName, this.listener);
   }
 
-  override start() {
+  override subscribe(callback?: (value: T) => any) {
     if(!this.listener) {
       this.listener = async (event: Event) => {
         if (this.isRunning) {
@@ -28,7 +28,7 @@ export class FromEventStream<T = any> extends Stream<T> {
       this.target.addEventListener(this.eventName, this.listener);
     }
 
-    return super.start();
+    return super.subscribe(callback);
   }
 }
 
