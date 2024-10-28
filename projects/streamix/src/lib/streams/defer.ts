@@ -16,7 +16,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       innerStream.onEmission.chain(this, handleEmissionFn);
 
       // Start the inner stream
-      innerStream.start();
+      innerStream.subscribe();
 
       // Wait for the completion of the inner stream
       await innerStream.awaitCompletion();

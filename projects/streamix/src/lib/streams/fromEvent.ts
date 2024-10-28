@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { Stream, Subscription } from '../abstractions';
 import { counter } from '../utils';
 import { createStream } from '../abstractions/stream';
 
@@ -18,9 +18,9 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
 
   // Create the stream using createStream
   const stream = createStream<T>(run);
-  const originalStart = stream.start.bind(stream); // Store the original start method
+  const originalSubscribe = stream.subscribe.bind(stream); // Store the original start method
 
-  stream.start = function(this: Stream<T>): void {
+  stream.subscribe = function(this: Stream<T>, params?: any): Subscription {
     if (!listener) {
       listener = async (event: Event) => {
         if (this.isRunning) {
@@ -36,18 +36,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
     }
 
     // Call the original start method
-    originalStart();
-  };
-
-  // Ensure the stream starts when subscribed
-  const originalSubscribe = stream.subscribe.bind(stream);
-  stream.subscribe = (callback?: (value: T) => void) => {
-    const subscription = originalSubscribe(callback);
-
-    // Start the stream when a subscription is made
-    stream.start();
-
-    return subscription;
+    return originalSubscribe(params);
   };
 
   stream.name = "fromEvent";

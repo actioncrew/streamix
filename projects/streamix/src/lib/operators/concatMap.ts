@@ -76,7 +76,7 @@ export const concatMap = (project: (value: any) => Subscribable) => {
 
       // Ensure inner stream completion is handled
       innerStream!.onStop.once(() => handleCompletion());
-      innerStream!.start(); // Start the inner stream
+      innerStream!.subscribe(); // Start the inner stream
     });
   };
 

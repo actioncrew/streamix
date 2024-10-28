@@ -80,7 +80,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     };
 
     onEmission.chain(boundCallback);
-    stream.start();
+    stream.subscribe();
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
@@ -96,7 +96,6 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     stream,
     bindOperators,
     subscribe,
-    start: () => stream.start(),
     emit,
     pipe: (...newOperators: Operator[]) => createPipeline<T>(stream).pipe(...operators, ...newOperators),
     shouldComplete: () => stream.shouldComplete(),

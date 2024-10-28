@@ -41,12 +41,12 @@ export const iif = (
     }
 
     if (!hasStartedTrueStream) {
-      trueStream.start();
+      trueStream.subscribe();
       hasStartedTrueStream = true;
     }
 
     if (!hasStartedFalseStream) {
-      falseStream.start();
+      falseStream.subscribe();
       hasStartedFalseStream = true;
     }
 

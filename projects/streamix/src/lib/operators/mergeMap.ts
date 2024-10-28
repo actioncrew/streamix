@@ -70,7 +70,7 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
         handleCompletion();
       });
 
-      innerStream.start(); // Start the inner stream
+      innerStream.subscribe(); // Start the inner stream
     });
 
     processingPromises.push(processingPromise);

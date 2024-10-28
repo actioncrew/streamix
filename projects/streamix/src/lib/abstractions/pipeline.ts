@@ -35,12 +35,6 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   const getFirstChunk = () => chunks[0];
   const getLastChunk = () => chunks[chunks.length - 1];
 
-  const start = () => {
-    for (let i = chunks.length - 1; i >= 0; i--) {
-      chunks[i].start();
-    }
-  };
-
   const bindOperators = (...ops: Operator[]): Pipeline<T> => {
     operators = ops;
     let chunk = getFirstChunk();
@@ -87,7 +81,10 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
     };
 
     onEmission.chain(pipeline, boundCallback);
-    start();
+
+    for (let i = chunks.length - 1; i >= 0; i--) {
+      chunks[i].subscribe();
+    }
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
@@ -108,7 +105,6 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
     stream,
     chunks,
     operators,
-    start,
     bindOperators,
     pipe,
     subscribe,

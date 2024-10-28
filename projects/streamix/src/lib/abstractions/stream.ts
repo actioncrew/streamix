@@ -44,13 +44,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  const start = () => {
-    if (!isRunning) {
-      isRunning = true;
-      queueMicrotask(run);
-    }
-  };
-
   const complete = async (): Promise<void> => {
     if (!isAutoComplete) {
       isStopRequested = true;
@@ -87,7 +80,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     };
 
     onEmission.chain(boundCallback);
-    start();
+
+    if (!isRunning) {
+      isRunning = true;
+      queueMicrotask(run);
+    }
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
@@ -107,7 +104,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const streamInstance = {
     type: "stream" as "stream",
     emit,
-    start,
     subscribe,
     pipe,
     run,
