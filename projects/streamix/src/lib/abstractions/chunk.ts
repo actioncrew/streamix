@@ -21,10 +21,6 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
     }
   }
 
-  override get subscribers() {
-    return this.#subscribers;
-  }
-
   override get onStart() {
     return this.stream.onStart;
   }
@@ -102,7 +98,6 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
       // If emission is valid, notify subscribers
       if (!emission.isPhantom) {
         await this.onEmission.parallel({ emission, source: this });
-        await this.subscribers.parallel(emission.value);
       }
 
       emission.isComplete = true;
@@ -162,19 +157,19 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override subscribe(callback?: (value: T) => void): Subscription {
-    const boundCallback = (value: T) => {
-      this.#currentValue = value;
-      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+    const boundCallback = ({ emission, source }: any) => {
+      this.#currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
     };
 
-    this.subscribers.chain(this, boundCallback);
+    this.#onEmission.chain(this, boundCallback);
 
     this.start();
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
       await this.complete();
-      this.subscribers.remove(this, boundCallback);
+      this.#onEmission.remove(this, boundCallback);
     };
 
     return value;

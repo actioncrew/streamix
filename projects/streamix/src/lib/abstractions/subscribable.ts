@@ -8,7 +8,6 @@ export interface Subscribable<T = any> {
   isStopped: boolean;
   isRunning: boolean;
 
-  subscribers: HookType;
   onStart: HookType;
   onComplete: HookType;
   onStop: HookType;

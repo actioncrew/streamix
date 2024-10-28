@@ -11,8 +11,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   #currentValue: T | undefined;
 
-  #subscribers = hook();
-
   #onStart = hook();
   #onComplete = hook();
   #onStop = hook();
@@ -27,13 +25,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     chunk.onComplete.chain((params: any) => this.#onComplete.parallel(params));
     chunk.onStop.chain((params: any) => this.#onStop.parallel(params));
     chunk.onError.chain((params: any) => this.#onError.parallel(params));
-
-    chunk.subscribers.chain((value: any) => this.subscribers.parallel(value));
     this.chunks.push(chunk);
-  }
-
-  get subscribers(): HookType {
-    return this.#subscribers;
   }
 
   get onStart(): HookType {
@@ -72,7 +64,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
     chunk.onEmission.clear();
     chunk.onComplete.clear();
     chunk.onStop.clear();
-    chunk.subscribers.clear();
     chunk.onError.clear();
 
     operators.forEach(operator => {
@@ -100,9 +91,6 @@ export class Pipeline<T = any> implements Subscribable<T> {
     this.last.onEmission.chain((params: any) => this.#onEmission.parallel(params));
     this.last.onComplete.chain((params: any) => this.#onComplete.parallel(params));
     this.last.onStop.chain((params: any) => this.#onStop.parallel(params));
-
-    // Ensure that subscribing to the last chunk propagates values to the pipeline subscribers
-    this.last.subscribers.chain((value: any) => this.subscribers.parallel(value));
 
     return this;
   }
@@ -149,7 +137,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     };
 
     // Chain to pipeline subscribers
-    this.subscribers.chain(this, boundCallback);
+    this.#onEmission.chain(this, boundCallback);
 
     // Start the pipeline if needed
     this.start();
@@ -157,7 +145,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
       await this.complete();
-      this.subscribers.remove(this, boundCallback);
+      this.#onEmission.remove(this, boundCallback);
     };
 
     return value;

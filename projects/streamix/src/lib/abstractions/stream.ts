@@ -10,8 +10,6 @@ export abstract class Stream<T = any> implements Subscribable {
   #isStopped = false;
   #isRunning = false;
 
-  #subscribers = hook();
-
   #onStart = hook();
   #onComplete = hook();
   #onStop = hook();
@@ -21,10 +19,6 @@ export abstract class Stream<T = any> implements Subscribable {
   #currentValue: T | undefined;
 
   abstract run(): Promise<void>;
-
-  get subscribers() {
-    return this.#subscribers;
-  }
 
   get onStart() {
     return this.#onStart;
@@ -128,26 +122,19 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   subscribe(callback?: ((value: T) => void) | void): Subscription {
-    const boundCallback = (value: T) => {
-      this.#currentValue = value;
-      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+    const boundCallback = ({ emission, source }: any) => {
+      this.#currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
     };
 
-    if (!this.onEmission.contains(this, this.emit)) {
-      this.onEmission.chain(this, this.emit);
-    }
-
-    this.subscribers.chain(this, boundCallback);
+    this.#onEmission.chain(this, boundCallback);
 
     this.start();
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
       await this.complete();
-      this.subscribers.remove(this, boundCallback);
-      if (this.subscribers.length === 0) {
-        this.onEmission.remove(this, this.emit);
-      }
+      this.#onEmission.remove(this, boundCallback);
     };
 
     return value;
@@ -164,7 +151,7 @@ export abstract class Stream<T = any> implements Subscribable {
       }
 
       if (!emission.isPhantom) {
-        await this.subscribers.parallel(emission.value);
+        await this.#onEmission.parallel(emission.value);
       }
 
       emission.isComplete = true;
