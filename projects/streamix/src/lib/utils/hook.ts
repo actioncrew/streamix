@@ -11,9 +11,16 @@ export interface HookType {
 }
 
 export function hook(): HookType {
-  const callbackMap = new Map<WeakRef<object>, Set<Function>>();
+  let callbackMap: Map<WeakRef<object>, Set<Function>> | null = null;
+
+  // Helper function to initialize callbackMap if it's null
+  const getCallbackMap = () => {
+    if (!callbackMap) callbackMap = new Map();
+    return callbackMap;
+  };
 
   async function process(params?: any): Promise<void> {
+    if (!callbackMap) return; // If no callbacks have been added, skip processing
     for (const [ownerRef, callbacks] of callbackMap) {
       const owner = ownerRef.deref();
       if (owner) {
@@ -27,6 +34,7 @@ export function hook(): HookType {
   }
 
   async function parallel(params?: any): Promise<void> {
+    if (!callbackMap) return; // Skip if no callbacks have been added
     const promises: Promise<void>[] = [];
     for (const [ownerRef, callbacks] of callbackMap) {
       const owner = ownerRef.deref();
@@ -42,12 +50,13 @@ export function hook(): HookType {
   }
 
   function chain(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
+    const map = getCallbackMap(); // Ensure callbackMap is initialized
     const ownerRef = new WeakRef(ownerOrCallback instanceof Function ? this : ownerOrCallback);
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
-    if (!callbackMap.has(ownerRef)) {
-      callbackMap.set(ownerRef, new Set());
+    if (!map.has(ownerRef)) {
+      map.set(ownerRef, new Set());
     }
-    callbackMap.get(ownerRef)!.add(callback);
+    map.get(ownerRef)!.add(callback);
     return this;
   }
 
@@ -63,6 +72,7 @@ export function hook(): HookType {
   }
 
   function remove(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
+    if (!callbackMap) return this; // Skip if callbackMap has not been initialized
     const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     for (const [ownerRef, callbacks] of callbackMap) {
@@ -78,6 +88,7 @@ export function hook(): HookType {
   }
 
   function contains(this: HookType, ownerOrCallback: object | Function, callback?: Function): boolean {
+    if (!callbackMap) return false; // Return false if callbackMap has not been initialized
     const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     for (const [ownerRef, callbacks] of callbackMap) {
@@ -89,7 +100,7 @@ export function hook(): HookType {
   }
 
   function clear(this: HookType): HookType {
-    callbackMap.clear();
+    if (callbackMap) callbackMap.clear();
     return this;
   }
 
@@ -102,7 +113,7 @@ export function hook(): HookType {
     clear,
     contains,
     get length() {
-      return Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0);
+      return callbackMap ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0) : 0;
     }
   };
 }
