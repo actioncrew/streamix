@@ -8,12 +8,13 @@ export interface HookType {
   clear(this: HookType): HookType;
   contains(this: HookType, ownerOrCallback: object | Function, callback?: Function): boolean;
   length: number;
+  scheduled: boolean;
 }
 
-export function hook(): HookType {
+export function hook(): HookType & { scheduled: boolean } {
   let callbackMap: Map<WeakRef<object>, Set<Function>> | null = null;
+  let scheduled = false; // Flag to indicate if callbacks have been registered
 
-  // Helper function to initialize callbackMap if it's null
   const getCallbackMap = () => {
     if (!callbackMap) callbackMap = new Map();
     return callbackMap;
@@ -53,6 +54,12 @@ export function hook(): HookType {
     const map = getCallbackMap(); // Ensure callbackMap is initialized
     const ownerRef = new WeakRef(ownerOrCallback instanceof Function ? this : ownerOrCallback);
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
+
+    // Mark as scheduled since a callback is being registered
+    if (!scheduled) {
+      scheduled = true;
+    }
+
     if (!map.has(ownerRef)) {
       map.set(ownerRef, new Set());
     }
@@ -84,6 +91,12 @@ export function hook(): HookType {
         break;
       }
     }
+
+    // Update the scheduled flag if there are no callbacks left
+    if (callbackMap && callbackMap.size === 0) {
+      scheduled = false;
+    }
+
     return this;
   }
 
@@ -101,6 +114,7 @@ export function hook(): HookType {
 
   function clear(this: HookType): HookType {
     if (callbackMap) callbackMap.clear();
+    scheduled = false; // Reset scheduled when cleared
     return this;
   }
 
@@ -112,6 +126,9 @@ export function hook(): HookType {
     remove,
     clear,
     contains,
+    get scheduled() {
+      return scheduled; // Expose scheduled flag
+    },
     get length() {
       return callbackMap ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0) : 0;
     }
