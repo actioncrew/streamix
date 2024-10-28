@@ -46,7 +46,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     } catch (error: any) {
       emission.isFailed = true;
       emission.error = error;
-      await stream.onError.process({ error });
+      await stream.onError.parallel({ error });
     }
   };
 

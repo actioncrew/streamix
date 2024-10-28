@@ -32,15 +32,15 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const run = async () => {
     try {
-      await onStart.process(); // Trigger start hook
+      await onStart.parallel(); // Trigger start hook
       await runFn.call(streamInstance); // Pass the stream instance to the run function
-      await onComplete.process(); // Trigger complete hook
+      await onComplete.parallel(); // Trigger complete hook
     } catch (error) {
-      await onError.process({ error }); // Handle any errors
+      await onError.parallel({ error }); // Handle any errors
     } finally {
       isStopped = true;
       isRunning = false;
-      await onStop.process(); // Finalize the stop hook
+      await onStop.parallel(); // Finalize the stop hook
     }
   };
 
@@ -69,7 +69,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } catch (error: any) {
       args.emission.isFailed = true;
       args.emission.error = error;
-      await onError.process({ error });
+      await onError.parallel({ error });
     }
   };
 

@@ -17,7 +17,7 @@ export function from<T = any>(input: any[] | IterableIterator<any>): Stream<T> {
         }
       } else {
         const emission = { value } as Emission;
-        await this.onEmission.process({ emission, source: this });
+        await this.onEmission.parallel({ emission, source: this });
 
         if (emission.isFailed) {
           throw emission.error;

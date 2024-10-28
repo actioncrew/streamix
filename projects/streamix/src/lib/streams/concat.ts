@@ -19,7 +19,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   const runCurrentSource = async (stream: Stream<T>, currentSource: Subscribable): Promise<void> => {
     const handleEmissionFn = async ({ emission }: { emission: { value: T }; source: Subscribable }) => {
       if (!stream.shouldComplete()) {
-        await stream.onEmission.process({
+        await stream.onEmission.parallel({
           emission: { value: emission.value },
           source: stream,
         });
@@ -31,7 +31,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
       currentSource.subscribe(); // Start the current source
       await currentSource.awaitCompletion(); // Wait for the current source to complete
     } catch (error) {
-      await stream.onError.process({ error }); // Propagate error if occurs
+      await stream.onError.parallel({ error }); // Propagate error if occurs
     } finally {
       currentSource.onEmission.remove(stream, handleEmissionFn); // Clean up emission handler
       await currentSource.complete(); // Complete the current source

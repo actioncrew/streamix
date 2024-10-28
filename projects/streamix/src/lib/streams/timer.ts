@@ -22,7 +22,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       }
 
       // Initial emission
-      await this.onEmission.process({
+      await this.onEmission.parallel({
         emission: { value: timerValue },
         source: this
       });
@@ -39,7 +39,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
                 return;
               }
 
-              await this.onEmission.process({
+              await this.onEmission.parallel({
                 emission: { value: timerValue },
                 source: this
               });
@@ -47,7 +47,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              await this.onError.process({ error });
+              await this.onError.parallel({ error });
               resolve();
             }
           }, actualIntervalMs);
@@ -56,7 +56,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.onError.process({ error });
+      await this.onError.parallel({ error });
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

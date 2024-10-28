@@ -10,7 +10,7 @@ export const startWith = (value: any) => {
 
   const callback = async (): Promise<void> => {
     // Emit the provided initial value when the stream starts
-    await boundStream.onEmission.process({ emission: { value }, source: boundStream });
+    await boundStream.onEmission.parallel({ emission: { value }, source: boundStream });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {

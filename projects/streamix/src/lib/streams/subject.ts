@@ -44,7 +44,7 @@ export function createSubject<T = any>(): Subject<T> {
           const promisifiedValue = buffer[head];
           if (promisifiedValue) {
             const value = promisifiedValue()!;
-            await this.onEmission.process({ emission: { value }, source: this });
+            await this.onEmission.parallel({ emission: { value }, source: this });
             promisifiedValue.resolve(value);
 
             // Move the head forward in the cyclic buffer and reduce the count

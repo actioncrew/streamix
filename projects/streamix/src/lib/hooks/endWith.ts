@@ -10,7 +10,7 @@ export const endWith = (value: any) => {
 
   const callback = async (): Promise<void> => {
     // Emit the specified value when the stream completes
-    return boundStream.onEmission.process({ emission: { value }, source: boundStream });
+    return boundStream.onEmission.parallel({ emission: { value }, source: boundStream });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
