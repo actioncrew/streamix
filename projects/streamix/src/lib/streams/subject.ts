@@ -88,13 +88,13 @@ export class Subject<T = any> extends Stream<T> {
       this.bufferCount++;
 
       // If the buffer was empty, we resolve emissionAvailable
-      if (this.bufferCount === 1) {
+      if (this.bufferCount > 0) {
         this.emissionAvailable.resolve(); // Only resolve if this is the first element
       }
+
+      return promisifiedValue.then(() => Promise.resolve());
     } finally {
       releaseLock(); // Release the lock
     }
-
-    return promisifiedValue.then(() => Promise.resolve());
   }
 }
