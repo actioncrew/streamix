@@ -5,7 +5,7 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
   // Create the custom run function for the MergeStream
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     // Start all sources
-    sources.forEach(source => source.start());
+    sources.forEach(source => source.subscribe());
 
     const emissionPromises = sources.map(source => {
       return new Promise<void>((resolve) => {

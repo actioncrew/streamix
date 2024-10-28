@@ -28,7 +28,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
 
     try {
       currentSource.onEmission.chain(stream, handleEmissionFn); // Chain emissions
-      currentSource.start(); // Start the current source
+      currentSource.subscribe(); // Start the current source
       await currentSource.awaitCompletion(); // Wait for the current source to complete
     } catch (error) {
       await stream.onError.process({ error }); // Propagate error if occurs

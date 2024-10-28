@@ -36,7 +36,7 @@ export const withLatestFrom = (...streams: Subscribable[]) => {
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
     if (!started) {
       started = true;
-      streams.forEach(source => source.start());
+      streams.forEach(source => source.subscribe());
     }
 
     if (stream.shouldComplete()) {

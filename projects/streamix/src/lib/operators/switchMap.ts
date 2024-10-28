@@ -67,7 +67,7 @@ export const switchMap = (project: (value: any) => Subscribable) => {
 
     activeInnerStream.onStop.once(() => removeInnerStream(activeInnerStream!));
 
-    activeInnerStream.start();
+    activeInnerStream.subscribe();
 
     emission.isPhantom = true;
     return new Promise<Emission>((resolve) => {

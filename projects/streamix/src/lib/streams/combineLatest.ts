@@ -5,7 +5,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
   const handlers: Array<(event: { emission: { value: T }, source: Subscribable }) => void> = [];
 
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
-    sources.forEach(source => source.start());
+    sources.forEach(source => source.subscribe());
 
     try {
       await Promise.race([
