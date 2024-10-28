@@ -1,9 +1,9 @@
-import { IntervalStream } from '../lib';
+import { interval } from '../lib';
 
 describe('IntervalStream', () => {
   it('should emit values at specified interval', async () => {
     const intervalMs = 100;
-    const intervalStream = new IntervalStream(intervalMs);
+    const intervalStream = interval(intervalMs);
 
     const emittedValues: number[] = [];
     const subscription = intervalStream.subscribe((value) => {
@@ -25,7 +25,7 @@ describe('IntervalStream', () => {
 
   it('should stop emitting after unsubscribe', async () => {
     const intervalMs = 100;
-    const intervalStream = new IntervalStream(intervalMs);
+    const intervalStream = interval(intervalMs);
 
     const emittedValues: number[] = [];
     const subscription = intervalStream.subscribe((value) => {
@@ -42,7 +42,7 @@ describe('IntervalStream', () => {
 
   it('should stop emitting after cancel', async () => {
     const intervalMs = 100;
-    const intervalStream = new IntervalStream(intervalMs);
+    const intervalStream = interval(intervalMs);
 
     const emittedValues: number[] = [];
     intervalStream.subscribe((value) => {

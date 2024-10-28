@@ -1,39 +1,31 @@
-import { Converter } from '../abstractions/converter';
 import { Subscribable } from '../abstractions/subscribable';
 
-export class FirstValueFromConverter extends Converter<Subscribable, Promise<any>> {
-  private emissionHandler!: ({ emission }: any) => Promise<void>;
+export function firstValueFrom(stream: Subscribable): Promise<any> {
+  return new Promise<any>((resolve, reject) => {
+    let hasEmitted = false;
 
-  async convert(stream: Subscribable): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      let hasEmitted = false;
-
-      try {
-        this.emissionHandler = async ({ emission }: any) => {
-          if (!hasEmitted) {
-            hasEmitted = true;
-            stream.onEmission.remove(this, this.emissionHandler);
-            resolve(emission.value);
-          }
-        };
-
-        stream.onEmission.chain(this, this.emissionHandler);
-
-        stream.onStop.once(() => {
-          stream.onEmission.remove(this, this.emissionHandler);
-
-          if (!hasEmitted) {
-            reject("Subscribable has not emitted any value.");
-          }
-        });
-
-      } catch (error) {
-        reject(error);
+    const emissionHandler = async ({ emission }: any) => {
+      if (!hasEmitted) {
+        hasEmitted = true;
+        stream.onEmission.remove(emissionHandler);
+        resolve(emission.value);
       }
-    });
-  }
-}
+    };
 
-export function firstValueFrom(stream: Subscribable) {
-  return new FirstValueFromConverter().convert(stream);
+    try {
+      // Chain the emission handler to capture the first emission
+      stream.onEmission.chain(emissionHandler);
+
+      // Set up onStop handler to clean up and reject if no emission occurred
+      stream.onStop.once(() => {
+        stream.onEmission.remove(emissionHandler);
+
+        if (!hasEmitted) {
+          reject("Subscribable has not emitted any value.");
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
 }

@@ -1,28 +1,20 @@
-import { Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, Operator, Subscribable, createOperator } from '../abstractions';
 import { EMPTY } from '../streams';
 
-export class CoroutineOperator extends Operator {
-  private readonly functions: Function[];
-  private readonly maxWorkers: number = navigator.hardwareConcurrency || 4;
-
-  private workerPool!: Worker[];
-  private workerQueue!: Array<(worker: Worker) => void>;
-
-  constructor(...functions: Function[]) {
-    super();
-    this.functions = functions;
-    this.init(EMPTY);
+export const coroutine = (...functions: Function[]) => {
+  if (functions.length === 0) {
+    throw new Error("At least one function (the main task) is required.");
   }
 
-  override init(stream: Stream) {
-    this.workerPool = [];
-    this.workerQueue = [];
+  const maxWorkers = navigator.hardwareConcurrency || 4;
+  const workerPool: Worker[] = [];
+  const workerQueue: Array<(worker: Worker) => void> = [];
+  let isFinalizing: boolean = false;
 
-    if (this.functions.length === 0) {
-      throw new Error("At least one function (the main task) is required.");
-    }
-
-    const [mainTask, ...dependencies] = this.functions;
+  // Worker initialization
+  const initWorkers = () => {
+    const mainTask = functions[0];
+    const dependencies = functions.slice(1);
 
     const injectedDependencies = dependencies.map(fn => {
       let fnBody = fn.toString();
@@ -48,38 +40,22 @@ export class CoroutineOperator extends Operator {
     const blob = new Blob([workerBody], { type: 'application/javascript' });
     const workerUrl = URL.createObjectURL(blob);
 
-    for (let i = 0; i < this.maxWorkers; i++) {
-      this.workerPool.push(new Worker(workerUrl));
+    for (let i = 0; i < maxWorkers; i++) {
+      workerPool.push(new Worker(workerUrl));
     }
-  }
+  };
 
-  override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    throw new Error("This operator should not be called within pipeline. Place it right before.");
-  }
+  const init = (input: Subscribable) => {
+    initWorkers();
+  };
 
-  public getIdleWorker(): Promise<Worker> {
-    return new Promise<Worker>((resolve) => {
-      const idleWorker = this.workerPool.shift();
-      if (idleWorker) {
-        resolve(idleWorker);
-      } else {
-        this.workerQueue.push(resolve);
-      }
-    });
-  }
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    const data = emission.value; // The data to be processed by the main task
+    return processTask(data);
+  };
 
-  public returnWorker(worker: Worker): void {
-    // Return the worker to the pool and resolve the next promise in the queue, if any
-    if (this.workerQueue.length > 0) {
-      const resolve = this.workerQueue.shift()!;
-      resolve(worker);
-    } else {
-      this.workerPool.push(worker);
-    }
-  }
-
-  public async processTask(data: any): Promise<any> {
-    const worker = await this.getIdleWorker();
+  const processTask = async (data: any): Promise<any> => {
+    const worker = await getIdleWorker();
     return new Promise<any>((resolve, reject) => {
       worker.onmessage = (event: MessageEvent) => {
         if (event.data.error) {
@@ -87,24 +63,55 @@ export class CoroutineOperator extends Operator {
         } else {
           resolve(event.data);
         }
-        this.returnWorker(worker); // Always return the worker after task is done
+        returnWorker(worker); // Always return the worker after task is done
       };
 
       worker.onerror = (error: ErrorEvent) => {
         reject(error.message);
-        this.returnWorker(worker); // Return the worker even if an error occurs
+        returnWorker(worker); // Return the worker even if an error occurs
       };
 
       worker.postMessage(data);
     });
-  }
+  };
 
-  async finalize(): Promise<void> {
-    // Terminate all workers and clear the pool and queue
-    this.workerPool.forEach(worker => worker.terminate());
-    this.workerPool = [];
-    this.workerQueue = [];
-  }
-}
+  const getIdleWorker = (): Promise<Worker> => {
+    return new Promise<Worker>((resolve) => {
+      const idleWorker = workerPool.shift();
+      if (idleWorker) {
+        resolve(idleWorker);
+      } else {
+        workerQueue.push(resolve);
+      }
+    });
+  };
 
-export const coroutine = (...functions: Function[]) => new CoroutineOperator(...functions);
+  const returnWorker = (worker: Worker): void => {
+    if (workerQueue.length > 0) {
+      const resolve = workerQueue.shift()!;
+      resolve(worker);
+    } else {
+      workerPool.push(worker);
+    }
+  };
+
+  const finalize = async () => {
+    if (isFinalizing) { return; }
+    isFinalizing = true;
+
+    workerPool.forEach(worker => worker.terminate());
+    workerPool.length = 0; // Clear the pool
+    workerQueue.length = 0; // Clear the queue
+  };
+
+  const operator = createOperator(handle) as any;
+  operator.name = 'coroutine';
+  operator.init = init;
+  operator.finalize = finalize;
+  operator.processTask = processTask;
+  operator.getIdleWorker = getIdleWorker;
+  operator.returnWorker = returnWorker;
+
+  operator.init(EMPTY);
+  return operator;
+};

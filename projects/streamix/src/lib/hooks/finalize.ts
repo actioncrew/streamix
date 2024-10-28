@@ -1,27 +1,21 @@
-import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { createOperator, Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
 
-export class FinalizeOperator extends Operator implements HookOperator {
-  private boundStream!: Stream;
+export const finalize = (callback: () => void | Promise<void>) => {
+  let boundStream: Stream;
 
-  constructor(private readonly callbackMethod: () => (void | Promise<void>)) {
-    super();
-  }
+  const init = (stream: Stream) => {
+    boundStream = stream;
+    // Chain the callback to the stream's onStop event
+    boundStream.onStop.chain(callback);
+  };
 
-  override init(stream: Stream) {
-    this.boundStream = stream;
-    this.boundStream.onStop.chain(this, this.callback);
-  }
-
-  async callback(params?: any): Promise<void> {
-    return this.callbackMethod();
-  }
-
-  override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    // Pass the emission through without modification
     return emission;
-  }
-}
+  };
 
-export function finalize(callback: () => (void | Promise<void>)) {
-  return new FinalizeOperator(callback);
-}
-
+  const operator = createOperator(handle);
+  operator.name = 'finalize';
+  operator.init = init;
+  return operator;
+};

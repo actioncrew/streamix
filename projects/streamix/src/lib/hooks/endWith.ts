@@ -1,28 +1,24 @@
-import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
-export class EndWithOperator extends Operator implements HookOperator {
-  private boundStream!: Stream;
-  private hasEmitted = false;
+export const endWith = (value: any) => {
+  let boundStream: Stream;
 
-  constructor(private readonly value: any) {
-    super();
-  }
+  const init = (stream: Stream) => {
+    boundStream = stream;
+    boundStream.onComplete.chain(callback); // Trigger the callback on stream completion
+  };
 
-  override init(stream: Stream) {
-    this.boundStream = stream;
-    this.boundStream.onComplete.chain(this, this.callback);
-  }
+  const callback = async (): Promise<void> => {
+    // Emit the specified value when the stream completes
+    return boundStream.onEmission.parallel({ emission: { value }, source: boundStream });
+  };
 
-  async callback(params?: any): Promise<void> {
-    return this.boundStream.onEmission.process({ emission: { value: this.value }, source: this.boundStream });
-  }
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    return emission; // Pass the emission forward without modification
+  };
 
-  override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    return emission;
-  }
-}
-
-export function endWith(value: any) {
-  return new EndWithOperator(value);
-}
-
+  const operator = createOperator(handle);
+  operator.name = 'endWith';
+  operator.init = init;
+  return operator;
+};

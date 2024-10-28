@@ -1,32 +1,31 @@
-import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
-export class DefaultIfEmptyOperator extends Operator implements HookOperator {
-  private boundStream!: Stream;
-  private hasEmitted = false;
+export const defaultIfEmpty = (defaultValue: any) => {
+  let boundStream: Stream;
+  let hasEmitted = false;
 
-  constructor(private readonly defaultValue: any) {
-    super();
-  }
+  const init = (stream: Stream) => {
+    boundStream = stream;
+    boundStream.onComplete.chain(callback); // Chain the callback to be triggered on stream completion
+  };
 
-  override init(stream: Stream) {
-    this.boundStream = stream;
-    this.boundStream.onComplete.chain(this, this.callback);
-  }
-
-  async callback(params?: any): Promise<void> {
-    if(!this.hasEmitted) {
-      return this.boundStream.onEmission.process({ emission: { value: this.defaultValue }, source: this });
+  const callback = async (): Promise<void> => {
+    if (!hasEmitted) {
+      // If nothing has been emitted, emit the default value
+      return boundStream.onEmission.parallel({ emission: { value: defaultValue }, source: null });
     }
-  }
+  };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    // If the emission is not a phantom, cancelled, or failed, mark it as emitted
-    if (!emission.isPhantom && !emission.isPhantom && !emission.isFailed) {
-      this.hasEmitted = true;
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    // Mark the emission if it's not a phantom or failed
+    if (!emission.isPhantom && !emission.isFailed) {
+      hasEmitted = true;
     }
+    return emission; // Pass the emission forward
+  };
 
-    return emission;
-  }
-}
-
-export const defaultIfEmpty = (defaultValue: any) => new DefaultIfEmptyOperator(defaultValue);
+  const operator = createOperator(handle);
+  operator.name = 'defaultIfEmpty';
+  operator.init = init;
+  return operator;
+};

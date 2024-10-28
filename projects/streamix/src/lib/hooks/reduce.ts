@@ -1,32 +1,28 @@
-import { Stream, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
-import { Operator, HookOperator } from '../abstractions/operator';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
-export class ReduceOperator extends Operator implements HookOperator {
-  private boundStream!: Stream;
-  private accumulatedValue: any;
+export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) => {
+  let boundStream: Stream;
+  let accumulatedValue = seed;
 
-  constructor(private readonly accumulator: (acc: any, value: any) => any, private readonly seed: any) {
-    super();
-    this.accumulator = accumulator;
-    this.accumulatedValue = seed;
-  }
+  const init = (stream: Stream) => {
+    boundStream = stream;
+    boundStream.onComplete.chain(callback); // Trigger the callback when the stream completes
+  };
 
-  override init(stream: Stream) {
-    this.boundStream = stream;
-    this.boundStream.onComplete.chain(this, this.callback);
-  }
+  const callback = async (): Promise<void> => {
+    // Emit the accumulated value once the stream completes
+    await boundStream.onEmission.parallel({ emission: { value: accumulatedValue }, source: boundStream });
+  };
 
-  async callback(params?: any): Promise<void> {
-    // TODO ---- this.next
-    await this.boundStream.onEmission.process({ emission: { value: this.accumulatedValue }, source: this });
-  }
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    // Accumulate the value using the provided accumulator function
+    accumulatedValue = accumulator(accumulatedValue, emission.value!);
+    emission.isPhantom = true; // Mark the emission as phantom
+    return emission; // Return the emission
+  };
 
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!);
-    emission.isPhantom = true;
-    return emission;
-  }
-}
-
-export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) => new ReduceOperator(accumulator, seed);
+  const operator = createOperator(handle);
+  operator.name = 'reduce';
+  operator.init = init;
+  return operator;
+};

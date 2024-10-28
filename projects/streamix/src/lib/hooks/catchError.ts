@@ -1,27 +1,23 @@
-import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
-export class CatchErrorOperator extends Operator implements HookOperator {
-  private boundStream!: Stream;
+export const catchError = (handler: (error?: any) => void | Promise<void>) => {
+  let boundStream: Stream;
 
-  constructor(private readonly handler: (error?: any) => void | Promise<void>) {
-    super();
-  }
+  const init = (stream: Stream) => {
+    boundStream = stream;
+    boundStream.onError.chain(callback); // Chain the error handling callback to the stream
+  };
 
-  override init(stream: Stream) {
-    this.boundStream = stream;
-    this.boundStream.onError.chain(this, this.callback);
-  }
+  const callback = async ({ error }: any): Promise<void> => {
+    return handler(error); // Call the provided handler when an error occurs
+  };
 
-  async callback({ error }: any): Promise<void> {
-    return this.handler(error);
-  }
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    return emission; // Pass the emission as is
+  };
 
-  override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    return emission;
-  }
-}
-
-export function catchError(handler: (error?: any) => void | Promise<void>) {
-  return new CatchErrorOperator(handler);
-}
-
+  const operator = createOperator(handle);
+  operator.name = 'catchError';
+  operator.init = init;
+  return operator;
+};

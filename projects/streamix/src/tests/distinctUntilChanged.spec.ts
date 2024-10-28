@@ -1,37 +1,10 @@
-import { distinctUntilChanged, Emission, Stream } from '../lib';
+import { distinctUntilChanged, Emission, from, Stream } from '../lib';
 
-// Mock implementations for testing
-class TestStream extends Stream {
-  private index: number;
-  private values: any[];
-
-  constructor(values: any[]) {
-    super();
-    this.index = 0;
-    this.values = values;
-  }
-
-  async run(): Promise<void> {
-    while (this.index < this.values.length && !this.isStopRequested) {
-      let emission = { value: this.values[this.index] } as Emission;
-      await this.onEmission.process({emission, source: this});
-
-      if (emission.isFailed) {
-        throw emission.error;
-      }
-
-      this.index++;
-    }
-    if(!this.isStopRequested) {
-      this.isAutoComplete = true;
-    }
-  }
-}
 
 describe('distinctUntilChanged', () => {
   it('should emit values that are distinct from the previous one', (done) => {
-    const testStream = new TestStream([1, 1, 2, 2, 3, 3]);
-    const distinctStream = testStream.pipe(distinctUntilChanged());
+    const test = from([1, 1, 2, 2, 3, 3]);
+    const distinctStream = test.pipe(distinctUntilChanged());
 
     const expectedValues = [1, 2, 3];
     let index = 0;
@@ -46,8 +19,8 @@ describe('distinctUntilChanged', () => {
   });
 
   it('should not emit consecutive identical values', (done) => {
-    const testStream = new TestStream([1, 1, 2, 2, 3, 3]);
-    const distinctStream = testStream.pipe(distinctUntilChanged());
+    const test = from([1, 1, 2, 2, 3, 3]);
+    const distinctStream = test.pipe(distinctUntilChanged());
 
     let count = 0;
 
@@ -62,8 +35,8 @@ describe('distinctUntilChanged', () => {
   });
 
   it('should handle non-primitive values correctly', (done) => {
-    const testStream = new TestStream([1, 1, 2, 2, 3, 3]);
-    const distinctStream = testStream.pipe(distinctUntilChanged<{ id: number }>());
+    const test = from([1, 1, 2, 2, 3, 3]);
+    const distinctStream = test.pipe(distinctUntilChanged<{ id: number }>());
 
     const expectedValues = [1, 2, 3];
     let index = 0;
@@ -84,8 +57,8 @@ describe('distinctUntilChanged', () => {
     const object3 = { id: 3 };
 
     const testObjects = [object1, object1, object2, object2, object3, object3];
-    const testStream = new TestStream(testObjects);
-    const distinctStream = testStream.pipe(distinctUntilChanged());
+    const test = from(testObjects);
+    const distinctStream = test.pipe(distinctUntilChanged());
 
     const expectedValues = [object1, object2, object3];
 

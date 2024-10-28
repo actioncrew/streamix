@@ -1,11 +1,8 @@
-import { TimerStream } from './timer';
+import { Stream } from '../abstractions';
+import { timer } from './timer';
 
-export class IntervalStream extends TimerStream {
-  constructor(intervalMs: number) {
-    super(0, intervalMs);
-  }
-}
-
-export function interval(intervalMs: number) {
-  return new IntervalStream(intervalMs);
+export function interval(intervalMs: number): Stream<number> {
+  const stream = timer(0, intervalMs);
+  stream.name = "interval";
+  return stream;
 }

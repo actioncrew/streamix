@@ -1,9 +1,9 @@
-import { OfStream } from '../lib';
+import { of } from '../lib';
 
 describe('OfStream', () => {
   it('should emit the given value', async () => {
     const value = 'test_value';
-    const ofStream = new OfStream(value);
+    const ofStream = of(value);
 
     const emittedValues: any[] = [];
     const subscription = ofStream.subscribe((value) => {
@@ -18,7 +18,7 @@ describe('OfStream', () => {
 
   it('should complete after emitting the value', (done) => {
     const value = 'test_value';
-    const ofStream = new OfStream(value);
+    const ofStream = of(value);
 
     let isComplete = false;
     ofStream.subscribe(() => {
@@ -33,7 +33,7 @@ describe('OfStream', () => {
 
   it('should not emit value if unsubscribed before run', async () => {
     const value = 'test_value';
-    const ofStream = new OfStream(value);
+    const ofStream = of(value);
 
     const emittedValues: any[] = [];
     const subscription = ofStream.subscribe((value) => {
@@ -47,7 +47,7 @@ describe('OfStream', () => {
 
   it('should not emit value if cancelled before run', async () => {
     const value = 'test_value';
-    const ofStream = new OfStream(value);
+    const ofStream = of(value);
 
     const emittedValues: any[] = [];
     ofStream.subscribe((value) => {

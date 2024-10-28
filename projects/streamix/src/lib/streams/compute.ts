@@ -1,52 +1,48 @@
-import { Stream } from '../abstractions';
-import { CoroutineOperator } from '../operators';
+import { createStream, Stream } from '../abstractions';
+import { coroutine } from '../operators';
 
+export function compute(task: ReturnType<typeof coroutine>, params: any): Stream<any> {
+  // Create the custom run function for the ComputeStream
+  const stream = createStream<any>(async function(this: Stream<any>): Promise<void> {
+    let promise: Promise<void>;
 
-export class ComputeStream extends Stream {
-  private promise!: Promise<void>;
+    promise = new Promise<void>(async (resolve, reject) => {
 
-  constructor(private readonly task: CoroutineOperator, private readonly params: any) {
-    super();
-  }
+      if (this.isRunning) {
+        const worker = await task.getIdleWorker();
+        worker.postMessage(params);
 
-  async run(): Promise<void> {
-    let terminateResolve: (() => void) = () => {};
+        // Handle messages from the worker
+        worker.onmessage = async (event: any) => {
+          await this.onEmission.parallel({ emission: { value: event.data }, source: this });
+          task.returnWorker(worker);
+          resolve();
+        };
+
+        // Handle errors from the worker
+        worker.onerror = async (error: any) => {
+          await this.onEmission.parallel({ emission: { isFailed: true, error }, source: this });
+          task.returnWorker(worker);
+          reject(error);
+        };
+      } else {
+        resolve(); // Resolve immediately if not running
+      }
+    });
 
     try {
-      this.promise = new Promise<void>(async (resolve, reject) => {
-        terminateResolve = () => resolve();
-        if (this.isRunning) {
-          const worker = await this.task.getIdleWorker();
-          worker.postMessage(this.params);
-          worker.onmessage = async (event: any) => {
-            await this.onEmission.process({ emission: { value: event.data }, source: this });
-            this.task.returnWorker(worker);
-            resolve();
-          };
-          worker.onerror = async (error: any) => {
-            await this.onEmission.process({ emission: { isFailed: true, error }, source: this });
-            this.task.returnWorker(worker);
-            reject(error);
-          };
-        } else {
-          resolve();
-        }
-      });
-
-      await Promise.race([
-        this.awaitCompletion(),
-        this.promise,
-      ]);
+      await Promise.race([this.awaitCompletion(), promise]);
     } catch (error) {
       console.warn('Error during computation:', error);
     } finally {
       if (this.shouldComplete()) {
-        await this.promise;
-        await this.complete();
-        return;
+        await promise; // Wait for promise to resolve
+        await this.complete(); // Complete the stream
       }
     }
-  }
-}
+  });
 
-export const compute = (task: CoroutineOperator, params: any) => new ComputeStream(task, params);
+  stream.name = "compute";
+  // Create the stream using createStream and the custom run function
+  return stream;
+}

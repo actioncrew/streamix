@@ -1,32 +1,24 @@
-import { Stream, Subscribable } from '../abstractions';
+import { createOperator, Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
-import { Operator } from '../abstractions/operator';
 
-export class TakeOperator extends Operator {
-  private emittedCount!: number;
+export const take = (count: number) => {
+  let emittedCount = 0;
 
-  constructor(private readonly count: number) {
-    super();
-  }
+  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+    if (emittedCount < count) {
+      emittedCount++;
 
-  override init(stream: Stream) {
-    this.emittedCount = 0;
-  }
-
-  async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (this.emittedCount < this.count) {
-      this.emittedCount++;
-
-      if(this.emittedCount === this.count) {
-        stream.isAutoComplete = true;
+      if (emittedCount === count) {
+        stream.isAutoComplete = true; // Mark the stream for auto completion
       }
-      return emission;
+      return emission; // Return the emission if within count
     } else {
-      emission.isPhantom = true;
+      emission.isPhantom = true; // Mark as phantom if beyond count
       return emission;
     }
-  }
-}
+  };
 
-export const take = (count: number) => new TakeOperator(count);
-
+  const operator = createOperator(handle);
+  operator.name = 'take';
+  return operator;
+};

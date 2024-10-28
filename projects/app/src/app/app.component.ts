@@ -1,4 +1,5 @@
 import {
+  createSubject,
   fromEvent,
   interval,
   map,
@@ -96,7 +97,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private fontSize = 10;
   private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
-  private destroy$ = new Subject<void>();
+  private destroy$ = createSubject<void>();
   private scene$!: Subscribable;
 
   ngAfterViewInit() {

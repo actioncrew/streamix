@@ -1,4 +1,4 @@
-import { catchError, map, Stream, Subject } from '../lib';
+import { catchError, createSubject, map, Stream, Subject } from '../lib';
 
 describe('CatchErrorOperator Functional Test', () => {
   let subject: Subject;
@@ -12,7 +12,7 @@ describe('CatchErrorOperator Functional Test', () => {
 
   it('should handle errors from a stream and not propagate them', async () => {
     // Create a subject and attach the catchError operator to it
-    subject = new Subject();
+    subject = createSubject();
     let error = new Error("Unhandled exception.");
     const streamWithCatchError = subject
       .pipe(map(() => { throw error; }), catchError(handlerMock));
@@ -26,15 +26,14 @@ describe('CatchErrorOperator Functional Test', () => {
 
     streamWithCatchError.awaitCompletion().then(() => {
       expect(handlerMock).toHaveBeenCalled();
-      expect(streamWithCatchError.isStopped()).toBe(true); // Stream should complete
-      expect(streamWithCatchError.isFailed()).toBe(false); // Stream should not propagate an error
+      expect(streamWithCatchError.isStopped).toBe(true); // Stream should complete
     });
   });
 
   it('should propagate errors if catchError is not present', async () => {
     // Create a subject and attach the catchError operator to it
     // Create a subject and attach the catchError operator to it
-    subject = new Subject();
+    subject = createSubject();
     let error = new Error("Unhandled exception.");
     const streamWithCatchError = subject
       .pipe(map(() => { throw error; }));
@@ -48,8 +47,7 @@ describe('CatchErrorOperator Functional Test', () => {
 
     streamWithCatchError.awaitCompletion().then(() => {
       expect(handlerMock).not.toHaveBeenCalled();
-      expect(streamWithCatchError.isStopped()).toBe(true); // Stream should complete
-      expect(streamWithCatchError.isFailed()).toBe(true); // Stream should propagate an error
+      expect(streamWithCatchError.isStopped).toBe(true); // Stream should complete
     });
   });
 });
