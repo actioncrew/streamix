@@ -151,7 +151,7 @@ class MyInnerStream extends Stream {
   async run(): Promise<void> {
     // Simulate inner stream behavior (emission, completion, error)
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
-    this.onEmission.process({emission:{ value: this.innerValue }, source: this}); // Emit the projected value
+    this.onEmission.parallel({emission:{ value: this.innerValue }, source: this}); // Emit the projected value
   }
 }
 
@@ -159,7 +159,7 @@ class MyInnerStream extends Stream {
 class MyRealStream extends Stream {
   async run(): Promise<void> {
     // Simulate your real stream behavior (emitting values)
-    this.onEmission.process({emission: { value: 'streamValue1' }, source: this});
+    this.onEmission.parallel({emission: { value: 'streamValue1' }, source: this});
   }
 }
 

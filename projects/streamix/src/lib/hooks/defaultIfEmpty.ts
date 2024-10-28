@@ -15,7 +15,7 @@ export class DefaultIfEmptyOperator extends Operator implements HookOperator {
 
   async callback(params?: any): Promise<void> {
     if(!this.hasEmitted) {
-      return this.boundStream.onEmission.process({ emission: { value: this.defaultValue }, source: this });
+      return this.boundStream.onEmission.parallel({ emission: { value: this.defaultValue }, source: this });
     }
   }
 

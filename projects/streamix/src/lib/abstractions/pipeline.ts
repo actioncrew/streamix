@@ -131,9 +131,9 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   subscribe(callback?: (value: T) => void): Subscription {
 
-    const boundCallback = (value: T) => {
-      this.#currentValue = value;
-      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(value));
+    const boundCallback = ({ emission, source }: any) => {
+      this.#currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
     };
 
     // Chain to pipeline subscribers

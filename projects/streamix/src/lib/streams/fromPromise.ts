@@ -23,10 +23,10 @@ export class FromPromiseStream<T = any> extends Stream<T> {
         }
       }
 
-      await this.onEmission.process({ emission: { value: this.promiseValue as T }, source: this });
+      await this.onEmission.parallel({ emission: { value: this.promiseValue as T }, source: this });
       this.isAutoComplete = true;
     } catch (error) {
-      await this.onError.process({ error });
+      await this.onError.parallel({ error });
     }
   }
 
@@ -35,7 +35,7 @@ export class FromPromiseStream<T = any> extends Stream<T> {
       this.promiseValue = await this.promise;
       this.resolved = true;
     } catch (error) {
-      await this.onError.process({ error });
+      await this.onError.parallel({ error });
     }
   }
 }

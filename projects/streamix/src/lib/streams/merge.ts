@@ -27,7 +27,7 @@ export class MergeStream<T = any> extends Stream<T> {
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.onError.process({ error });
+      await this.onError.parallel({ error });
     }
   }
 
@@ -36,7 +36,7 @@ export class MergeStream<T = any> extends Stream<T> {
       return;
     }
 
-    await this.onEmission.process({
+    await this.onEmission.parallel({
       emission: { value },
       source: this,
     });

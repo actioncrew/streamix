@@ -103,19 +103,19 @@ export abstract class Stream<T = any> implements Subscribable {
       queueMicrotask(async () => {
         try {
           // Emit start value if defined
-          await this.onStart.process();
+          await this.onStart.parallel();
 
           // Start the actual stream logic
           await this.run();
 
           // Emit end value if defined
-          await this.onComplete.process();
+          await this.onComplete.parallel();
         } catch (error) {
-            await this.onError.process({ error });
+            await this.onError.parallel({ error });
         } finally {
           this.isStopped = true; this.isRunning = false;
           // Handle finalize callback
-          await this.onStop.process();
+          await this.onStop.parallel();
         }
       });
     }
@@ -159,7 +159,7 @@ export abstract class Stream<T = any> implements Subscribable {
       emission.isFailed = true;
       emission.error = error;
 
-      await this.onError.process({ error });
+      await this.onError.parallel({ error });
     }
   }
 

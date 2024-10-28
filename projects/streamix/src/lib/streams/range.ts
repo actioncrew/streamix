@@ -13,7 +13,7 @@ export class RangeStream<T = any> extends Stream<T> {
     try {
       while (this.current < this.endValue && !this.shouldComplete()) {
         let emission = { value: this.current } as Emission;
-        await this.onEmission.process({ emission, source: this });
+        await this.onEmission.parallel({ emission, source: this });
 
         if (emission.isFailed) {
           throw emission.error;
@@ -25,7 +25,7 @@ export class RangeStream<T = any> extends Stream<T> {
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.onError.process({ error });
+      await this.onError.parallel({ error });
     }
   }
 }

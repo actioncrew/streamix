@@ -33,7 +33,7 @@ export class ConcatStream<T = any> extends Stream<T> {
       await currentSource.awaitCompletion();
     }
     catch(error) {
-      this.onError.process({ error });
+      this.onError.parallel({ error });
     }
     finally{
       currentSource.onEmission.remove(this, this.handleEmissionFn);
@@ -46,7 +46,7 @@ export class ConcatStream<T = any> extends Stream<T> {
       return;
     }
 
-    await this.onEmission.process({
+    await this.onEmission.parallel({
       emission: { value },
       source: this,
     });

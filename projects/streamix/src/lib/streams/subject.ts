@@ -39,7 +39,7 @@ export class Subject<T = any> extends Stream<T> {
           const promisifiedValue = this.buffer[this.head];
           if (promisifiedValue) {
             const value = promisifiedValue()!;
-            await this.onEmission.process({ emission: { value }, source: this });
+            await this.onEmission.parallel({ emission: { value }, source: this });
             promisifiedValue.resolve(value);
 
             // Move the head forward in the cyclic buffer and reduce the count
