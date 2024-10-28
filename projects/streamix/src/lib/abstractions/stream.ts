@@ -144,22 +144,22 @@ export abstract class Stream<T = any> implements Subscribable {
     return new Pipeline(this).pipe(...operators);
   }
 
-  async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {
+  async emit(args: { emission: Emission; source: any }): Promise<void> {
     try {
-      if(emission.isFailed) {
-        throw emission.error;
-      }
+        if (args.emission.isFailed) {
+            throw args.emission.error;
+        }
 
-      if (!emission.isPhantom) {
-        await this.#onEmission.parallel(emission.value);
-      }
+        if (!args.emission.isPhantom) {
+            await this.#onEmission.parallel(args);
+        }
 
-      emission.isComplete = true;
-    } catch (error: any) {
-      emission.isFailed = true;
-      emission.error = error;
+        args.emission.isComplete = true;
+    } catch (error) {
+        args.emission.isFailed = true;
+        args.emission.error = error;
 
-      await this.onError.parallel({ error });
+        await this.onError.parallel({ error });
     }
   }
 
