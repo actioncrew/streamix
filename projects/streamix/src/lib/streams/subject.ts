@@ -53,7 +53,10 @@ export class Subject<T = any> extends Stream<T> {
           }
         }
 
-        // Reset emissionAvailable after processing all buffered values
+        // Reset `emissionAvailable` after processing all buffered values
+        this.emissionAvailable.reset();
+
+        // If the stream should complete, exit the loop
         if (this.shouldComplete()) {
           break;
         }
