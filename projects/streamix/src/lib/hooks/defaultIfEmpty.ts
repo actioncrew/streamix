@@ -1,18 +1,18 @@
-import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Chunk, Operator } from '../abstractions';
 
 export const defaultIfEmpty = (defaultValue: any) => {
-  let boundStream: Stream;
+  let chunk: Chunk;
   let hasEmitted = false;
 
-  const init = (stream: Stream) => {
-    boundStream = stream;
-    boundStream.onComplete.chain(callback); // Chain the callback to be triggered on stream completion
+  const init = function (this: Operator, stream: Chunk) {
+    chunk = stream;
+    chunk.onComplete.chain(() => callback(this)); // Chain the callback to be triggered on stream completion
   };
 
-  const callback = async (): Promise<void> => {
+  const callback = async (instance: Operator): Promise<void> => {
     if (!hasEmitted) {
       // If nothing has been emitted, emit the default value
-      return boundStream.onEmission.parallel({ emission: { value: defaultValue }, source: null });
+      return chunk.emit({ emission: { value: defaultValue }, source: instance });
     }
   };
 

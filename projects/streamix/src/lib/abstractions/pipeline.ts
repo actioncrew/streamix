@@ -49,7 +49,7 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
 
     ops.forEach((operator) => {
       const clonedOperator = operator.clone();
-      clonedOperator.init(chunk.stream);
+      clonedOperator.init(chunk);
       chunkOperators.push(clonedOperator);
 
       if ('stream' in clonedOperator) {

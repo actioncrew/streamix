@@ -9,7 +9,7 @@ export type StreamOperator = {
 }
 
 export type Operator = {
-  init: (stream: Stream) => void;
+  init: (chunk: Chunk) => void;
   cleanup: () => Promise<void>;
   process: (emission: Emission, chunk: Chunk) => Promise<Emission>;
   handle: (emission: Emission, chunk: Chunk) => Promise<Emission>;
@@ -28,7 +28,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
   let operator: Operator = {
     next: undefined,
 
-    init: function(stream: Stream) {
+    init: function(stream: Chunk) {
       // Initialization logic can be added here
     },
 
@@ -38,9 +38,8 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
 
     process: async function (emission: Emission, chunk: Chunk): Promise<Emission> {
       try {
-        const actualStream = chunk.stream;
         // Handle the emission with the provided handle function
-        emission = await handleFn(emission, actualStream);
+        emission = await handleFn(emission, chunk);
 
         // If there's a next operator and the emission is valid, pass it to the next operator
         if (this.next && !emission.isPhantom && !emission.isFailed) {

@@ -1,4 +1,4 @@
-import { createOperator, Emission, Stream, Subscribable } from '../abstractions';
+import { Chunk, createOperator, Emission, Stream, Subscribable } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export const withLatestFrom = (...streams: Subscribable[]) => {
@@ -16,7 +16,7 @@ export const withLatestFrom = (...streams: Subscribable[]) => {
     handleEmissionFns.push(handleEmission);
   };
 
-  const init = (stream: Stream) => {
+  const init = (stream: Chunk) => {
     streams.forEach((source, index) => handleStreamEmissions(source, index));
 
     stream.onStop.once(finalize); // Cleanup on stream termination
