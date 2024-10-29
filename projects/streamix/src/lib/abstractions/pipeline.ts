@@ -90,7 +90,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline<T>(this.stream).bindOperators(...this.operators, ...operators)
+    return new Pipeline<T>(this.stream).bindOperators(...this.operators, ...operators);
   }
 
   get isAutoComplete(): boolean {
@@ -125,13 +125,17 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   subscribe(callback?: (value: T) => void): Subscription {
 
-    const boundCallback = ({ emission, source }: any) => {
-      this.#currentValue = emission.value;
-      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
-    };
+    const boundCallback = callback
+        ? async ({ emission }: any) => {
+            this.#currentValue = emission.value;
+            return callback(emission.value);
+        }
+        : undefined;
 
     // Chain to pipeline subscribers
-    this.#onEmission.chain(this, boundCallback);
+    if(boundCallback) {
+      this.#onEmission.chain(this, boundCallback);
+    }
 
     // Start the pipeline if needed
     for (let i = 0; i < this.chunks.length; i++) {
@@ -141,7 +145,9 @@ export class Pipeline<T = any> implements Subscribable<T> {
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
       await this.complete();
-      this.#onEmission.remove(this, boundCallback);
+      if(boundCallback) {
+        this.#onEmission.remove(this, boundCallback);
+      }
     };
 
     return value;
