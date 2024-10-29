@@ -118,7 +118,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   async complete(): Promise<void> {
-    for (let i = 0; i <= this.chunks.length - 1; i++) {
+    for (let i = 0; i < this.chunks.length; i++) {
       await this.chunks[i].complete();
     }
   }
@@ -134,7 +134,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     this.#onEmission.chain(this, boundCallback);
 
     // Start the pipeline if needed
-    for (let i = this.chunks.length - 1; i >= 0; i--) {
+    for (let i = 0; i < this.chunks.length; i++) {
       this.chunks[i].subscribe();
     }
 
