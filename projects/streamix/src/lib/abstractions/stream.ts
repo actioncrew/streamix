@@ -33,7 +33,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const run = async () => {
     try {
       await onStart.parallel(); // Trigger start hook
-      await runFn.call(streamInstance); // Pass the stream instance to the run function
+      if(!isRunning) { isRunning = true; await runFn.call(stream); }// Pass the stream instance to the run function
+      else { await completionPromise; }
       await onComplete.parallel(); // Trigger complete hook
     } catch (error) {
       await onError.parallel({ error }); // Handle any errors
@@ -81,10 +82,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     onEmission.chain(boundCallback);
 
-    if (!isRunning) {
-      isRunning = true;
-      queueMicrotask(run);
-    }
+    queueMicrotask(run);
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
@@ -96,12 +94,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const pipe = (...operators: Operator[]): Pipeline<T> => {
-    return createPipeline<T>(streamInstance).pipe(...operators);
+    return createPipeline<T>(stream).pipe(...operators);
   };
 
   const shouldComplete = () => isAutoComplete || isStopRequested;
 
-  const streamInstance = {
+  const stream = {
     type: "stream" as "stream",
     emit,
     subscribe,
@@ -150,5 +148,5 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  return streamInstance; // Return the stream instance
+  return stream; // Return the stream instance
 }
