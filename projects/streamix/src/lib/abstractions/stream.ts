@@ -33,8 +33,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const run = async () => {
     try {
       await onStart.parallel(); // Trigger start hook
-      if(!isRunning) { isRunning = true; await runFn.call(stream); }// Pass the stream instance to the run function
-      else { await completionPromise; }
+      await runFn.call(stream); // Pass the stream instance to the run function
       await onComplete.parallel(); // Trigger complete hook
     } catch (error) {
       await onError.parallel({ error }); // Handle any errors
@@ -75,23 +74,37 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
-    const boundCallback = ({ emission, source }: any) => {
-      currentValue = emission.value;
-      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
-    };
+    // Only define boundCallback if a callback is provided
+    const boundCallback = callback
+        ? async ({ emission }: any) => {
+            currentValue = emission.value;
+            return callback(emission.value);
+        }
+        : undefined;
 
-    onEmission.chain(boundCallback);
+    // Chain the callback only if it's provided
+    if (boundCallback) {
+        onEmission.chain(boundCallback);
+    }
 
-    queueMicrotask(run);
+    // Schedule the pipeline to run asynchronously
+    if(!isRunning) {
+      isRunning = true;
+      queueMicrotask(run);
+    }
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
-      await complete();
-      onEmission.remove(boundCallback);
+        await complete();
+        // Remove the callback from onEmission only if it was added
+        if (boundCallback) {
+            onEmission.remove(boundCallback);
+        }
     };
 
     return value;
   };
+
 
   const pipe = (...operators: Operator[]): Pipeline<T> => {
     return createPipeline<T>(stream).pipe(...operators);
