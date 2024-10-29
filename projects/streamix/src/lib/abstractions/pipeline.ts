@@ -75,18 +75,12 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
-    // Define boundCallback only if a callback is provided
-    const boundCallback = callback
-        ? ({ emission }: any) => {
-            currentValue = emission.value;
-            return callback(emission.value);
-        }
-        : undefined;
+    const boundCallback = ({ emission, source }: any) => {
+      currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
+    };
 
-    // Chain the callback only if it's provided
-    if (boundCallback) {
-        onEmission.chain(pipeline, boundCallback);
-    }
+    onEmission.chain(pipeline, boundCallback);
 
     // Subscribe to all chunks only if a callback is provided
     for (let i = chunks.length - 1; i >= 0; i--) {
@@ -95,11 +89,8 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
-        await complete();
-        // Remove the callback from onEmission only if it was added
-        if (boundCallback) {
-            onEmission.remove(pipeline, boundCallback);
-        }
+      await complete();
+      onEmission.remove(pipeline, boundCallback);
     };
 
     return value as Subscription;
