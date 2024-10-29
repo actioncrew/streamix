@@ -74,18 +74,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
-    // Only define boundCallback if a callback is provided
-    const boundCallback = callback
-        ? async ({ emission }: any) => {
-            currentValue = emission.value;
-            return callback(emission.value);
-        }
-        : undefined;
+    const boundCallback = ({ emission, source }: any) => {
+      currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
+    };
 
-    // Chain the callback only if it's provided
-    if (boundCallback) {
-        onEmission.chain(boundCallback);
-    }
+    onEmission.chain(boundCallback);
 
     // Schedule the pipeline to run asynchronously
     if(!isRunning) {
@@ -95,11 +89,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
-        await complete();
-        // Remove the callback from onEmission only if it was added
-        if (boundCallback) {
-            onEmission.remove(boundCallback);
-        }
+      await complete();
+      onEmission.remove(boundCallback);
     };
 
     return value;

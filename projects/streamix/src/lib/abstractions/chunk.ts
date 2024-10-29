@@ -74,28 +74,18 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
-    // Define boundCallback only if a callback is provided
-    const boundCallback = callback
-        ? async ({ emission }: any) => {
-            currentValue = emission.value;
-            return callback(emission.value);
-        }
-        : undefined;
+    const boundCallback = ({ emission, source }: any) => {
+      currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
+    };
 
-    // Chain the callback only if it's provided
-    if (boundCallback) {
-        onEmission.chain(boundCallback);
-    }
-
+    onEmission.chain(boundCallback);
     stream.subscribe();
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
-        await stream.complete();
-        // Remove the callback from onEmission only if it was added
-        if (boundCallback) {
-            onEmission.remove(boundCallback);
-        }
+      await stream.complete();
+      onEmission.remove(boundCallback);
     };
 
     return value;
