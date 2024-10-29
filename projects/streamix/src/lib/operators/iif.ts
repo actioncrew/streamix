@@ -1,5 +1,5 @@
 import { Subject } from '../../lib';
-import { Stream, Subscribable } from '../abstractions';
+import { Chunk, Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator, StreamOperator } from '../abstractions/operator';
 
@@ -24,7 +24,7 @@ export class IifOperator extends Operator implements StreamOperator {
     return this.outerStream;
   }
 
-  override init(stream: Stream) {
+  override init(stream: Chunk) {
     this.outerStream = new Subject();
     this.currentStream = null;
 

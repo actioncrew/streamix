@@ -1,4 +1,4 @@
-import { Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { Chunk, Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { EMPTY } from '../streams';
 
 export class CoroutineOperator extends Operator {
@@ -14,7 +14,7 @@ export class CoroutineOperator extends Operator {
     this.init(EMPTY);
   }
 
-  override init(stream: Stream) {
+  override init(stream: any) {
     this.workerPool = [];
     this.workerQueue = [];
 

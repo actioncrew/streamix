@@ -1,4 +1,4 @@
-import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { Chunk, Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
 
 export class DefaultIfEmptyOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
@@ -8,14 +8,14 @@ export class DefaultIfEmptyOperator extends Operator implements HookOperator {
     super();
   }
 
-  override init(stream: Stream) {
+  override init(stream: Chunk) {
     this.boundStream = stream;
     this.boundStream.onComplete.chain(this, this.callback);
   }
 
   async callback(params?: any): Promise<void> {
     if(!this.hasEmitted) {
-      return this.boundStream.onEmission.parallel({ emission: { value: this.defaultValue }, source: this });
+      return this.boundStream.emit({ emission: { value: this.defaultValue }, source: this });
     }
   }
 

@@ -1,5 +1,5 @@
 import { Subject } from '../../lib';
-import { Emission, Operator, Stream, StreamOperator, Subscribable } from '../abstractions';
+import { Chunk, Emission, Operator, Stream, StreamOperator, Subscribable } from '../abstractions';
 
 export class SwitchMapOperator extends Operator implements StreamOperator {
 
@@ -14,7 +14,7 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
     this.project = project;
   }
 
-  override init(stream: Stream) {
+  override init(stream: Chunk) {
     this.activeInnerStream = null;
     this.input = stream;
     this.output = new Subject();

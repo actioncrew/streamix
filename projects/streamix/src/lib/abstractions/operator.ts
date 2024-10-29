@@ -15,7 +15,7 @@ export interface StreamOperator {
 export abstract class Operator {
   next?: Operator;
 
-  init(stream: Stream) {
+  init(stream: Chunk) {
   }
 
   async cleanup(): Promise<void> {
@@ -25,8 +25,7 @@ export abstract class Operator {
 
   async process(emission: Emission, chunk: Chunk): Promise<Emission> {
     try {
-      let actualStream = chunk.stream;
-      emission = await this.handle(emission, actualStream);
+      emission = await this.handle(emission, chunk);
       if (this.next && !emission.isPhantom && !emission.isFailed) {
         return this.next.process(emission, chunk);
       } else {

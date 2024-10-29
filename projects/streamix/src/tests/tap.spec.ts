@@ -6,7 +6,7 @@ describe('tap operator', () => {
     const testStream = from([1, 2, 3]);
     const sideEffectFn = jest.fn();
 
-    const tappedStream = testStream.pipe(tap(sideEffectFn), startWith(0), endWith(4), catchError(console.log), finalize(() => console.log("hurra")));
+    const tappedStream = testStream.pipe(startWith(0), endWith(4), tap(sideEffectFn), catchError(console.log), finalize(() => console.log("hurra")));
 
     let results: any[] = [];
 
@@ -15,7 +15,6 @@ describe('tap operator', () => {
     });
 
     tappedStream.onStop.once(() => {
-      console.log(tappedStream);
       // Check if side effect function was called for each emission
       expect(sideEffectFn).toHaveBeenCalledTimes(5);
 
