@@ -119,16 +119,12 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   subscribe(callback?: ((value: T) => void) | void): Subscription {
-    const boundCallback = callback
-        ? async ({ emission }: any) => {
-            this.#currentValue = emission.value;
-            return callback(emission.value);
-        }
-        : undefined;
+    const boundCallback = ({ emission, source }: any) => {
+      this.#currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
+    };
 
-    if(boundCallback) {
-      this.#onEmission.chain(this, boundCallback);
-    }
+    this.#onEmission.chain(this, boundCallback);
 
     if(!this.#isRunning) {
       this.#isRunning = true;
@@ -138,10 +134,7 @@ export abstract class Stream<T = any> implements Subscribable {
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
       await this.complete();
-      if(boundCallback) {
-        this.#onEmission.remove(this, boundCallback);
-      }
-
+      this.#onEmission.remove(this, boundCallback);
     };
 
     return value;

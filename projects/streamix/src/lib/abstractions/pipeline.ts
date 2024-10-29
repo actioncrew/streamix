@@ -124,30 +124,23 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   subscribe(callback?: (value: T) => void): Subscription {
-
-    const boundCallback = callback
-        ? async ({ emission }: any) => {
-            this.#currentValue = emission.value;
-            return callback(emission.value);
-        }
-        : undefined;
+    const boundCallback = ({ emission, source }: any) => {
+      this.#currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
+    };
 
     // Chain to pipeline subscribers
-    if(boundCallback) {
-      this.#onEmission.chain(this, boundCallback);
-    }
+    this.#onEmission.chain(this, boundCallback);
 
     // Start the pipeline if needed
-    for (let i = 0; i < this.chunks.length; i++) {
+    for (let i = this.chunks.length - 1; i >= 0; i--) {
       this.chunks[i].subscribe();
     }
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
       await this.complete();
-      if(boundCallback) {
-        this.#onEmission.remove(this, boundCallback);
-      }
+      this.#onEmission.remove(this, boundCallback);
     };
 
     return value;

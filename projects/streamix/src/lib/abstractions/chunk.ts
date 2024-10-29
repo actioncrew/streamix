@@ -152,25 +152,18 @@ export class Chunk<T = any> extends Stream<T> implements Subscribable<T> {
   }
 
   override subscribe(callback?: (value: T) => void): Subscription {
-    const boundCallback = callback
-        ? async ({ emission }: any) => {
-            this.#currentValue = emission.value;
-            return callback(emission.value);
-        }
-        : undefined;
+    const boundCallback = ({ emission, source }: any) => {
+      this.#currentValue = emission.value;
+      return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
+    };
 
-    if(boundCallback) {
-      this.#onEmission.chain(this, boundCallback);
-    }
-
+    this.#onEmission.chain(this, boundCallback);
     this.stream.subscribe();
 
     const value: any = () => this.#currentValue;
     value.unsubscribe = async () => {
       await this.complete();
-      if(boundCallback) {
-        this.#onEmission.remove(this, boundCallback);
-      }
+      this.#onEmission.remove(this, boundCallback);
     };
 
     return value;
