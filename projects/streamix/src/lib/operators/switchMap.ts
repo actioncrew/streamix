@@ -1,5 +1,5 @@
 import { createSubject, Subject } from '../../lib';
-import { createOperator, Emission, Stream, Subscribable } from '../abstractions';
+import { Chunk, createOperator, Emission, Stream, Subscribable } from '../abstractions';
 
 export const switchMap = (project: (value: any) => Subscribable) => {
   let activeInnerStream: Subscribable | null = null;
@@ -7,8 +7,8 @@ export const switchMap = (project: (value: any) => Subscribable) => {
 
   const output = createSubject<Emission>();
 
-  const init = (stream: Stream) => {
-    stream.onStop.once(() => finalize());
+  const init = (stream: Chunk) => {
+    stream.stream.onStop.once(() => finalize());
     output.onStop.once(() => finalize());
   };
 

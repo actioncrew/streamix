@@ -1,12 +1,12 @@
-import { createOperator, Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { Chunk, createOperator, Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
 
 export const finalize = (callback: () => void | Promise<void>) => {
-  let boundStream: Stream;
+  let chunk: Chunk;
 
-  const init = (stream: Stream) => {
-    boundStream = stream;
+  const init = (stream: Chunk) => {
+    chunk = stream;
     // Chain the callback to the stream's onStop event
-    boundStream.onStop.chain(callback);
+    chunk.onStop.chain(callback);
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
