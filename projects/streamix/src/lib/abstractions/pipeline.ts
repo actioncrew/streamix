@@ -75,27 +75,39 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
-    const boundCallback = ({ emission, source }: any) => {
-      currentValue = emission.value;
-      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
-    };
+    // Define boundCallback only if a callback is provided
+    const boundCallback = callback
+        ? ({ emission }: any) => {
+            currentValue = emission.value;
+            return callback(emission.value);
+        }
+        : undefined;
 
-    onEmission.chain(pipeline, boundCallback);
+    // Chain the callback only if it's provided
+    if (boundCallback) {
+        onEmission.chain(pipeline, boundCallback);
+    }
 
-    for (let i = 0; i < chunks.length; i++) {
-      chunks[i].subscribe();
+    // Subscribe to all chunks only if a callback is provided
+    for (let i = chunks.length - 1; i >= 0; i--) {
+        chunks[i].subscribe();
     }
 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
-      await complete();
-      onEmission.remove(pipeline, boundCallback);
-    }
+        await complete();
+        // Remove the callback from onEmission only if it was added
+        if (boundCallback) {
+            onEmission.remove(pipeline, boundCallback);
+        }
+    };
+
     return value as Subscription;
   };
 
+
   const complete = async (): Promise<void> => {
-    for (let i = 0; i <= chunks.length - 1; i++) {
+    for (let i = 0; i < chunks.length; i++) {
       await chunks[i].complete();
     }
   };
