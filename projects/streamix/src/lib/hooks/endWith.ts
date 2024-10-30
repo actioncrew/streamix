@@ -1,16 +1,16 @@
-import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const endWith = (value: any) => {
   let boundStream: Stream;
 
-  const init = (stream: Stream) => {
+  const init = function(this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream.onComplete.chain(callback); // Trigger the callback on stream completion
+    boundStream.onComplete.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
   };
 
-  const callback = async (): Promise<void> => {
-    // Emit the specified value when the stream completes
-    return boundStream.onEmission.parallel({ emission: { value }, source: boundStream });
+  const callback = async (instance: Operator, params?: any): Promise<void> => {
+    // Emit the provided initial value when the stream starts
+    await boundStream.onEmission.parallel({ emission: { value }, source: instance });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
