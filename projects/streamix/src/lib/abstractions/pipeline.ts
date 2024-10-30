@@ -96,7 +96,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   pipe(...operators: Operator[]): Subscribable<T> {
     // Initialize a new Pipeline instance within the static method
-    return this.bindOperators(...operators);
+    return Pipeline.pipe(this.stream, ...this.operators, ...operators);
   }
 
   get isAutoComplete(): boolean {
