@@ -141,7 +141,7 @@ export abstract class Stream<T = any> implements Subscribable {
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline(this).pipe(...operators);
+    return Pipeline.pipe(this, ...operators);
   }
 
   async emit({ emission, source }: { emission: Emission; source: any }): Promise<void> {

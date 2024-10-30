@@ -14,7 +14,7 @@ export class EndWithOperator extends Operator implements HookOperator {
   }
 
   async callback(params?: any): Promise<void> {
-    return this.boundStream.onEmission.parallel({ emission: { value: this.value }, source: this.boundStream });
+    return this.boundStream.onEmission.parallel({ emission: { value: this.value }, source: this });
   }
 
   override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
