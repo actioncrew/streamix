@@ -15,7 +15,7 @@ export class DefaultIfEmptyOperator extends Operator implements HookOperator {
 
   async callback(params?: any): Promise<void> {
     if(!this.hasEmitted) {
-      return this.chunk.stream.onEmission.parallel({ emission: { value: this.defaultValue }, source: this });
+      return this.chunk.emit({ emission: { value: this.defaultValue }, source: this });
     }
   }
 

@@ -18,7 +18,7 @@ export class ReduceOperator extends Operator implements HookOperator {
   }
 
   async callback(params?: any): Promise<void> {
-    await this.chunk.stream.onEmission.parallel({ emission: { value: this.accumulatedValue }, source: this });
+    await this.chunk.emit({ emission: { value: this.accumulatedValue }, source: this });
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {

@@ -15,7 +15,7 @@ export class StartWithOperator extends Operator implements HookOperator {
   }
 
   async callback(params?: any): Promise<void> {
-    return this.chunk.stream.onEmission.parallel({ emission: { value: this.value }, source: this });
+    return this.chunk.emit({ emission: { value: this.value }, source: this });
   }
 
   override async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
