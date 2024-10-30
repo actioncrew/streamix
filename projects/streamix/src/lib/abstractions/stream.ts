@@ -1,4 +1,4 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable } from "../abstractions";
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe } from "../abstractions";
 import { hook, promisified } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
@@ -95,8 +95,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return value;
   };
 
-  const pipe = (...operators: Operator[]): Pipeline<T> => {
-    return createPipeline<T>(streamInstance).pipe(...operators);
+  const pipe2 = function(this: Stream<T>, ...operators: Operator[]): Pipeline<T> {
+    return pipe(this, ...operators);
   };
 
   const shouldComplete = () => isAutoComplete || isStopRequested;
@@ -105,7 +105,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     type: "stream" as "stream",
     emit,
     subscribe,
-    pipe,
+    pipe: pipe2,
     run,
     awaitCompletion,
     complete,

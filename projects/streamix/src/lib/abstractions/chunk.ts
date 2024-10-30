@@ -1,4 +1,4 @@
-import { createPipeline, isStream, Stream, Subscription } from '../abstractions';
+import { createPipeline, isStream, pipe, Stream, Subscription } from '../abstractions';
 import { hook } from '../utils';
 import { Emission } from './emission';
 import { isOperatorType as isOperator, Operator } from '../abstractions';
@@ -6,6 +6,7 @@ import { Subscribable } from './subscribable';
 
 export type Chunk<T = any> = Subscribable<T> & {
   stream: Stream<T>;
+  operators: Operator[];
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
   bindOperators(...operators: Operator[]): Chunk<T>; // Method to bind operators
 };
@@ -91,13 +92,19 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     return value;
   };
 
+  const pipe2 = function(this: Chunk<T>, ...newOperators: Operator[]) {
+    return pipe<T>(this.stream, ...this.operators, ...newOperators);
+  }
+
+
   const chunk: Chunk<T> = {
     type: "chunk" as "chunk",
     stream,
+    operators,
     bindOperators,
     subscribe,
     emit,
-    pipe: (...newOperators: Operator[]) => createPipeline<T>(stream).pipe(...operators, ...newOperators),
+    pipe: pipe2,
     shouldComplete: () => stream.shouldComplete(),
     awaitCompletion: () => stream.awaitCompletion(),
     complete: () => stream.complete(),

@@ -6,7 +6,7 @@ describe('tap operator', () => {
     const testStream = from([1, 2, 3]);
     const sideEffectFn = jest.fn();
 
-    const tappedStream = testStream.pipe(tap(sideEffectFn), startWith(0), endWith(4), catchError(console.log), finalize(() => console.log("hurra")));
+    const tappedStream = testStream.pipe(startWith(0), endWith(4), tap(sideEffectFn), catchError(console.log), finalize(() => console.log("hurra")));
 
     let results: any[] = [];
 
