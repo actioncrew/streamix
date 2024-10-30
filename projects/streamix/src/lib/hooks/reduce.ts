@@ -3,7 +3,7 @@ import { Emission } from '../abstractions/emission';
 import { Operator, HookOperator } from '../abstractions/operator';
 
 export class ReduceOperator extends Operator implements HookOperator {
-  private boundStream!: Stream;
+  private chunk!: Chunk;
   private accumulatedValue: any;
 
   constructor(private readonly accumulator: (acc: any, value: any) => any, private readonly seed: any) {
@@ -13,12 +13,12 @@ export class ReduceOperator extends Operator implements HookOperator {
   }
 
   override init(stream: Chunk) {
-    this.boundStream = stream;
-    this.boundStream.onComplete.chain(this, this.callback);
+    this.chunk = stream;
+    this.chunk.onComplete.chain(this, this.callback);
   }
 
   async callback(params?: any): Promise<void> {
-    await this.boundStream.emit({ emission: { value: this.accumulatedValue }, source: this });
+    await this.chunk.stream.onEmission.parallel({ emission: { value: this.accumulatedValue }, source: this });
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
