@@ -33,7 +33,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const run = async () => {
     try {
       await onStart.parallel(); // Trigger start hook
-      await runFn.call(streamInstance); // Pass the stream instance to the run function
+      await runFn.call(stream); // Pass the stream instance to the run function
       await onComplete.parallel(); // Trigger complete hook
     } catch (error) {
       await onError.parallel({ error }); // Handle any errors
@@ -101,7 +101,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const shouldComplete = () => isAutoComplete || isStopRequested;
 
-  const streamInstance = {
+  const stream = {
     type: "stream" as "stream",
     emit,
     subscribe,
@@ -150,5 +150,5 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  return streamInstance; // Return the stream instance
+  return stream; // Return the stream instance
 }
