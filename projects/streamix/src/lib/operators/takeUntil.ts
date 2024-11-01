@@ -25,7 +25,7 @@ export const takeUntil = (notifier: Subscribable) => {
   };
 
   const operator = createOperator(handle);
-  operator.name = 'take';
+  operator.name = 'takeUntil';
   operator.init = init;
   return operator;
 };
