@@ -7,6 +7,8 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
   private input!: Stream;
   private output!: Subject;
   private handleInnerEmission!: (({ emission, source }: any) => Promise<void>) | null;
+  private previousResolver: ((emission: Emission) => void) | null = null;
+  private previousEmission: Emission | null = null;
   private isFinalizing!: boolean;
 
   constructor(private readonly project: (value: any) => Subscribable) {
@@ -63,35 +65,47 @@ export class SwitchMapOperator extends Operator implements StreamOperator {
   private async processEmission(emission: Emission, stream: Subject): Promise<Emission> {
     const newInnerStream = this.project(emission.value);
 
-    if (this.activeInnerStream === newInnerStream) {
-      emission.isPhantom = true;
-      return emission;
+    // Resolve previous promise with the previous emission
+    if (this.previousResolver && this.previousEmission) {
+      this.previousResolver(this.previousEmission);
+      this.previousResolver = null;
     }
 
-    await this.stopInnerStream();
-    this.activeInnerStream = newInnerStream;
+    if (this.activeInnerStream !== newInnerStream) {
 
-    this.handleInnerEmission = async ({ emission }) => {
-      if (!stream.shouldComplete()) {
-        await stream.next(emission.value);
-      }
-    };
+      await this.stopInnerStream();
+      this.activeInnerStream = newInnerStream;
 
-    this.activeInnerStream.onEmission.chain(this, this.handleInnerEmission);
+      this.handleInnerEmission = async ({ emission }) => {
+        if (!stream.shouldComplete()) {
+          await stream.next(emission.value);
+        }
+      };
 
-    this.activeInnerStream.onError.once((error: any) => {
-      emission.error = error;
-      emission.isFailed = true;
-      this.removeInnerStream(this.activeInnerStream!);
-    });
+      this.activeInnerStream.onEmission.chain(this, this.handleInnerEmission);
 
-    this.activeInnerStream.onStop.once(() => this.removeInnerStream(this.activeInnerStream!));
+      this.activeInnerStream.onError.once((error: any) => {
+        emission.error = error;
+        emission.isFailed = true;
+        this.removeInnerStream(this.activeInnerStream!);
+        this.previousResolver && this.previousResolver(emission);
+        this.previousResolver = null;
+      });
 
-    this.activeInnerStream.subscribe();
+      this.activeInnerStream.subscribe();
+    }
 
+    // Mark the original emission as phantom
     emission.isPhantom = true;
+    this.previousEmission = emission; // Store the current emission for future resolution
+
     return new Promise<Emission>((resolve) => {
-      this.activeInnerStream!.onStop.once(() => resolve(emission));
+      this.previousResolver = resolve;
+      this.activeInnerStream!.onStop.once(this, () => {
+        this.removeInnerStream(this.activeInnerStream!);
+        this.previousResolver && this.previousResolver(emission);
+        this.previousResolver = null;
+      });
     });
 
   }
