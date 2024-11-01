@@ -1,13 +1,15 @@
 import { createSubject, Subject } from '../../lib';
 import { createOperator, Emission, Stream, Subscribable } from '../abstractions';
 
-export const switchMap = (project: (value: any) => Subscribable) => {
-  let activeInnerStream: Subscribable | null = null;
+export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
+  let activeInnerStream: Subscribable<R> | null = null;
   let isFinalizing = false;
+  let previousResolver: ((emission: Emission) => void) | null = null;
+  let previousEmission: Emission | null = null;
 
-  const output = createSubject<Emission>();
+  const output = createSubject<R>();
 
-  const init = (stream: Stream) => {
+  const init = (stream: Stream<T>) => {
     stream.onStop.once(() => finalize());
     output.onStop.once(() => finalize());
   };
@@ -24,13 +26,19 @@ export const switchMap = (project: (value: any) => Subscribable) => {
 
   const stopInnerStream = async () => {
     if (activeInnerStream) {
-      activeInnerStream.onEmission.remove(handleInnerEmission); // Remove the inner emission handler
-      await activeInnerStream.complete();
+      // Safely remove the emission handler
+      activeInnerStream.onEmission.remove(handleInnerEmission);
+
+      // Complete the inner stream if it's not already stopped
+      if (!activeInnerStream.isStopped) {
+        await activeInnerStream.complete();
+      }
+
       activeInnerStream = null;
     }
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = async (emission: Emission, stream: Subscribable<T>): Promise<Emission> => {
     if (stream.shouldComplete()) {
       emission.isPhantom = true;
       await stopInnerStream();
@@ -41,50 +49,76 @@ export const switchMap = (project: (value: any) => Subscribable) => {
   };
 
   const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
+    // Only propagate non-phantom emissions
     if (!output.shouldComplete()) {
       await output.next(innerEmission.value);
     }
   };
 
-  const processEmission = async (emission: Emission, stream: Subject<Emission>): Promise<Emission> => {
+  const processEmission = async (emission: Emission, stream: Subject<R>): Promise<Emission> => {
     const newInnerStream = project(emission.value);
 
-    if (activeInnerStream === newInnerStream) {
-      emission.isPhantom = true;
-      return emission;
+    // Resolve previous promise with the previous emission
+    if (previousResolver && previousEmission) {
+      previousResolver(previousEmission!);
+      previousResolver = null;
     }
 
-    await stopInnerStream();
-    activeInnerStream = newInnerStream;
+    // If the new inner stream is different from the active one
+    if (activeInnerStream !== newInnerStream) {
+      // Stop the previous inner stream
+      await stopInnerStream();
 
-    activeInnerStream.onEmission.chain(handleInnerEmission); // Chain the inner emission handler
+      // Set the new active inner stream
+      activeInnerStream = newInnerStream;
 
-    activeInnerStream.onError.once((error: any) => {
-      emission.error = error;
-      emission.isFailed = true;
-      removeInnerStream(activeInnerStream!);
-    });
+      // Chain the inner emission handler
+      activeInnerStream.onEmission.chain(handleInnerEmission);
 
-    activeInnerStream.onStop.once(() => removeInnerStream(activeInnerStream!));
+      // Set up error handling
+      activeInnerStream.onError.once((error: any) => {
+        emission.error = error;
+        emission.isFailed = true;
+        removeInnerStream(activeInnerStream!);
+        previousResolver && previousResolver(emission);
+        previousResolver = null;
+      });
 
-    activeInnerStream.subscribe();
+      // Subscribe to start the inner stream
+      activeInnerStream.subscribe();
+    } else {
+      previousResolver && previousResolver(emission);
+      previousResolver = null;
+    }
 
+    // Mark the original emission as phantom
     emission.isPhantom = true;
+    previousEmission = emission as Emission;
+
+    // Return a promise that resolves when the inner stream stops
     return new Promise<Emission>((resolve) => {
-      activeInnerStream!.onStop.once(() => resolve(emission));
+      previousResolver = resolve;
+      activeInnerStream!.onStop.once(() => {
+        removeInnerStream(activeInnerStream!);
+        previousResolver && previousResolver(emission);
+        previousResolver = null;
+      });
     });
   };
 
-  const removeInnerStream = (innerStream: Subscribable) => {
+  const removeInnerStream = (innerStream: Subscribable<R>) => {
     if (activeInnerStream === innerStream) {
-      activeInnerStream.onEmission.remove(handleInnerEmission); // Ensure we remove the handler
+      // Safely remove the emission handler
+      activeInnerStream.onEmission.remove(handleInnerEmission);
       activeInnerStream = null;
     }
   };
 
-  const operator = createOperator(handle) as any;
-  operator.name = 'switchMap';
-  operator.init = init;
-  operator.stream = output;
-  return operator;
+  // Create the operator with type-safe extension
+  const operator = createOperator(handle);
+  return Object.assign(operator, {
+    name: 'switchMap',
+    init,
+    stream: output
+  });
 };
