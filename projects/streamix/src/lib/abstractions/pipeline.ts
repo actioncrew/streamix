@@ -92,7 +92,7 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
 
     onEmission.chain(pipeline, boundCallback);
 
-    for (let i = chunks.length - 1; i >= 0; i--) {
+    for (let i = 0; i < chunks.length; i++) {
       chunks[i].subscribe();
     }
 
@@ -105,7 +105,7 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   };
 
   const complete = async (): Promise<void> => {
-    for (let i = 0; i <= chunks.length - 1; i++) {
+    for (let i = 0; i < chunks.length; i++) {
       await chunks[i].complete();
     }
   };
