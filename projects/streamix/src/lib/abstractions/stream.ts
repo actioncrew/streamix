@@ -95,8 +95,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return value;
   };
 
-  const pipe2 = function(this: Stream<T>, ...operators: Operator[]): Pipeline<T> {
-    return pipe(this, ...operators);
+  const pipe = function(this: Stream<T>, ...operators: Operator[]): Pipeline<T> {
+    return createPipeline<T>(this).bindOperators(...operators);
   };
 
   const shouldComplete = () => isAutoComplete || isStopRequested;
@@ -105,7 +105,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     type: "stream" as "stream",
     emit,
     subscribe,
-    pipe: pipe2,
+    pipe,
     run,
     awaitCompletion,
     complete,

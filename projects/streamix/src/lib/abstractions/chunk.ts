@@ -51,13 +51,13 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     }
   };
 
-  const bindOperators = (...newOperators: Operator[]): Chunk<T> => {
-    operators = [];
+  const bindOperators = function(this: Chunk<T>, ...newOperators: Operator[]): Chunk<T> {
+    this.operators = [];
     head = undefined;
     tail = undefined;
 
     newOperators.forEach((operator, index) => {
-      operators.push(operator);
+      this.operators.push(operator);
 
       if (!head) {
         head = operator;
@@ -71,7 +71,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
       }
     });
 
-    return chunk;
+    return this;
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
@@ -92,10 +92,9 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     return value;
   };
 
-  const pipe2 = function(this: Chunk<T>, ...newOperators: Operator[]) {
-    return pipe<T>(this.stream, ...this.operators, ...newOperators);
+  const pipe = function(this: Chunk<T>, ...newOperators: Operator[]) {
+    return createPipeline<T>(this).bindOperators(...newOperators);
   }
-
 
   const chunk: Chunk<T> = {
     type: "chunk" as "chunk",
@@ -104,7 +103,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk<T> {
     bindOperators,
     subscribe,
     emit,
-    pipe: pipe2,
+    pipe,
     shouldComplete: () => stream.shouldComplete(),
     awaitCompletion: () => stream.awaitCompletion(),
     complete: () => stream.complete(),
