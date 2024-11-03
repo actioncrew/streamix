@@ -1,8 +1,8 @@
-import { from, switchMap } from '../lib';
+import { delay, from, switchMap } from '../lib';
 
 describe('switchMap operator', () => {
   it('should switch to new inner streams correctly', (done) => {
-    const testStream = from([1, 2, 3]);
+    const testStream = from([1, 2, 3]).pipe(delay(100));
     const project = (value: number) => from([value * 10, value * 100]);
 
     const switchedStream = testStream.pipe(switchMap(project));
