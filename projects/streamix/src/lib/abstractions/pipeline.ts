@@ -13,7 +13,7 @@ export type Pipeline<T> = Subscribable<T> & {
   bindOperators: (...operators: Operator[]) => Pipeline<T>;
 };
 
-export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
+export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
   let chunks: Chunk<T>[] = [];
   let operators: Operator[] = [];
   let currentValue: T | undefined;
@@ -24,13 +24,21 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
   const onError = hook();
   const onEmission = hook();
 
-  const chunk = createChunk(stream);
-  chunk.onStart.chain((params: any) => onStart.parallel(params));
-  chunk.onEmission.chain((params: any) => onEmission.parallel(params));
-  chunk.onComplete.chain((params: any) => onComplete.parallel(params));
-  chunk.onStop.chain((params: any) => onStop.parallel(params));
-  chunk.onError.chain((params: any) => onError.parallel(params));
-  chunks.push(chunk);
+  const onStartCallback = (params: any) => onStart.parallel(params);
+  const onEmissionCallback = (params: any) => onEmission.parallel(params);
+  const onCompleteCallback = (params: any) => onComplete.parallel(params);
+  const onStopCallback = (params: any) => onStop.parallel(params);
+  const onErrorCallback = (params: any) => onError.parallel(params);
+
+  if (stream.type === 'chunk') {
+    const chunk = stream as unknown as Chunk<T>;
+    chunks = [chunk];
+    operators = [...chunk.operators];
+  } else if (stream.type === 'pipeline') {
+    const pipe = stream as unknown as Pipeline<T>;
+    chunks = [...pipe.chunks];
+    operators = [...pipe.operators];
+  }
 
   const getFirstChunk = () => chunks[0];
   const getLastChunk = () => chunks[chunks.length - 1];
@@ -39,23 +47,42 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
     const getFirstChunk = () => this.chunks[0];
     const getLastChunk = () => this.chunks[this.chunks.length - 1];
 
-    this.operators = ops;  // Use `this.operators` to store the operators
-    let chunk = getFirstChunk();  // Access the first chunk through `this.chunks`
-    this.chunks.splice(1, this.chunks.length - 1);  // Clear additional chunks
-    let chunkOperators: Operator[] = [];
+    let chunk: Chunk<T>;
 
-    // Clear existing event hooks on the first chunk
-    chunk.onStart.clear();
-    chunk.onEmission.clear();
-    chunk.onComplete.clear();
-    chunk.onStop.clear();
-    chunk.onError.clear();
+    if (stream.type === 'stream') {
+      chunk = createChunk(stream as unknown as Stream<T>);
+    } else {
+      const lastChunk = getLastChunk();
+      const operator = lastChunk.operators[lastChunk.operators.length - 1];
+      if (operator && 'stream' in operator) {
+        chunk = createChunk((lastChunk.operators[lastChunk.operators.length - 1] as any).stream);
+      } else {
+        // If there are existing chunks, use a Subject to replicate the last chunk's result
+        const sourceSubject = createSubject<T>();
+
+        // Subscribe to the last chunk's result and replicate emissions to the new Subject
+        lastChunk.subscribe((value) => {
+          sourceSubject.next(value); // Emit the value to the new subject
+        });
+
+        lastChunk.onStop.chain(() => sourceSubject.complete());
+
+        // Create a new chunk using the source subject
+        chunk = createChunk(sourceSubject);
+        (sourceSubject as any).chunk = chunk;
+      }
+    }
+
+    this.chunks.push(chunk);
+
+    let chunkOperators: Operator[] = [];
 
     // Process each operator
     ops.forEach((operator) => {
       const clonedOperator = operator.clone();
       clonedOperator.init(chunk.stream);
       chunkOperators.push(clonedOperator);
+      this.operators.push(clonedOperator);
 
       // If operator has a stream, finalize current chunk and start a new one
       if ('stream' in clonedOperator) {
@@ -70,18 +97,17 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
     chunk.bindOperators(...chunkOperators);
 
     // Re-bind hooks across chunks
-    this.chunks.forEach((c) => c.onError.chain((params: any) => this.onError.parallel(params)));
-    getFirstChunk().onStart.chain((params: any) => this.onStart.parallel(params));
-    getLastChunk().onEmission.chain((params: any) => this.onEmission.parallel(params));
-    getLastChunk().onComplete.chain((params: any) => this.onComplete.parallel(params));
-    getLastChunk().onStop.chain((params: any) => this.onStop.parallel(params));
+    this.chunks.forEach((c) => c.onError.chain(pipeline, (params: any) => this.onError.parallel(params)));
+    getFirstChunk().onStart.chain(pipeline, (params: any) => this.onStart.parallel(params));
+    getLastChunk().onEmission.chain(pipeline, (params: any) => this.onEmission.parallel(params));
+    getLastChunk().onComplete.chain(pipeline, (params: any) => this.onComplete.parallel(params));
+    getLastChunk().onStop.chain(pipeline, (params: any) => this.onStop.parallel(params));
 
     return this;  // Return `this` to allow chaining
   };
 
-
-  const pipe2 = function(this: Pipeline<T>, ...ops: Operator[]): Pipeline<T> {
-    return pipe(this.stream, ...this.operators, ...ops);
+  const pipe = function(this: Pipeline<T>, ...ops: Operator[]): Pipeline<T> {
+    return createPipeline<T>(this).bindOperators(...ops);
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
@@ -112,11 +138,11 @@ export function createPipeline<T = any>(stream: Stream<T>): Pipeline<T> {
 
   const pipeline: Pipeline<T> = {
     type: "pipeline" as "pipeline",
-    stream,
+    stream: (stream.type === 'stream' ? stream : getFirstChunk().stream) as Stream,
     chunks,
     operators,
     bindOperators,
-    pipe: pipe2,
+    pipe,
     subscribe,
     get value() {
       return currentValue;
