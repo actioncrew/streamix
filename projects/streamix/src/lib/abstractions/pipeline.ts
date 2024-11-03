@@ -30,7 +30,11 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
   const onStopCallback = (params: any) => onStop.parallel(params);
   const onErrorCallback = (params: any) => onError.parallel(params);
 
-  if (stream.type === 'chunk') {
+  if (stream.type === 'stream') {
+    chunk = createChunk(stream as unknown as Stream<T>);
+    chunks = [chunk];
+    operators = [];
+  } else if (stream.type === 'chunk') {
     const chunk = stream as unknown as Chunk<T>;
     chunks = [chunk];
     operators = [...chunk.operators];
@@ -49,9 +53,7 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
 
     let chunk: Chunk<T>;
 
-    if (stream.type === 'stream') {
-      chunk = createChunk(stream as unknown as Stream<T>);
-    } else {
+    if (stream.type !== 'stream') {
       const lastChunk = getLastChunk();
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
@@ -71,9 +73,8 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
         chunk = createChunk(sourceSubject);
         (sourceSubject as any).chunk = chunk;
       }
+      this.chunks.push(chunk);
     }
-
-    this.chunks.push(chunk);
 
     let chunkOperators: Operator[] = [];
 
