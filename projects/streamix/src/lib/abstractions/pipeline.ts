@@ -23,17 +23,17 @@ export class Pipeline<T = any> implements Subscribable<T> {
   private onStopCallback = (params: any) => this.onStop.parallel(params);
   private onErrorCallback = (params: any) => this.onError.parallel(params);
 
-  constructor(public stream: Subscribable<T>) {
-    if (stream instanceof Stream) {
-      const chunk = new Chunk(stream as unknown as Stream<T>);
+  constructor(public subscribable: Subscribable<T>) {
+    if (subscribable instanceof Stream) {
+      const chunk = new Chunk(subscribable as unknown as Stream<T>);
       this.chunks = [chunk];
       this.operators = [];
-    } else if (stream instanceof Chunk) {
-      const chunk = stream as unknown as Chunk<T>;
+    } else if (subscribable instanceof Chunk) {
+      const chunk = subscribable as unknown as Chunk<T>;
       this.chunks = [chunk];
       this.operators = [...chunk.operators];
-    } else if (stream instanceof Pipeline) {
-      const pipe = stream as unknown as Pipeline<T>;
+    } else if (subscribable instanceof Pipeline) {
+      const pipe = subscribable as unknown as Pipeline<T>;
       this.chunks = [...pipe.chunks];
       this.operators = [...pipe.operators];
     }
@@ -63,7 +63,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
     let chunk: Chunk<T>;
 
-    if (!(this.stream instanceof Stream) && ops.length > 0) {
+    if (!(this.subscribable instanceof Stream) && ops.length > 0) {
       const lastChunk = this.lastChunk;
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
@@ -126,7 +126,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   pipe(...operators: Operator[]): Subscribable<T> {
     // Initialize a new Pipeline instance within the static method
-    return Pipeline.pipe(this.stream, ...this.operators, ...operators);
+    return Pipeline.pipe(this.subscribable, ...this.operators, ...operators);
   }
 
   get isAutoComplete(): boolean {
