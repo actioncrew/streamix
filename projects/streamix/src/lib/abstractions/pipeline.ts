@@ -13,7 +13,7 @@ export type Pipeline<T> = Subscribable<T> & {
   bindOperators: (...operators: Operator[]) => Pipeline<T>;
 };
 
-export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
+export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline<T> {
   let chunks: Chunk<T>[] = [];
   let operators: Operator[] = [];
   let currentValue: T | undefined;
@@ -30,16 +30,16 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
   const onStopCallback = (params: any) => onStop.parallel(params);
   const onErrorCallback = (params: any) => onError.parallel(params);
 
-  if (stream.type === 'stream') {
-    const chunk = createChunk(stream as unknown as Stream<T>);
+  if (subscribable.type === 'stream') {
+    const chunk = createChunk(subscribable as unknown as Stream<T>);
     chunks = [chunk];
     operators = [];
-  } else if (stream.type === 'chunk') {
-    const chunk = stream as unknown as Chunk<T>;
+  } else if (subscribable.type === 'chunk') {
+    const chunk = subscribable as unknown as Chunk<T>;
     chunks = [chunk];
     operators = [...chunk.operators];
-  } else if (stream.type === 'pipeline') {
-    const pipe = stream as unknown as Pipeline<T>;
+  } else if (subscribable.type === 'pipeline') {
+    const pipe = subscribable as unknown as Pipeline<T>;
     chunks = [...pipe.chunks];
     operators = [...pipe.operators];
   }
@@ -51,9 +51,15 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
     const getFirstChunk = () => this.chunks[0];
     const getLastChunk = () => this.chunks[this.chunks.length - 1];
 
+    chunks.forEach((c) => c.onError.remove(pipeline, onErrorCallback));
+    getFirstChunk().onStart.remove(pipeline, onStartCallback);
+    getLastChunk().onEmission.remove(pipeline, onEmissionCallback);
+    getLastChunk().onComplete.remove(pipeline, onCompleteCallback);
+    getLastChunk().onStop.remove(pipeline, onStopCallback);
+
     let chunk: Chunk<T>;
 
-    if (stream.type !== 'stream' && ops.length > 0) {
+    if (subscribable.type !== 'stream' && ops.length > 0) {
       const lastChunk = getLastChunk();
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
@@ -191,6 +197,12 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
       return onEmission;
     }
   };
+
+  chunks.forEach((c) => c.onError.chain(pipeline, onErrorCallback));
+  getFirstChunk().onStart.chain(pipeline, onStartCallback);
+  getLastChunk().onEmission.chain(pipeline, onEmissionCallback);
+  getLastChunk().onComplete.chain(pipeline, onCompleteCallback);
+  getLastChunk().onStop.chain(pipeline, onStopCallback);
 
   return pipeline;
 }
