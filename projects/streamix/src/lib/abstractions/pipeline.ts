@@ -37,6 +37,12 @@ export class Pipeline<T = any> implements Subscribable<T> {
       this.chunks = [...pipe.chunks];
       this.operators = [...pipe.operators];
     }
+
+    this.chunks.forEach((c) => c.onError.chain(this, this.onErrorCallback));
+    this.firstChunk.onStart.chain(this, this.onStartCallback);
+    this.lastChunk.onEmission.chain(this, this.onEmissionCallback);
+    this.lastChunk.onComplete.chain(this, this.onCompleteCallback);
+    this.lastChunk.onStop.chain(this, this.onStopCallback);
   }
 
   get onStart(): HookType {
@@ -60,6 +66,12 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   private bindOperators(...ops: Operator[]): Pipeline<T> {
+
+    this.chunks.forEach((c) => c.onError.remove(this, this.onErrorCallback));
+    this.firstChunk.onStart.remove(this, this.onStartCallback);
+    this.lastChunk.onEmission.remove(this, this.onEmissionCallback);
+    this.lastChunk.onComplete.remove(this, this.onCompleteCallback);
+    this.lastChunk.onStop.remove(this, this.onStopCallback);
 
     let chunk: Chunk<T>;
 
