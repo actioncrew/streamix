@@ -205,34 +205,55 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   getLastChunk().onStop.chain(pipeline, onStopCallback);
 
   return pipeline;
-}
+};
 
-export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
+export function multicast<T = any>(source: Subscribable<T>, bufferSize: number = Infinity): Subscribable<T> {
   const subject = createSubject<T>();
-  const subscription = source.subscribe((value) => subject.next(value));
+  const cache: T[] = [];
+  const subscription = source.subscribe((value) => {
+      // Cache each new emission, respecting the buffer size
+      cache.push(value);
+      if (!isNaN(bufferSize) && cache.length > bufferSize) {
+          cache.shift(); // Keep the cache within the buffer limit
+      }
+      subject.next(value); // Emit to active subscribers
+  });
+
   source.onStop.once(() => subject.complete());
 
-  const pipeline = createPipeline<T>(subject).pipe();
-  const originalSubscribe = pipeline.subscribe.bind(pipeline);
+  const pipeline = createPipeline<T>(subject);
   let subscribers = 0;
 
-  pipeline.subscribe = (observer: (value: T) => void) => {
-    const originalSubscription = originalSubscribe(observer);
-    subscribers++;
+  const originalSubscribe = pipeline.subscribe.bind(pipeline);
 
-    const value: any = () => originalSubscribe();
-    value.unsubscribe = async () => {
-      originalSubscription.unsubscribe();
-      if (--subscribers === 0) {
-        subscription.unsubscribe();
-      }
-    }
+  pipeline.subscribe = (observer: (value: T) => void): Subscription => {
+      // Replay cached values to the new subscriber
+      const replayCache = async () => {
+          for (const value of cache) {
+              await observer(value);
+          }
+      };
 
-    return value;
+      replayCache(); // Trigger replay of cached values
+
+      const originalSubscription = originalSubscribe(observer);
+      subscribers++;
+
+      const value: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
+
+      value.unsubscribe = async () => {
+          originalSubscription.unsubscribe();
+          subscribers--;
+          if (subscribers === 0) {
+              await subscription.unsubscribe(); // Unsubscribe from source if no more subscribers
+          }
+      };
+
+      return value;
   };
 
   return pipeline;
-}
+};
 
 export const pipe = <T>(stream: Stream<T>, ...ops: Operator[]): Pipeline<T> => {
   return createPipeline<T>(stream).bindOperators(...ops);
