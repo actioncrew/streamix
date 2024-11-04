@@ -1,4 +1,4 @@
-import { Chunk, Stream, Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
@@ -9,7 +9,7 @@ export class TakeOperator extends Operator {
     super();
   }
 
-  override init(stream: Chunk) {
+  override init(stream: Stream) {
     this.emittedCount = 0;
   }
 

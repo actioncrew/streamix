@@ -1,4 +1,4 @@
-import { Chunk, Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
 
 export class FinalizeOperator extends Operator implements HookOperator {
   private boundStream!: Stream;
@@ -7,7 +7,7 @@ export class FinalizeOperator extends Operator implements HookOperator {
     super();
   }
 
-  override init(stream: Chunk) {
+  override init(stream: Stream) {
     this.boundStream = stream;
     this.boundStream.onStop.chain(this, this.callback);
   }

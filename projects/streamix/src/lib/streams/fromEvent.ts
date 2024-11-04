@@ -1,4 +1,4 @@
-import { Stream, Subscription } from '../abstractions';
+import { Stream } from '../abstractions';
 import { counter } from '../utils';
 
 export class FromEventStream<T = any> extends Stream<T> {

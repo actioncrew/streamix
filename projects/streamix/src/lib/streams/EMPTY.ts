@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions/stream';
+import { Stream } from '../abstractions';
 
 export class EmptyStream<T = any> extends Stream<T> {
   constructor() {

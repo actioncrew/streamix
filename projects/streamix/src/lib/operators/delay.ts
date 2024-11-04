@@ -1,4 +1,4 @@
-import { Chunk, Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 
 export class DelayOperator extends Operator {
   private applyDelay!: (emission: Emission) => Promise<Emission>;
@@ -9,7 +9,7 @@ export class DelayOperator extends Operator {
     this.delayTime = delayTime;
   }
 
-  override init(stream: Chunk) {
+  override init(stream: Stream) {
     this.applyDelay = (emission: Emission) => new Promise<Emission>((resolve) => {
       const timeout = setTimeout(() => resolve(emission), this.delayTime);
 

@@ -1,4 +1,4 @@
-import { Chunk, Stream, Subscription } from '../abstractions';
+import { Stream, Subscription } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 import { Subscribable } from '../abstractions/subscribable';
@@ -11,7 +11,7 @@ export class TakeUntilOperator extends Operator {
     super();
   }
 
-  override init(stream: Chunk) {
+  override init(stream: Stream) {
     this.stopRequested = false;
 
     this.subscription = this.notifier.subscribe(() => {

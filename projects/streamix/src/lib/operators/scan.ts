@@ -1,4 +1,4 @@
-import { Chunk, Stream, Subscribable } from '../abstractions';
+import { Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Operator } from '../abstractions/operator';
 
@@ -13,7 +13,7 @@ export class ScanOperator extends Operator {
 
   }
 
-  override init(stream: Chunk) {
+  override init(stream: Stream) {
     this.accumulatedValue = this.seed;
     this.index = 0;
   }

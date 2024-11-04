@@ -1,4 +1,4 @@
-import { Chunk, Emission, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export class WithLatestFromOperator extends Operator {
@@ -14,7 +14,7 @@ export class WithLatestFromOperator extends Operator {
     this.streams = streams;
   }
 
-  override init(stream: Chunk) {
+  override init(stream: Stream) {
     this.latestValues = [];
     this.handleEmissionFns = [];
     this.input = stream;

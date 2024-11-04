@@ -1,4 +1,4 @@
-import { Chunk, Stream } from '../abstractions';
+import { Emission, Stream } from '../abstractions';
 import { Subject } from '../';
 import { hook, HookType, PromisifiedType } from '../utils';
 import { Operator } from '../abstractions';
@@ -6,7 +6,8 @@ import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
 
 export class Pipeline<T = any> implements Subscribable<T> {
-  private chunks: Chunk<T>[] = [];
+  private stream: Stream<T>;
+  private chunks: Stream<T>[] = [];
   private operators: Operator[] = [];
 
   #currentValue: T | undefined;
@@ -17,15 +18,30 @@ export class Pipeline<T = any> implements Subscribable<T> {
   #onError = hook();
   #onEmission = hook();
 
-  constructor(public stream: Stream<T>) {
-    const chunk = new Chunk(stream);
+  private onStartCallback = (params: any) => this.onStart.parallel(params);
+  private onEmissionCallback = (params: any) => this.onEmission.parallel(params);
+  private onCompleteCallback = (params: any) => this.onComplete.parallel(params);
+  private onStopCallback = (params: any) => this.onStop.parallel(params);
+  private onErrorCallback = (params: any) => this.onError.parallel(params);
 
-    chunk.onStart.chain((params: any) => this.#onStart.parallel(params));
-    chunk.onEmission.chain((params: any) => this.#onEmission.parallel(params));
-    chunk.onComplete.chain((params: any) => this.#onComplete.parallel(params));
-    chunk.onStop.chain((params: any) => this.#onStop.parallel(params));
-    chunk.onError.chain((params: any) => this.#onError.parallel(params));
-    this.chunks.push(chunk);
+  constructor(private subscribable: Subscribable<T>) {
+    if (subscribable instanceof Stream) {
+      const chunk = subscribable as unknown as Stream<T>;
+      this.chunks = [chunk];
+      this.operators = [...chunk.operators];
+    } else if (subscribable instanceof Pipeline) {
+      const pipe = subscribable as unknown as Pipeline<T>;
+      this.chunks = [...pipe.chunks];
+      this.operators = [...pipe.operators];
+    }
+
+    this.stream = this.firstChunk;
+
+    this.chunks.forEach((c) => c.onError.chain(this, this.onErrorCallback));
+    this.firstChunk.onStart.chain(this, this.onStartCallback);
+    this.lastChunk.subscribers.chain(this, this.onEmissionCallback);
+    this.lastChunk.onComplete.chain(this, this.onCompleteCallback);
+    this.lastChunk.onStop.chain(this, this.onStopCallback);
   }
 
   get onStart(): HookType {
@@ -48,73 +64,104 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return this.#onEmission;
   }
 
-  private bindOperators(...operators: Operator[]): Subscribable<T> {
-    this.operators = operators;
-    let chunk = this.first;
-    this.chunks.splice(1, this.chunks.length - 1);
+  private bindOperators(...ops: Operator[]): Pipeline<T> {
+
+    this.chunks.forEach((c) => c.onError.remove(this, this.onErrorCallback));
+    this.firstChunk.onStart.remove(this, this.onStartCallback);
+    this.lastChunk.subscribers.remove(this, this.onEmissionCallback);
+    this.lastChunk.onComplete.remove(this, this.onCompleteCallback);
+    this.lastChunk.onStop.remove(this, this.onStopCallback);
+
+    let chunk: Stream<T>;
+
+    if (!(this.subscribable instanceof Stream) && ops.length > 0) {
+      const lastChunk = this.lastChunk;
+      const operator = lastChunk.operators[lastChunk.operators.length - 1];
+      if (operator && 'stream' in operator) {
+        chunk = (lastChunk.operators[lastChunk.operators.length - 1] as any).stream;
+      } else {
+        // If there are existing chunks, use a Subject to replicate the last chunk's result
+        const sourceSubject = new Subject<T>();
+
+        // Subscribe to the last chunk's result and replicate emissions to the new Subject
+        const subscription = lastChunk.subscribe((value) => {
+          sourceSubject.next(value); // Emit the value to the new subject
+        });
+
+        lastChunk.onStop.once(this, () => { sourceSubject.complete(); subscription.unsubscribe(); });
+
+        // Create a new chunk using the source subject
+        chunk = sourceSubject;
+        (sourceSubject as any).chunk = chunk;
+      }
+      this.chunks.push(chunk);
+    } else {
+      chunk = this.lastChunk;
+    }
+
     let chunkOperators: Operator[] = [];
 
-    chunk.onStart.clear();
-    chunk.onEmission.clear();
-    chunk.onComplete.clear();
-    chunk.onStop.clear();
-    chunk.onError.clear();
+    // Process each operator
+    ops.forEach((operator) => {
+      const clonedOperator = operator.clone();
+      clonedOperator.init(chunk);
+      chunkOperators.push(clonedOperator);
+      this.operators.push(clonedOperator);
 
-    operators.forEach(operator => {
-      operator = operator.clone();
-      operator.init(chunk);
-      chunkOperators.push(operator);
-
-      if ('stream' in operator) {
+      // If operator has a stream, finalize current chunk and start a new one
+      if ('stream' in clonedOperator) {
         chunk.bindOperators(...chunkOperators);
         chunkOperators = [];
-        chunk = new Chunk(operator.stream as any);
-        this.chunks.push(chunk);
+        chunk = clonedOperator.stream as any;
+        this.chunks.push(chunk);  // Push new chunk to `this.chunks`
       }
     });
 
+    // Finalize the last chunk with remaining operators
     chunk.bindOperators(...chunkOperators);
 
-    // Chain error hooks to propagate errors across chunks
-    this.chunks.forEach((chunk) => {
-      chunk.onError.chain((params: any) => this.#onError.parallel(params));
-    });
+    // Re-bind hooks across chunks
+    this.chunks.forEach((c) => c.onError.chain(this, this.onErrorCallback));
+    this.firstChunk.onStart.chain(this, this.onStartCallback);
+    this.lastChunk.subscribers.chain(this, this.onEmissionCallback);
+    this.lastChunk.onComplete.chain(this, this.onCompleteCallback);
+    this.lastChunk.onStop.chain(this, this.onStopCallback);
 
-    // Chain hooks from the first and last chunks to the pipeline
-    this.first.onStart.chain((params: any) => this.#onStart.parallel(params));
-    this.last.onEmission.chain((params: any) => this.#onEmission.parallel(params));
-    this.last.onComplete.chain((params: any) => this.#onComplete.parallel(params));
-    this.last.onStop.chain((params: any) => this.#onStop.parallel(params));
+    return this;  // Return `this` to allow chaining
+  };
 
-    return this;
+  static pipe<T>(stream: Subscribable<T>, ...operators: Operator[]): Subscribable<T> {
+    // Initialize a new Pipeline instance within the static method
+    return new Pipeline<T>(stream).bindOperators(...operators);
   }
 
   pipe(...operators: Operator[]): Subscribable<T> {
-    return new Pipeline<T>(this.stream).bindOperators(...this.operators, ...operators);
+    // Initialize a new Pipeline instance within the static method
+    return Pipeline.pipe(this.subscribable, ...this.operators, ...operators);
   }
 
   get isAutoComplete(): boolean {
-    return this.last.isAutoComplete;
+    return this.lastChunk.isAutoComplete;
   }
 
   get isStopRequested(): boolean {
-    return this.last.isStopRequested;
+    return this.lastChunk.isStopRequested;
   }
 
   get isStopped(): boolean {
-    return this.last.isStopped;
+    return this.lastChunk.isStopped;
   }
 
   get isRunning(): boolean {
-    return this.last.isRunning;
+    return this.lastChunk.isRunning;
   }
 
   shouldComplete(): boolean {
-    return this.last.shouldComplete();
+    return this.lastChunk.shouldComplete();
   }
 
   awaitCompletion(): Promise<void> {
-    return this.last.awaitCompletion();
+    return this.lastChunk.awaitCompletion();
   }
 
   async complete(): Promise<void> {
@@ -124,6 +171,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   subscribe(callback?: (value: T) => void): Subscription {
+
     const boundCallback = ({ emission, source }: any) => {
       this.#currentValue = emission.value;
       return callback === undefined ? Promise.resolve() : Promise.resolve(callback(emission.value));
@@ -146,11 +194,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return value;
   }
 
-  private get first(): Chunk<T> {
+  private get firstChunk(): Stream<T> {
     return this.chunks[0];
   }
 
-  private get last(): Chunk<T> {
+  private get lastChunk(): Stream<T> {
     return this.chunks[this.chunks.length - 1];
   }
 
@@ -160,29 +208,50 @@ export class Pipeline<T = any> implements Subscribable<T> {
 }
 
 
-export function multicast<T = any>(source: Subscribable<T>): Subscribable<T> {
-  const subject = new Subject<T>();
-  const subscription = source.subscribe((value) => subject.next(value));
-  source.onStop.once(() => subject.complete());
+export function multicast<T = any>(source: Subscribable<T>, bufferSize: number = Infinity): Subscribable<T> {
+    const subject = new Subject<T>();
+    const cache: T[] = [];
+    const subscription = source.subscribe((value) => {
+        // Cache each new emission, respecting the buffer size
+        cache.push(value);
+        if (!isNaN(bufferSize) && cache.length > bufferSize) {
+            cache.shift(); // Keep the cache within the buffer limit
+        }
+        subject.next(value); // Emit to active subscribers
+    });
 
-  const pipeline = new Pipeline<T>(subject).pipe();
-  const originalSubscribe = pipeline.subscribe.bind(pipeline);
-  let subscribers = 0;
+    source.onStop.once(() => subject.complete());
 
-  pipeline.subscribe = (observer: (value: T) => void) => {
-    const originalSubscription = originalSubscribe(observer);
-    subscribers++;
+    const pipeline = new Pipeline<T>(subject);
+    let subscribers = 0;
 
-    const value: any = () => originalSubscribe();
-    value.unsubscribe = async () => {
-      originalSubscription.unsubscribe();
-      if(--subscribers === 0) {
-        subscription.unsubscribe();
-      }
+    const originalSubscribe = pipeline.subscribe.bind(pipeline);
+
+    pipeline.subscribe = (observer: (value: T) => void): Subscription => {
+        // Replay cached values to the new subscriber
+        const replayCache = async () => {
+            for (const value of cache) {
+                await observer(value);
+            }
+        };
+
+        replayCache(); // Trigger replay of cached values
+
+        const originalSubscription = originalSubscribe(observer);
+        subscribers++;
+
+        const value: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
+
+        value.unsubscribe = async () => {
+            originalSubscription.unsubscribe();
+            subscribers--;
+            if (subscribers === 0) {
+                await subscription.unsubscribe(); // Unsubscribe from source if no more subscribers
+            }
+        };
+
+        return value;
     };
 
-    return value;
-  };
-
-  return pipeline;
+    return pipeline;
 }
