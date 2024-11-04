@@ -1,4 +1,4 @@
-import { Chunk, Emission, Stream } from '../abstractions';
+import { Emission, Stream } from '../abstractions';
 import { Subject } from '../';
 import { hook, HookType, PromisifiedType } from '../utils';
 import { Operator } from '../abstractions';
@@ -7,7 +7,7 @@ import { Subscription } from './subscription';
 
 export class Pipeline<T = any> implements Subscribable<T> {
   private stream: Stream<T>;
-  private chunks: Chunk<T>[] = [];
+  private chunks: Stream<T>[] = [];
   private operators: Operator[] = [];
 
   #currentValue: T | undefined;
@@ -26,11 +26,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
   constructor(private subscribable: Subscribable<T>) {
     if (subscribable instanceof Stream) {
-      const chunk = new Chunk(subscribable as unknown as Stream<T>);
-      this.chunks = [chunk];
-      this.operators = [];
-    } else if (subscribable instanceof Chunk) {
-      const chunk = subscribable as unknown as Chunk<T>;
+      const chunk = subscribable as unknown as Stream<T>;
       this.chunks = [chunk];
       this.operators = [...chunk.operators];
     } else if (subscribable instanceof Pipeline) {
@@ -39,11 +35,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
       this.operators = [...pipe.operators];
     }
 
-    this.stream = this.firstChunk.stream;
+    this.stream = this.firstChunk;
 
     this.chunks.forEach((c) => c.onError.chain(this, this.onErrorCallback));
     this.firstChunk.onStart.chain(this, this.onStartCallback);
-    this.lastChunk.onEmission.chain(this, this.onEmissionCallback);
+    this.lastChunk.subscribers.chain(this, this.onEmissionCallback);
     this.lastChunk.onComplete.chain(this, this.onCompleteCallback);
     this.lastChunk.onStop.chain(this, this.onStopCallback);
   }
@@ -72,17 +68,17 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
     this.chunks.forEach((c) => c.onError.remove(this, this.onErrorCallback));
     this.firstChunk.onStart.remove(this, this.onStartCallback);
-    this.lastChunk.onEmission.remove(this, this.onEmissionCallback);
+    this.lastChunk.subscribers.remove(this, this.onEmissionCallback);
     this.lastChunk.onComplete.remove(this, this.onCompleteCallback);
     this.lastChunk.onStop.remove(this, this.onStopCallback);
 
-    let chunk: Chunk<T>;
+    let chunk: Stream<T>;
 
     if (!(this.subscribable instanceof Stream) && ops.length > 0) {
       const lastChunk = this.lastChunk;
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
-        chunk = new Chunk((lastChunk.operators[lastChunk.operators.length - 1] as any).stream);
+        chunk = (lastChunk.operators[lastChunk.operators.length - 1] as any).stream;
       } else {
         // If there are existing chunks, use a Subject to replicate the last chunk's result
         const sourceSubject = new Subject<T>();
@@ -95,7 +91,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
         lastChunk.onStop.once(this, () => { sourceSubject.complete(); subscription.unsubscribe(); });
 
         // Create a new chunk using the source subject
-        chunk = new Chunk(sourceSubject);
+        chunk = sourceSubject;
         (sourceSubject as any).chunk = chunk;
       }
       this.chunks.push(chunk);
@@ -108,7 +104,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     // Process each operator
     ops.forEach((operator) => {
       const clonedOperator = operator.clone();
-      clonedOperator.init(chunk.stream);
+      clonedOperator.init(chunk);
       chunkOperators.push(clonedOperator);
       this.operators.push(clonedOperator);
 
@@ -116,7 +112,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
       if ('stream' in clonedOperator) {
         chunk.bindOperators(...chunkOperators);
         chunkOperators = [];
-        chunk = new Chunk(clonedOperator.stream as any);
+        chunk = clonedOperator.stream as any;
         this.chunks.push(chunk);  // Push new chunk to `this.chunks`
       }
     });
@@ -127,7 +123,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
     // Re-bind hooks across chunks
     this.chunks.forEach((c) => c.onError.chain(this, this.onErrorCallback));
     this.firstChunk.onStart.chain(this, this.onStartCallback);
-    this.lastChunk.onEmission.chain(this, this.onEmissionCallback);
+    this.lastChunk.subscribers.chain(this, this.onEmissionCallback);
     this.lastChunk.onComplete.chain(this, this.onCompleteCallback);
     this.lastChunk.onStop.chain(this, this.onStopCallback);
 
@@ -198,11 +194,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return value;
   }
 
-  private get firstChunk(): Chunk<T> {
+  private get firstChunk(): Stream<T> {
     return this.chunks[0];
   }
 
-  private get lastChunk(): Chunk<T> {
+  private get lastChunk(): Stream<T> {
     return this.chunks[this.chunks.length - 1];
   }
 

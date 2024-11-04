@@ -1,5 +1,5 @@
 import { Emission } from '../abstractions';
-import { Stream } from '../abstractions/stream';
+import { Stream } from '../abstractions';
 
 export class FromStream<T = any> extends Stream<T> {
   private done: boolean = false;

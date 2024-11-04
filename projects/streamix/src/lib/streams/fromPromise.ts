@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions/stream';
+import { Stream } from '../abstractions';
 
 export class FromPromiseStream<T = any> extends Stream<T> {
   private resolved: boolean = false;
