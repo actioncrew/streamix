@@ -1,17 +1,17 @@
-import { Emission, Subscribable, Stream, createOperator, Chunk, Operator } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) => {
-  let chunk: Chunk;
+  let boundStream: Stream;
   let accumulatedValue = seed;
 
-  const init = function(this: Operator, stream: Chunk) {
-    chunk = stream;
-    chunk.onComplete.chain(() => callback(this)); // Trigger the callback when the stream completes
+  const init = (stream: Stream) => {
+    boundStream = stream;
+    boundStream.onComplete.chain(callback); // Trigger the callback when the stream completes
   };
 
-  const callback = async (instance: Operator): Promise<void> => {
+  const callback = async (): Promise<void> => {
     // Emit the accumulated value once the stream completes
-    await chunk.emit({ emission: { value: accumulatedValue }, source: instance });
+    await boundStream.onEmission.parallel({ emission: { value: accumulatedValue }, source: boundStream });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {

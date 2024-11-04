@@ -1,11 +1,11 @@
-import { Chunk, Stream, Subscribable, createOperator } from '../abstractions';
+import { Stream, Subscribable, createOperator } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 
 export const scan = (accumulator: (acc: any, value: any, index?: number) => any, seed: any) => {
   let accumulatedValue = seed; // Initialize the accumulated value
   let index = 0; // Initialize the index
 
-  const init = (stream: Chunk) => {
+  const init = (stream: Stream) => {
     accumulatedValue = seed; // Reset accumulated value on initialization
     index = 0; // Reset index on initialization
   };

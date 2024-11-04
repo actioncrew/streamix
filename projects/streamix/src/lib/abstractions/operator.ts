@@ -1,4 +1,4 @@
-import { Stream, Subscribable, Emission, Chunk } from '.';
+import { Stream, Subscribable, Emission } from '.';
 
 export type HookOperator = {
   callback: (params?: any) => void | Promise<void>;
@@ -9,10 +9,10 @@ export type StreamOperator = {
 }
 
 export type Operator = {
-  init: (chunk: Chunk) => void;
+  init: (stream: Stream) => void;
   cleanup: () => Promise<void>;
-  process: (emission: Emission, chunk: Chunk) => Promise<Emission>;
-  handle: (emission: Emission, chunk: Chunk) => Promise<Emission>;
+  process: (emission: Emission, chunk: Stream) => Promise<Emission>;
+  handle: (emission: Emission, chunk: Stream) => Promise<Emission>;
   clone: () => Operator;
   next?: Operator; // Optional chaining for next operators
   type: string;
@@ -28,7 +28,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
   let operator: Operator = {
     next: undefined,
 
-    init: function(stream: Chunk) {
+    init: function(stream: Stream) {
       // Initialization logic can be added here
     },
 
@@ -36,7 +36,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
       // Cleanup logic can be added here
     },
 
-    process: async function (emission: Emission, chunk: Chunk): Promise<Emission> {
+    process: async function (emission: Emission, chunk: Stream): Promise<Emission> {
       try {
         // Handle the emission with the provided handle function
         emission = await handleFn(emission, chunk);

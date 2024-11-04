@@ -4,4 +4,3 @@ export * from './stream';
 export * from './subscription';
 export * from './subscribable';
 export * from './pipeline';
-export * from './chunk';

@@ -1,4 +1,4 @@
-import { Chunk, createOperator, Stream, Subscription } from '../abstractions';
+import { createOperator, Stream, Subscription } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 import { Subscribable } from '../abstractions/subscribable';
 
@@ -6,7 +6,7 @@ export const takeUntil = (notifier: Subscribable) => {
   let stopRequested = false;
   let subscription: Subscription | null = null;
 
-  const init = (stream: Chunk) => {
+  const init = (stream: Stream) => {
     stopRequested = false;
 
     subscription = notifier.subscribe(() => {
@@ -25,7 +25,7 @@ export const takeUntil = (notifier: Subscribable) => {
   };
 
   const operator = createOperator(handle);
-  operator.name = 'take';
+  operator.name = 'takeUntil';
   operator.init = init;
   return operator;
 };
