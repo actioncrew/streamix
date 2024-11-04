@@ -60,13 +60,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   private bindOperators(...ops: Operator[]): Pipeline<T> {
-    const getFirstChunk = () => this.chunks[0];
-    const getLastChunk = () => this.chunks[this.chunks.length - 1];
 
     let chunk: Chunk<T>;
 
     if (!(this.stream instanceof Stream) && ops.length > 0) {
-      const lastChunk = getLastChunk();
+      const lastChunk = this.lastChunk;
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
         chunk = new Chunk((lastChunk.operators[lastChunk.operators.length - 1] as any).stream);
@@ -87,7 +85,7 @@ export class Pipeline<T = any> implements Subscribable<T> {
       }
       this.chunks.push(chunk);
     } else {
-      chunk = getLastChunk();
+      chunk = this.lastChunk;
     }
 
     let chunkOperators: Operator[] = [];
@@ -113,10 +111,10 @@ export class Pipeline<T = any> implements Subscribable<T> {
 
     // Re-bind hooks across chunks
     this.chunks.forEach((c) => c.onError.chain(this, this.onErrorCallback));
-    getFirstChunk().onStart.chain(this, this.onStartCallback);
-    getLastChunk().onEmission.chain(this, this.onEmissionCallback);
-    getLastChunk().onComplete.chain(this, this.onCompleteCallback);
-    getLastChunk().onStop.chain(this, this.onStopCallback);
+    this.firstChunk.onStart.chain(this, this.onStartCallback);
+    this.lastChunk.onEmission.chain(this, this.onEmissionCallback);
+    this.lastChunk.onComplete.chain(this, this.onCompleteCallback);
+    this.lastChunk.onStop.chain(this, this.onStopCallback);
 
     return this;  // Return `this` to allow chaining
   };
@@ -132,27 +130,27 @@ export class Pipeline<T = any> implements Subscribable<T> {
   }
 
   get isAutoComplete(): boolean {
-    return this.last.isAutoComplete;
+    return this.lastChunk.isAutoComplete;
   }
 
   get isStopRequested(): boolean {
-    return this.last.isStopRequested;
+    return this.lastChunk.isStopRequested;
   }
 
   get isStopped(): boolean {
-    return this.last.isStopped;
+    return this.lastChunk.isStopped;
   }
 
   get isRunning(): boolean {
-    return this.last.isRunning;
+    return this.lastChunk.isRunning;
   }
 
   shouldComplete(): boolean {
-    return this.last.shouldComplete();
+    return this.lastChunk.shouldComplete();
   }
 
   awaitCompletion(): Promise<void> {
-    return this.last.awaitCompletion();
+    return this.lastChunk.awaitCompletion();
   }
 
   async complete(): Promise<void> {
@@ -185,11 +183,11 @@ export class Pipeline<T = any> implements Subscribable<T> {
     return value;
   }
 
-  private get first(): Chunk<T> {
+  private get firstChunk(): Chunk<T> {
     return this.chunks[0];
   }
 
-  private get last(): Chunk<T> {
+  private get lastChunk(): Chunk<T> {
     return this.chunks[this.chunks.length - 1];
   }
 
