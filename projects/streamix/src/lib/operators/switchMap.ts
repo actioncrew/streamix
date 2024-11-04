@@ -1,15 +1,19 @@
-import { createSubject, Subject } from '../../lib';
-import { Chunk, createOperator, Emission, Stream, Subscribable } from '../abstractions';
+import { Subscribable, Emission, createOperator } from '../abstractions';
+import { Subject, counter, CounterType, createSubject } from '../../lib';
 
-export const switchMap = (project: (value: any) => Subscribable) => {
-  let activeInnerStream: Subscribable | null = null;
+export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
+  let activeInnerStream: Subscribable<R> | null = null;
   let isFinalizing = false;
+  let emissionNumber: number = 0;
+  let executionNumber: CounterType = counter(0);
 
-  const output = createSubject<Emission>();
+  const output = createSubject<R>();
 
-  const init = (stream: Chunk) => {
-    stream.stream.onStop.once(() => finalize());
-    output.onStop.once(() => finalize());
+  const init = (stream: Subscribable<T>) => {
+    stream.onStop.once(() => {
+      executionNumber.waitFor(emissionNumber).then(finalize);
+    });
+    output.onStop.once(finalize);
   };
 
   const finalize = async () => {
@@ -24,67 +28,59 @@ export const switchMap = (project: (value: any) => Subscribable) => {
 
   const stopInnerStream = async () => {
     if (activeInnerStream) {
-      activeInnerStream.onEmission.remove(handleInnerEmission); // Remove the inner emission handler
       await activeInnerStream.complete();
+      activeInnerStream.onEmission.remove(handleInnerEmission);
+
       activeInnerStream = null;
     }
-  };
-
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
-    if (stream.shouldComplete()) {
-      emission.isPhantom = true;
-      await stopInnerStream();
-      return emission;
-    }
-
-    return processEmission(emission, output);
   };
 
   const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
-    if (!output.shouldComplete()) {
-      await output.next(innerEmission.value);
-    }
+    await output.next(innerEmission.value);
   };
 
-  const processEmission = async (emission: Emission, stream: Subject<Emission>): Promise<Emission> => {
-    const newInnerStream = project(emission.value);
+  const handle = async (emission: Emission, stream: Subscribable<T>): Promise<Emission> => {
+    emissionNumber++;
+    let subscribed = false;
 
-    if (activeInnerStream === newInnerStream) {
+    // Create a new inner stream using the project function
+    try {
+      // Create a new inner stream using the project function
+      const newInnerStream = project(emission.value);
+      if (newInnerStream !== activeInnerStream) {
+        // Stop the current inner stream before starting the new one
+        await stopInnerStream();
+      }
+
+      activeInnerStream = newInnerStream;
+
+      // Chain inner emissions and handle errors
+      activeInnerStream.onEmission.chain(handleInnerEmission);
+
+      activeInnerStream?.onStop.once(() => {
+        executionNumber.increment();
+      });
+
+      // Subscribe to start the new inner stream
+      activeInnerStream.subscribe();
+      subscribed = true;
+
+      // Mark the original emission as phantom to avoid duplicating it
       emission.isPhantom = true;
       return emission;
-    }
-
-    await stopInnerStream();
-    activeInnerStream = newInnerStream;
-
-    activeInnerStream.onEmission.chain(handleInnerEmission); // Chain the inner emission handler
-
-    activeInnerStream.onError.once((error: any) => {
-      emission.error = error;
+    } catch(error: any) {
+      if (!subscribed) { executionNumber.increment(); }
       emission.isFailed = true;
-      removeInnerStream(activeInnerStream!);
-    });
-
-    activeInnerStream.onStop.once(() => removeInnerStream(activeInnerStream!));
-
-    activeInnerStream.subscribe();
-
-    emission.isPhantom = true;
-    return new Promise<Emission>((resolve) => {
-      activeInnerStream!.onStop.once(() => resolve(emission));
-    });
-  };
-
-  const removeInnerStream = (innerStream: Subscribable) => {
-    if (activeInnerStream === innerStream) {
-      activeInnerStream.onEmission.remove(handleInnerEmission); // Ensure we remove the handler
-      activeInnerStream = null;
+      emission.error = error;
+      return emission;
     }
   };
 
-  const operator = createOperator(handle) as any;
-  operator.name = 'switchMap';
-  operator.init = init;
-  operator.stream = output;
-  return operator;
+  // Create the operator with type-safe extension
+  const operator = createOperator(handle);
+  return Object.assign(operator, {
+    name: 'switchMap',
+    init,
+    stream: output,
+  });
 };

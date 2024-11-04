@@ -1,10 +1,10 @@
-import { Emission, Subscribable, Stream, createOperator, Chunk } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
 
 export const delay = (delayTime: number) => {
   let applyDelay: (emission: Emission) => Promise<Emission>;
   let completionPromise: Promise<void>;
 
-  const init = (stream: Chunk) => {
+  const init = (stream: Stream) => {
     applyDelay = (emission: Emission) => new Promise<Emission>((resolve) => {
       const timeout = setTimeout(() => resolve(emission), delayTime);
 
