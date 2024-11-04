@@ -100,11 +100,11 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
     chunk.bindOperators(...chunkOperators);
 
     // Re-bind hooks across chunks
-    this.chunks.forEach((c) => c.onError.chain(pipeline, (params: any) => this.onError.parallel(params)));
-    getFirstChunk().onStart.chain(pipeline, (params: any) => this.onStart.parallel(params));
-    getLastChunk().onEmission.chain(pipeline, (params: any) => this.onEmission.parallel(params));
-    getLastChunk().onComplete.chain(pipeline, (params: any) => this.onComplete.parallel(params));
-    getLastChunk().onStop.chain(pipeline, (params: any) => this.onStop.parallel(params));
+    this.chunks.forEach((c) => c.onError.chain(pipeline, onErrorCallback));
+    getFirstChunk().onStart.chain(pipeline, onStartCallback);
+    getLastChunk().onEmission.chain(pipeline, onEmissionCallback);
+    getLastChunk().onComplete.chain(pipeline, onCompleteCallback);
+    getLastChunk().onStop.chain(pipeline, onStopCallback);
 
     return this;  // Return `this` to allow chaining
   };
