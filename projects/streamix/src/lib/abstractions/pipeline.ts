@@ -31,7 +31,7 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
   const onErrorCallback = (params: any) => onError.parallel(params);
 
   if (stream.type === 'stream') {
-    chunk = createChunk(stream as unknown as Stream<T>);
+    const chunk = createChunk(stream as unknown as Stream<T>);
     chunks = [chunk];
     operators = [];
   } else if (stream.type === 'chunk') {
@@ -53,7 +53,7 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
 
     let chunk: Chunk<T>;
 
-    if (stream.type !== 'stream') {
+    if (stream.type !== 'stream' && ops.length > 0) {
       const lastChunk = getLastChunk();
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
@@ -74,6 +74,8 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
         (sourceSubject as any).chunk = chunk;
       }
       this.chunks.push(chunk);
+    } else {
+      chunk = getLastChunk();
     }
 
     let chunkOperators: Operator[] = [];
@@ -119,7 +121,7 @@ export function createPipeline<T = any>(stream: Subscribable<T>): Pipeline<T> {
 
     onEmission.chain(pipeline, boundCallback);
 
-    for (let i = 0; i < chunks.length; i++) {
+    for (let i = chunks.length - 1; i >= 0; i--) {
       chunks[i].subscribe();
     }
 
