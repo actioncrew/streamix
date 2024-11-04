@@ -1,10 +1,15 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe } from "../abstractions";
-import { hook, promisified } from "../utils";
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
+import { hook, HookType, promisified } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
+  operators: Operator[];
+  head: Operator | undefined;
+  tail: Operator | undefined;
+  bindOperators: (...operators: Operator[]) => Stream<T>;
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
   run: () => Promise<void>; // Run stream logic
   name?: string;
+  subscribers: HookType;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -16,6 +21,10 @@ export function isStream<T>(obj: any): obj is Stream<T> {
 }
 
 export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => Promise<void>): Stream<T> {
+  const operators: Operator[] = [];
+  let head: Operator | undefined;
+  let tail: Operator | undefined;
+
   const completionPromise = promisified<void>();
 
   let isAutoComplete = false;
@@ -29,6 +38,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const onStop = hook();
   const onError = hook();
   const onEmission = hook();
+  const subscribers = hook();
 
   const run = async () => {
     try {
@@ -57,19 +67,51 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const awaitCompletion = () => completionPromise.promise();
 
-  const emit = async (args: { emission: Emission; source: any }): Promise<void> => {
-    try {
-      if (args.emission.isFailed && args.emission.error) throw args.emission.error;
+  const bindOperators = function(this: Stream<T>, ...newOperators: Operator[]): Stream<T> {
+    this.operators.length = 0;
+    this.head = undefined;
+    this.tail = undefined;
 
-      if (!args.emission.isPhantom) {
-        await onEmission.parallel(args);
+    newOperators.forEach((operator, index) => {
+      this.operators.push(operator);
+
+      if (!this.head) {
+        this.head = operator;
+      } else {
+        this.tail!.next = operator;
+      }
+      this.tail = operator;
+
+      if ('stream' in operator && index !== newOperators.length - 1) {
+        throw new Error('Only the last operator in a stream can contain an outerStream property.');
+      }
+    });
+
+    return this;
+  };
+
+  const emit = async function(this: Stream<T>, { emission, source }: { emission: Emission; source: any }): Promise<void> {
+    try {
+      let next = isStream(source) ? this.head : undefined;
+      next = isOperator(source) ? source.next : next;
+
+      if (emission.isFailed) throw emission.error;
+
+      if (!emission.isPhantom) {
+        emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
       }
 
-      args.emission.isComplete = true;
-    } catch (error: any) {
-      args.emission.isFailed = true;
-      args.emission.error = error;
-      await onError.parallel({ error });
+      if (emission.isFailed) throw emission.error;
+
+      if (!emission.isPhantom) {
+        await this.subscribers.parallel({ emission, source });
+      }
+
+      emission.isComplete = true;
+    } catch (error) {
+      emission.isFailed = true;
+      emission.error = error;
+      await this.onError.parallel({ error });
     }
   };
 
@@ -103,6 +145,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const stream = {
     type: "stream" as "stream",
+    operators,
+    head,
+    tail,
+    bindOperators,
     emit,
     subscribe,
     pipe,
@@ -128,6 +174,9 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     get onEmission() {
       return onEmission;
     },
+    get subscribers() {
+      return subscribers;
+    },
     get isAutoComplete() {
       return isAutoComplete;
     },
@@ -150,5 +199,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
+  stream.onEmission.chain(stream, stream.emit);
   return stream; // Return the stream instance
 }
