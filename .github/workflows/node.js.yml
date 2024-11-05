@@ -26,6 +26,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: npm ci
+    - name: Reinstall Dependencies
+      run: npm i
+    - run: npm i @rollup/rollup-linux-x64-gnu
     - run: npm run build streamix
 
