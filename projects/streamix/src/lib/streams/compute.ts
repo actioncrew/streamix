@@ -1,6 +1,6 @@
 import { createStream, Stream } from '../abstractions';
 import { coroutine } from '../operators';
-import { catchError } from '../utils/catch';
+import { catchAny } from '../utils';
 
 export function compute(task: ReturnType<typeof coroutine>, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
@@ -31,7 +31,7 @@ export function compute(task: ReturnType<typeof coroutine>, params: any): Stream
       };
     });
 
-    const [error] = await catchError(Promise.race([this.awaitCompletion(), promise]));
+    const [error] = await catchAny(Promise.race([this.awaitCompletion(), promise]));
     if(error) {
       this.onError.parallel({ error });
     } else if (this.shouldComplete()) {
