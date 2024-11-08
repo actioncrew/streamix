@@ -1,5 +1,6 @@
 import { createStream, Stream } from '../abstractions';
 import { coroutine } from '../operators';
+import { catchError } from '../utils/catch';
 
 export function compute(task: ReturnType<typeof coroutine>, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
@@ -8,38 +9,36 @@ export function compute(task: ReturnType<typeof coroutine>, params: any): Stream
 
     promise = new Promise<void>(async (resolve, reject) => {
 
-      if (this.isRunning) {
-        const worker = await task.getIdleWorker();
-        worker.postMessage(params);
+      const worker = await task.getIdleWorker();
+      worker.postMessage(params);
 
-        // Handle messages from the worker
-        worker.onmessage = async (event: any) => {
+      // Handle messages from the worker
+      worker.onmessage = async (event: any) => {
+        if(event.data.error) {
+          task.returnWorker(worker);
+          reject(event.data.error);
+        } else {
           await this.onEmission.parallel({ emission: { value: event.data }, source: this });
           task.returnWorker(worker);
           resolve();
-        };
+        }
+      };
 
-        // Handle errors from the worker
-        worker.onerror = async (error: any) => {
-          await this.onEmission.parallel({ emission: { isFailed: true, error }, source: this });
-          task.returnWorker(worker);
-          reject(error);
-        };
-      } else {
-        resolve(); // Resolve immediately if not running
-      }
+      // Handle errors from the worker
+      worker.onerror = async (error: any) => {
+        task.returnWorker(worker);
+        reject(error);
+      };
     });
 
-    try {
-      await Promise.race([this.awaitCompletion(), promise]);
-    } catch (error) {
-      console.warn('Error during computation:', error);
-    } finally {
-      if (this.shouldComplete()) {
-        await promise; // Wait for promise to resolve
-        await this.complete(); // Complete the stream
-      }
+    const [error] = await catchError(Promise.race([this.awaitCompletion(), promise]));
+    if(error) {
+      this.onError.parallel({ error });
+    } else if (this.shouldComplete()) {
+      await promise;
     }
+
+    return promise;
   });
 
   stream.name = "compute";
