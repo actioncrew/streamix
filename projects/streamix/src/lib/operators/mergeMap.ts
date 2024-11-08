@@ -63,6 +63,7 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
         emission.isFailed = true;
         innerStream.onEmission.remove(handleInnerEmission!);
         handleCompletion();
+        throw error;
       });
 
       innerStream.onStop.once(() => {
@@ -75,11 +76,7 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
 
     processingPromises.push(processingPromise);
 
-    processingPromise.finally(() => {
-      if (stream.shouldComplete()) {
-        finalize();
-      }
-    });
+    processingPromise.finally(() => finalize());
   };
 
   const removeInnerStream = (innerStream: Subscribable) => {
