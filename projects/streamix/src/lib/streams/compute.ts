@@ -1,5 +1,6 @@
 import { Stream } from '../abstractions';
 import { CoroutineOperator } from '../operators';
+import { catchAny } from '../utils';
 
 
 export class ComputeStream extends Stream {
@@ -11,39 +12,38 @@ export class ComputeStream extends Stream {
 
   async run(): Promise<void> {
 
-    try {
-      this.promise = new Promise<void>(async (resolve, reject) => {
-        if (this.isRunning) {
-          const worker = await this.task.getIdleWorker();
-          worker.postMessage(this.params);
-          worker.onmessage = async (event: any) => {
-            await this.onEmission.parallel({ emission: { value: event.data }, source: this });
-            this.task.returnWorker(worker);
-            resolve();
-          };
-          worker.onerror = async (error: any) => {
-            await this.onEmission.parallel({ emission: { isFailed: true, error }, source: this });
-            this.task.returnWorker(worker);
-            reject(error);
-          };
+    this.promise = new Promise<void>(async (resolve, reject) => {
+
+      const worker = await this.task.getIdleWorker();
+      worker.postMessage(this.params);
+
+      // Handle messages from the worker
+      worker.onmessage = async (event: any) => {
+        if(event.data.error) {
+          this.task.returnWorker(worker);
+          reject(event.data.error);
         } else {
+          await this.onEmission.parallel({ emission: { value: event.data }, source: this });
+          this.task.returnWorker(worker);
           resolve();
         }
-      });
+      };
 
-      await Promise.race([
-        this.awaitCompletion(),
-        this.promise,
-      ]);
-    } catch (error) {
-      console.warn('Error during computation:', error);
-    } finally {
-      if (this.shouldComplete()) {
-        await this.promise;
-        await this.complete();
-        return;
-      }
+      // Handle errors from the worker
+      worker.onerror = async (error: any) => {
+        this.task.returnWorker(worker);
+        reject(error);
+      };
+    });
+
+    const [error] = await catchAny(Promise.race([this.awaitCompletion(), this.promise]));
+    if(error) {
+      this.onError.parallel({ error });
+    } else if (this.shouldComplete()) {
+      await this.promise;
     }
+
+    return this.promise;
   }
 }
 
