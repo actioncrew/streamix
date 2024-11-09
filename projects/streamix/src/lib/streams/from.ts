@@ -1,7 +1,7 @@
 import { Emission } from '../abstractions';
 import { createStream, Stream } from '../abstractions/stream';
 
-export function from<T = any>(input: Iterable<any> | AsyncIterable<any>): Stream<T> {
+export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> {
   // Determine if the input is async or sync
   const isAsync = Symbol.asyncIterator in Object(input);
   const iterator = isAsync ? (input as AsyncIterable<T>)[Symbol.asyncIterator]() : (input as Iterable<T>)[Symbol.iterator]();

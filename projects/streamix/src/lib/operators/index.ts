@@ -4,7 +4,6 @@ export * from './coroutine';
 export * from './delay';
 export * from './distinctUntilChanged';
 export * from './filter';
-export * from './iif';
 export * from './map';
 export * from './mergeMap';
 export * from './scan';
