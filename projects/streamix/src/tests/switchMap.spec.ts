@@ -37,7 +37,7 @@ describe('switchMap operator', () => {
     });
 
     switchedStream.onStop.once(() => {
-      expect(results).toEqual([10, 100]); // Should emit values from successful inner streams only
+      expect(results).toEqual([10, 100, 30, 300]); // Should emit values from successful inner streams only
       done();
     });
   });

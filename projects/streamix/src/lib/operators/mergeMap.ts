@@ -1,6 +1,6 @@
 import { createSubject, Subject } from '../../lib';
 import { Emission, createOperator, Subscribable } from '../abstractions';
-import { CounterType, counter } from '../utils';
+import { CounterType, catchAny, counter } from '../utils';
 
 export const mergeMap = (project: (value: any) => Subscribable) => {
   let output = createSubject();
@@ -29,7 +29,15 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
   };
 
   const processEmission = async (emission: Emission, stream: Subject): Promise<void> => {
-    const innerStream = project(emission.value);
+    const [error, innerStream] = await catchAny(() => project(emission.value));
+
+    if(error) {
+      emission.error = error;
+      emission.isFailed = true;
+      executionNumber.increment();
+      return;
+    }
+
     activeInnerStreams.push(innerStream);
 
     const processingPromise = new Promise<void>((resolve) => {
@@ -42,6 +50,11 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
 
         processingPromises = processingPromises.filter(p => p !== processingPromise);
         resolve();
+
+        // Check if all streams are done and finalize if needed
+        if (activeInnerStreams.length === 0 && processingPromises.length === 0) {
+          finalize();
+        }
       };
 
       if (!handleInnerEmission) {
@@ -49,8 +62,8 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
           // Gather promises from stream.next() to ensure parallel processing
           promises.add(
             stream.next(innerEmission.value).catch((error) => {
-              emission.error = error;
-              emission.isFailed = true;
+              console.error(`Error in inner stream emission: ${error}`);
+              // Handle emission error without affecting other streams
             })
           );
         };
@@ -58,12 +71,13 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
 
       innerStream.onEmission.chain(handleInnerEmission);
 
+      // Handle errors for each inner stream independently
       innerStream.onError.once((error: any) => {
+        console.error(`Error in inner stream: ${error.message}`);
         emission.error = error;
         emission.isFailed = true;
         innerStream.onEmission.remove(handleInnerEmission!);
-        handleCompletion();
-        throw error;
+        handleCompletion(); // Ensure this stream is marked complete
       });
 
       innerStream.onStop.once(() => {
@@ -75,8 +89,6 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
     });
 
     processingPromises.push(processingPromise);
-
-    processingPromise.finally(() => finalize());
   };
 
   const removeInnerStream = (innerStream: Subscribable) => {
