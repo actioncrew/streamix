@@ -1,7 +1,9 @@
-import { Subscribable, Emission, createOperator, Subscription } from '../abstractions';
-import { Subject, counter, CounterType, createSubject } from '../../lib';
+import { counter, createSubject, Subject } from '../../lib';
+import { Emission, Subscribable, Subscription, createOperator } from '../abstractions';
+import { CounterType } from '../../lib';
 
-export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
+// The switchMap operator implemented functionally, closely mirroring the class-based implementation
+export const switchMap = <T = any, R = T>(project: (value: T) => Subscribable<R>) => {
   let activeInnerStream: Subscribable<R> | null = null;
   let isFinalizing = false;
   let emissionNumber: number = 0;
@@ -11,8 +13,9 @@ export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
   const output = createSubject<R>();
 
   const init = (stream: Subscribable<T>) => {
-    stream.onStop.once(() => {
-      executionNumber.waitFor(emissionNumber).then(finalize);
+    stream.onStop.once(async () => {
+      await executionNumber.waitFor(emissionNumber);
+      await finalize();
     });
     output.onStop.once(finalize);
   };
@@ -29,44 +32,48 @@ export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
 
   const stopInnerStream = async () => {
     if (activeInnerStream) {
-      await activeInnerStream.complete();
       activeInnerStream.onEmission.remove(handleInnerEmission);
-
       activeInnerStream = null;
     }
   };
 
-  const handleInnerEmission = async (value: R) => {
-    await output.next(value);
+  const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
+    await output.next(innerEmission.value);
   };
 
   const handle = async (emission: Emission, stream: Subscribable<T>): Promise<Emission> => {
     emissionNumber++;
     let subscribed = false;
 
-    // Create a new inner stream using the project function
     try {
-      // Create a new inner stream using the project function
-      const newInnerStream = project(emission.value);
+      const value = emission.value as T;  // Explicitly type emission.value as T (number in your case)
+      const newInnerStream = project(value);
+
+      // Ensure active inner stream is stopped before starting a new one
       if (newInnerStream !== activeInnerStream) {
-        // Stop the current inner stream before starting the new one
         await stopInnerStream();
       }
 
       activeInnerStream = newInnerStream;
+
+      // Chain inner emissions and handle errors
+      activeInnerStream.onEmission.chain(handleInnerEmission);
 
       activeInnerStream?.onStop.once(() => {
         executionNumber.increment();
       });
 
       // Subscribe to start the new inner stream
-      subscription = activeInnerStream.subscribe((value) => handleInnerEmission(value));
+      activeInnerStream.subscribe();
+      subscribed = true;
 
       // Mark the original emission as phantom to avoid duplicating it
       emission.isPhantom = true;
       return emission;
-    } catch(error: any) {
-      if (!subscription) { executionNumber.increment(); }
+    } catch (error: any) {
+      if (!subscribed) {
+        executionNumber.increment();
+      }
       emission.isFailed = true;
       emission.error = error;
       return emission;
@@ -74,7 +81,9 @@ export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
   };
 
   // Create the operator with type-safe extension
-  const operator = createOperator(handle) as any;
+  const operator = createOperator(handle);
+
+  // Return the operator with the necessary stream and initialization
   return Object.assign(operator, {
     name: 'switchMap',
     init,
