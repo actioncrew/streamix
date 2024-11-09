@@ -8,7 +8,7 @@ describe('iif operator', () => {
     const trueStream = from([10, 20, 30]);
     const falseStream = from([1, 2, 3]);
 
-    const pipeline = from([6]).pipe(switchMap((value) => iif(() => condition(value), trueStream, falseStream)));
+    const pipeline = from([6]).pipe(switchMap(value => iif(() => condition(value), trueStream, falseStream)));
     const result: any[] = [];
 
     const subscription = pipeline.subscribe((value) => {
