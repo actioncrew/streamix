@@ -22,10 +22,6 @@ export class FromStream<T = any> extends Stream<T> {
       } else {
         let emission = { value } as Emission;
         await this.onEmission.parallel({ emission, source: this });
-
-        if (emission.isFailed) {
-          throw emission.error;
-        }
       }
     }
   }
