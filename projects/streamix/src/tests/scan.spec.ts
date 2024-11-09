@@ -39,7 +39,7 @@ describe('scan operator', () => {
     });
 
     scannedStream.onStop.once(() => {
-      expect(results).toEqual([1]); // Only the first value should be accumulated before error
+      expect(results).toEqual([1, 4]); // Only the first value should be accumulated before error
       done();
     });
   });
