@@ -6,14 +6,11 @@ import { Operator, StreamOperator } from '../abstractions/operator';
 export class IifOperator extends Operator implements StreamOperator {
 
   private outerStream!: Subject;
-  private currentStream!: Subscribable | null;
-  private finalizePromise!: Promise<void> | null;
-
-  private hasStartedTrueStream!: boolean;
-  private hasStartedFalseStream!: boolean;
+  private selectedStream: Subscribable | null = null;
+  private hasSubscribed: boolean = false;
 
   constructor(
-    private readonly condition: (emission: Emission) => boolean,
+    private readonly condition: () => boolean,
     private readonly trueStream: Subscribable,
     private readonly falseStream: Subscribable
   ) {
@@ -26,53 +23,39 @@ export class IifOperator extends Operator implements StreamOperator {
 
   override init(stream: Stream) {
     this.outerStream = new Subject();
-    this.currentStream = null;
 
-    this.hasStartedTrueStream = false;
-    this.hasStartedFalseStream = false;
+    // Select the stream based on the condition (only once at the beginning)
+    this.selectedStream = this.condition() ? this.trueStream : this.falseStream;
 
-    this.trueStream.onEmission.chain(this, this.handleInnerEmission);
-    this.falseStream.onEmission.chain(this, this.handleInnerEmission);
-
-    this.finalizePromise = Promise.all([
-      this.trueStream.awaitCompletion(),
-      this.falseStream.awaitCompletion()
-    ]).then(() => this.finalize());
+    // Subscribe to the selected stream and forward emissions
+    this.selectedStream.onEmission.chain(this, this.handleInnerEmission);
+    this.selectedStream.onStop.once(() => this.finalize());
   }
 
-  async finalize() {
-    this.trueStream.onEmission.remove(this, this.handleInnerEmission);
-    this.falseStream.onEmission.remove(this, this.handleInnerEmission);
-    await this.outerStream.complete();
+  private async finalize() {
+    // Clean up emission chains
+    this.selectedStream?.onEmission.remove(this, this.handleInnerEmission);
   }
 
-  private async handleInnerEmission({ emission, source }: { emission: Emission, source: Subscribable }) {
-    if (this.currentStream === source) {
-      await this.outerStream.next(emission.value);
-    }
-  };
+  private async handleInnerEmission({ emission }: { emission: Emission }) {
+    // Forward emissions from the selected stream
+    await this.outerStream.next(emission.value);
+  }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    const selectedStream = this.condition(emission) ? this.trueStream : this.falseStream;
-
-    if (this.currentStream !== selectedStream) {
-      // Switch to the new stream
-      this.currentStream = selectedStream;
+    if (!this.hasSubscribed) {
+      this.selectedStream?.subscribe();
+      this.hasSubscribed = true;
     }
 
-    if (!this.hasStartedTrueStream) {
-      this.trueStream.subscribe();
-      this.hasStartedTrueStream = true;
-    }
-
-    if (!this.hasStartedFalseStream) {
-      this.falseStream.subscribe();
-      this.hasStartedFalseStream = true;
-    }
-
-    emission.isPhantom = true;
-    return emission; // Return the modified emission
+    // No need to modify the emission as it's only needed for initial condition check
+    return emission;
   }
 }
 
-export const iif = (condition: (emission: Emission) => boolean, trueStream: Subscribable, falseStream: Subscribable) => new IifOperator(condition, trueStream, falseStream);
+// Factory function to create the IifOperator
+export const iif = (
+  condition: () => boolean,
+  trueStream: Subscribable,
+  falseStream: Subscribable
+) => new IifOperator(condition, trueStream, falseStream);
