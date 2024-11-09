@@ -1,4 +1,4 @@
-import { Subscribable, Emission, createOperator } from '../abstractions';
+import { Subscribable, Emission, createOperator, Subscription } from '../abstractions';
 import { Subject, counter, CounterType, createSubject } from '../../lib';
 
 export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
@@ -6,6 +6,7 @@ export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
   let isFinalizing = false;
   let emissionNumber: number = 0;
   let executionNumber: CounterType = counter(0);
+  let subscription: Subscription | undefined;
 
   const output = createSubject<R>();
 
@@ -35,8 +36,8 @@ export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
     }
   };
 
-  const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
-    await output.next(innerEmission.value);
+  const handleInnerEmission = async (value: R) => {
+    await output.next(value);
   };
 
   const handle = async (emission: Emission, stream: Subscribable<T>): Promise<Emission> => {
@@ -54,22 +55,18 @@ export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
 
       activeInnerStream = newInnerStream;
 
-      // Chain inner emissions and handle errors
-      activeInnerStream.onEmission.chain(handleInnerEmission);
-
       activeInnerStream?.onStop.once(() => {
         executionNumber.increment();
       });
 
       // Subscribe to start the new inner stream
-      activeInnerStream.subscribe();
-      subscribed = true;
+      subscription = activeInnerStream.subscribe((value) => handleInnerEmission(value));
 
       // Mark the original emission as phantom to avoid duplicating it
       emission.isPhantom = true;
       return emission;
     } catch(error: any) {
-      if (!subscribed) { executionNumber.increment(); }
+      if (!subscription) { executionNumber.increment(); }
       emission.isFailed = true;
       emission.error = error;
       return emission;
@@ -77,7 +74,7 @@ export const switchMap = <T, R>(project: (value: T) => Subscribable<R>) => {
   };
 
   // Create the operator with type-safe extension
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as any;
   return Object.assign(operator, {
     name: 'switchMap',
     init,

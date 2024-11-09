@@ -1,7 +1,7 @@
 import { createStream, Subscribable, Stream, Subscription } from '../abstractions';
 import { Emission } from '../abstractions/emission';
 
-export function iif<T = any>(
+export function iif<T>(
   condition: () => boolean, // Evaluate condition once at initialization
   trueStream: Subscribable<T>, // Stream to choose when condition is true
   falseStream: Subscribable<T> // Stream to choose when condition is false
