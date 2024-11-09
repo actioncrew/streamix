@@ -1,15 +1,26 @@
 import { Emission } from '../abstractions';
 import { createStream, Stream } from '../abstractions/stream';
 
-export function from<T = any>(input: any[] | IterableIterator<any>): Stream<T> {
-  const iterator = Array.isArray(input) ? input[Symbol.iterator]() : input;
+export function from<T = any>(input: Iterable<any> | AsyncIterable<any>): Stream<T> {
+  // Determine if the input is async or sync
+  const isAsync = Symbol.asyncIterator in Object(input);
+  const iterator = isAsync ? (input as AsyncIterable<T>)[Symbol.asyncIterator]() : (input as Iterable<T>)[Symbol.iterator]();
 
   let done = false;
 
   // Create the stream with a custom run function
   const stream = createStream<T>(async function(this: Stream<T>) {
     while (!done && !this.shouldComplete()) {
-      const { value, done: isDone } = iterator.next();
+      let result;
+
+      // Handle async or sync iteration based on input type
+      if (isAsync) {
+        result = await (iterator as AsyncIterator<T>).next();
+      } else {
+        result = (iterator as Iterator<T>).next();
+      }
+
+      const { value, done: isDone } = result;
       if (isDone) {
         done = true;
         if (!this.shouldComplete()) {
@@ -18,10 +29,6 @@ export function from<T = any>(input: any[] | IterableIterator<any>): Stream<T> {
       } else {
         const emission = { value } as Emission;
         await this.onEmission.parallel({ emission, source: this });
-
-        if (emission.isFailed) {
-          throw emission.error;
-        }
       }
     }
   });
