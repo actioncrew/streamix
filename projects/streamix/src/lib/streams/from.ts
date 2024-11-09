@@ -4,13 +4,16 @@ import { Stream } from '../abstractions';
 export class FromStream<T = any> extends Stream<T> {
   private done: boolean = false;
 
-  constructor(private readonly iterator: IterableIterator<any>) {
+  constructor(private readonly iterator: Iterator<any> | AsyncIterator<any>, private readonly isAsync: boolean) {
     super();
   }
 
   async run(): Promise<void> {
     while (!this.done && !this.shouldComplete()) {
-      const { value, done } = this.iterator.next();
+      // Get the next item from the iterator, using `await` if it's an async iterator
+      const result = this.isAsync ? await (this.iterator as AsyncIterator<any>).next() : (this.iterator as Iterator<any>).next();
+
+      const { value, done } = result;
       if (done) {
         this.done = true;
         if (!this.shouldComplete()) {
@@ -28,12 +31,18 @@ export class FromStream<T = any> extends Stream<T> {
   }
 }
 
-export function from<T = any>(input: any[] | IterableIterator<any>) {
+export function from<T = any>(input: any[] | Iterable<any> | AsyncIterable<any>) {
+  let source: any = input;
   if (Array.isArray(input)) {
-    return new FromStream<T>(input[Symbol.iterator]()); // Convert array to iterator
-  } else if (typeof input[Symbol.iterator] === 'function') {
-    return new FromStream<T>(input as IterableIterator<any>);
+    // Convert array to a synchronous iterator
+    return new FromStream<T>(source[Symbol.iterator](), false);
+  } else if (typeof source[Symbol.asyncIterator] === 'function') {
+    // Async iterable
+    return new FromStream<T>(source[Symbol.asyncIterator](), true);
+  } else if (typeof source[Symbol.iterator] === 'function') {
+    // Sync iterable
+    return new FromStream<T>(source[Symbol.iterator](), false);
   } else {
-    throw new TypeError('Input must be an array or an iterable iterator');
+    throw new TypeError('Input must be an array, iterable, or async iterable');
   }
 }
