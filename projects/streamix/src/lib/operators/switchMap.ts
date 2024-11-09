@@ -1,5 +1,5 @@
 import { counter, Subject } from '../../lib';
-import { Emission, Operator, Stream, StreamOperator, Subscribable } from '../abstractions';
+import { Emission, Operator, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
 
 export class SwitchMapOperator<T, R> extends Operator implements StreamOperator {
   private activeInnerStream: Subscribable<R> | null = null;
@@ -7,6 +7,7 @@ export class SwitchMapOperator<T, R> extends Operator implements StreamOperator 
   private emissionNumber = 0;
   private executionNumber = counter(0);
   private output = new Subject<R>();
+  private subscription!: Subscription;
 
   constructor(private readonly project: (value: T) => Subscribable<R>) {
     super();
@@ -36,14 +37,13 @@ export class SwitchMapOperator<T, R> extends Operator implements StreamOperator 
 
   private async stopInnerStream() {
     if (this.activeInnerStream) {
-      await this.activeInnerStream.complete();
-      this.activeInnerStream.onEmission.remove(this.handleInnerEmission);
+      this.subscription.unsubscribe();
       this.activeInnerStream = null;
     }
   }
 
-  private handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
-    await this.output.next(innerEmission.value);
+  private handleInnerEmission = async (value: any) => {
+    await this.output.next(value);
   };
 
   async handle(emission: Emission, stream: Subscribable<T>): Promise<Emission> {
@@ -59,13 +59,12 @@ export class SwitchMapOperator<T, R> extends Operator implements StreamOperator 
       }
 
       this.activeInnerStream = newInnerStream;
-      this.activeInnerStream.onEmission.chain(this.handleInnerEmission);
 
       this.activeInnerStream.onStop.once(() => {
         this.executionNumber.increment();
       });
 
-      this.activeInnerStream.subscribe();
+      this.subscription = this.activeInnerStream.subscribe((value) => this.handleInnerEmission(value));
       subscribed = true;
 
       emission.isPhantom = true;
