@@ -33,11 +33,37 @@ export class CoroutineOperator extends Operator {
     const mainTaskBody = mainTask.toString().replace(/function[\s]*\(/, `function ${mainTask.name}(`);
 
     const workerBody = `
+      function __async(thisArg, _arguments, generatorFunc) {
+        return new Promise((resolve, reject) => {
+          const generator = generatorFunc.apply(thisArg, _arguments || []);
+
+          function step(nextFunc) {
+            let result;
+            try {
+              result = nextFunc();
+            } catch (error) {
+              reject(error);
+              return;
+            }
+            if (result.done) {
+              resolve(result.value);
+            } else {
+              Promise.resolve(result.value).then(
+                (value) => step(() => generator.next(value)),
+                (error) => step(() => generator.throw(error))
+              );
+            }
+          }
+
+          step(() => generator.next());
+        });
+      }
+
       ${injectedDependencies}
       const mainTask = ${mainTaskBody};
-      onmessage = (event) => {
+      onmessage = async (event) => {
         try {
-          const result = mainTask(event.data);
+          const result = await mainTask(event.data);
           postMessage(result);
         } catch (error) {
           postMessage({ error: error.message });
