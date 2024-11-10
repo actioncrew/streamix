@@ -1,25 +1,9 @@
-import { createStream, Stream } from '../abstractions';
+import { Stream } from '../abstractions';
+import { loop } from './loop';
 
-export function range<T = any>(start: number, end: number, step: number = 1): Stream<T> {
+export function range(start: number, end: number, step: number = 1): Stream<number> {
   // Create the custom run function for the RangeStream
-  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
-    let current = start; // Initialize the current value
-
-    try {
-      while (current < end && !this.shouldComplete()) {
-        await this.onEmission.parallel({ emission: { value: current }, source: this });
-
-        current += step; // Increment the current value by the step
-      }
-
-      // Set auto-completion if we have reached or exceeded the end value
-      if (current >= end && !this.shouldComplete()) {
-        this.isAutoComplete = true;
-      }
-    } catch (error) {
-      await this.onError.parallel({ error }); // Handle any errors during emission
-    }
-  });
+  const stream = loop(start, current => current < end, current => current + step);
 
   stream.name = "range";
   // Create the stream using createStream and the custom run function
