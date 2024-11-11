@@ -47,7 +47,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     const getFirstChunk = () => this.chunks[0];
     const getLastChunk = () => this.chunks[this.chunks.length - 1];
 
-    chunks.forEach((c) => c.onError.remove(pipeline, onErrorCallback));
+    this.chunks.forEach((c) => c.onError.remove(pipeline, onErrorCallback));
     getFirstChunk().onStart.remove(pipeline, onStartCallback);
     getLastChunk().subscribers.remove(pipeline, onEmissionCallback);
     getLastChunk().onComplete.remove(pipeline, onCompleteCallback);
