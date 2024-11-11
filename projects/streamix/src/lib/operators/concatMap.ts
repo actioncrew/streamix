@@ -3,7 +3,6 @@ import { CounterType, Subject, counter } from '../../lib';
 
 export class ConcatMapOperator extends Operator implements StreamOperator {
   private innerStream!: Subscribable | null;
-  private processingPromise!: Promise<void> | null;
 
   private queue!: Emission[];
   private input!: Subscribable;
@@ -26,7 +25,6 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
     this.output = new Subject();
     this.emissionNumber = 0;
     this.executionNumber = counter(0);
-    this.processingPromise = null;
     this.isFinalizing = false;
     this.input.onStop.once(() => this.executionNumber.waitFor(this.emissionNumber).then(() => this.finalize()));
     this.output.onStop.once(() => this.finalize());
@@ -41,16 +39,14 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
     this.queue.push(emission);
 
     // Ensure processing continues if not already in progress
-    this.processingPromise = this.processingPromise || this.processQueue();
-    await this.processingPromise;
-    this.processingPromise = null;
+    await this.processQueue();
 
     emission.isPhantom = true;
     return emission;
   }
 
   private async processQueue(): Promise<void> {
-    while (this.queue.length > 0 && !this.innerStream) {
+    while (this.queue.length > 0) {
       const nextEmission = this.queue.shift();
       if (nextEmission && this.output) {
         await this.processEmission(nextEmission, this.output);
