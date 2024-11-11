@@ -10,7 +10,6 @@ export * from './fromPromise';
 export * from './iif';
 export * from './interval';
 export * from './loop';
-export * from './loopUntil';
 export * from './merge';
 export * from './of';
 export * from './range';
