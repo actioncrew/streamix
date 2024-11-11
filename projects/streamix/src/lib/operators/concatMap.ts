@@ -3,7 +3,6 @@ import { CounterType, Subject, counter, createSubject } from '../../lib';
 
 export const concatMap = (project: (value: any) => Subscribable) => {
   let innerStream: Subscribable | null = null;
-  let processingPromise: Promise<void> | null = null;
 
   let queue: Emission[] = [];
   let emissionNumber: number = 0;
@@ -21,26 +20,20 @@ export const concatMap = (project: (value: any) => Subscribable) => {
     output.onStop.once(finalize);
   };
 
-  // Declare handleInnerEmission here to make it visible in the closure
-  const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
-    await output.next(innerEmission.value); // Emit the inner emission
-  };
-
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = async (emission: Emission, stream: Subscribable) => {
     emissionNumber++;
     queue.push(emission);
 
     // Ensure processing continues if not already in progress
-    processingPromise = processingPromise || processQueue();
-    await processingPromise;
-    processingPromise = null;
+    await processQueue();
 
-    emission.isPhantom = true; // Mark as phantom emission
-    return emission; // Return the original emission
+    // Mark the original emission as processed
+    emission.isPhantom = true;
+    return emission;
   };
 
   const processQueue = async (): Promise<void> => {
-    while (queue.length > 0 && !innerStream) {
+    while (queue.length > 0) {
       const nextEmission = queue.shift(); // Get the next emission from the queue
       if (nextEmission) {
         await processEmission(nextEmission, output); // Process the emission
@@ -78,6 +71,10 @@ export const concatMap = (project: (value: any) => Subscribable) => {
       innerStream!.onStop.once(() => handleCompletion());
       innerStream!.subscribe(); // Start the inner stream
     });
+  };
+
+  const handleInnerEmission = async ({ emission: innerEmission }: { emission: Emission }) => {
+    await output.next(innerEmission.value); // Emit the inner emission
   };
 
   const handleStreamError = (emission: Emission, error: any, callback: () => void) => {
