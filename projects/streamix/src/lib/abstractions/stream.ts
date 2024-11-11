@@ -121,7 +121,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
     };
 
-    onEmission.chain(boundCallback);
+    subscribers.chain(boundCallback);
 
     if (!isRunning) {
       isRunning = true;
@@ -131,7 +131,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     const value: any = () => currentValue;
     value.unsubscribe = async () => {
       await complete();
-      onEmission.remove(boundCallback);
+      subscribers.remove(boundCallback);
     };
 
     return value;
