@@ -67,51 +67,51 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const awaitCompletion = () => completionPromise.promise();
 
-  const bindOperators = function(this: Stream<T>, ...newOperators: Operator[]): Stream<T> {
-    this.operators.length = 0;
-    this.head = undefined;
-    this.tail = undefined;
+  const bindOperators = function(...newOperators: Operator[]): Stream<T> {
+    operators.length = 0;
+    head = undefined;
+    tail = undefined;
 
     newOperators.forEach((operator, index) => {
-      this.operators.push(operator);
+      operators.push(operator);
 
-      if (!this.head) {
-        this.head = operator;
+      if (!head) {
+        head = operator;
       } else {
-        this.tail!.next = operator;
+        tail!.next = operator;
       }
-      this.tail = operator;
+      tail = operator;
 
       if ('stream' in operator && index !== newOperators.length - 1) {
         throw new Error('Only the last operator in a stream can contain an outerStream property.');
       }
     });
 
-    return this;
+    return stream;
   };
 
-  const emit = async function(this: Stream<T>, { emission, source }: { emission: Emission; source: any }): Promise<void> {
+  const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      let next = isStream(source) ? this.head : undefined;
+      let next = isStream(source) ? head : undefined;
       next = isOperator(source) ? source.next : next;
 
       if (emission.isFailed) throw emission.error;
 
       if (!emission.isPhantom) {
-        emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
+        emission = await (next?.process(emission, stream) ?? Promise.resolve(emission));
       }
 
       if (emission.isFailed) throw emission.error;
 
       if (!emission.isPhantom) {
-        await this.subscribers.parallel({ emission, source });
+        await subscribers.parallel({ emission, source });
       }
 
       emission.isComplete = true;
     } catch (error) {
       emission.isFailed = true;
       emission.error = error;
-      await this.onError.parallel({ error });
+      await onError.parallel({ error });
     }
   };
 
@@ -137,8 +137,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return value;
   };
 
-  const pipe = function(this: Stream<T>, ...operators: Operator[]): Pipeline<T> {
-    return createPipeline<T>(this).bindOperators(...operators);
+  const pipe = function(...operators: Operator[]): Pipeline<T> {
+    return createPipeline<T>(stream).bindOperators(...operators);
   };
 
   const shouldComplete = () => isAutoComplete || isStopRequested;
