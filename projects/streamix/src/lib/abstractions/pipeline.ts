@@ -43,11 +43,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const getFirstChunk = () => chunks[0];
   const getLastChunk = () => chunks[chunks.length - 1];
 
-  const bindOperators = function (this: Pipeline<T>, ...ops: Operator[]): Pipeline<T> {
-    const getFirstChunk = () => this.chunks[0];
-    const getLastChunk = () => this.chunks[this.chunks.length - 1];
+  const bindOperators = function (...ops: Operator[]): Pipeline<T> {
 
-    this.chunks.forEach((c) => c.onError.remove(pipeline, onErrorCallback));
+    chunks.forEach((c) => c.onError.remove(pipeline, onErrorCallback));
     getFirstChunk().onStart.remove(pipeline, onStartCallback);
     getLastChunk().subscribers.remove(pipeline, onEmissionCallback);
     getLastChunk().onComplete.remove(pipeline, onCompleteCallback);
@@ -74,7 +72,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
         // Create a new chunk using the source subject
         chunk = sourceSubject;
       }
-      this.chunks.push(chunk);
+      chunks.push(chunk);
     } else {
       chunk = getLastChunk();
     }
@@ -86,14 +84,14 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       const clonedOperator = operator.clone();
       clonedOperator.init(chunk);
       chunkOperators.push(clonedOperator);
-      this.operators.push(clonedOperator);
+      operators.push(clonedOperator);
 
       // If operator has a stream, finalize current chunk and start a new one
       if ('stream' in clonedOperator) {
         chunk.bindOperators(...chunkOperators);
         chunkOperators = [];
         chunk = clonedOperator.stream as any;
-        this.chunks.push(chunk);  // Push new chunk to `this.chunks`
+        chunks.push(chunk);  // Push new chunk to `this.chunks`
       }
     });
 
@@ -101,17 +99,17 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     chunk.bindOperators(...chunkOperators);
 
     // Re-bind hooks across chunks
-    this.chunks.forEach((c) => c.onError.chain(pipeline, onErrorCallback));
+    chunks.forEach((c) => c.onError.chain(pipeline, onErrorCallback));
     getFirstChunk().onStart.chain(pipeline, onStartCallback);
     getLastChunk().subscribers.chain(pipeline, onEmissionCallback);
     getLastChunk().onComplete.chain(pipeline, onCompleteCallback);
     getLastChunk().onStop.chain(pipeline, onStopCallback);
 
-    return this;  // Return `this` to allow chaining
+    return pipeline;  // Return `this` to allow chaining
   };
 
-  const pipe = function(this: Pipeline<T>, ...ops: Operator[]): Pipeline<T> {
-    return createPipeline<T>(this).bindOperators(...ops);
+  const pipe = function(...ops: Operator[]): Pipeline<T> {
+    return createPipeline<T>(pipeline).bindOperators(...ops);
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
