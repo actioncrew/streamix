@@ -7,6 +7,7 @@ export * from './filter';
 export * from './map';
 export * from './mergeMap';
 export * from './scan';
+export * from './slidingPair';
 export * from './skip';
 export * from './switchMap';
 export * from './take';
