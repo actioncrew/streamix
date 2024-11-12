@@ -20,9 +20,9 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
 
       // Wait for the completion of the inner stream
       await innerStream.awaitCompletion();
-
+      this.isAutoComplete = true;
     } catch (error) {
-      await this.onError.parallel({ error });
+      await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this });
     } finally {
       await cleanupInnerStream();
     }

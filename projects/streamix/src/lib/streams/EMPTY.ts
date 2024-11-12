@@ -9,7 +9,6 @@ export const empty = <T = any>(): Stream<T> => {
   });
 
   stream.name = "EMPTY";
-  // Create and return the EmptyStream using createStream
   return stream;
 };
 

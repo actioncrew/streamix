@@ -9,7 +9,7 @@ export function of<T = any>(value: T): Stream<T> {
         this.isAutoComplete = true; // Set auto-complete after emitting the value
       }
     } catch (error) {
-      await this.onError.parallel({ error }); // Handle any errors during emission
+      await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this }); // Handle any errors during emission
     }
   });
 

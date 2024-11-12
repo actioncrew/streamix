@@ -24,7 +24,7 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
         this.isAutoComplete = true; // Mark the stream for auto completion
       }
     } catch (error) {
-      await this.onError.parallel({ error }); // Handle any errors
+      await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this }); // Handle any errors
     }
   });
 

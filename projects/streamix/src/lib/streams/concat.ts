@@ -1,6 +1,8 @@
-import { createStream, Stream, Subscribable } from '../abstractions';
+import { createStream, Stream, Subscribable, Subscription } from '../abstractions';
 
 export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
+  let subscription: Subscription | undefined;
+
   // Create the custom run function for the ConcatStream
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     for (let currentSourceIndex = 0; currentSourceIndex < sources.length; currentSourceIndex++) {
@@ -17,28 +19,26 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
 
   // Function to run the current source
   const runCurrentSource = async (stream: Stream<T>, currentSource: Subscribable): Promise<void> => {
-    const handleEmissionFn = async ({ emission }: { emission: { value: T }; source: Subscribable }) => {
+    const handleEmissionFn = async (value: T) => {
       if (!stream.shouldComplete()) {
         await stream.onEmission.parallel({
-          emission: { value: emission.value },
+          emission: { value },
           source: stream,
         });
       }
     };
 
     try {
-      currentSource.onEmission.chain(stream, handleEmissionFn); // Chain emissions
-      currentSource.subscribe(); // Start the current source
+      subscription = currentSource.subscribe(value => handleEmissionFn(value)); // Start the current source
       await currentSource.awaitCompletion(); // Wait for the current source to complete
     } catch (error) {
-      await stream.onError.parallel({ error }); // Propagate error if occurs
+      await stream.onEmission.parallel({ emission: { error, isFailed: true }, source: stream }); // Propagate error if occurs
     } finally {
-      currentSource.onEmission.remove(stream, handleEmissionFn); // Clean up emission handler
+      subscription?.unsubscribe();
       await currentSource.complete(); // Complete the current source
     }
   };
 
   stream.name = "concat";
-  // Create the stream using createStream and the custom run function
   return stream;
 }

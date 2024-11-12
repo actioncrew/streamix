@@ -5,7 +5,7 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
   // Create the custom run function for the MockStream
   const stream = createStream(async (): Promise<void> => {
     if (failed && error) {
-      await stream.onError.parallel({ error });
+      await stream.onEmission.parallel({ emission: { error, isFailed: true }, source: stream });
       return;
     }
 

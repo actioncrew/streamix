@@ -4,28 +4,26 @@ import { createStream, Stream, Subscribable } from '../abstractions';
 export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
   // Create the custom run function for the MergeStream
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
-    // Start all sources
-    sources.forEach(source => source.subscribe());
 
-    const emissionPromises = sources.map(source => {
-      return new Promise<void>((resolve) => {
-        const handleEmissionFn = async ({ emission }: { emission: { value: T }; source: Subscribable }) => {
-          if (!this.shouldComplete()) {
-            await this.onEmission.parallel({
-              emission: { value: emission.value },
-              source: this,
-            });
-          }
-        };
-
-        // Chain emission handlers
-        source.onEmission.chain(this, handleEmissionFn);
-        source.awaitCompletion().finally(() => {
-          source.onEmission.remove(this, handleEmissionFn); // Clean up emission handler
-          resolve(); // Resolve when source completes
+    const handleEmissionFn = async (value: T) => {
+      if (!this.shouldComplete()) {
+        await this.onEmission.parallel({
+          emission: { value },
+          source: this,
         });
+      }
+    };
+
+    const emissionPromises = sources.map((source, index) => {
+      return new Promise<void>(async (resolve) => {
+        await source.awaitCompletion();
+        subscriptions[index].unsubscribe();
+        resolve(); // Resolve when source completes
       });
     });
+
+    // Start all sources
+    const subscriptions = sources.map(source => source.subscribe(value => handleEmissionFn(value)));
 
     // Wait for all sources to complete
     await Promise.race([
