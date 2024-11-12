@@ -1,114 +1,165 @@
-import { interval, scan, startWith, tap } from '@actioncrew/streamix';
-import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+import {
+  fromEvent,
+  interval,
+  map,
+  startWith,
+  Subject,
+  Subscribable,
+  switchMap,
+  takeUntil,
+  tap,
+  timer,
+  withLatestFrom,
+} from '@actioncrew/streamix';
+import { CommonModule } from '@angular/common';
+import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+
+@Component({
+  selector: 'app-caption',
+  template: `
+    <div class="caption">
+      {{ displayedCaption }}
+      <span *ngIf="showCursor" class="cursor">_</span>
+    </div>
+  `,
+  styles: `
+    .caption {
+      font-family: monospace;
+      font-size: 48px;
+      color: #0f0;
+      text-align: center;
+      position: relative;
+      background: transparent;
+    }
+
+    .cursor {
+      position: absolute;
+      right: 0;
+      top: 0;
+      transform: translateX(100%);
+      animation: blink 0.5s step-start infinite;
+    }
+
+    @keyframes blink {
+      0% { opacity: 0; }
+      33% { opacity: 1; }
+      100% { opacity: 1; }
+    }
+  `,
+  standalone: true,
+  imports: [CommonModule]
+})
+export class CaptionComponent implements OnInit {
+  caption: string = 'Streamix';
+  displayedCaption: string = '';
+  showCursor: boolean = true;
+
+  ngOnInit() {
+    this.startTypingEffect();
+    this.startCursorBlinking();
+  }
+
+  startTypingEffect() {
+    let currentIndex = 0;
+    const typeInterval = 200;
+
+    timer(1800, typeInterval).subscribe(() => {
+      if (currentIndex < this.caption.length) {
+        this.displayedCaption += this.caption[currentIndex];
+        currentIndex++;
+      }
+    });
+  }
+
+  startCursorBlinking() {
+    interval(500).subscribe(() => {
+      this.showCursor = !this.showCursor;
+    });
+  }
+}
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
-  template: '<canvas #canvas></canvas>',
-  styles: ['canvas { display: block; }'],
+  imports: [RouterOutlet, CaptionComponent],
+  template: `
+  <div class="container">
+    <app-caption></app-caption>
+    <canvas></canvas>
+  </div>`,
+  styleUrl: './app.component.scss'
 })
-export class AppComponent implements AfterViewInit {
-  @ViewChild('canvas', { static: false })
-  canvasRef!: ElementRef<HTMLCanvasElement>;
+export class AppComponent implements AfterViewInit, OnDestroy {
+  private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
-  private rectangles: any[] = [];
-  private text = 'Streamix';
-  private animationStopped = false;
-  private frameCount = 0;
-  private delayFrames = 60;
+  private fontSize = 10;
+  private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
+  private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
+  private destroy$ = new Subject<void>();
+  private scene$!: Subscribable;
 
   ngAfterViewInit() {
-    const canvas = this.canvasRef.nativeElement;
-    this.ctx = canvas.getContext('2d')!;
-    this.setupCanvas();
-    this.createRectangles();
+    this.canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    this.ctx = this.canvas.getContext('2d')!;
+    this.setupAnimation();
+  }
 
-    // Create an observable for animation frames
-    const animationFrames$ = interval(1000 / 60).pipe(
-      startWith(0), // Start immediately
-      scan(acc => acc + 1, 0), // Increment frame count
-      tap(() => {
-        if (!this.animationStopped) {
-          this.animate();
-        }
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupAnimation() {
+    const resize$ = fromEvent(window, 'resize').pipe(
+      startWith(this.getCanvasSize()),
+      map(() => this.getCanvasSize())
+    );
+
+    const columns$ = resize$.pipe(
+      map(({ width }) => Math.floor(width / this.fontSize))
+    );
+
+    const drops$ = columns$.pipe(
+      map(columns => Array.from({ length: columns }, () => 0))
+    );
+
+    const draw$ = interval(33).pipe(
+      withLatestFrom(drops$),
+      tap(([_, drops]) => {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        drops.forEach((drop: any, index: number) => {
+          const text = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
+          const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
+          this.ctx.fillStyle = color;
+          this.ctx.fillText(text, index * this.fontSize, drop * this.fontSize);
+
+          drops[index] = drop * this.fontSize > this.canvas.height && Math.random() > 0.95 ? 0 : drop + 1;
+        });
       })
     );
 
-    // Start the animation
-    animationFrames$.subscribe();
+    this.scene$ = fromEvent(window, 'resize').pipe(
+      startWith(this.getCanvasSize()),
+      tap(({ width, height }) => {
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.ctx.fillStyle = 'black';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      }),
+      switchMap(() => draw$),
+      takeUntil(this.destroy$)
+    );
+
+    this.scene$.subscribe();
   }
 
-  private setupCanvas() {
-    const canvas = this.canvasRef.nativeElement;
-    canvas.width = window.innerWidth - 20;
-    canvas.height = window.innerHeight - 20;
-  }
-
-  private animate() {
-    if (this.animationStopped) return;
-
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-
-    // Animate rectangles and draw text
-    this.animateRectangles();
-    this.drawTextWithOutline();
-  }
-
-  private drawTextWithOutline() {
-    const canvas = this.canvasRef.nativeElement;
-    const ctx = this.ctx;
-
-    ctx.font = 'bold 100px Arial'; // Set font style and size
-    ctx.textAlign = 'center'; // Align text to center
-    ctx.textBaseline = 'middle'; // Baseline of text
-
-    // Draw text stroke
-    ctx.strokeStyle = 'black'; // Set stroke color
-    ctx.lineWidth = 2; // Set stroke width
-    ctx.strokeText(this.text, canvas.width / 2, canvas.height / 2);
-
-    // Draw text fill
-    ctx.fillStyle = 'black'; // Set fill color
-    ctx.fillText(this.text, canvas.width / 2, canvas.height / 2);
-  }
-
-  private createRectangles() {
-    const canvasWidth = this.canvasRef.nativeElement.width;
-    const canvasHeight = this.canvasRef.nativeElement.height;
-    const rectangleSize = 20; // Size of the rectangle
-
-    this.rectangles = Array.from({ length: 100 }, () => ({
-      x: Math.random() * canvasWidth,
-      y: Math.random() * canvasHeight,
-      width: rectangleSize,
-      height: rectangleSize,
-      color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.5)`,
-      speedX: (Math.random() - 0.5) * 4, // Random speed in X direction
-      speedY: (Math.random() - 0.5) * 4, // Random speed in Y direction
-    }));
-  }
-
-  private animateRectangles() {
-    if (this.animationStopped) return;
-
-    this.rectangles.forEach((rect) => {
-      // Draw the rectangle
-      this.ctx.fillStyle = rect.color;
-      this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-
-      // Update the rectangle position
-      rect.x += rect.speedX;
-      rect.y += rect.speedY;
-
-      // Bounce off the edges
-      if (rect.x < 0 || rect.x + rect.width > this.ctx.canvas.width) {
-        rect.speedX *= -1;
-      }
-      if (rect.y < 0 || rect.y + rect.height > this.ctx.canvas.height) {
-        rect.speedY *= -1;
-      }
-    });
+  private getCanvasSize() {
+    return {
+      width: window.innerWidth,
+      height: window.innerHeight
+    };
   }
 }

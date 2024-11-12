@@ -88,13 +88,13 @@ export class CaptionComponent implements OnInit {
     <app-caption></app-caption>
     <canvas></canvas>
   </div>`,
-  styleUrl: './app.component.scss'
+  styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
-  private fontSize = 10;
-  private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
+  private fontSize = 12;
+  private letterArray = '0123456789'.split('');
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
   private destroy$ = new Subject<void>();
   private scene$!: Subscribable;
@@ -116,33 +116,87 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       map(() => this.getCanvasSize())
     );
 
-    const columns$ = resize$.pipe(
-      map(({ width }) => Math.floor(width / this.fontSize))
-    );
-
-    const drops$ = columns$.pipe(
-      map(columns => Array.from({ length: columns }, () => 0))
+    const rays$ = resize$.pipe(
+      map(({ width, height }) => ({
+        width,
+        height,
+        rays: Array.from({ length: 30 }, (_, i) => ({ // Create 30 rays
+          angle: (i / 30) * Math.PI / 2, // Spread over quarter circle
+          position: 10,
+        })),
+        sun: {
+          x: 0,  // Position of the sun's center in the top-left corner
+          y: 0,  // Position of the sun's center in the top-left corner
+          radius: 120,  // Radius of the sun
+        }
+      }))
     );
 
     const draw$ = interval(33).pipe(
-      withLatestFrom(drops$),
-      tap(([_, drops]) => {
+      withLatestFrom(rays$),
+      tap(([_, { width, height, rays, sun }]) => {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillRect(0, 0, width, height);
 
-        drops.forEach((drop: any, index: number) => {
+        // Number of lines to draw within the upper-right quarter
+        const numLines = 15;
+        const angleStep = Math.PI / (2 * numLines); // Spread across the upper-right quarter
+        const textSpacing = 12; // Spacing between letters on each line
+        const textHeight = this.fontSize;
+
+        // Loop through each line in the upper-right quarter and draw letters inside the sun body
+        for (let i = 0; i < numLines; i++) {
+          // Calculate angle for the current line
+          const angle = i * angleStep;
+
+          // Calculate Y offset for vertical positioning along the arc
+          const yOffset = sun.y + sun.radius * Math.sin(angle);
+
+          // Start drawing letters from the edge of the sun body
+          let xOffset = sun.x + sun.radius * Math.cos(angle);
+
+          // Loop through each letter position on the line
+          for (let j = 0; j < sun.radius; j++) {
+            // Calculate a scaling factor based on the distance from the center
+            const scaleFactor = 1 - j / sun.radius;
+
+            // Adjust xOffset based on the scale factor and text spacing
+            xOffset -= textSpacing * scaleFactor; // Subtract to move inward
+
+            // Ensure the letters stay inside the sun body
+            if (xOffset > sun.x) {
+              // Random letter and color
+              const letter = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
+              const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
+
+              // Clear a rectangular area around the letter's position
+              this.ctx.fillStyle = 'black';
+              this.ctx.fillRect(xOffset - textSpacing / 2, yOffset - textHeight / 2, textSpacing, textHeight);
+
+              // Set color and draw the letter
+              this.ctx.fillStyle = color;
+              this.ctx.fillText(letter, xOffset, yOffset);
+            }
+          }
+        }
+
+        rays.forEach((ray: any) => {
+          let x = Math.cos(ray.angle) * ray.position * this.fontSize;
+          let y = Math.sin(ray.angle) * ray.position * this.fontSize;
+
+          // Color and text for the ray
           const text = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
           const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
           this.ctx.fillStyle = color;
-          this.ctx.fillText(text, index * this.fontSize, drop * this.fontSize);
+          this.ctx.fillText(text, x, y);
 
-          drops[index] = drop * this.fontSize > this.canvas.height && Math.random() > 0.95 ? 0 : drop + 1;
+          // Advance position for shimmering effect
+          ray.position = (ray.position * this.fontSize > height && Math.random() > 0.9) ? 10 : ray.position + 1;
         });
       })
     );
 
-    this.scene$ = fromEvent(window, 'resize').pipe(
-      startWith(this.getCanvasSize()),
+    this.scene$ = resize$.pipe(
       tap(({ width, height }) => {
         this.canvas.width = width;
         this.canvas.height = height;
