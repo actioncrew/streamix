@@ -38,36 +38,35 @@ export function createSubject<T = any>(): Subject<T> {
       // Wait for the next emission or completion signal
       await Promise.race([emissionAvailable.promise(), this.awaitCompletion()]);
 
-      if (!this.shouldComplete() || bufferCount > 0) {
-        // Process each buffered value sequentially
-        while (bufferCount > 0) {
-          const promisifiedValue = buffer[head];
-          if (promisifiedValue) {
-            const value = promisifiedValue()!;
-            await this.onEmission.parallel({ emission: { value }, source: this });
-            promisifiedValue.resolve(value);
+      if (this.shouldComplete() && bufferCount === 0) {
+        break; // Exit the loop if there are no buffered values and the stream should complete
+      }
 
-            // Move the head forward in the cyclic buffer and reduce the count
-            head = (head + 1) % bufferSize;
-            bufferCount--;
+      // Process each buffered value sequentially
+      while (bufferCount > 0) {
+        const promisifiedValue = buffer[head];
+        if (promisifiedValue) {
+          const value = promisifiedValue()!;
+          await this.onEmission.parallel({ emission: { value }, source: this });
+          promisifiedValue.resolve(value);
 
-            // Resolve the spaceAvailable promise if there's space now
-            if (bufferCount < bufferSize) {
-              spaceAvailable.resolve();
-            }
+          // Move the head forward in the cyclic buffer and reduce the count
+          head = (head + 1) % bufferSize;
+          bufferCount--;
+
+          // Resolve the spaceAvailable promise if there's space now
+          if (bufferCount < bufferSize) {
+            spaceAvailable.resolve();
           }
         }
 
         // Reset `emissionAvailable` after processing all buffered values
         emissionAvailable.reset();
-
-        // If the stream should complete, exit the loop
-        if (this.shouldComplete()) {
-          break;
-        }
-      } else {
-        break;
       }
+    }
+
+    if (!this.shouldComplete()) {
+      this.isAutoComplete = true;
     }
   }) as any;
 

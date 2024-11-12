@@ -20,6 +20,7 @@ export function iif<T>(
 
     // Wait for the completion of the selected stream
     await selectedStream.awaitCompletion();
+    this.isAutoComplete = true;
   });
 
   // Handle emissions from the selected stream

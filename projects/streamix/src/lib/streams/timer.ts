@@ -47,7 +47,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              await this.onError.parallel({ error });
+              await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this });
               resolve();
             }
           }, actualIntervalMs);
@@ -56,7 +56,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.onError.parallel({ error });
+      await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this });
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

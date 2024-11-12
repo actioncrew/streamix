@@ -14,6 +14,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
 
     // Wait for completion
     await this.awaitCompletion();
+    this.isAutoComplete = true;
   };
 
   // Create the stream using createStream
