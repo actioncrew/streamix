@@ -49,7 +49,9 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
           }, actualIntervalMs);
         });
       } else {
-        this.isAutoComplete = true;
+        this.onComplete.once(() => {
+          this.isAutoComplete = true;
+        });
       }
     } catch (error) {
       eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });

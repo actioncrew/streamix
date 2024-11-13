@@ -31,7 +31,9 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
 
     // Check if all sources are completed
     if (!stream.shouldComplete() && sources.every(source => source.shouldComplete())) {
-      stream.isAutoComplete = true; // Set auto completion flag if not completed
+      stream.onComplete.once(() => {
+        stream.isAutoComplete = true;
+      });
     }
   });
 
