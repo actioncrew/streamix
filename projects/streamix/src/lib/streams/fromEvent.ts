@@ -1,6 +1,7 @@
 import { Stream, Subscription } from '../abstractions';
 import { counter } from '../utils';
 import { createStream } from '../abstractions';
+import { eventBus } from './bus';
 
 export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
   let eventCounter = counter(0);
@@ -27,7 +28,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
         if (this.isRunning) {
           eventCounter.increment();
           // Emit the event to the stream
-          await this.onEmission.parallel({ emission: { value: event }, source: this });
+          eventBus.enqueue({ target: this, payload: { emission: { value: event }, source: this }, type: 'emission' });
           eventCounter.decrement();
         }
       };

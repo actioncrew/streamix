@@ -1,4 +1,5 @@
 import { Stream, createStream } from '../abstractions';
+import { eventBus } from './bus';
 
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
@@ -19,11 +20,11 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
 
       // If the stream is not complete, emit the value
       if (!this.shouldComplete()) {
-        await this.onEmission.parallel({ emission: { value: resolvedValue }, source: this });
+        eventBus.enqueue({ target: this, payload: { emission: { value: resolvedValue }, source: this }, type: 'emission' });
         this.isAutoComplete = true; // Mark the stream for auto completion
       }
     } catch (error) {
-      await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this }); // Handle any errors
+      eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
     }
   });
 

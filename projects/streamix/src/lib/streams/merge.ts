@@ -1,5 +1,6 @@
 
 import { createStream, Stream, Subscribable } from '../abstractions';
+import { eventBus } from './bus';
 
 export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
   // Create the custom run function for the MergeStream
@@ -7,10 +8,7 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
 
     const handleEmissionFn = async (value: T) => {
       if (!this.shouldComplete()) {
-        await this.onEmission.parallel({
-          emission: { value },
-          source: this,
-        });
+        eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
       }
     };
 

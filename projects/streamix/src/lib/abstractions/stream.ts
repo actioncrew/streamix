@@ -43,26 +43,26 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const run = async () => {
     try {
-      await eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
+      eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
       await runFn.call(stream); // Pass the stream instance to the run function
-      await eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
     } catch (error) {
-      await eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
       isStopped = true; isRunning = false;
-      await eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
+      eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
     }
   };
 
   const complete = async (): Promise<void> => {
     if (!isAutoComplete) {
       isStopRequested = true;
-      return new Promise<void>((resolve) => {
-        onStop.once(() => { operators.forEach(operator => operator.cleanup()); resolve(); });
-        completionPromise.resolve();
-      });
     }
-    return completionPromise.promise(); // Ensure the completion resolves correctly
+
+    return new Promise<void>((resolve) => {
+      onStop.once(() => { operators.forEach(operator => operator.cleanup()); resolve(); });
+      completionPromise.resolve();
+    });
   };
 
   const awaitCompletion = () => completionPromise.promise();
@@ -111,7 +111,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } catch (error) {
       emission.isFailed = true;
       emission.error = error;
-      await onError.parallel({ error });
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
     }
   };
 
