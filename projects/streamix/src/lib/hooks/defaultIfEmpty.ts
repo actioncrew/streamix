@@ -12,7 +12,7 @@ export const defaultIfEmpty = (defaultValue: any) => {
   const callback = async (): Promise<void> => {
     if (!hasEmitted) {
       // If nothing has been emitted, emit the default value
-      return boundStream.onEmission.parallel({ emission: { value: defaultValue }, source: null });
+      return boundStream.onEmission.parallel({ emission: { value: defaultValue }, source: this });
     }
   };
 
