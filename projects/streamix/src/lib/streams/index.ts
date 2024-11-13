@@ -1,3 +1,4 @@
+export * from './bus';
 export * from './behaviorSubject';
 export * from './combineLatest';
 export * from './compute';
