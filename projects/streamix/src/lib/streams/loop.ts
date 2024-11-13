@@ -1,5 +1,5 @@
 import { Emission } from '../abstractions';
-import { createStream, Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions';
 
 export function loop<T>(
   initialValue: T,

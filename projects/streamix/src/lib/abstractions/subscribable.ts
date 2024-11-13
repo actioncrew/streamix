@@ -1,5 +1,5 @@
-import { Emission, Operator, Pipeline, Subscription } from '../abstractions';
-import { HookType, PromisifiedType } from '../utils';
+import { Operator, Pipeline, Subscription } from '../abstractions';
+import { HookType } from '../utils';
 
 
 export interface Subscribable<T = any> {

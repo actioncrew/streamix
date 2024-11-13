@@ -1,4 +1,4 @@
-import { Stream, Subscribable, Emission } from '.';
+import { Stream, Subscribable, Emission } from '../abstractions';
 
 export type HookOperator = {
   callback: (params?: any) => void | Promise<void>;

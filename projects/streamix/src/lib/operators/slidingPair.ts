@@ -1,7 +1,7 @@
 import { scan } from "./scan";
 
 export const slidingPair = () => {
-  return scan(
+  const operator = scan(
     (acc, value) => {
       // For the first value, set it as the previous value
       if (!acc) return [undefined, value];
@@ -10,4 +10,7 @@ export const slidingPair = () => {
     },
     undefined
   )
+
+  operator.name = 'slidingPair';
+  return operator;
 };

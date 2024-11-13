@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions';
 
 // Function to create an EmptyStream
 export const empty = <T = any>(): Stream<T> => {

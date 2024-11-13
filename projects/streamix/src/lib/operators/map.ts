@@ -1,5 +1,5 @@
 import { Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { Emission } from '../abstractions';
 import { createOperator, Operator } from '../abstractions';
 
 export const map = (transform: (value: any) => any) => {

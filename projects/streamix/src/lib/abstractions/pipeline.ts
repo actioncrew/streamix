@@ -1,6 +1,6 @@
 import { Stream } from '../abstractions';
-import { createSubject, Subject } from '../';
-import { hook, HookType } from '../utils';
+import { createSubject } from '../streams';
+import { hook } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';

@@ -1,5 +1,5 @@
 import { Stream, Subscribable, createOperator } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { Emission } from '../abstractions';
 
 export const scan = (accumulator: (acc: any, value: any, index?: number) => any, seed: any) => {
   let accumulatedValue = seed; // Initialize the accumulated value

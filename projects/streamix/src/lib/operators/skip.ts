@@ -1,5 +1,5 @@
 import { createOperator, Stream, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { Emission } from '../abstractions';
 
 export const skip = (count: number) => {
   let counter = count;

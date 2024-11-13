@@ -1,5 +1,5 @@
 import { createOperator, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { Emission } from '../abstractions';
 
 export const filter = (predicate: (value: any) => boolean) => {
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
