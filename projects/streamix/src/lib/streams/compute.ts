@@ -30,12 +30,15 @@ export function compute(task: ReturnType<typeof coroutine>, params: any): Stream
       };
     });
 
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+    });
+
     const [error] = await catchAny(Promise.race([this.awaitCompletion(), promise]));
     if(error) {
       eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
     } else {
       await promise;
-      this.isAutoComplete = true;
     }
 
     return promise;

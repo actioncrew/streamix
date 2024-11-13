@@ -9,7 +9,9 @@ export const take = (count: number) => {
       emittedCount++;
 
       if (emittedCount === count) {
-        stream.isAutoComplete = true; // Mark the stream for auto completion
+        stream.onComplete.once(() => {
+          stream.isAutoComplete = true; // Mark the stream for auto completion
+        })
       }
       return emission; // Return the emission if within count
     } else {

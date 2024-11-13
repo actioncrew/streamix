@@ -19,13 +19,14 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       // Start the inner stream
       innerStream.subscribe();
 
-      // Wait for the completion of the inner stream
-      await innerStream.awaitCompletion();
-      this.isAutoComplete = true;
+      innerStream.onComplete.once(async () => {
+        this.isAutoComplete = true;
+        await cleanupInnerStream();
+      });
+
+      await this.awaitCompletion();
     } catch (error) {
       eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
-    } finally {
-      await cleanupInnerStream();
     }
   });
 

@@ -25,7 +25,7 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
       if (isDone) {
         done = true;
         this.onComplete.once(() => {
-          this.isAutoComplete = true; // Mark the stream for auto-completion
+          this.isAutoComplete = true;
         });
       } else {
         const emission = { value } as Emission;

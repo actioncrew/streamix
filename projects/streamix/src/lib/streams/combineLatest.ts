@@ -8,6 +8,10 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
 
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
 
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+    });
+
     const [error] = await catchAny(Promise.race([
       this.awaitCompletion(),
       Promise.all(sources.map(source => source.awaitCompletion()))
@@ -15,9 +19,6 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
 
     if (error) {
       eventBus.enqueue({ target: this, payload: {emission: { error, isFailed: true }, source: this }, type: 'emission' });
-    } else {
-      this.isAutoComplete = true;
-      this.complete();
     }
   });
 

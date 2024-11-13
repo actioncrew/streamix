@@ -57,12 +57,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const complete = async (): Promise<void> => {
     if (!isAutoComplete) {
       isStopRequested = true;
+      return new Promise<void>((resolve) => {
+        onStop.once(() => { operators.forEach(operator => operator.cleanup()); resolve(); });
+        completionPromise.resolve();
+      });
     }
-
-    return new Promise<void>((resolve) => {
-      onStop.once(() => { operators.forEach(operator => operator.cleanup()); resolve(); });
-      completionPromise.resolve();
-    });
+    return completionPromise.promise();
   };
 
   const awaitCompletion = () => completionPromise.promise();
