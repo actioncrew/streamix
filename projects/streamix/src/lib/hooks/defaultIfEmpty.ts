@@ -1,4 +1,5 @@
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
+import { eventBus } from '../streams';
 
 export const defaultIfEmpty = (defaultValue: any) => {
   let boundStream: Stream;
@@ -12,7 +13,7 @@ export const defaultIfEmpty = (defaultValue: any) => {
   const callback = async (): Promise<void> => {
     if (!hasEmitted) {
       // If nothing has been emitted, emit the default value
-      return boundStream.onEmission.parallel({ emission: { value: defaultValue }, source: this });
+      return eventBus.enqueue({ target: boundStream, payload: { emission: { value: defaultValue }, source: this }, type: 'emission' });
     }
   };
 

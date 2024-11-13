@@ -1,4 +1,5 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
+import { eventBus } from "../../lib";
 import { hook, HookType, promisified } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
@@ -42,15 +43,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const run = async () => {
     try {
-      await onStart.parallel(); // Trigger start hook
+      await eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
       await runFn.call(stream); // Pass the stream instance to the run function
-      await onComplete.parallel(); // Trigger complete hook
+      await eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
     } catch (error) {
-      await onError.parallel({ error }); // Handle any errors
+      await eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      isStopped = true;
-      isRunning = false;
-      await onStop.parallel(); // Finalize the stop hook
+      isStopped = true; isRunning = false;
+      await eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
     }
   };
 

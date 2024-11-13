@@ -1,3 +1,4 @@
+import { eventBus } from './../streams/bus';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) => {
@@ -11,7 +12,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) =>
 
   const callback = async (): Promise<void> => {
     // Emit the accumulated value once the stream completes
-    await boundStream.onEmission.parallel({ emission: { value: accumulatedValue }, source: boundStream });
+    eventBus.enqueue({ target: boundStream,  payload: { emission: { value: accumulatedValue }, source: boundStream }, type: 'emission' });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
