@@ -21,7 +21,13 @@
     "lib": [
       "ES2022",
       "dom"
-    ]
+    ],
+    "paths": {
+      "@actioncrew/streamix": [
+        "./projects/streamix/src/lib/index.ts",
+        "./dist/streamix/index.d.ts"
+      ]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

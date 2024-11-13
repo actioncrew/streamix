@@ -19,8 +19,15 @@ export function createLock() {
   return { acquire };
 }
 
+export type BusEvent = {
+  target: any,
+  payload: any,
+  type: 'emission' | 'start' | 'stop' | 'complete' | 'error';
+  timeStamp?: Date
+};
+
 export type Bus<T = any> = Stream<T> & {
-  enqueue(event: { emission: Emission, source: Stream }): Promise<void>;
+  enqueue(event: BusEvent): Promise<void>;
 };
 
 // Create the functional version of the Subject
@@ -50,9 +57,17 @@ export function createBus(): Bus {
       while (itemsCount > 0) {
         const promisifiedValue = buffer[head];
         if (promisifiedValue) {
-          const value = promisifiedValue() as { emission: Emission, source: Stream };
-          await value.source.onEmission.parallel(value);
-          promisifiedValue.resolve(value);
+          const event = promisifiedValue() as BusEvent;
+
+          switch(event.type) {
+            case 'start': event.target.onStart.parallel(event.payload); break;
+            case 'stop': event.target.onStop.parallel(event.payload); break;
+            case 'emission': event.target.onEmission.parallel(event.payload); break;
+            case 'complete': event.target.onComplete.parallel(event.payload); break;
+            case 'error': event.target.onError.parallel(event.payload); break;
+          }
+
+          promisifiedValue.resolve(event);
 
           // Move the head forward in the cyclic buffer and reduce the count
           head = (head + 1) % bufferSize;
@@ -74,7 +89,7 @@ export function createBus(): Bus {
     }
   }) as Bus;
 
-  bus.enqueue = async function (this: Stream, event: { emission: Emission, source: Stream }): Promise<void> {
+  bus.enqueue = async function (this: Stream, event: BusEvent): Promise<void> {
     // If the stream is stopped, further emissions are not allowed
     if (this.isStopRequested || this.isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
@@ -91,6 +106,7 @@ export function createBus(): Bus {
         spaceAvailable.reset();
       }
 
+      event.timeStamp = new Date();
       const promisifiedValue = promisified<any>(event);
 
       // Place the new value at the tail and advance the tail position
