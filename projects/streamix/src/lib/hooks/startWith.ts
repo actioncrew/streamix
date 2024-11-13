@@ -1,3 +1,4 @@
+import { eventBus } from './../streams/bus';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const startWith = (value: any) => {
@@ -10,7 +11,7 @@ export const startWith = (value: any) => {
 
   const callback = async (instance: Operator, params?: any): Promise<void> => {
     // Emit the provided initial value when the stream starts
-    await boundStream.onEmission.parallel({ emission: { value }, source: instance });
+    eventBus.enqueue({ target: boundStream, payload: { emission: { value }, source: instance }, type: 'emission' });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
