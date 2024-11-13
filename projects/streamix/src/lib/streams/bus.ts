@@ -21,7 +21,7 @@ export function createLock() {
 
 export type BusEvent = {
   target: any,
-  type: 'emission' | 'start' | 'stop' | 'complete' | 'error';
+  type: 'emission' | 'start' | 'stop' | 'complete' | 'error' | 'subscribers';
   payload?: any,
   timeStamp?: Date
 };
@@ -63,6 +63,7 @@ export function createBus(): Bus {
               case 'emission': await event.target.onEmission.parallel(event.payload); break;
               case 'complete': await event.target.onComplete.parallel(event.payload); break;
               case 'error': await event.target.onError.parallel(event.payload); break;
+              case 'subscribers': await event.target.onError.parallel(event.payload); break;
             }
 
             promisifiedValue.resolve(event);

@@ -1,5 +1,6 @@
 import { Emission } from '../abstractions';
 import { createStream, Stream } from '../abstractions';
+import { eventBus } from './bus';
 
 export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> {
   // Determine if the input is async or sync
@@ -23,12 +24,12 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
       const { value, done: isDone } = result;
       if (isDone) {
         done = true;
-        if (!this.shouldComplete()) {
+        this.onComplete.once(() => {
           this.isAutoComplete = true; // Mark the stream for auto-completion
-        }
+        });
       } else {
         const emission = { value } as Emission;
-        await this.onEmission.parallel({ emission, source: this });
+        eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
       }
     }
   });

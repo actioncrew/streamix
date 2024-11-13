@@ -1,4 +1,5 @@
 import { createStream, Subscribable, Stream } from '../abstractions';
+import { eventBus } from './bus';
 
 export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   let innerStream: Subscribable<T> | undefined;
@@ -22,7 +23,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       await innerStream.awaitCompletion();
       this.isAutoComplete = true;
     } catch (error) {
-      await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this });
+      eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
     } finally {
       await cleanupInnerStream();
     }
@@ -34,10 +35,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       return;
     }
 
-    await stream.onEmission.parallel({
-      emission: { value },
-      source: stream,
-    });
+    eventBus.enqueue({ target: stream, payload: { emission: { value }, source: stream }, type: 'emission' });
   };
 
   // Clean up the inner stream when complete

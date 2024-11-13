@@ -1,4 +1,5 @@
 import { createStream, Stream } from '../abstractions';
+import { eventBus } from './bus';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
@@ -22,10 +23,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       }
 
       // Initial emission
-      await this.onEmission.parallel({
-        emission: { value: timerValue },
-        source: this
-      });
+      eventBus.enqueue({ target: this, payload: { emission: { value: timerValue }, source: this }, type: 'emission' });
       timerValue++;
 
       if (actualIntervalMs > 0) {
@@ -39,15 +37,13 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
                 return;
               }
 
-              await this.onEmission.parallel({
-                emission: { value: timerValue },
-                source: this
-              });
+              eventBus.enqueue({ target: this, payload: { emission: { value: timerValue }, source: this }, type: 'emission' });
+
               timerValue++;
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this });
+              eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
               resolve();
             }
           }, actualIntervalMs);
@@ -56,7 +52,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
         this.isAutoComplete = true;
       }
     } catch (error) {
-      await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this });
+      eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

@@ -1,4 +1,5 @@
 import { createStream, Subscribable, Stream, Subscription } from '../abstractions';
+import { eventBus } from './bus';
 
 export function iif<T>(
   condition: () => boolean, // Evaluate condition once at initialization
@@ -28,10 +29,7 @@ export function iif<T>(
       return;
     }
 
-    await stream.onEmission.parallel({
-      emission: { value },
-      source: stream,
-    });
+    eventBus.enqueue({ target: stream, payload: { emission: { value }, source: stream }, type: 'emission' });
   };
 
   stream.name = "iif";

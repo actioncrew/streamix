@@ -1,3 +1,4 @@
+import { eventBus } from './../lib/streams/bus';
 import { concatMap, createStream, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
@@ -145,7 +146,7 @@ export function myInnerStream(value: any): Stream {
   const run = async (stream: Stream): Promise<void> => {
     // Simulate inner stream behavior (emission, completion, error)
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
-    await stream.onEmission.parallel({ emission: { value }, source: stream }); // Emit the projected value
+    eventBus.enqueue({ target: stream, payload: { emission: { value }, source: stream }, type: 'emission' }); // Emit the projected value
   };
 
   // Create the stream using createStream and the custom run function
@@ -157,7 +158,7 @@ export function myRealStream(): Stream {
   // Create the custom run function for MyRealStream
   const run = async (stream: Stream): Promise<void> => {
     // Simulate your real stream behavior (emitting values)
-    await stream.onEmission.parallel({ emission: { value: 'streamValue1' }, source: stream });
+    eventBus.enqueue({ target: stream, payload: { emission: { value: 'streamValue1' }, source: stream }, type: 'emission' }); // Emit the projected value
   };
 
   // Create the stream using createStream and the custom run function

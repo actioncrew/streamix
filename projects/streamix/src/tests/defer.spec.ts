@@ -1,17 +1,17 @@
-import { createStream, defer, Emission, Stream } from '../lib';
+import { createStream, defer, Emission, eventBus, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(emissions: Emission[], completed = false, failed = false, error?: Error): Stream {
   // Create the custom run function for the MockStream
   const stream = createStream(async (): Promise<void> => {
     if (failed && error) {
-      await stream.onEmission.parallel({ emission: { error, isFailed: true }, source: stream });
+      eventBus.enqueue({ target: stream, payload: { emission: { error, isFailed: true }, source: stream }, type: 'emission' });
       return;
     }
 
     for (const emission of emissions) {
       if (stream.isStopRequested) return; // Exit if stop is requested
-      await stream.onEmission.parallel({ emission, source: stream });
+      eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
     }
 
     if (completed) {

@@ -28,7 +28,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
       values[index] = { hasValue: true, value };
 
       if (values.every(v => v.hasValue)) {
-        return eventBus.enqueue({
+        eventBus.enqueue({
           target: stream,
           payload: { emission: { value: values.map(v => v.value!) },
           source: stream },
@@ -43,8 +43,8 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
   const originalComplete = stream.complete.bind(stream);
   stream.complete = async function(): Promise<void> {
     sources.forEach((source, index) => {
-      subscriptions[index].unsubscribe();
       source.complete();
+      subscriptions[index].unsubscribe();
     });
     return originalComplete();
   };
