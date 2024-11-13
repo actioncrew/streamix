@@ -92,7 +92,7 @@ export function createBus(): Bus {
   bus.enqueue = async function (this: Stream, event: BusEvent): Promise<void> {
     // If the stream is stopped, further emissions are not allowed
     if (this.isStopRequested || this.isStopped) {
-      console.warn('Cannot push value to a stopped Subject.');
+      console.warn('Cannot push value to a stopped bus.');
       return Promise.resolve();
     }
 
