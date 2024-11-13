@@ -1,5 +1,5 @@
 import { createSubject, Subject } from '../streams';
-import { createOperator, Emission, Stream, Subscribable } from '../abstractions';
+import { createOperator, Emission, Operator, Stream, Subscribable } from '../abstractions';
 
 export const switchMap = <T = any, R = T>(project: (value: T) => Subscribable<R>) => {
   let activeInnerStream: Subscribable<R> | null = null;
@@ -115,7 +115,7 @@ export const switchMap = <T = any, R = T>(project: (value: T) => Subscribable<R>
   };
 
   // Create the operator with type-safe extension
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   return Object.assign(operator, {
     name: 'switchMap',
     init,

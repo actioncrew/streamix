@@ -17,7 +17,7 @@ export const bufferCount = (bufferSize: number): Operator => {
     return { isPhantom: true };
   };
 
-  const operator = createOperator(handle); // Create the operator using createOperator
+  const operator = createOperator(handle) as Operator; // Create the operator using createOperator
   operator.name = 'bufferCount';
   return operator;
 };

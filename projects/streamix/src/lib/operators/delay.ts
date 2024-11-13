@@ -1,4 +1,4 @@
-import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const delay = (delayTime: number) => {
   let applyDelay: (emission: Emission) => Promise<Emission>;
@@ -22,7 +22,7 @@ export const delay = (delayTime: number) => {
     return emission;
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'delay';
   operator.init = init;
   return operator;

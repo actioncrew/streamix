@@ -131,7 +131,7 @@ export const coroutine = (...functions: Function[]) => {
     workerQueue.length = 0; // Clear the queue
   };
 
-  const operator = createOperator(handle) as any;
+  const operator = createOperator(handle)  as Operator as any;
   operator.name = 'coroutine';
   operator.init = init;
   operator.finalize = finalize;

@@ -8,7 +8,7 @@ export const map = (transform: (value: any) => any) => {
     return { value }; // Return the modified emission
   };
 
-  const operator = createOperator(handle); // Create the operator using createOperator
+  const operator = createOperator(handle) as Operator; // Create the operator using createOperator
   operator.name = 'map';
   return operator; // Return the created operator
 };

@@ -1,5 +1,5 @@
 import { createSubject, Subject } from '../streams';
-import { Emission, createOperator, Subscribable } from '../abstractions';
+import { Emission, createOperator, Operator, Subscribable } from '../abstractions';
 import { CounterType, catchAny, counter } from '../utils';
 
 export const mergeMap = (project: (value: any) => Subscribable) => {
@@ -118,7 +118,7 @@ export const mergeMap = (project: (value: any) => Subscribable) => {
     }
   };
 
-  const operator = createOperator(handle) as any;
+  const operator = createOperator(handle) as Operator as any;
   operator.name = 'mergeMap';
   operator.init = init;
   operator.stream = output;

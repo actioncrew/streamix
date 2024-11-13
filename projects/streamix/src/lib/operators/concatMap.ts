@@ -1,4 +1,4 @@
-import { Subscribable, Emission, createOperator } from '../abstractions';
+import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { CounterType, counter } from '../utils';
 import { Subject, createSubject } from '../streams';
 
@@ -100,7 +100,7 @@ export const concatMap = (project: (value: any) => Subscribable) => {
     await Promise.all(streams.filter(stream => stream?.isRunning).map(stream => stream!.complete()));
   };
 
-  const operator = createOperator(handle) as any;
+  const operator = createOperator(handle) as Operator as any;
   operator.name = 'concatMap';
   operator.init = init;
   operator.stream = output;

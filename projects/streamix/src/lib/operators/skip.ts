@@ -1,4 +1,4 @@
-import { createOperator, Stream, Subscribable } from '../abstractions';
+import { createOperator, Operator, Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const skip = (count: number) => {
@@ -18,7 +18,7 @@ export const skip = (count: number) => {
     counter = count;
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'skip';
   operator.init = init;
   return operator;

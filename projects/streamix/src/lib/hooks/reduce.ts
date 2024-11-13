@@ -1,4 +1,4 @@
-import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) => {
   let boundStream: Stream;
@@ -21,7 +21,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) =>
     return emission; // Return the emission
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'reduce';
   operator.init = init;
   return operator;

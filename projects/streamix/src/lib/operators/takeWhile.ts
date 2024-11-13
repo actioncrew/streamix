@@ -1,4 +1,4 @@
-import { createOperator, Subscribable } from '../abstractions';
+import { createOperator, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const takeWhile = (predicate: (value: any, index?: number) => boolean) => {
@@ -16,7 +16,7 @@ export const takeWhile = (predicate: (value: any, index?: number) => boolean) =>
     return emission; // Return the emission if the condition is met
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'takeWhile';
   return operator;
 };
