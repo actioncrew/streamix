@@ -1,5 +1,6 @@
 import { createStream, Stream, Subscribable } from '../abstractions';
 import { catchAny } from '../utils'; // Ensure catchAny is imported from the correct location
+import { eventBus } from './bus';
 
 export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined }));
@@ -13,7 +14,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
     ]));
 
     if (error) {
-      await this.onEmission.parallel({ emission: { error, isFailed: true }, source: this });
+      eventBus.enqueue({ target: this, payload: {emission: { error, isFailed: true }, source: this }, type: 'emission' });
     } else {
       this.isAutoComplete = true;
       this.complete();
@@ -27,9 +28,11 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
       values[index] = { hasValue: true, value };
 
       if (values.every(v => v.hasValue)) {
-        return stream.onEmission.parallel({
-          emission: { value: values.map(v => v.value!) },
-          source: stream,
+        return eventBus.enqueue({
+          target: stream,
+          payload: { emission: { value: values.map(v => v.value!) },
+          source: stream },
+          type: 'emission'
         });
       }
     };

@@ -26,6 +26,7 @@ export function createSubject<T = any>(): Subject<T> {
     }
 
     promise = eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
+    await promise;
   };
 
   stream.name = "subject";
