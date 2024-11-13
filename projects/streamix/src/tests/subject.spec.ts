@@ -1,7 +1,7 @@
 import { createSubject } from '../lib';
 
 describe('Subject', () => {
-  it('should emit values to subscribers', async () => {
+  it('should emit values to subscribers', (done) => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
@@ -16,10 +16,11 @@ describe('Subject', () => {
     subject.onStop.once(() => {
       expect(emittedValues).toEqual(['value1', 'value2']);
       subscription.unsubscribe();
+      done();
     })
   });
 
-  it('should not emit values after unsubscribed', async () => {
+  it('should not emit values after unsubscribed', (done) => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
@@ -35,10 +36,11 @@ describe('Subject', () => {
     subject.onStop.once(() => {
       expect(emittedValues).toEqual(['value1']);
       subscription.unsubscribe();
+      done();
     })
   });
 
-  it('should not emit values after stopped', async () => {
+  it('should not emit values after stopped', (done) => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
@@ -53,10 +55,11 @@ describe('Subject', () => {
     subject.onStop.once(() => {
       expect(emittedValues).toEqual(['value1']);
       subscription.unsubscribe();
+      done();
     })
   });
 
-  it('should clear emission queue on cancel', async () => {
+  it('should clear emission queue on cancel', (done) => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
@@ -71,10 +74,11 @@ describe('Subject', () => {
     subject.onStop.once(() => {
       expect(emittedValues).toEqual(['value1']);
       subscription.unsubscribe();
+      done();
     })
   });
 
-  it('should not allow pushing values to a stopped Subject', async () => {
+  it('should not allow pushing values to a stopped Subject', (done) => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
@@ -88,9 +92,10 @@ describe('Subject', () => {
     subject.onStop.once(() => {
       expect(emittedValues).toEqual([]);
       subscription.unsubscribe();
+      done();
     })
   });
-  it('stress test, synchronous case', async () => {
+  it('stress test, synchronous case', (done) => {
     const subject = createSubject<any>();
 
     let counter = 0;
@@ -106,6 +111,7 @@ describe('Subject', () => {
 
     subject.onStop.once(() => {
       subscription.unsubscribe();
+      done();
     })
   });
 
