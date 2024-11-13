@@ -51,7 +51,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       isStopped = true;
       isRunning = false;
       await onStop.parallel(); // Finalize the stop hook
-      operators.forEach(operator => operator.cleanup());
     }
   };
 
@@ -59,7 +58,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     if (!isAutoComplete) {
       isStopRequested = true;
       return new Promise<void>((resolve) => {
-        onStop.once(() => resolve());
+        onStop.once(() => { operators.forEach(operator => operator.cleanup()); resolve(); });
         completionPromise.resolve();
       });
     }
