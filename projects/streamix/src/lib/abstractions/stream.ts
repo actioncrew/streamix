@@ -51,6 +51,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       isStopped = true;
       isRunning = false;
       await onStop.parallel(); // Finalize the stop hook
+      operators.forEach(operator => operator.cleanup());
     }
   };
 
