@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 import { Emission } from '../abstractions';
 import { Subscribable } from '../abstractions';
 
@@ -24,7 +24,7 @@ export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) =
     }
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'distinctUntilChanged';
   operator.init = init;
   return operator;

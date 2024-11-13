@@ -1,4 +1,4 @@
-import { createOperator, Stream, Subscribable } from '../abstractions';
+import { createOperator, Operator, Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const take = (count: number) => {
@@ -18,7 +18,7 @@ export const take = (count: number) => {
     }
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'take';
   return operator;
 };

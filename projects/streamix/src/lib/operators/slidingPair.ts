@@ -1,7 +1,8 @@
+import { Operator } from "../abstractions";
 import { scan } from "./scan";
 
 export const slidingPair = () => {
-  const operator = scan(
+  const operator: Operator = scan(
     (acc, value) => {
       // For the first value, set it as the previous value
       if (!acc) return [undefined, value];

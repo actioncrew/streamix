@@ -1,4 +1,4 @@
-import { createOperator, Subscribable } from '../abstractions';
+import { createOperator, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const tap = (tapFunction: (value: any) => void) => {
@@ -8,7 +8,7 @@ export const tap = (tapFunction: (value: any) => void) => {
   };
 
   // Create the operator with the handle function
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'tap';
   return operator;
 };

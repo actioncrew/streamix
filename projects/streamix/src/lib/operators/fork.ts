@@ -1,4 +1,4 @@
-import { Subscribable, Emission, createOperator, Subscription } from '../abstractions';
+import { Subscribable, Emission, createOperator, Subscription, Operator } from '../abstractions';
 import { Subject, createSubject } from '../streams';
 import { CounterType, counter } from '../utils';
 
@@ -110,7 +110,7 @@ export const fork = <T = any, R = T>(
     await Promise.all(streams.filter(stream => stream?.isRunning).map(stream => stream!.complete()));
   };
 
-  const operator = createOperator(handle) as any;
+  const operator = createOperator(handle) as Operator as any;
   operator.name = 'fork';
   operator.init = init;
   operator.stream = output;

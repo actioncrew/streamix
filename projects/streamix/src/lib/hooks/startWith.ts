@@ -17,7 +17,7 @@ export const startWith = (value: any) => {
     return emission; // Simply pass the emission without modification
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'startWith';
   operator.init = init;
   return operator;

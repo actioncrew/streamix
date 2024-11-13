@@ -1,4 +1,4 @@
-import { createOperator, Emission, Stream, Subscribable } from '../abstractions';
+import { createOperator, Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export const withLatestFrom = (...streams: Subscribable[]) => {
@@ -61,7 +61,7 @@ export const withLatestFrom = (...streams: Subscribable[]) => {
     return emission;
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'withLatestFrom';
   operator.init = init;
   return operator;

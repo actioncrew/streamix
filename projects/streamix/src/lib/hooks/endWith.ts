@@ -17,7 +17,7 @@ export const endWith = (value: any) => {
     return emission; // Pass the emission forward without modification
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'endWith';
   operator.init = init;
   return operator;

@@ -1,4 +1,4 @@
-import { createOperator, Subscribable } from '../abstractions';
+import { createOperator, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const filter = (predicate: (value: any) => boolean) => {
@@ -7,7 +7,7 @@ export const filter = (predicate: (value: any) => boolean) => {
     return emission;
   };
 
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as Operator;
   operator.name = 'filter';
   return operator;
 };
