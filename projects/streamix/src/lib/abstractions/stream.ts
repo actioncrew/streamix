@@ -147,7 +147,7 @@ export abstract class Stream<T = any> implements Subscribable<T> {
       this.isStopRequested = true;
       return new Promise<void>((resolve) => {
         this.onStop.once(() => { this.operators.forEach(operator => operator.cleanup()); resolve(); });
-        this.#completionPromise.promise();
+        this.#completionPromise.resolve();
       });
     }
     return Promise.resolve();
