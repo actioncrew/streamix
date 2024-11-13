@@ -1,4 +1,4 @@
-import { createSubject, Subject } from '../../lib';
+import { createSubject, Subject } from '../streams';
 import { Emission, createOperator, Subscribable } from '../abstractions';
 import { CounterType, catchAny, counter } from '../utils';
 

@@ -1,5 +1,5 @@
 import { createOperator, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { Emission } from '../abstractions';
 
 export const tap = (tapFunction: (value: any) => void) => {
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {

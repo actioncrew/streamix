@@ -1,5 +1,5 @@
 import { Emission } from '../abstractions';
-import { createStream, Stream } from '../abstractions/stream';
+import { createStream, Stream } from '../abstractions';
 
 export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> {
   // Determine if the input is async or sync

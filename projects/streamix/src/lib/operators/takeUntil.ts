@@ -1,6 +1,6 @@
 import { createOperator, Stream, Subscription } from '../abstractions';
-import { Emission } from '../abstractions/emission';
-import { Subscribable } from '../abstractions/subscribable';
+import { Emission } from '../abstractions';
+import { Subscribable } from '../abstractions';
 
 export const takeUntil = (notifier: Subscribable) => {
   let stopRequested = false;

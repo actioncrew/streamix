@@ -1,5 +1,6 @@
 import { Subscribable, Emission, createOperator, Subscription } from '../abstractions';
-import { CounterType, Subject, counter, createSubject } from '../../lib';
+import { Subject, createSubject } from '../streams';
+import { CounterType, counter } from '../utils';
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T) => boolean; handler: () => Subscribable<R> }>

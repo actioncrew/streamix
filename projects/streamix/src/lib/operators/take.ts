@@ -1,5 +1,5 @@
 import { createOperator, Stream, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { Emission } from '../abstractions';
 
 export const take = (count: number) => {
   let emittedCount = 0;

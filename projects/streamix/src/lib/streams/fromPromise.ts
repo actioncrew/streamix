@@ -1,5 +1,4 @@
-import { Stream } from '../abstractions/stream';
-import { createStream } from '../abstractions/stream';
+import { Stream, createStream } from '../abstractions';
 
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {

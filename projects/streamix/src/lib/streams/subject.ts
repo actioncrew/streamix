@@ -1,4 +1,5 @@
-import { createStream, promisified, PromisifiedType, Stream } from '../../lib';
+import { createStream, Stream } from '../abstractions';
+import { promisified, PromisifiedType } from '../utils';
 
 // Define a functional lock for synchronizing access
 function createLock() {

@@ -1,5 +1,5 @@
 import { createOperator, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { Emission } from '../abstractions';
 
 export const takeWhile = (predicate: (value: any, index?: number) => boolean) => {
   let index = 0; // To track the index of emissions
