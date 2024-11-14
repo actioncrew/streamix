@@ -29,7 +29,6 @@ export function createSubject<T = any>(): Subject<T> {
     await started;
 
     promise = eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
-    await promise;
   };
 
   let started = new Promise<void>((resolve) => {
