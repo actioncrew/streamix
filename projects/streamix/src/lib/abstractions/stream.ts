@@ -49,8 +49,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      isStopped = true; isRunning = false;
-      eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
+      setTimeout(() => {
+        isStopped = true; isRunning = false;
+        eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
+      }, 0);
     }
   };
 
