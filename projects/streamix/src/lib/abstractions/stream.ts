@@ -44,8 +44,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const run = async () => {
     try {
       eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
-      await runFn.call(stream); // Pass the stream instance to the run function
-      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      onStart.once(async () => {
+        await runFn.call(stream); // Pass the stream instance to the run function
+        eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      });
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
