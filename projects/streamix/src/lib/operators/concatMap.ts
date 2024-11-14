@@ -1,5 +1,5 @@
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
-import { CounterType, counter } from '../utils';
+import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
 import { Subscription } from '../abstractions';
 
@@ -7,7 +7,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
   let emissionQueue: Emission[] = [];
   let pendingEmissions: number = 0;
-  const executionCounter: CounterType = counter(0);
+  const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
   let inputStream!: Subscribable | undefined;
   let subscription: Subscription | undefined;
