@@ -1,6 +1,6 @@
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
-export const catchError = (handler: (error?: any) => void | Promise<void>) => {
+export const catchError = (handler: (error?: any) => void | Promise<void>): Operator => {
   let boundStream: Stream;
 
   const init = (stream: Stream) => {
@@ -16,7 +16,7 @@ export const catchError = (handler: (error?: any) => void | Promise<void>) => {
     return emission; // Pass the emission as is
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'catchError';
   operator.init = init;
   return operator;

@@ -1,7 +1,7 @@
 import { createOperator, Operator, Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
-export const take = (count: number) => {
+export const take = (count: number): Operator => {
   let emittedCount = 0;
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
@@ -20,7 +20,7 @@ export const take = (count: number) => {
     }
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'take';
   return operator;
 };

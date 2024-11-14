@@ -1,7 +1,7 @@
 import { Operator, Stream, Subscribable, createOperator } from '../abstractions';
 import { Emission } from '../abstractions';
 
-export const scan = (accumulator: (acc: any, value: any, index?: number) => any, seed: any) => {
+export const scan = (accumulator: (acc: any, value: any, index?: number) => any, seed: any): Operator => {
   let accumulatedValue = seed; // Initialize the accumulated value
   let index = 0; // Initialize the index
 
@@ -17,7 +17,7 @@ export const scan = (accumulator: (acc: any, value: any, index?: number) => any,
   };
 
   // Create the operator with the handle function
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'scan';
   operator.init = init;
   return operator; // Return the operator

@@ -1,7 +1,7 @@
 import { createOperator, Emission, Operator, Stream, Subscribable } from '../abstractions';
 import { asyncValue } from '../utils';
 
-export const withLatestFrom = (...streams: Subscribable[]) => {
+export const withLatestFrom = (...streams: Subscribable[]): Operator => {
   let latestValues = streams.map(() => asyncValue());
   let handleEmissionFns: Array<(event: { emission: Emission; source: Subscribable }) => void> = [];
   let started = false;
@@ -61,7 +61,7 @@ export const withLatestFrom = (...streams: Subscribable[]) => {
     return emission;
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'withLatestFrom';
   operator.init = init;
   return operator;
