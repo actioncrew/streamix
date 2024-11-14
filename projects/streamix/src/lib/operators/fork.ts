@@ -1,6 +1,6 @@
 import { Subscribable, Emission, createOperator, Subscription, Operator } from '../abstractions';
 import { Subject, createSubject } from '../streams';
-import { CounterType, counter } from '../utils';
+import { Counter, counter } from '../utils';
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T) => boolean; handler: () => Subscribable<R> }>
@@ -8,7 +8,7 @@ export const fork = <T = any, R = T>(
   let innerStream: Subscribable<R> | null = null;
   let queue: Emission[] = [];
   let emissionNumber: number = 0;
-  let executionNumber: CounterType = counter(0);
+  let executionNumber: Counter = counter(0);
   let isFinalizing: boolean = false;
   let subscription: Subscription;
 

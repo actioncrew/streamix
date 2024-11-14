@@ -1,5 +1,5 @@
 import { Operator, Pipeline, Subscription } from '../abstractions';
-import { HookType } from '../utils';
+import { Hook } from '../utils';
 
 
 export interface Subscribable<T = any> {
@@ -11,11 +11,11 @@ export interface Subscribable<T = any> {
   isStopped: boolean;
   isRunning: boolean;
 
-  onStart: HookType;
-  onComplete: HookType;
-  onStop: HookType;
-  onError: HookType;
-  onEmission: HookType;
+  onStart: Hook;
+  onComplete: Hook;
+  onStop: Hook;
+  onError: Hook;
+  onEmission: Hook;
 
   shouldComplete(): boolean;
   awaitCompletion(): Promise<void>;

@@ -1,4 +1,4 @@
-export type PromisifiedType<T> = ReturnType<typeof promisified<T>>;
+export type Promisified<T> = ReturnType<typeof promisified<T>>;
 export function promisified<T>(initialValue?: T) {
   let _value = initialValue;
   let _default = initialValue;

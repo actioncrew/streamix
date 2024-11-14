@@ -1,11 +1,11 @@
-export type CounterType = {
+export type Counter = {
   (): number;
   increment(step?: number): void;
   decrement(step?: number): void;
   waitFor(target: number): Promise<void>;
 };
 
-export function counter(initialValue: number = 0): CounterType {
+export function counter(initialValue: number = 0): Counter {
   let count = initialValue;
   const waitForPromises: { target: number; resolve: () => void }[] = [];
 
