@@ -1,7 +1,14 @@
 import { Emission, Operator, Subscribable, createOperator } from '../abstractions';
 import { EMPTY } from '../streams';
 
-export const coroutine = (...functions: Function[]): Operator => {
+export type Coroutine = Operator & {
+  finalize: () => Promise<void>;
+  processTask: (data: any) => Promise<any>;
+  getIdleWorker: () => Promise<Worker>;
+  returnWorker: (worker: Worker) => void;
+};
+
+export const coroutine = (...functions: Function[]): Coroutine => {
   if (functions.length === 0) {
     throw new Error("At least one function (the main task) is required.");
   }
@@ -131,7 +138,7 @@ export const coroutine = (...functions: Function[]): Operator => {
     workerQueue.length = 0; // Clear the queue
   };
 
-  const operator = createOperator(handle) as any;
+  const operator = createOperator(handle) as Coroutine;
   operator.name = 'coroutine';
   operator.init = init;
   operator.finalize = finalize;

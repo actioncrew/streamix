@@ -11,6 +11,7 @@ export function createSubject<T = any>(): Subject<T> {
   let lastPromise: Promise<void> | undefined;
 
   const stream = createStream<T>(async function (this: any): Promise<void> {
+    await started;
     await this.awaitCompletion();
     do {
       lastPromise = promise;
@@ -25,9 +26,21 @@ export function createSubject<T = any>(): Subject<T> {
       return Promise.resolve();
     }
 
+    // if(started === undefined) {
+    //   started = new Promise<void>((resolve) => {
+    //     stream.onStart.once(() => resolve());
+    //   });
+    // }
+
+    await started;
+
     promise = eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
     await promise;
   };
+
+  let started = new Promise<void>((resolve) => {
+    stream.onStart.once(() => resolve());
+  });
 
   stream.name = "subject";
   return stream;

@@ -1,9 +1,9 @@
 import { createStream, Stream } from '../abstractions';
-import { coroutine } from '../operators';
+import { Coroutine } from '../operators';
 import { catchAny } from '../utils';
 import { eventBus } from './bus';
 
-export function compute(task: ReturnType<typeof coroutine>, params: any): Stream<any> {
+export function compute(task: Coroutine, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
   const stream = createStream<any>(async function(this: Stream<any>): Promise<void> {
     let promise = new Promise<void>(async (resolve, reject) => {
