@@ -59,7 +59,7 @@ describe('ConcatMapOperator', () => {
     const errors: any[] = [];
 
     mockStream$.subscribe((value) => emittedValues.push(value));
-    mockStream$.onError.once((error: any) =>
+    mockStream$.onError.once(({ error }: any) =>
       errors.push(error)
     );
 

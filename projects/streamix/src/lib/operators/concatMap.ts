@@ -1,3 +1,4 @@
+import { eventBus } from './../streams/bus';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
@@ -47,7 +48,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
     if (currentInnerStream) {
       // Immediately set up listeners on the new inner stream
-      currentInnerStream.onError.once((error: any) => handleStreamError(emission, error));
+      currentInnerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
 
       currentInnerStream.onStop.once(() => completeInnerStream(subscription!));
 
@@ -68,6 +69,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   const handleStreamError = (emission: Emission, error: any) => {
     emission.error = error;
     emission.isFailed = true;
+    eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error'});
     stopStreams(currentInnerStream, outputStream);
     executionCounter.increment();
   };
