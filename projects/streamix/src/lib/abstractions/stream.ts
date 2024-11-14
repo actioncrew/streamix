@@ -55,6 +55,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
+    if(!isRunning) {
+      await new Promise<void>((resolve) => {
+        onStart.once(() => resolve());
+      });
+    }
+
     if (!isAutoComplete) {
       isStopRequested = true;
       return new Promise<void>((resolve) => {

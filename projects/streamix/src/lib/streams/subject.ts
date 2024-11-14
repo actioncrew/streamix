@@ -26,12 +26,6 @@ export function createSubject<T = any>(): Subject<T> {
       return Promise.resolve();
     }
 
-    // if(started === undefined) {
-    //   started = new Promise<void>((resolve) => {
-    //     stream.onStart.once(() => resolve());
-    //   });
-    // }
-
     await started;
 
     promise = eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
