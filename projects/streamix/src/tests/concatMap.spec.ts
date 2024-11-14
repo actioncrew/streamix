@@ -45,7 +45,7 @@ describe('ConcatMapOperator', () => {
     );
 
     mockStream$.onStop.once(() => {
-      //expect(emittedValues).toEqual(emissions); // Sequential handling expected
+      expect(emittedValues).toEqual(emissions); // Sequential handling expected
       done();
     });
   });
