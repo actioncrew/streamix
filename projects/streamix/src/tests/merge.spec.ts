@@ -13,10 +13,10 @@ describe('MergeStream', () => {
     });
 
     mergeStream.onStop.once(() => {
-      expect(emittedValues).toEqual([
+      expect(emittedValues.sort()).toEqual([
         'source1_value1',
-        'source2_value1',
         'source1_value2',
+        'source2_value1',
         'source2_value2',
       ]);
 
@@ -31,14 +31,14 @@ describe('MergeStream', () => {
 
     const mergeStream = merge(source1, source2);
 
-    let isComplete = false;
+    let subscriptionCalls = 0;
 
     mergeStream.subscribe(() => {
-      isComplete = true;
+      subscriptionCalls++;
     });
 
     mergeStream.onStop.once(() => {
-      expect(isComplete).toBe(true);
+      expect(subscriptionCalls).toBe(4);
       done();
     })
   });

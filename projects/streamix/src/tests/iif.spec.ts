@@ -1,5 +1,4 @@
-import { switchMap } from './../lib/operators/switchMap';
-import { iif, from } from '../lib';
+import { iif, from, switchMap } from '../lib';
 
 
 describe('iif operator', () => {
