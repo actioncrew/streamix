@@ -1,6 +1,6 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
 import { eventBus } from "../../lib";
-import { hook, Hook, promisified } from "../utils";
+import { hook, Hook, Promisified, promisified } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -27,6 +27,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let tail: Operator | undefined;
 
   const completionPromise = promisified<void>();
+  const startedPromise = promisified<void>();
 
   let isAutoComplete = false;
   let isStopRequested = false;
@@ -45,6 +46,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
     onStart.once(async () => {
       try {
+        startedPromise.resolve();
         await runFn.call(stream); // Pass the stream instance to the run function
         eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
       } catch (error) {
@@ -135,7 +137,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     if (!isRunning && !isStopRequested) {
       isRunning = true;
-      queueMicrotask(run);
+      queueMicrotask(stream.run);
     }
 
     const value: any = () => currentValue;
@@ -143,6 +145,9 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       await complete();
       subscribers.remove(boundCallback);
     };
+
+    value.started = startedPromise.promise();
+    value.completed = completionPromise.promise();
 
     return value;
   };
