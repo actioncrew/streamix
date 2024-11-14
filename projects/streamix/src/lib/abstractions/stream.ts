@@ -42,21 +42,21 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const subscribers = hook();
 
   const run = async () => {
-    try {
-      eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
-      onStart.once(async () => {
+    eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
+    onStart.once(async () => {
+      try {
         await runFn.call(stream); // Pass the stream instance to the run function
         eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
-      });
-    } catch (error) {
-      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
-    } finally {
-      setTimeout(() => eventBus.enqueue({ target: stream, type: 'stop' })); // Finalize the stop hook
-      onStop.once(() => {
-        isStopped = true; isRunning = false;
-        operators.forEach(operator => operator.cleanup());
-      });
-    }
+      } catch (error) {
+        eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
+      } finally {
+        setTimeout(() => eventBus.enqueue({ target: stream, type: 'stop' })); // Finalize the stop hook
+        onStop.once(() => {
+          isStopped = true; isRunning = false;
+          operators.forEach(operator => operator.cleanup());
+        });
+      }
+    });
   };
 
   const complete = async (): Promise<void> => {
