@@ -4,7 +4,7 @@ import { CounterType, counter } from '../utils';
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T) => boolean; handler: () => Subscribable<R> }>
-) => {
+): Operator => {
   let innerStream: Subscribable<R> | null = null;
   let queue: Emission[] = [];
   let emissionNumber: number = 0;
@@ -110,7 +110,7 @@ export const fork = <T = any, R = T>(
     await Promise.all(streams.filter(stream => stream?.isRunning).map(stream => stream!.complete()));
   };
 
-  const operator = createOperator(handle) as Operator as any;
+  const operator = createOperator(handle) as any;
   operator.name = 'fork';
   operator.init = init;
   operator.stream = output;

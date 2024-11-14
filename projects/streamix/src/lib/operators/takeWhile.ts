@@ -1,7 +1,7 @@
 import { createOperator, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
-export const takeWhile = (predicate: (value: any, index?: number) => boolean) => {
+export const takeWhile = (predicate: (value: any, index?: number) => boolean): Operator => {
   let index = 0; // To track the index of emissions
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
@@ -16,7 +16,7 @@ export const takeWhile = (predicate: (value: any, index?: number) => boolean) =>
     return emission; // Return the emission if the condition is met
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'takeWhile';
   return operator;
 };

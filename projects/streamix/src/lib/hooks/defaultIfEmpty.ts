@@ -1,7 +1,7 @@
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 import { eventBus } from '../streams';
 
-export const defaultIfEmpty = (defaultValue: any) => {
+export const defaultIfEmpty = (defaultValue: any): Operator => {
   let boundStream: Stream;
   let hasEmitted = false;
 
@@ -25,7 +25,7 @@ export const defaultIfEmpty = (defaultValue: any) => {
     return emission; // Pass the emission forward
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'defaultIfEmpty';
   operator.init = init;
   return operator;

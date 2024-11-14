@@ -2,7 +2,7 @@ import { createOperator, Operator, Stream, Subscription } from '../abstractions'
 import { Emission } from '../abstractions';
 import { Subscribable } from '../abstractions';
 
-export const takeUntil = (notifier: Subscribable) => {
+export const takeUntil = (notifier: Subscribable): Operator => {
   let stopRequested = false;
   let subscription: Subscription | null = null;
 
@@ -24,7 +24,7 @@ export const takeUntil = (notifier: Subscribable) => {
     return emission; // Return the emission if not stopped
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'takeUntil';
   operator.init = init;
   return operator;

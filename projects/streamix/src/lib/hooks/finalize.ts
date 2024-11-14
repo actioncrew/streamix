@@ -1,6 +1,6 @@
 import { createOperator, Emission, HookOperator, Operator, Stream, Subscribable } from '../abstractions';
 
-export const finalize = (callback: () => void | Promise<void>) => {
+export const finalize = (callback: () => void | Promise<void>): Operator => {
   let boundStream: Stream;
 
   const init = (stream: Stream) => {
@@ -14,7 +14,7 @@ export const finalize = (callback: () => void | Promise<void>) => {
     return emission;
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'finalize';
   operator.init = init;
   return operator;

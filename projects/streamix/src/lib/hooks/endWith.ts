@@ -1,7 +1,7 @@
 import { eventBus } from './../streams/bus';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
-export const endWith = (value: any) => {
+export const endWith = (value: any): Operator => {
   let boundStream: Stream;
 
   const init = function(this: Operator, stream: Stream) {
@@ -18,7 +18,7 @@ export const endWith = (value: any) => {
     return emission; // Pass the emission forward without modification
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'endWith';
   operator.init = init;
   return operator;

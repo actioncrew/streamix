@@ -1,7 +1,7 @@
 import { eventBus } from './../streams/bus';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
-export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) => {
+export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Operator => {
   let boundStream: Stream;
   let accumulatedValue = seed;
 
@@ -22,7 +22,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) =>
     return emission; // Return the emission
   };
 
-  const operator = createOperator(handle) as Operator;
+  const operator = createOperator(handle);
   operator.name = 'reduce';
   operator.init = init;
   return operator;
