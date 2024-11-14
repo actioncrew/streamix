@@ -1,7 +1,7 @@
 import { BehaviorSubject } from '../lib';
 
 describe('BehaviorSubject', () => {
-  it('should emit the current value to new subscribers immediately', async () => {
+  it('should emit the current value to new subscribers immediately', (done) => {
     const initialValue = 'initial_value';
     const behaviorSubject = new BehaviorSubject(initialValue);
 
@@ -16,6 +16,7 @@ describe('BehaviorSubject', () => {
     behaviorSubject.onStop.once(() => {
       expect(emittedValues).toEqual([initialValue, 'value1']);
       subscription.unsubscribe();
+      done();
     });
 
     behaviorSubject.complete();
