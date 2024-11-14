@@ -1,6 +1,6 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
 import { eventBus } from "../../lib";
-import { hook, HookType, promisified } from "../utils";
+import { hook, Hook, promisified } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -10,7 +10,7 @@ export type Stream<T = any> = Subscribable<T> & {
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
   run: () => Promise<void>; // Run stream logic
   name?: string;
-  subscribers: HookType;
+  subscribers: Hook;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {

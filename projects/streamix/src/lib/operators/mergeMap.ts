@@ -1,6 +1,6 @@
 import { createSubject, Subject } from '../streams';
 import { Emission, createOperator, Operator, Subscribable } from '../abstractions';
-import { CounterType, catchAny, counter } from '../utils';
+import { Counter, catchAny, counter } from '../utils';
 
 export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   let output = createSubject();
@@ -8,7 +8,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   let processingPromises: Promise<void>[] = [];
 
   let emissionNumber: number = 0;
-  let executionNumber: CounterType = counter(0);
+  let executionNumber: Counter = counter(0);
   let handleInnerEmission: (({ emission, source }: any) => Promise<void>) | null = null;
   let isFinalizing: boolean = false;
 

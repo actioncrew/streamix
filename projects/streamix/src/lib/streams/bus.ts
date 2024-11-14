@@ -1,5 +1,5 @@
 import { createStream, Emission, Stream } from '../abstractions';
-import { promisified, PromisifiedType } from '../utils';
+import { promisified, Promisified } from '../utils';
 
 export const eventBus = createBus() as Bus;
 eventBus.run();
@@ -34,7 +34,7 @@ export type Bus = {
 // Create the functional version of the Subject
 export function createBus(): Bus {
   const bufferSize = 64;
-  const buffer: Array<PromisifiedType<any> | null> = new Array(bufferSize).fill(null);
+  const buffer: Array<Promisified<any> | null> = new Array(bufferSize).fill(null);
   let head = 0; let tail = 0;
   let itemsCount = 0;
 
