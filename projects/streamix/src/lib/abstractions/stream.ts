@@ -129,7 +129,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     subscribers.chain(boundCallback);
 
-    if (!isRunning) {
+    if (!isRunning && !isStopRequested) {
       isRunning = true;
       queueMicrotask(run);
     }
