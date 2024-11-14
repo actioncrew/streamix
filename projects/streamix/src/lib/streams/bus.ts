@@ -106,7 +106,7 @@ export function createBus(): Bus {
         // Resolve emissionAvailable if the buffer was empty
         emissionAvailable.resolve();
 
-        return promisifiedValue.then(() => Promise.resolve());
+        return promisifiedValue.promise() as Promise<void>;
       } finally {
         releaseLock(); // Release the lock after finishing
       }
