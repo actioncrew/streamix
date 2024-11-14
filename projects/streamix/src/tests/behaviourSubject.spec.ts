@@ -20,7 +20,5 @@ describe('BehaviorSubject', () => {
       subscription.unsubscribe();
       done();
     });
-
-    behaviorSubject.complete();
   });
 });

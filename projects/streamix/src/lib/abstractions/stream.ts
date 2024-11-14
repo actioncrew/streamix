@@ -177,7 +177,7 @@ export abstract class Stream<T = any> implements Subscribable<T> {
 
     this.#subscribers.chain(this, boundCallback);
 
-    if (!this.isRunning) {
+    if (!this.isRunning && !this.isStopRequested) {
       this.isRunning = true;
       this.queueMicrotask();
     }
