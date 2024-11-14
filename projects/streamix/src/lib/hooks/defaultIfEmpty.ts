@@ -10,10 +10,10 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
     boundStream.onComplete.chain(callback); // Chain the callback to be triggered on stream completion
   };
 
-  const callback = async (): Promise<void> => {
+  const callback = (): void => {
     if (!hasEmitted) {
       // If nothing has been emitted, emit the default value
-      return eventBus.enqueue({ target: boundStream, payload: { emission: { value: defaultValue }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: boundStream, payload: { emission: { value: defaultValue }, source: this }, type: 'emission' });
     }
   };
 
