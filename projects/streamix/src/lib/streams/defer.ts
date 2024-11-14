@@ -42,8 +42,8 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   // Clean up the inner stream when complete
   const cleanupInnerStream = async (): Promise<void> => {
     if (innerStream) {
-      innerStream.onEmission.remove(stream, handleEmissionFn);
       await innerStream.complete();
+      innerStream.onEmission.remove(stream, handleEmissionFn);
       innerStream = undefined;
     }
   };
