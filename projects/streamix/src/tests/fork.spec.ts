@@ -11,15 +11,14 @@ describe('fork operator', () => {
       { on: (value: number) => value > 5 && value <= 15, handler: () => of('Medium number') },
       { on: (value: number) => value > 15, handler: () => of('Large number') },
     ];
-
-    // Initialize the source observable
-    source$ = from([1, 5, 10, 20]); // Emissions: 1, 5, 10, 20
   });
 
   it('should handle multiple emissions and match the correct stream', (done) => {
     const result: string[] = [];
 
-    source$.pipe(fork(options)).subscribe((value: any) => {
+    source$ = from([1, 5, 10, 20]).pipe(fork(options));
+
+    source$.subscribe((value: any) => {
       result.push(value);
     });
 
@@ -31,9 +30,11 @@ describe('fork operator', () => {
 
   it('should match the correct stream based on conditions', (done) => {
     const result: string[] = [];
-    const source$ = from([1, 10, 20]); // Emissions: 1, 10, 20
 
-    source$.pipe(fork(options)).subscribe((value: any) => result.push(value));
+    const source$ = from([1, 10, 20]).pipe(fork(options));
+
+    source$.subscribe((value: any) => result.push(value));
+
     source$.onStop.once(() => {
       // Test each value matches the correct case
       expect(result[0]).toBe('Small number');
@@ -49,9 +50,9 @@ describe('fork operator', () => {
       { on: (value: number) => value === 100, handler: () => of('Invalid number') },
     ];
 
-    const source$ = from([1, 5, 10, 20]); // Emissions: 1, 5, 10, 20
+    const source$ = from([1, 5, 10, 20]).pipe(fork(invalidOptions)); // Emissions: 1, 5, 10, 20
 
-    source$.pipe(fork(invalidOptions)).subscribe((value: any) => result.push(value));
+    source$.subscribe((value: any) => result.push(value));
     source$.onError.once(({ error }: any) => {
       expect(error).toBe('No handler found for value: 1');
       done();
@@ -69,9 +70,9 @@ describe('fork operator', () => {
       handler: customStream,
     });
 
-    const source$ = of(10); // Single emission: 10
+    const source$ = of(10).pipe(fork(options)); // Single emission: 10
 
-    source$.pipe(fork(options)).subscribe((value: any) => result.push(value));
+    source$.subscribe((value: any) => result.push(value));
     source$.onStop.once(() => {
       expect(result).toEqual(['Custom stream result']);
       done();

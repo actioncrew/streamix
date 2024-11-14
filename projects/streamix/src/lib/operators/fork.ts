@@ -1,119 +1,108 @@
-import { Subscribable, Emission, createOperator, Subscription, Operator } from '../abstractions';
-import { Subject, createSubject } from '../streams';
+import { eventBus } from './../streams/bus';
+import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
+import { createSubject } from '../streams';
+import { Subscription } from '../abstractions';
+
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T) => boolean; handler: () => Subscribable<R> }>
 ): Operator => {
-  let innerStream: Subscribable<R> | null = null;
-  let queue: Emission[] = [];
-  let emissionNumber: number = 0;
-  let executionNumber: Counter = counter(0);
+  let innerStream: Subscribable | null = null;
+  let emissionQueue: Emission[] = [];
+  let pendingEmissions: number = 0;
+  const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
-  let subscription: Subscription;
-
-  let input!: Subscribable | undefined;
-  const output = createSubject();
+  let inputStream!: Subscribable | undefined;
+  let subscription: Subscription | undefined;
+  const outputStream = createSubject();
 
   const init = (stream: Subscribable) => {
-    input = stream;
-    input.onStop.once(() => {
-      executionNumber.waitFor(emissionNumber).then(finalize);
+    inputStream = stream;
+    inputStream.onStop.once(() => {
+      executionCounter.waitFor(pendingEmissions).then(finalize);
     });
-    output.onStop.once(finalize);
+    outputStream.onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
-    emissionNumber++;
-    queue.push(emission);
+    emissionQueue.push(emission);
+    pendingEmissions++;
 
-    // Ensure processing continues if not already in progress
-    await processQueue();
+    if(!innerStream) {
+      await processQueue();
+    }
 
-    // Mark the original emission as processed
     emission.isPhantom = true;
     return emission;
   };
 
   const processQueue = async (): Promise<void> => {
-    while (queue.length > 0) {
-      const nextEmission = queue.shift(); // Get the next emission from the queue
+    while (emissionQueue.length > 0 && !isFinalizing) {
+      const nextEmission = emissionQueue.shift();
       if (nextEmission) {
-        await processEmission(nextEmission, output); // Process the emission
+        await processEmission(nextEmission);
       }
     }
   };
 
-  const processEmission = async (emission: Emission, stream: Subject): Promise<void> => {
+  const processEmission = async (emission: Emission): Promise<void> => {
     // Find the matching case based on the selector
     const matchedCase = options.find(({ on }) => on(emission.value));
 
     if (matchedCase) {
       innerStream = matchedCase.handler(); // Use the selected stream
 
-      await handleInnerStream(emission, innerStream); // Handle the inner stream
+      if (innerStream) {
+        // Immediately set up listeners on the new inner stream
+        innerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
+
+        innerStream.onStop.once(() => completeInnerStream(subscription!));
+
+        subscription = innerStream.subscribe((value) => handleInnerEmission(value));
+      }
     } else {
       // If no case matches, emit an error
-      await handleStreamError(emission, `No handler found for value: ${emission.value}`, finalize);
+      await handleStreamError(emission, `No handler found for value: ${emission.value}`);
     }
-  };
-
-  const handleInnerStream = async (emission: Emission, stream: Subscribable): Promise<void> => {
-    return new Promise<void>((resolve) => {
-      const handleCompletion = async () => {
-
-        innerStream = null; // Clear inner stream reference
-        executionNumber.increment(); // Increment execution count
-
-        resolve(); // Resolve the promise when done
-        // Continue processing the queue
-        await processQueue();
-      };
-
-      // Handle errors from the inner stream
-      innerStream!.onError.once((error: any) => {
-        handleStreamError(emission, error, handleCompletion);
-      });
-
-      innerStream!.onStop.once((error: any) => {
-        handleCompletion();
-        subscription.unsubscribe();
-      });
-
-      subscription = innerStream!.subscribe(value => handleInnerEmission(value)); // Start the inner stream
-    });
   };
 
   const handleInnerEmission = async (value: any) => {
-    await output.next(value); // Emit the inner emission
+    await outputStream.next(value); // Emit the inner emission
   };
 
-  const handleStreamError = (emission: Emission, error: any, callback: () => void) => {
+  const completeInnerStream = async (subscription: Subscription) => {
+    subscription?.unsubscribe();
+    await processQueue();
+    executionCounter.increment();
+  };
+
+  const handleStreamError = (emission: Emission, error: any) => {
     emission.error = error;
     emission.isFailed = true;
-    stopStreams(innerStream, output); // Stop the streams
-    callback(); // Call the callback to complete the inner stream handling
+    eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error'});
+    stopStreams(innerStream, outputStream);
+    executionCounter.increment();
   };
 
   const finalize = async () => {
-    if (isFinalizing) { return; }
+    if (isFinalizing) return;
     isFinalizing = true;
 
-    if (innerStream) {
-      innerStream.onEmission.remove(handleInnerEmission); // Clean up inner stream subscription
-    }
-    await stopStreams(innerStream, input, output); // Stop relevant streams
-    innerStream = null; // Clear inner stream reference
+    await stopStreams(innerStream, inputStream, outputStream);
+    innerStream = null;
   };
 
   const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {
-    await Promise.all(streams.filter(stream => stream?.isRunning).map(stream => stream!.complete()));
+    await Promise.all(
+      streams.filter(stream => stream?.isRunning).map(stream => stream!.complete())
+    );
   };
 
   const operator = createOperator(handle) as any;
-  operator.name = 'fork';
+  operator.name = 'concatMap';
   operator.init = init;
-  operator.stream = output;
+  operator.stream = outputStream;
 
   return operator;
 };

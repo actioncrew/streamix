@@ -50,22 +50,24 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
       setTimeout(() => eventBus.enqueue({ target: stream, type: 'stop' })); // Finalize the stop hook
-      onStop.once(() => { isStopped = true; isRunning = false; });
+      onStop.once(() => {
+        isStopped = true; isRunning = false;
+        operators.forEach(operator => operator.cleanup());
+      });
     }
   };
 
   const complete = async (): Promise<void> => {
-    if(!isRunning && !isStopped) {
+    if(!stream.isRunning && !stream.isStopped) {
       await new Promise<void>((resolve) => {
         onStart.once(() => resolve());
       });
     }
 
-    if(!isStopped) {
-      isStopRequested = true;
+    if(!stream.isStopped && !stream.isAutoComplete) {
+      stream.isStopRequested = true;
       return new Promise<void>((resolve) => {
-        onStop.once(() => { operators.forEach(operator => operator.cleanup()); resolve(); });
-        completionPromise.resolve();
+        onStop.once(() => resolve());
       });
     }
     return completionPromise.promise();
