@@ -9,7 +9,7 @@ export const startWith = (value: any): Operator => {
     boundStream.onStart.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
   };
 
-  const callback = async (instance: Operator, params?: any): Promise<void> => {
+  const callback = (instance: Operator, params?: any): void => {
     // Emit the provided initial value when the stream starts
     eventBus.enqueue({ target: boundStream, payload: { emission: { value }, source: instance }, type: 'emission' });
   };
