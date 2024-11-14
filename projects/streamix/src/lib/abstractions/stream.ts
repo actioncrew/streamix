@@ -49,21 +49,19 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      setTimeout(() => {
-        isStopped = true; isRunning = false;
-        eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
-      }, 0);
+      setTimeout(() => eventBus.enqueue({ target: stream, type: 'stop' })); // Finalize the stop hook
+      onStop.once(() => { isStopped = true; isRunning = false; });
     }
   };
 
   const complete = async (): Promise<void> => {
-    if(!isRunning) {
+    if(!isRunning && !isStopped) {
       await new Promise<void>((resolve) => {
         onStart.once(() => resolve());
       });
     }
 
-    if (!isAutoComplete) {
+    if(!isStopped) {
       isStopRequested = true;
       return new Promise<void>((resolve) => {
         onStop.once(() => { operators.forEach(operator => operator.cleanup()); resolve(); });

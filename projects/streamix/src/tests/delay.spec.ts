@@ -17,11 +17,8 @@ describe('DelayOperator', () => {
     });
 
     delayedStream.onStop.once(() => {
-      if (emitCount === 3) {
-        done();
-      } else {
-        done(new Error('Not all values were emitted'));
-      }
+      expect(emitCount).toBe(3);
+      done();
     });
   });
 
@@ -33,10 +30,10 @@ describe('DelayOperator', () => {
 
     let emitCount = 0;
 
-    delayedStream.subscribe((value) => {
+    let subscription = delayedStream.subscribe((value) => {
       emitCount++;
       if (emitCount === 2) {
-        delayedStream.complete();
+        subscription.unsubscribe();
       }
     });
 

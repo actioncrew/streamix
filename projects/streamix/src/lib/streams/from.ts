@@ -11,6 +11,10 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
 
   // Create the stream with a custom run function
   const stream = createStream<T>(async function(this: Stream<T>) {
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+    });
+
     while (!done && !this.shouldComplete()) {
       let result;
 
@@ -24,9 +28,6 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
       const { value, done: isDone } = result;
       if (isDone) {
         done = true;
-        this.onComplete.once(() => {
-          this.isAutoComplete = true;
-        });
       } else {
         const emission = { value } as Emission;
         eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
