@@ -19,9 +19,7 @@ export const fork = <T = any, R = T>(
 
   const init = (stream: Subscribable) => {
     inputStream = stream;
-    inputStream.onStop.once(() => {
-      executionCounter.waitFor(pendingEmissions).then(finalize);
-    });
+    inputStream.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(pendingEmissions).then(finalize)));
     outputStream.onStop.once(finalize);
   };
 
@@ -67,8 +65,8 @@ export const fork = <T = any, R = T>(
     }
   };
 
-  const handleInnerEmission = async (value: any) => {
-    await outputStream.next(value); // Emit the inner emission
+  const handleInnerEmission = (value: any) => {
+    outputStream.next(value); // Emit the inner emission
   };
 
   const completeInnerStream = async (subscription: Subscription) => {
