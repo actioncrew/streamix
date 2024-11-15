@@ -127,7 +127,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     const subscription: any = () => currentValue;
     subscription.unsubscribe = async () => {
-      await complete();
+      complete();
+      subscriptions.forEach((subscription) => subscription.unsubscribe());
       onEmission.remove(pipeline, boundCallback);
     }
 
@@ -136,9 +137,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     return subscription as Subscription;
   };
 
-  const complete = async (): Promise<void> => {
+  const complete = (): void => {
     for (let i = 0; i < chunks.length; i++) {
-      await chunks[i].complete();
+      chunks[i].isStopRequested = true;
     }
   };
 

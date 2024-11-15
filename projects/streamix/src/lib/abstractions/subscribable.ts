@@ -19,7 +19,7 @@ export interface Subscribable<T = any> {
 
   shouldComplete(): boolean;
   awaitCompletion(): Promise<void>;
-  complete(): Promise<void>;
+  complete(): void;
 
   subscribe(callback?: (value: T) => any): Subscription;
 

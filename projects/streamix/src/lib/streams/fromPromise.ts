@@ -8,6 +8,10 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
     let resolvedValue: Awaited<T> | void; // Renamed to avoid conflict
     let isResolved = false;
 
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+    });
+
     try {
       // Await the promise directly
       resolvedValue = await Promise.race([
@@ -21,9 +25,6 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
       // If the stream is not complete, emit the value
       if (!this.shouldComplete()) {
         eventBus.enqueue({ target: this, payload: { emission: { value: resolvedValue }, source: this }, type: 'emission' });
-        this.onComplete.once(() => {
-          this.isAutoComplete = true;
-        });
       }
     } catch (error) {
       eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });

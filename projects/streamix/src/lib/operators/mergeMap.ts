@@ -11,8 +11,10 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   let executionNumber: Counter = counter(0);
   let handleInnerEmission: (({ emission, source }: any) => Promise<void>) | null = null;
   let isFinalizing: boolean = false;
+  let input: Subscribable | undefined;
 
-  const init = (input: Subscribable) => {
+  const init = (stream: Subscribable) => {
+    input = stream;
     input.onStop.once(() => executionNumber.waitFor(emissionNumber).then(finalize));
     output.onStop.once(finalize);
   };
@@ -102,20 +104,18 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     if (isFinalizing) { return; }
     isFinalizing = true;
 
-    await Promise.all(activeInnerStreams.map(stream => stream.complete()));
+    activeInnerStreams.forEach(stream => stream.isStopRequested = true);
     activeInnerStreams = [];
-    await stopInputStream();
-    await stopOutputStream();
+    stopInputStream();
+    stopOutputStream();
   };
 
-  const stopInputStream = async () => {
-    // Implementation to stop the input stream if needed
+  const stopInputStream = () => {
+    input!.isStopRequested = true;
   };
 
-  const stopOutputStream = async () => {
-    if (output) {
-      await output.complete();
-    }
+  const stopOutputStream = () => {
+    output.isStopRequested = true;
   };
 
   const operator = createOperator(handle) as any;
