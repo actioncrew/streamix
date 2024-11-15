@@ -144,19 +144,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     const subscription: any = () => currentValue;
     subscription.unsubscribe = () => {
-      stream.lock.acquire().then((releaseLock) => {
-        try {
-          stream.onStop.once(() => {
-            subscribers.remove(boundCallback);
-          });
-
-          if (!stream.isAutoComplete) {
-            stream.isStopRequested = true;
-          }
-        } finally {
-          releaseLock(); // Always release the lock after execution
-        }
-      });
+      complete().then(() => subscribers.remove(boundCallback));
     };
 
     subscription.started = startedPromise.promise();
