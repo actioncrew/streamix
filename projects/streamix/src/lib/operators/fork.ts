@@ -94,9 +94,7 @@ export const fork = <T = any, R = T>(
   };
 
   const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {
-    await Promise.all(
-      streams.filter(stream => stream?.isRunning).map(stream => stream!.complete())
-    );
+    streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isStopRequested = true; });
   };
 
   const operator = createOperator(handle) as any;

@@ -141,15 +141,15 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
 
     const subscription: any = () => currentValue;
-    subscription.unsubscribe = async () => {
-      await complete();
+    subscription.unsubscribe = () => {
+      stream.isStopRequested = true;
       subscribers.remove(boundCallback);
     };
 
     subscription.started = startedPromise.promise();
     subscription.completed = completionPromise.promise();
 
-    return subscription;
+    return subscription as Subscription;
   };
 
   const pipe = function(...operators: Operator[]): Pipeline<T> {
