@@ -19,7 +19,7 @@ export const switchMap = <T = any, R = T>(project: (value: T) => Subscribable<R>
 
     stopInnerStream();
     if (!output.isStopped) {
-      output.isStopRequested = true;
+      output.isAutoComplete = true;
     }
   };
 
@@ -30,7 +30,7 @@ export const switchMap = <T = any, R = T>(project: (value: T) => Subscribable<R>
 
       // Complete the inner stream if it's not already stopped
       if (!activeInnerStream.isStopped) {
-        activeInnerStream.isStopRequested = true;
+        activeInnerStream.isAutoComplete = true;
       }
 
       activeInnerStream = null;

@@ -80,7 +80,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {
-    streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isStopRequested = true; });
+    streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isAutoComplete = true; });
   };
 
   const operator = createOperator(handle) as any;

@@ -97,18 +97,18 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     if (isFinalizing) { return; }
     isFinalizing = true;
 
-    activeInnerStreams.forEach(stream => stream.isStopRequested = true);
+    activeInnerStreams.forEach(stream => stream.isAutoComplete = true);
     activeInnerStreams = [];
     stopInputStream();
     stopOutputStream();
   };
 
   const stopInputStream = () => {
-    input!.isStopRequested = true;
+    input!.isAutoComplete = true;
   };
 
   const stopOutputStream = () => {
-    output.isStopRequested = true;
+    output.isAutoComplete = true;
   };
 
   const operator = createOperator(handle) as any;

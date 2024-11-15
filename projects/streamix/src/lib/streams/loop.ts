@@ -23,7 +23,7 @@ export function loop<T>(
 
     // If the condition fails, complete the stream
     if (!this.shouldComplete()) {
-      this.isAutoComplete = true; // Mark the stream for auto-completion
+      this.isAutoComplete = true;
     }
   });
 

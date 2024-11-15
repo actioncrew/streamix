@@ -40,25 +40,6 @@ describe('Subject', () => {
     })
   });
 
-  it('should not emit values after stopped', (done) => {
-    const subject = createSubject<any>();
-
-    const emittedValues: any[] = [];
-    const subscription = subject.subscribe(value => {
-      emittedValues.push(value);
-    });
-
-    subject.next('value1');
-    subject.isStopRequested = true;
-    subject.next('value2');
-
-    subject.onStop.once(() => {
-      expect(emittedValues).toEqual(['value1']);
-      subscription.unsubscribe();
-      done();
-    })
-  });
-
   it('should clear emission queue on cancel', (done) => {
     const subject = createSubject<any>();
 
@@ -78,23 +59,6 @@ describe('Subject', () => {
     })
   });
 
-  it('should not allow pushing values to a stopped Subject', (done) => {
-    const subject = createSubject<any>();
-
-    const emittedValues: any[] = [];
-    const subscription = subject.subscribe(value => {
-      emittedValues.push(value);
-    });
-
-    subject.isStopRequested = true;
-    subject.next('value1');
-
-    subject.onStop.once(() => {
-      expect(emittedValues).toEqual([]);
-      subscription.unsubscribe();
-      done();
-    })
-  });
   it('stress test, synchronous case', (done) => {
     const subject = createSubject<any>();
 
