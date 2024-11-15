@@ -119,17 +119,21 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     };
 
     onEmission.chain(pipeline, boundCallback);
+    const subscriptions: Subscription[] = [];
 
     for (let i = chunks.length - 1; i >= 0; i--) {
-      chunks[i].subscribe();
+      subscriptions.push(chunks[i].subscribe());
     }
 
-    const value: any = () => currentValue;
-    value.unsubscribe = async () => {
+    const subscription: any = () => currentValue;
+    subscription.unsubscribe = async () => {
       await complete();
       onEmission.remove(pipeline, boundCallback);
     }
-    return value as Subscription;
+
+    subscription.started = Promise.all(subscriptions.map(subscription => subscription.started));
+    subscription.completed = Promise.all(subscriptions.map(subscription => subscription.completed));
+    return subscription as Subscription;
   };
 
   const complete = async (): Promise<void> => {
