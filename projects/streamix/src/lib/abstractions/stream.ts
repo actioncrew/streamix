@@ -44,21 +44,21 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const run = async () => {
     eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
-    onStart.once(async () => {
-      try {
-        startedPromise.resolve();
-        await runFn.call(stream); // Pass the stream instance to the run function
-        eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
-      } catch (error) {
-        eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
-      } finally {
-        setTimeout(() => eventBus.enqueue({ target: stream, type: 'stop' })); // Finalize the stop hook
-        onStop.once(() => {
-          isStopped = true; isRunning = false;
-          operators.forEach(operator => operator.cleanup());
-        });
-      }
-    });
+    try {
+      await onStart.waitUntilComplete();
+      startedPromise.resolve();
+      await runFn.call(stream); // Pass the stream instance to the run function
+      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      await onComplete.waitUntilComplete();
+    } catch (error) {
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
+    } finally {
+      eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
+      onStop.once(() => {
+        isStopped = true; isRunning = false;
+        operators.forEach(operator => operator.cleanup());
+      });
+    }
   };
 
   const complete = async (): Promise<void> => {
@@ -140,16 +140,16 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       queueMicrotask(stream.run);
     }
 
-    const value: any = () => currentValue;
-    value.unsubscribe = async () => {
+    const subscription: any = () => currentValue;
+    subscription.unsubscribe = async () => {
       await complete();
       subscribers.remove(boundCallback);
     };
 
-    value.started = startedPromise.promise();
-    value.completed = completionPromise.promise();
+    subscription.started = startedPromise.promise();
+    subscription.completed = completionPromise.promise();
 
-    return value;
+    return subscription;
   };
 
   const pipe = function(...operators: Operator[]): Pipeline<T> {
