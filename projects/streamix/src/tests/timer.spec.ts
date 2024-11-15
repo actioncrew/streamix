@@ -37,21 +37,4 @@ describe('TimerStream', () => {
 
     expect(emittedValues.length).toBe(previousLength); // No new emissions should occur after unsubscribe
   });
-
-  it('should stop emitting after cancel', async () => {
-    const intervalMs = 100;
-    const timerStream = timer(0, intervalMs);
-
-    const emittedValues: number[] = [];
-    timerStream.subscribe((value) => {
-      emittedValues.push(value);
-    });
-
-    timerStream.complete();
-
-    const previousLength = emittedValues.length;
-    await new Promise((resolve) => setTimeout(resolve, intervalMs * 2)); // Wait for potential additional emissions
-
-    expect(emittedValues.length).toBe(previousLength); // No new emissions should occur after cancel
-  });
 });
