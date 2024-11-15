@@ -68,7 +68,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   });
 
   const originalComplete = stream.complete.bind(stream);
-  stream.complete = function(): void {
+  stream.complete = async function(): Promise<void> {
     if (timeoutId) {
       clearTimeout(timeoutId);
       timeoutId = undefined;

@@ -139,20 +139,19 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     return subscription as Subscription;
   };
 
-  const complete = (): void => {
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      chunk.lock.acquire().then((releaseLock) => {
-        try {
-          if (!chunk.isAutoComplete) {
-            chunk.isStopRequested = true;
-          }
-        } finally {
-          releaseLock();
-        }
-      });
-    }
-  };
+  const complete = async (): Promise<void> => {
+    // Mark the first chunk as requested to stop
+    await chunks[0].complete();
+
+    // Wait for all chunks to finish processing
+    await Promise.all(
+      chunks.map(chunk =>
+        new Promise<void>((resolve) => {
+          chunk.onStop.once(resolve);
+        })
+      )
+    );
+  }
 
   const pipeline: Pipeline<T> = {
     type: "pipeline" as "pipeline",
