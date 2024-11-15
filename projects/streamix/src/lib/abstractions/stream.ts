@@ -1,6 +1,6 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
 import { eventBus } from "../../lib";
-import { hook, Hook, promisified, createLock } from "../utils";
+import { hook, Hook, promisified, createLock, Lock } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -11,7 +11,7 @@ export type Stream<T = any> = Subscribable<T> & {
   run: () => Promise<void>; // Run stream logic
   name?: string;
   subscribers: Hook;
-  lock: ReturnType<typeof createLock>;
+  lock: Lock;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -66,18 +66,13 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     const releaseLock = await lock.acquire();
     try {
       if(!stream.isRunning && !stream.isStopped) {
-        await new Promise<void>((resolve) => {
-          onStart.once(() => resolve());
-        });
+        await onStart.waitUntilComplete();
       }
 
       if(!stream.isStopped && !stream.isAutoComplete) {
         stream.isStopRequested = true;
-        return new Promise<void>((resolve) => {
-          onStop.once(() => resolve());
-        });
+        await onStop.waitUntilComplete();
       }
-      return completionPromise.promise();
     }
     finally {
       releaseLock();
