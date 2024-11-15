@@ -1,6 +1,6 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
 import { eventBus } from "../../lib";
-import { hook, Hook, Promisified, promisified } from "../utils";
+import { hook, Hook, promisified, createLock } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -11,6 +11,7 @@ export type Stream<T = any> = Subscribable<T> & {
   run: () => Promise<void>; // Run stream logic
   name?: string;
   subscribers: Hook;
+  lock: ReturnType<typeof createLock>;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -28,6 +29,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const completionPromise = promisified<void>();
   const startedPromise = promisified<void>();
+  let lock = createLock();
 
   let isAutoComplete = false;
   let isStopRequested = false;
@@ -61,19 +63,25 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    if(!stream.isRunning && !stream.isStopped) {
-      await new Promise<void>((resolve) => {
-        onStart.once(() => resolve());
-      });
-    }
+    const releaseLock = await lock.acquire();
+    try {
+      if(!stream.isRunning && !stream.isStopped) {
+        await new Promise<void>((resolve) => {
+          onStart.once(() => resolve());
+        });
+      }
 
-    if(!stream.isStopped && !stream.isAutoComplete) {
-      stream.isStopRequested = true;
-      return new Promise<void>((resolve) => {
-        onStop.once(() => resolve());
-      });
+      if(!stream.isStopped && !stream.isAutoComplete) {
+        stream.isStopRequested = true;
+        return new Promise<void>((resolve) => {
+          onStop.once(() => resolve());
+        });
+      }
+      return completionPromise.promise();
     }
-    return completionPromise.promise();
+    finally {
+      releaseLock();
+    }
   };
 
   const awaitCompletion = () => completionPromise.promise();
@@ -141,9 +149,18 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     const subscription: any = () => currentValue;
     subscription.unsubscribe = () => {
-      stream.isStopRequested = true;
-      stream.onStop.once(() => {
-        subscribers.remove(boundCallback);
+      stream.lock.acquire().then((releaseLock) => {
+        try {
+          stream.onStop.once(() => {
+            subscribers.remove(boundCallback);
+          });
+
+          if (!stream.isAutoComplete) {
+            stream.isStopRequested = true;
+          }
+        } finally {
+          releaseLock(); // Always release the lock after execution
+        }
       });
     };
 
@@ -164,6 +181,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     operators,
     head,
     tail,
+    lock,
     bindOperators,
     emit,
     subscribe,

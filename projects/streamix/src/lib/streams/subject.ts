@@ -20,17 +20,21 @@ export function createSubject<T = any>(): Subject<T> {
   }) as any;
 
   stream.next = async function (this: Stream, value?: T): Promise<void> {
+    const releaseLock = await this.lock.acquire();
+    try {
+      // If the stream is stopped, further emissions are not allowed
+      if (this.isStopRequested || this.isStopped) {
+        console.warn('Cannot push value to a stopped Subject.');
+        return Promise.resolve();
+      }
 
-    // If the stream is stopped, further emissions are not allowed
-    if (this.isStopped) {
-      console.warn('Cannot push value to a stopped Subject.');
-      return Promise.resolve();
+      await started;
+
+      promise = eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
+      return promise;
+    } finally {
+      releaseLock();
     }
-
-    await started;
-
-    promise = eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
-    return promise;
   };
 
   let started = new Promise<void>((resolve) => {
