@@ -142,7 +142,9 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     const subscription: any = () => currentValue;
     subscription.unsubscribe = () => {
       stream.isStopRequested = true;
-      subscribers.remove(boundCallback);
+      stream.onStop.once(() => {
+        subscribers.remove(boundCallback);
+      })
     };
 
     subscription.started = startedPromise.promise();

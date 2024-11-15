@@ -20,6 +20,7 @@ export function createSubject<T = any>(): Subject<T> {
   }) as any;
 
   stream.next = async function (this: Stream, value?: T): Promise<void> {
+
     // If the stream is stopped, further emissions are not allowed
     if (this.isStopRequested || this.isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
@@ -29,6 +30,7 @@ export function createSubject<T = any>(): Subject<T> {
     await started;
 
     promise = eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
+    return promise;
   };
 
   let started = new Promise<void>((resolve) => {

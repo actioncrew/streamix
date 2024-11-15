@@ -3,6 +3,7 @@ import { Subscribable, Emission, createOperator, Operator } from '../abstraction
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
 import { Subscription } from '../abstractions';
+import { queue } from 'rxjs';
 
 export const concatMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
@@ -16,7 +17,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
   const init = (stream: Subscribable) => {
     inputStream = stream;
-    inputStream.onStop.once(() => setTimeout(() => executionCounter.waitFor(pendingEmissions).then(finalize), 0));
+    inputStream.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(pendingEmissions).then(finalize)));
     outputStream.onStop.once(finalize);
   };
 
