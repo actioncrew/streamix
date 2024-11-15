@@ -128,8 +128,10 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     const subscription: any = () => currentValue;
     subscription.unsubscribe = async () => {
       complete();
-      subscriptions.forEach((subscription) => subscription.unsubscribe());
-      onEmission.remove(pipeline, boundCallback);
+      onStop.once(()=> {
+        subscriptions.forEach((subscription) => subscription.unsubscribe());
+        onEmission.remove(pipeline, boundCallback);
+      });
     }
 
     subscription.started = Promise.all(subscriptions.map(subscription => subscription.started));
@@ -243,7 +245,7 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
           originalSubscription.unsubscribe();
           subscribers--;
           if (subscribers === 0) {
-              await subscription.unsubscribe(); // Unsubscribe from source if no more subscribers
+            subscription.unsubscribe(); // Unsubscribe from source if no more subscribers
           }
       };
 

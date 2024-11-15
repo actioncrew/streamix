@@ -19,7 +19,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     input = stream;
 
     // Finalize when the input or output stream stops
-    input.onStop.once(() => setTimeout(() => executionNumber.waitFor(emissionNumber).then(finalize), 0));
+    input.onStop.once(() => queueMicrotask(() => executionNumber.waitFor(emissionNumber).then(finalize)));
     output.onStop.once(finalize);
   };
 
