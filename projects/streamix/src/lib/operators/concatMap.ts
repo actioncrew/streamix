@@ -16,9 +16,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
   const init = (stream: Subscribable) => {
     inputStream = stream;
-    inputStream.onStop.once(() => {
-      executionCounter.waitFor(pendingEmissions).then(finalize);
-    });
+    inputStream.onStop.once(() => setTimeout(() => executionCounter.waitFor(pendingEmissions).then(finalize), 0));
     outputStream.onStop.once(finalize);
   };
 
@@ -67,8 +65,6 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
-    emission.error = error;
-    emission.isFailed = true;
     eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error'});
     stopStreams(currentInnerStream, outputStream);
     executionCounter.increment();

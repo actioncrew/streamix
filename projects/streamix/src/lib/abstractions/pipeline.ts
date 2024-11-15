@@ -217,7 +217,7 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
       subject.next(value); // Emit to active subscribers
   });
 
-  source.onStop.once(() => subject.complete());
+  source.onStop.once(() => subject.isStopRequested = true);
 
   const pipeline = createPipeline<T>(subject);
   let subscribers = 0;
