@@ -25,14 +25,7 @@ export const switchMap = <T = any, R = T>(project: (value: T) => Subscribable<R>
 
   const stopInnerStream = () => {
     if (activeInnerStream) {
-      // Safely remove the emission handler
-      activeInnerStream.onEmission.remove(handleInnerEmission);
-
-      // Complete the inner stream if it's not already stopped
-      if (!activeInnerStream.isStopped) {
-        activeInnerStream.isAutoComplete = true;
-      }
-
+      subscription?.unsubscribe();
       activeInnerStream = null;
     }
   };
@@ -41,8 +34,8 @@ export const switchMap = <T = any, R = T>(project: (value: T) => Subscribable<R>
     return processEmission(emission, output);
   };
 
-  const handleInnerEmission = async (value: any) => {
-    await output.next(value);
+  const handleInnerEmission = (value: any) => {
+    output.next(value);
   };
 
   const processEmission = async (emission: Emission, stream: Subject<R>): Promise<Emission> => {
