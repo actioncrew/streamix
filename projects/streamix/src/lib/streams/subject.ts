@@ -22,7 +22,7 @@ export function createSubject<T = any>(): Subject<T> {
   stream.next = async function (this: Stream, value?: T): Promise<void> {
 
     // If the stream is stopped, further emissions are not allowed
-    if (this.isStopRequested || this.isStopped) {
+    if (this.isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
       return Promise.resolve();
     }
