@@ -128,21 +128,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     const draw$ = interval(33).pipe(
       withLatestFrom(drops$),
       tap(([_, drops]) => {
-        // Clear the screen
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw the quarter sun in the top-left corner
-        const sunRadius = 50;
-        this.ctx.beginPath();
-        this.ctx.arc(sunRadius, sunRadius, sunRadius, Math.PI, 1.5 * Math.PI);
-        this.ctx.fillStyle = 'yellow';
-        this.ctx.fill();
-
-        // Draw the rays using Bresenham's Line Algorithm with fading
-        this.drawRays(sunRadius, sunRadius, 36, 150);
-
-        // Draw the falling letters
         drops.forEach((drop: any, index: number) => {
           const text = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
           const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
@@ -173,43 +161,5 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       width: window.innerWidth,
       height: window.innerHeight
     };
-  }
-
-  private drawRays(sunX: number, sunY: number, numberOfRays: number, rayLength: number) {
-    const maxOpacity = 0.8;
-    const minOpacity = 0.1;
-    const fadingRate = (maxOpacity - minOpacity) / rayLength;
-
-    for (let i = 0; i < numberOfRays; i++) {
-      const angle = (i * Math.PI * 2) / numberOfRays;
-      const endX = sunX + Math.cos(angle) * rayLength;
-      const endY = sunY + Math.sin(angle) * rayLength;
-
-      // Bresenham's Line Algorithm for drawing a line
-      this.bresenham(sunX, sunY, endX, endY, (x, y, distance) => {
-        const opacity = Math.max(minOpacity, maxOpacity - distance * fadingRate);
-        this.ctx.fillStyle = `rgba(255, 255, 0, ${opacity})`; // Yellow color with fading opacity
-        this.ctx.fillRect(x, y, 2, 2); // Draw a small square to represent each pixel
-      });
-    }
-  }
-
-  private bresenham(x0: number, y0: number, x1: number, y1: number, plot: (x: number, y: number, distance: number) => void) {
-    let dx = Math.abs(x1 - x0);
-    let dy = Math.abs(y1 - y0);
-    let sx = x0 < x1 ? 1 : -1;
-    let sy = y0 < y1 ? 1 : -1;
-    let err = dx - dy;
-    let distance = 0;
-
-    while (true) {
-      plot(x0, y0, distance);
-      distance++;
-
-      if (x0 === x1 && y0 === y1) break;
-      let e2 = err * 2;
-      if (e2 > -dy) { err -= dy; x0 += sx; }
-      if (e2 < dx) { err += dx; y0 += sy; }
-    }
   }
 }
