@@ -141,7 +141,16 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
   const complete = (): void => {
     for (let i = 0; i < chunks.length; i++) {
-      chunks[i].isStopRequested = true;
+      const chunk = chunks[i];
+      chunk.lock.acquire().then((releaseLock) => {
+        try {
+          if (!chunk.isAutoComplete) {
+            chunk.isStopRequested = true;
+          }
+        } finally {
+          releaseLock();
+        }
+      });
     }
   };
 

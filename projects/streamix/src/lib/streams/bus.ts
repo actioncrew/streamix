@@ -1,23 +1,8 @@
 import { createStream, Emission, Stream } from '../abstractions';
-import { promisified, Promisified } from '../utils';
+import { createLock, promisified, Promisified } from '../utils';
 
 export const eventBus = createBus() as Bus;
 eventBus.run();
-
-// Define a functional lock for synchronizing access
-export function createLock() {
-  let promise = Promise.resolve();
-
-  async function acquire() {
-    const release = promise; // Wait on the current promise
-    let resolve: () => void;
-    promise = new Promise<void>((res) => (resolve = res!)); // Create a new promise for the next lock acquisition
-    await release; // Wait for the previous promise to resolve
-    return resolve!; // Return the resolve function
-  }
-
-  return { acquire };
-}
 
 export type BusEvent = {
   target: any,
