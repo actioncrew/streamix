@@ -9,7 +9,7 @@ export class FilterOperator extends Operator {
   }
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
-    emission.isPhantom = !this.predicate(emission.value);
+    emission.phantom = !this.predicate(emission.value);
     return emission;
   }
 }

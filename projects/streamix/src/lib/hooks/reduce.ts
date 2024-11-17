@@ -24,7 +24,7 @@ export class ReduceOperator extends Operator implements HookOperator {
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     this.accumulatedValue = this.accumulator(this.accumulatedValue, emission.value!);
-    emission.isPhantom = true;
+    emission.phantom = true;
     return emission;
   }
 }

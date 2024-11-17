@@ -22,7 +22,7 @@ export class TakeOperator extends Operator {
       }
       return emission;
     } else {
-      emission.isPhantom = true;
+      emission.phantom = true;
       return emission;
     }
   }

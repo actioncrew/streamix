@@ -41,7 +41,7 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
     // Ensure processing continues if not already in progress
     await this.processQueue();
 
-    emission.isPhantom = true;
+    emission.phantom = true;
     return emission;
   }
 
@@ -95,7 +95,7 @@ export class ConcatMapOperator extends Operator implements StreamOperator {
 
   private handleStreamError(emission: Emission, error: any, callback: () => void) {
     emission.error = error;
-    emission.isFailed = true;
+    emission.failed = true;
     this.stopStreams(this.input, this.output);
     callback();
   }

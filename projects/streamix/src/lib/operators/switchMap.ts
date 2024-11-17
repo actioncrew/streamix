@@ -67,11 +67,11 @@ export class SwitchMapOperator<T, R> extends Operator implements StreamOperator 
       this.subscription = this.activeInnerStream.subscribe((value) => this.handleInnerEmission(value));
       subscribed = true;
 
-      emission.isPhantom = true;
+      emission.phantom = true;
       return emission;
     } catch (error) {
       if (!subscribed) this.executionNumber.increment();
-      emission.isFailed = true;
+      emission.failed = true;
       emission.error = error;
       return emission;
     }

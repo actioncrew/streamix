@@ -18,7 +18,7 @@ export class SkipOperator extends Operator {
       return emission;
     } else {
       this.counter--;
-      emission.isPhantom = true;
+      emission.phantom = true;
       return emission
     }
   }

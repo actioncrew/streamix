@@ -22,7 +22,7 @@ export class DistinctUntilChangedOperator<T> extends Operator {
       this.lastEmittedValue = currentValue;
       return emission;
     } else {
-      emission.isPhantom = true;
+      emission.phantom = true;
       return emission;
     }
   }

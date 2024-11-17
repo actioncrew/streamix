@@ -26,13 +26,13 @@ export abstract class Operator {
   async process(emission: Emission, chunk: Stream): Promise<Emission> {
     try {
       emission = await this.handle(emission, chunk);
-      if (this.next && !emission.isPhantom && !emission.isFailed) {
+      if (this.next && !emission.phantom && !emission.failed) {
         return this.next.process(emission, chunk);
       } else {
         return emission;
       }
     } catch (error) {
-      emission.isFailed = true;
+      emission.failed = true;
       emission.error = error;
       throw error;
     }

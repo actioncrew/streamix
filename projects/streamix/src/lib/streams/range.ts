@@ -15,7 +15,7 @@ export class RangeStream<T = any> extends Stream<T> {
         let emission = { value: this.current } as Emission;
         await this.onEmission.parallel({ emission, source: this });
 
-        if (emission.isFailed) {
+        if (emission.failed) {
           throw emission.error;
         }
 

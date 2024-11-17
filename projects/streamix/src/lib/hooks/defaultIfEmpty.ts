@@ -21,7 +21,7 @@ export class DefaultIfEmptyOperator extends Operator implements HookOperator {
 
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     // If the emission is not a phantom, cancelled, or failed, mark it as emitted
-    if (!emission.isPhantom && !emission.isPhantom && !emission.isFailed) {
+    if (!emission.phantom && !emission.phantom && !emission.failed) {
       this.hasEmitted = true;
     }
 

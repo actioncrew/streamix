@@ -95,21 +95,21 @@ export abstract class Stream<T = any> implements Subscribable<T> {
       let next = (source instanceof Stream) ? this.head : undefined;
       next = (source instanceof Operator) ? source.next : next;
 
-      if (emission.isFailed) throw emission.error;
+      if (emission.failed) throw emission.error;
 
-      if (!emission.isPhantom) {
+      if (!emission.phantom) {
         emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
       }
 
-      if (emission.isFailed) throw emission.error;
+      if (emission.failed) throw emission.error;
 
-      if (!emission.isPhantom) {
+      if (!emission.phantom) {
         await this.#subscribers.parallel({ emission, source: this });
       }
 
-      emission.isComplete = true;
+      emission.complete = true;
     } catch (error: any) {
-      emission.isFailed = true;
+      emission.failed = true;
       emission.error = error;
       await this.onError.parallel({ error });
     }

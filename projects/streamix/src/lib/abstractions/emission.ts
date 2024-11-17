@@ -1,8 +1,8 @@
 
 export interface Emission {
   value?: any;
-  isPhantom?: boolean;
-  isFailed?: boolean;
-  isComplete?: boolean;
+  phantom?: boolean;
+  failed?: boolean;
+  complete?: boolean;
   error?: any;
 }

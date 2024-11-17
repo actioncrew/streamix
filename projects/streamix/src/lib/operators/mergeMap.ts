@@ -44,7 +44,7 @@ export class MergeMapOperator extends Operator implements StreamOperator {
     this.processEmission(emission, this.output!);
 
     // Return the phantom emission immediately
-    emission.isPhantom = true;
+    emission.phantom = true;
     return emission;
   }
 
@@ -71,7 +71,7 @@ export class MergeMapOperator extends Operator implements StreamOperator {
           promises.add(
             stream.next(innerEmission.value).catch((error) => {
               emission.error = error;
-              emission.isFailed = true;
+              emission.failed = true;
             })
           );
         };
@@ -81,7 +81,7 @@ export class MergeMapOperator extends Operator implements StreamOperator {
 
       innerStream.onError.once((error: any) => {
         emission.error = error;
-        emission.isFailed = true;
+        emission.failed = true;
         innerStream.onEmission.remove(this, this.handleInnerEmission!);
         handleCompletion();
       });

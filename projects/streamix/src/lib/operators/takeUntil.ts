@@ -23,7 +23,7 @@ export class TakeUntilOperator extends Operator {
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     if (this.stopRequested) {
       stream.complete();
-      emission.isPhantom = true;
+      emission.phantom = true;
       return emission;
     }
 

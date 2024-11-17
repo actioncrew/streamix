@@ -70,7 +70,7 @@ export class WithLatestFromOperator extends Operator {
     if (this.latestValues.every((value) => value.hasValue())) {
       emission.value = [emission.value, ...this.latestValues.map(value => value.value())];
     } else {
-      emission.isFailed = true;
+      emission.failed = true;
       emission.error = new Error("Some streams are completed without emitting value.");
       this.finalize();
     }
