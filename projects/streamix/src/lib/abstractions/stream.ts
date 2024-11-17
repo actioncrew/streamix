@@ -27,14 +27,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let head: Operator | undefined;
   let tail: Operator | undefined;
 
-  const completionPromise = promisified<void>();
-  const startedPromise = promisified<void>();
+  const completion = promisified<void>();
+  const commencement = promisified<void>();
   let lock = createLock();
 
-  let isAutoComplete = false;
-  let isStopRequested = false;
-  let isStopped = false;
-  let isRunning = false;
+  let autoComplete = false;
+  let stopRequested = false;
+  let stopped = false;
+  let running = false;
   let currentValue: T | undefined;
 
   const onStart = hook();
@@ -48,7 +48,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
     try {
       await onStart.waitUntilComplete();
-      startedPromise.resolve();
+      commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
       await onComplete.waitUntilComplete();
@@ -57,7 +57,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } finally {
       eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
       await onStop.waitUntilComplete();
-      isStopped = true; isRunning = false;
+      stopped = true; running = false;
       operators.forEach(operator => operator.cleanup());
     }
   };
@@ -79,7 +79,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  const awaitCompletion = () => completionPromise.promise();
+  const awaitCompletion = () => completion.promise();
 
   const bindOperators = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
@@ -137,8 +137,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     subscribers.chain(boundCallback);
 
-    if (!isRunning && !isStopRequested) {
-      isRunning = true;
+    if (!running && !stopRequested) {
+      running = true;
       queueMicrotask(stream.run);
     }
 
@@ -147,8 +147,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       complete().then(() => subscribers.remove(boundCallback));
     };
 
-    subscription.started = startedPromise.promise();
-    subscription.completed = completionPromise.promise();
+    subscription.started = commencement.promise();
+    subscription.completed = completion.promise();
 
     return subscription as Subscription;
   };
@@ -157,7 +157,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return createPipeline<T>(stream).bindOperators(...operators);
   };
 
-  const shouldComplete = () => isAutoComplete || isStopRequested;
+  const shouldComplete = () => autoComplete || stopRequested;
 
   const stream = {
     type: "stream" as "stream",
@@ -195,24 +195,24 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       return subscribers;
     },
     get isAutoComplete() {
-      return isAutoComplete;
+      return autoComplete;
     },
     set isAutoComplete(value: boolean) {
-      if (value) completionPromise.resolve();
-      isAutoComplete = value;
+      if (value) completion.resolve();
+      autoComplete = value;
     },
     get isStopRequested() {
-      return isStopRequested;
+      return stopRequested;
     },
     set isStopRequested(value: boolean) {
-      if (value) completionPromise.resolve();
-      isStopRequested = value;
+      if (value) completion.resolve();
+      stopRequested = value;
     },
     get isRunning() {
-      return isRunning;
+      return running;
     },
     get isStopped() {
-      return isStopped;
+      return stopped;
     }
   };
 
