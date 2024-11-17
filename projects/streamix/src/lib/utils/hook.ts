@@ -13,7 +13,13 @@ export interface HookType {
 
 export function hook(): HookType & { scheduled: boolean } {
   let callbackMap: Map<WeakRef<object>, Set<Function>> | null = null;
-  let scheduled = false; // Flag to indicate if callbacks have been registered
+  let scheduled = false;
+  let activeCounter = 0;
+  let completedCounter = 0;
+  let resolveWait: (() => void) | null = null;
+  let waitingPromise: Promise<void> | null = null;
+  let hasProcessed = false;
+  let pendingWait = false;
 
   const getCallbackMap = () => {
     if (!callbackMap) callbackMap = new Map();
@@ -21,41 +27,85 @@ export function hook(): HookType & { scheduled: boolean } {
   };
 
   async function process(params?: any): Promise<void> {
-    if (!callbackMap) return; // If no callbacks have been added, skip processing
-    for (const [ownerRef, callbacks] of callbackMap) {
-      const owner = ownerRef.deref();
-      if (owner) {
-        for (const callback of callbacks) {
-          await callback.call(owner, params);
+    hasProcessed = true;
+    activeCounter++;
+    pendingWait = false;
+
+    try {
+      if (!callbackMap) return;
+      for (const [ownerRef, callbacks] of callbackMap) {
+        const owner = ownerRef.deref();
+        if (owner) {
+          for (const callback of callbacks) {
+            await callback.call(owner, params);
+          }
+        } else {
+          callbackMap.delete(ownerRef);
         }
-      } else {
-        callbackMap.delete(ownerRef);
       }
+    } finally {
+      completedCounter++;
+      checkCompletion();
     }
   }
 
   async function parallel(params?: any): Promise<void> {
-    if (!callbackMap) return; // Skip if no callbacks have been added
+    hasProcessed = true;
+    activeCounter++;
+    pendingWait = false;
+
     const promises: Promise<void>[] = [];
-    for (const [ownerRef, callbacks] of callbackMap) {
-      const owner = ownerRef.deref();
-      if (owner) {
-        for (const callback of callbacks) {
-          promises.push(callback.call(owner, params));
+    try {
+      if (!callbackMap) return;
+      for (const [ownerRef, callbacks] of callbackMap) {
+        const owner = ownerRef.deref();
+        if (owner) {
+          for (const callback of callbacks) {
+            promises.push(callback.call(owner, params));
+          }
+        } else {
+          callbackMap.delete(ownerRef);
         }
-      } else {
-        callbackMap.delete(ownerRef);
       }
+      await Promise.all(promises);
+    } finally {
+      completedCounter++;
+      checkCompletion();
     }
-    await Promise.all(promises);
+  }
+
+  function checkCompletion() {
+    if (resolveWait && activeCounter === completedCounter) {
+      resolveWait();
+      resolveWait = null;
+      waitingPromise = null;
+      hasProcessed = false;
+    }
+  }
+
+  async function waitForCompletion(): Promise<void> {
+    // If there's already an active process or one in progress, wait for completion
+    if (waitingPromise) {
+      return waitingPromise;
+    }
+
+    // If no active processes, prepare to wait for future processes
+    if (activeCounter === completedCounter && !pendingWait) {
+      return;
+    }
+
+    waitingPromise = new Promise<void>((resolve) => {
+      resolveWait = resolve;
+    });
+
+    return waitingPromise;
   }
 
   function chain(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
-    const map = getCallbackMap(); // Ensure callbackMap is initialized
+    const map = getCallbackMap();
     const ownerRef = new WeakRef(ownerOrCallback instanceof Function ? this : ownerOrCallback);
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
 
-    // Mark as scheduled since a callback is being registered
     if (!scheduled) {
       scheduled = true;
     }
@@ -79,7 +129,7 @@ export function hook(): HookType & { scheduled: boolean } {
   }
 
   function remove(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
-    if (!callbackMap) return this; // Skip if callbackMap has not been initialized
+    if (!callbackMap) return this;
     const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     for (const [ownerRef, callbacks] of callbackMap) {
@@ -92,7 +142,6 @@ export function hook(): HookType & { scheduled: boolean } {
       }
     }
 
-    // Update the scheduled flag if there are no callbacks left
     if (callbackMap && callbackMap.size === 0) {
       scheduled = false;
     }
@@ -101,7 +150,7 @@ export function hook(): HookType & { scheduled: boolean } {
   }
 
   function contains(this: HookType, ownerOrCallback: object | Function, callback?: Function): boolean {
-    if (!callbackMap) return false; // Return false if callbackMap has not been initialized
+    if (!callbackMap) return false;
     const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     for (const [ownerRef, callbacks] of callbackMap) {
@@ -114,7 +163,7 @@ export function hook(): HookType & { scheduled: boolean } {
 
   function clear(this: HookType): HookType {
     if (callbackMap) callbackMap.clear();
-    scheduled = false; // Reset scheduled when cleared
+    scheduled = false;
     return this;
   }
 
@@ -126,11 +175,14 @@ export function hook(): HookType & { scheduled: boolean } {
     remove,
     clear,
     contains,
+    waitForCompletion,
     get scheduled() {
-      return scheduled; // Expose scheduled flag
+      return scheduled;
     },
     get length() {
-      return callbackMap ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0) : 0;
-    }
+      return callbackMap
+        ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0)
+        : 0;
+    },
   };
 }
