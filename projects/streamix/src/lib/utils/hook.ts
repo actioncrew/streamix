@@ -8,18 +8,13 @@ export interface HookType {
   clear(this: HookType): HookType;
   contains(this: HookType, ownerOrCallback: object | Function, callback?: Function): boolean;
   length: number;
-  scheduled: boolean;
 }
 
-export function hook(): HookType & { scheduled: boolean } {
+export function hook(): HookType {
   let callbackMap: Map<WeakRef<object>, Set<Function>> | null = null;
   let scheduled = false;
-  let activeCounter = 0;
-  let completedCounter = 0;
   let resolveWait: (() => void) | null = null;
   let waitingPromise: Promise<void> | null = null;
-  let hasProcessed = false;
-  let pendingWait = false;
 
   const getCallbackMap = () => {
     if (!callbackMap) callbackMap = new Map();
@@ -27,10 +22,6 @@ export function hook(): HookType & { scheduled: boolean } {
   };
 
   async function process(params?: any): Promise<void> {
-    hasProcessed = true;
-    activeCounter++;
-    pendingWait = false;
-
     try {
       if (!callbackMap) return;
       for (const [ownerRef, callbacks] of callbackMap) {
@@ -44,16 +35,11 @@ export function hook(): HookType & { scheduled: boolean } {
         }
       }
     } finally {
-      completedCounter++;
-      checkCompletion();
+      resolveWait && resolveWait();
     }
   }
 
   async function parallel(params?: any): Promise<void> {
-    hasProcessed = true;
-    activeCounter++;
-    pendingWait = false;
-
     const promises: Promise<void>[] = [];
     try {
       if (!callbackMap) return;
@@ -69,38 +55,16 @@ export function hook(): HookType & { scheduled: boolean } {
       }
       await Promise.all(promises);
     } finally {
-      completedCounter++;
-      checkCompletion();
-    }
-  }
-
-  function checkCompletion() {
-    if (resolveWait && activeCounter === completedCounter) {
-      resolveWait();
-      resolveWait = null;
-      waitingPromise = null;
-      hasProcessed = false;
+      resolveWait && resolveWait();
     }
   }
 
   async function waitForCompletion(): Promise<void> {
-    // If there's already an active process or one in progress, return the existing waiting promise
-    if (waitingPromise) {
-      return waitingPromise;
-    }
-
     // Prepare to wait for future processes to complete (if there are any)
     waitingPromise = new Promise<void>((resolve) => {
       resolveWait = resolve;
     });
 
-    // Set pendingWait to true after creating the waitingPromise
-    pendingWait = true;
-
-    // If no processes are pending (active == completed) and no processes are expected in the future, we don't need to wait
-    if (activeCounter === completedCounter && !pendingWait) {
-      return;
-    }
     return waitingPromise;
   }
 
@@ -179,9 +143,6 @@ export function hook(): HookType & { scheduled: boolean } {
     clear,
     contains,
     waitForCompletion,
-    get scheduled() {
-      return scheduled;
-    },
     get length() {
       return callbackMap
         ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0)
