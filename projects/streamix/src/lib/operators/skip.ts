@@ -9,7 +9,7 @@ export const skip = (count: number): Operator => {
       return emission;
     } else {
       counter--;
-      emission.isPhantom = true;
+      emission.phantom = true;
       return emission;
     }
   };

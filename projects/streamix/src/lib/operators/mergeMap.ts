@@ -30,7 +30,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     processEmission(emission, output);
 
     // Mark the emission as phantom and return immediately
-    emission.isPhantom = true;
+    emission.phantom = true;
     return emission;
   };
 

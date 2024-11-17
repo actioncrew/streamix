@@ -3,7 +3,7 @@ import { Emission } from '../abstractions';
 
 export const filter = (predicate: (value: any) => boolean): Operator => {
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
-    emission.isPhantom = !predicate(emission.value);
+    emission.phantom = !predicate(emission.value);
     return emission;
   };
 

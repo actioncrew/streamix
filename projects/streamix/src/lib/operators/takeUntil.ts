@@ -36,7 +36,7 @@ export const takeUntil = (notifier: Subscribable): Operator => {
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
     if (stopRequested) {
       stream.isAutoComplete = true;
-      emission.isPhantom = true; // Mark emission as phantom to indicate it's ignored
+      emission.phantom = true; // Mark emission as phantom to indicate it's ignored
       return emission;
     }
     return emission; // Pass through emission if not stopped
