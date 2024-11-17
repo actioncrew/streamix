@@ -84,20 +84,23 @@ export function hook(): HookType & { scheduled: boolean } {
   }
 
   async function waitForCompletion(): Promise<void> {
-    // If there's already an active process or one in progress, wait for completion
+    // If there's already an active process or one in progress, return the existing waiting promise
     if (waitingPromise) {
       return waitingPromise;
     }
 
-    // If no active processes, prepare to wait for future processes
-    if (activeCounter === completedCounter && !pendingWait) {
-      return;
-    }
-
+    // Prepare to wait for future processes to complete (if there are any)
     waitingPromise = new Promise<void>((resolve) => {
       resolveWait = resolve;
     });
 
+    // Set pendingWait to true after creating the waitingPromise
+    pendingWait = true;
+
+    // If no processes are pending (active == completed) and no processes are expected in the future, we don't need to wait
+    if (activeCounter === completedCounter && !pendingWait) {
+      return;
+    }
     return waitingPromise;
   }
 
