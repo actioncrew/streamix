@@ -29,7 +29,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
       await processQueue();
     }
 
-    emission.isPhantom = true;
+    emission.phantom = true;
     return emission;
   };
 

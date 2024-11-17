@@ -31,7 +31,7 @@ export const fork = <T = any, R = T>(
       await processQueue();
     }
 
-    emission.isPhantom = true;
+    emission.phantom = true;
     return emission;
   };
 
@@ -77,7 +77,7 @@ export const fork = <T = any, R = T>(
 
   const handleStreamError = (emission: Emission, error: any) => {
     emission.error = error;
-    emission.isFailed = true;
+    emission.failed = true;
     eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error'});
     stopStreams(innerStream, outputStream);
     executionCounter.increment();

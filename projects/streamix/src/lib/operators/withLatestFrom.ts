@@ -62,7 +62,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
     if (latestValues.every((value) => value.hasValue())) {
       emission.value = [emission.value, ...latestValues.map(value => value.value())];
     } else {
-      emission.isFailed = true;
+      emission.failed = true;
       emission.error = new Error("Some streams are completed without emitting value.");
       finalize();
     }

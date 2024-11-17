@@ -8,7 +8,7 @@ export const takeWhile = (predicate: (value: any, index?: number) => boolean): O
     const shouldContinue = predicate(emission.value, index++);
 
     if (!shouldContinue) {
-      emission.isPhantom = true; // Mark emission as phantom
+      emission.phantom = true; // Mark emission as phantom
       stream.complete(); // Complete the stream if the condition fails
       return emission;
     }

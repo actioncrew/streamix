@@ -10,7 +10,7 @@ export const delay = (delayTime: number): Operator => {
 
       // Handle stream completion to clear the timeout
       completionPromise = stream.awaitCompletion().then(() => {
-        emission.isPhantom = true; // Mark emission as phantom when stream completes
+        emission.phantom = true; // Mark emission as phantom when stream completes
         clearTimeout(timeout);
         resolve(emission);
       });

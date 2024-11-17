@@ -13,7 +13,7 @@ export const take = <T>(count: number): Operator => {
       }
       return emission;
     } else {
-      emission.isPhantom = true; // Mark as phantom if beyond count
+      emission.phantom = true; // Mark as phantom if beyond count
       return emission;
     }
   };

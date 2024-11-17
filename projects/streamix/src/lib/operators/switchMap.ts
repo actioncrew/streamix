@@ -64,7 +64,7 @@ export const switchMap = <T = any, R = T>(project: (value: T) => Subscribable<R>
     }
 
     // Mark the original emission as phantom
-    emission.isPhantom = true;
+    emission.phantom = true;
     return emission;
   };
 

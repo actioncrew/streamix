@@ -109,21 +109,21 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       let next = isStream(source) ? source.head : undefined;
       next = isOperator(source) ? source.next : next;
 
-      if (emission.isFailed) throw emission.error;
+      if (emission.failed) throw emission.error;
 
-      if (!emission.isPhantom) {
+      if (!emission.phantom) {
         emission = await (next?.process(emission, stream) ?? Promise.resolve(emission));
       }
 
-      if (emission.isFailed) throw emission.error;
+      if (emission.failed) throw emission.error;
 
-      if (!emission.isPhantom) {
+      if (!emission.phantom) {
         await subscribers.parallel({ emission, source });
       }
 
-      emission.isComplete = true;
+      emission.complete = true;
     } catch (error) {
-      emission.isFailed = true;
+      emission.failed = true;
       emission.error = error;
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
     }

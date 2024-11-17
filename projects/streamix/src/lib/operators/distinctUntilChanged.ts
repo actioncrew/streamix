@@ -19,7 +19,7 @@ export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) =
       lastEmittedValue = currentValue;
       return emission;
     } else {
-      emission.isPhantom = true;
+      emission.phantom = true;
       return emission;
     }
   };
