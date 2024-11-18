@@ -1,7 +1,7 @@
 import { Stream, Subscription } from '../abstractions';
 import { counter } from '../utils';
 import { createStream } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
   let eventCounter = counter(0);

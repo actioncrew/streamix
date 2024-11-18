@@ -1,5 +1,5 @@
 import { Stream, createStream } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {

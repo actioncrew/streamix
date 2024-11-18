@@ -1,5 +1,5 @@
 import { createStream, Stream } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;

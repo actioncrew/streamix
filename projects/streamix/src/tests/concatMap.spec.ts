@@ -1,4 +1,4 @@
-import { eventBus } from './../lib/streams/bus';
+import { eventBus } from '../lib';
 import { concatMap, createStream, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {

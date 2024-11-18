@@ -1,3 +1,4 @@
+export * from './bus';
 export * from './emission';
 export * from './operator';
 export * from './stream';

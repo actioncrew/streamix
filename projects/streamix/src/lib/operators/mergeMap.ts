@@ -1,7 +1,7 @@
 import { createSubject, Subject } from '../streams';
 import { Emission, createOperator, Operator, Subscribable, Subscription } from '../abstractions';
 import { Counter, catchAny, counter } from '../utils';
-import { eventBus } from '../streams';
+import { eventBus } from '../abstractions';
 
 export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   const output = createSubject();

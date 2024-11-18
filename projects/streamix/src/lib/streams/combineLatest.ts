@@ -1,6 +1,6 @@
 import { createStream, Stream, Subscribable } from '../abstractions';
 import { catchAny } from '../utils'; // Ensure catchAny is imported from the correct location
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined }));

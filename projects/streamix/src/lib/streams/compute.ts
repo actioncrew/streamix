@@ -1,7 +1,7 @@
 import { createStream, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 import { catchAny } from '../utils';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream

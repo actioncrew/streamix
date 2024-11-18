@@ -1,5 +1,5 @@
 import { createStream, Stream } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function of<T = any>(value: T): Stream<T> {
   // Create the custom run function for the OfStream

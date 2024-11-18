@@ -1,6 +1,6 @@
 import { Emission } from '../abstractions';
 import { createStream, Stream } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> {
   // Determine if the input is async or sync

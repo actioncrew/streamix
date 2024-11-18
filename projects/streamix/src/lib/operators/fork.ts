@@ -1,4 +1,4 @@
-import { eventBus } from './../streams/bus';
+import { eventBus } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';

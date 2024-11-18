@@ -1,5 +1,5 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
-import { eventBus } from "../../lib";
+import { eventBus } from ".";
 import { hook, Hook, promisified, createLock, Lock } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
