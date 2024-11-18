@@ -55,6 +55,12 @@ export function createBus(): Bus {
             pendingEmissions.set(event.target, set);
           }
 
+          if(pendingEmissions.has(event.target)) {
+            const pendingSet = pendingEmissions.get(event.target);
+            const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
+            pendingEmissions.set(event.target, new Set(stillPending));
+          }
+
           // Move head forward in the buffer and reduce the available item count
           head = (head + 1) % bufferSize;
           spaceAvailable.release(); // Release the space in the buffer
