@@ -1,4 +1,5 @@
 import { createLock, createSemaphore } from '../utils';
+import { Emission } from './emission';
 
 export const eventBus = createBus() as Bus;
 eventBus.run();
@@ -17,8 +18,11 @@ export type Bus = {
 };
 
 export function createBus(): Bus {
+
   const bufferSize = 64; // Adjust buffer size as needed
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
+  const pendingEmissions: Map<any, Set<Emission>> = new Map();
+
   let head = 0;
   let tail = 0;
 
@@ -41,6 +45,14 @@ export function createBus(): Bus {
             case 'emission': await event.target.onEmission.parallel(event.payload); break;
             case 'complete': await event.target.onComplete.parallel(event.payload); break;
             case 'error': await event.target.onError.parallel(event.payload); break;
+          }
+
+          if (event.target && event.payload?.emission?.pending) {
+            let set = pendingEmissions.get(event.target) ?? new Set();
+            if(!set.has(event.payload.emission)) {
+              set.add(event.payload.emission);
+            }
+            pendingEmissions.set(event.target, set);
           }
 
           // Move head forward in the buffer and reduce the available item count
