@@ -14,7 +14,7 @@ export type Emission = {
   link: (child: Emission) => void;
   finalize(): void;
   notifyOnCompletion(child: Emission): void;
-  notifyOnError(child: Emission): void;
+  notifyOnError(child: Emission, error: any): void;
 }
 
 // Example function to create an Emission with Promise management
@@ -36,9 +36,7 @@ export function createEmission({ value, phantom, failed, pending, complete, erro
         resolveFn(value);
 
         if(instance.ancestor) {
-          delete instance.ancestor.pending;
-          instance.ancestor.complete = true;
-          instance.ancestor.resolve();
+          instance.ancestor.notifyOnCompletion(instance);
         }
       }
       return completion;
@@ -50,7 +48,7 @@ export function createEmission({ value, phantom, failed, pending, complete, erro
         instance.error = reason;
 
         if(instance.ancestor) {
-          instance.ancestor.notifyOnCompletion(instance);
+          instance.ancestor.notifyOnError(instance, reason);
         }
 
         rejectFn(reason);
@@ -62,7 +60,10 @@ export function createEmission({ value, phantom, failed, pending, complete, erro
       instance.descendants = instance.descendants || new Set();
       emission.ancestor = instance;
       instance.descendants.add(emission);
-    }
+    },
+    finalize: (): void => {},
+    notifyOnCompletion: (child: Emission): void => {},
+    notifyOnError: (child: Emission, reason: any): void => {}
   };
 
   // Conditionally set properties if they are provided
