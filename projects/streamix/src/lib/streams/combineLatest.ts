@@ -1,4 +1,4 @@
-import { createStream, Stream, Subscribable } from '../abstractions';
+import { createEmission, createStream, Stream, Subscribable } from '../abstractions';
 import { catchAny } from '../utils'; // Ensure catchAny is imported from the correct location
 import { eventBus } from '../abstractions';
 
@@ -18,7 +18,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
     ]));
 
     if (error) {
-      eventBus.enqueue({ target: this, payload: {emission: { error, failed: true }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: {emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     }
   });
 
@@ -31,7 +31,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
       if (values.every(v => v.hasValue)) {
         eventBus.enqueue({
           target: stream,
-          payload: { emission: { value: values.map(v => v.value!) },
+          payload: { emission: createEmission({ value: values.map(v => v.value!) }),
           source: stream },
           type: 'emission'
         });

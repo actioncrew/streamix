@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 import { catchAny } from '../utils';
 import { eventBus } from '../abstractions';
@@ -17,7 +17,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
           task.returnWorker(worker);
           reject(event.data.error);
         } else {
-          eventBus.enqueue({ target: this, payload: { emission: { value: event.data }, source: this }, type: 'emission' });
+          eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event.data }), source: this }, type: 'emission' });
           task.returnWorker(worker);
           resolve();
         }
@@ -36,7 +36,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
 
     const [error] = await catchAny(Promise.race([this.awaitCompletion(), promise]));
     if(error) {
-      eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     } else {
       await promise;
     }

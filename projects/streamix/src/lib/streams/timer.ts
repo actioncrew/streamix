@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
@@ -23,7 +23,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       }
 
       // Initial emission
-      eventBus.enqueue({ target: this, payload: { emission: { value: timerValue }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
       timerValue++;
 
       if (actualIntervalMs > 0) {
@@ -37,13 +37,13 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
                 return;
               }
 
-              eventBus.enqueue({ target: this, payload: { emission: { value: timerValue }, source: this }, type: 'emission' });
+              eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
 
               timerValue++;
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
+              eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
               resolve();
             }
           }, actualIntervalMs);
@@ -54,7 +54,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
         });
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

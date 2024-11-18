@@ -1,4 +1,4 @@
-import { createStream, Subscribable, Stream } from '../abstractions';
+import { createStream, Subscribable, Stream, createEmission } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
@@ -26,7 +26,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
 
       await this.awaitCompletion();
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     }
   });
 
@@ -36,7 +36,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       return;
     }
 
-    eventBus.enqueue({ target: stream, payload: { emission: { value }, source: stream }, type: 'emission' });
+    eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 
   // Clean up the inner stream when complete

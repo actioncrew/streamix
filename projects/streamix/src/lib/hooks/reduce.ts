@@ -1,4 +1,4 @@
-import { eventBus } from '../abstractions';
+import { createEmission, eventBus } from '../abstractions';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Operator => {
@@ -12,7 +12,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): O
 
   const callback = async (): Promise<void> => {
     // Emit the accumulated value once the stream completes
-    eventBus.enqueue({ target: boundStream,  payload: { emission: { value: accumulatedValue }, source: boundStream }, type: 'emission' });
+    eventBus.enqueue({ target: boundStream,  payload: { emission: createEmission({ value: accumulatedValue }), source: boundStream }, type: 'emission' });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {

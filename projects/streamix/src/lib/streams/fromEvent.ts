@@ -1,4 +1,4 @@
-import { Stream, Subscription } from '../abstractions';
+import { createEmission, Stream, Subscription } from '../abstractions';
 import { counter } from '../utils';
 import { createStream } from '../abstractions';
 import { eventBus } from '../abstractions';
@@ -30,7 +30,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
         if (this.isRunning) {
           eventCounter.increment();
           // Emit the event to the stream
-          eventBus.enqueue({ target: this, payload: { emission: { value: event }, source: this }, type: 'emission' });
+          eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event }), source: this }, type: 'emission' });
           eventCounter.decrement();
         }
       };

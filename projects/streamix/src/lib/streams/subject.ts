@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export type Subject<T = any> = Stream<T> & {
@@ -30,15 +30,13 @@ export function createSubject<T = any>(): Subject<T> {
 
       await started;
 
-      eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ value }), source: this }, type: 'emission' });
     } finally {
       releaseLock();
     }
   };
 
-  let started = new Promise<void>((resolve) => {
-    stream.onStart.once(() => resolve());
-  });
+  let started = stream.onStart.waitForCompletion();
 
   stream.name = "subject";
   return stream;

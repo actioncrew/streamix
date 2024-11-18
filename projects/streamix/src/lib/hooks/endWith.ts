@@ -1,4 +1,4 @@
-import { eventBus } from '../abstractions';
+import { createEmission, eventBus } from '../abstractions';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const endWith = (value: any): Operator => {
@@ -11,7 +11,7 @@ export const endWith = (value: any): Operator => {
 
   const callback = async (instance: Operator, params?: any): Promise<void> => {
     // Emit the provided initial value when the stream starts
-    eventBus.enqueue({ target: boundStream, payload: { emission: { value }, source: instance }, type: 'emission' });
+    eventBus.enqueue({ target: boundStream, payload: { emission: createEmission({ value }), source: instance }, type: 'emission' });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
