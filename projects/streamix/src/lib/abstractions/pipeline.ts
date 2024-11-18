@@ -1,6 +1,6 @@
 import { Emission, Stream } from '../abstractions';
 import { Subject } from '../';
-import { hook, HookType, PromisifiedType } from '../utils';
+import { hook, Hook, PromisifiedType } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
@@ -44,23 +44,23 @@ export class Pipeline<T = any> implements Subscribable<T> {
     this.lastChunk.onStop.chain(this, this.onStopCallback);
   }
 
-  get onStart(): HookType {
+  get onStart(): Hook {
     return this.#onStart;
   }
 
-  get onComplete(): HookType {
+  get onComplete(): Hook {
     return this.#onComplete;
   }
 
-  get onStop(): HookType {
+  get onStop(): Hook {
     return this.#onStop;
   }
 
-  get onError(): HookType {
+  get onError(): Hook {
     return this.#onError;
   }
 
-  get onEmission(): HookType {
+  get onEmission(): Hook {
     return this.#onEmission;
   }
 

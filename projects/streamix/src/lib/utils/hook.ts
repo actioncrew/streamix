@@ -1,16 +1,17 @@
 // Define HookType as an interface for the hook methods
-export interface HookType {
+export interface Hook {
   process(params?: any): Promise<void>;
   parallel(params?: any): Promise<void>;
-  chain(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType;
-  once(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType;
-  remove(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType;
-  clear(this: HookType): HookType;
-  contains(this: HookType, ownerOrCallback: object | Function, callback?: Function): boolean;
+  chain(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
+  once(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
+  remove(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
+  clear(this: Hook): Hook;
+  contains(this: Hook, ownerOrCallback: object | Function, callback?: Function): boolean;
+  waitForCompletion(): Promise<void>;
   length: number;
 }
 
-export function hook(): HookType {
+export function hook(): Hook {
   let callbackMap: Map<WeakRef<object>, Set<Function>> | null = null;
   let scheduled = false;
   let resolveWait: (() => void) | null = null;
@@ -68,7 +69,7 @@ export function hook(): HookType {
     return waitingPromise;
   }
 
-  function chain(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
+  function chain(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook {
     const map = getCallbackMap();
     const ownerRef = new WeakRef(ownerOrCallback instanceof Function ? this : ownerOrCallback);
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
@@ -84,7 +85,7 @@ export function hook(): HookType {
     return this;
   }
 
-  function once(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
+  function once(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook {
     const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
     const wrapper = async (params?: any) => {
@@ -95,7 +96,7 @@ export function hook(): HookType {
     return chain.call(this, owner, wrapper);
   }
 
-  function remove(this: HookType, ownerOrCallback: object | Function, callback?: Function): HookType {
+  function remove(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook {
     if (!callbackMap) return this;
     const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
@@ -116,7 +117,7 @@ export function hook(): HookType {
     return this;
   }
 
-  function contains(this: HookType, ownerOrCallback: object | Function, callback?: Function): boolean {
+  function contains(this: Hook, ownerOrCallback: object | Function, callback?: Function): boolean {
     if (!callbackMap) return false;
     const owner = ownerOrCallback instanceof Function ? this : ownerOrCallback;
     callback = ownerOrCallback instanceof Function ? ownerOrCallback : callback!;
@@ -128,7 +129,7 @@ export function hook(): HookType {
     return false;
   }
 
-  function clear(this: HookType): HookType {
+  function clear(this: Hook): Hook {
     if (callbackMap) callbackMap.clear();
     scheduled = false;
     return this;
