@@ -34,8 +34,7 @@ export function createBus(): Bus {
 
         const event = buffer[head];
         if (event) {
-          console.log(event.target, event.type);
-          // Process the event here (you can call your handler based on event type)
+         // Process the event here (you can call your handler based on event type)
           switch(event.type) {
             case 'start': await event.target.onStart.parallel(event.payload); break;
             case 'stop': await event.target.onStop.parallel(event.payload); break;

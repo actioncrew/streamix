@@ -21,7 +21,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
       subscription = currentSource.subscribe(value => handleEmissionFn(value)); // Start the current source
       await currentSource.awaitCompletion(); // Wait for the current source to complete
     } catch (error) {
-      eventBus.enqueue({ target: stream, payload: { emission: { error, isFailed: true }, source: stream }, type: 'emission' });
+      eventBus.enqueue({ target: stream, payload: { emission: { error, failed: true }, source: stream }, type: 'emission' });
     } finally {
       // currentSource.onStop.once(() => subscription?.unsubscribe());
     }

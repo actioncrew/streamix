@@ -26,7 +26,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
 
       await this.awaitCompletion();
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
     }
   });
 
