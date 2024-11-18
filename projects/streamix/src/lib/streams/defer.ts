@@ -1,5 +1,5 @@
 import { createStream, Subscribable, Stream } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   let innerStream: Subscribable<T> | undefined;

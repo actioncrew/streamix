@@ -1,5 +1,5 @@
 import { createStream, Stream } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export type Subject<T = any> = Stream<T> & {
   next(value?: T): Promise<void>;

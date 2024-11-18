@@ -1,5 +1,5 @@
 import { createStream, Stream, Subscribable, Subscription } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   let subscription: Subscription | undefined;

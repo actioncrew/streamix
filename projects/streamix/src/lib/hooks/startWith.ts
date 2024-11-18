@@ -1,4 +1,4 @@
-import { eventBus } from './../streams/bus';
+import { eventBus } from '../abstractions';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const startWith = (value: any): Operator => {

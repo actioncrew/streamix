@@ -1,5 +1,5 @@
 import { createStream, Subscribable, Stream, Subscription } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function iif<T>(
   condition: () => boolean, // Evaluate condition once at initialization

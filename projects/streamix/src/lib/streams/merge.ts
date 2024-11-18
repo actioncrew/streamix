@@ -1,6 +1,6 @@
 
 import { createStream, Stream, Subscribable } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
   // Create the custom run function for the MergeStream

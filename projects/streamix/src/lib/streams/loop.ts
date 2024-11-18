@@ -1,6 +1,6 @@
 import { Emission } from '../abstractions';
 import { createStream, Stream } from '../abstractions';
-import { eventBus } from './bus';
+import { eventBus } from '../abstractions';
 
 export function loop<T>(
   initialValue: T,
