@@ -112,13 +112,13 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       if (emission.failed) throw emission.error;
 
-      if (!emission.phantom) {
+      if (!emission.phantom && !emission.pending) {
         emission = await (next?.process(emission, stream) ?? Promise.resolve(emission));
       }
 
       if (emission.failed) throw emission.error;
 
-      if (!emission.phantom) {
+      if (!emission.phantom && !emission.pending) {
         await subscribers.parallel({ emission, source });
       }
 

@@ -3,7 +3,6 @@ import { Subscribable, Emission, createOperator, Operator } from '../abstraction
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
 import { Subscription } from '../abstractions';
-import { queue } from 'rxjs';
 
 export const concatMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
