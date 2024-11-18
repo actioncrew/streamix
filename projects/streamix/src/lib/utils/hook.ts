@@ -15,7 +15,8 @@ export function hook(): Hook {
   let callbackMap: Map<WeakRef<object>, Set<Function>> | null = null;
   let scheduled = false;
   let resolveWait: (() => void) | null = null;
-  let waitingPromise: Promise<void> | null = null;
+  let waitingPromise: Promise<void> = Promise.resolve();
+  let pendingCount = 0;
 
   const getCallbackMap = () => {
     if (!callbackMap) callbackMap = new Map();
@@ -37,6 +38,7 @@ export function hook(): Hook {
       }
     } finally {
       resolveWait && resolveWait();
+      pendingCount = 0;
     }
   }
 
@@ -57,15 +59,19 @@ export function hook(): Hook {
       await Promise.all(promises);
     } finally {
       resolveWait && resolveWait();
+      pendingCount = 0;
     }
   }
 
   async function waitForCompletion(): Promise<void> {
     // Prepare to wait for future processes to complete (if there are any)
-    waitingPromise = new Promise<void>((resolve) => {
-      resolveWait = resolve;
-    });
+    if(pendingCount === 0) {
+      waitingPromise = new Promise<void>((resolve) => {
+        resolveWait = resolve;
+      });
+    }
 
+    pendingCount++;
     return waitingPromise;
   }
 

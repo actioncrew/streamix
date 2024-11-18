@@ -13,7 +13,7 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
   const callback = (): void => {
     if (!hasEmitted) {
       // If nothing has been emitted, emit the default value
-      eventBus.enqueue({ target: boundStream, payload: { emission: { value: defaultValue }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: boundStream, payload: { emission: { value: defaultValue }, source: operator }, type: 'emission' });
     }
   };
 
