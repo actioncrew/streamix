@@ -12,7 +12,7 @@ export type Emission = {
 }
 
 // Example function to create an Emission with Promise management
-export function emission(value?: any) {
+export function createEmission(value?: any) {
   let resolveFn: (value: any) => void;
   let rejectFn: (reason: any) => void;
   let completion = new Promise<void>((resolve, reject) => {
