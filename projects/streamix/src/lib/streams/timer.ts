@@ -43,7 +43,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
+              eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
               resolve();
             }
           }, actualIntervalMs);
@@ -54,7 +54,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
         });
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

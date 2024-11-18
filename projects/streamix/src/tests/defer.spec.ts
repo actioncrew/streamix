@@ -5,7 +5,7 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
   // Create the custom run function for the MockStream
   const stream = createStream(async (): Promise<void> => {
     if (failed && error) {
-      eventBus.enqueue({ target: stream, payload: { emission: { error, isFailed: true }, source: stream }, type: 'emission' });
+      eventBus.enqueue({ target: stream, payload: { emission: { error, failed: true }, source: stream }, type: 'emission' });
       return;
     }
 

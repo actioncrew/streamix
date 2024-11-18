@@ -27,7 +27,7 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
         eventBus.enqueue({ target: this, payload: { emission: { value: resolvedValue }, source: this }, type: 'emission' });
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { emission: { error, isFailed: true }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
     }
   });
 
