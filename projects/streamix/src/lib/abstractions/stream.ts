@@ -47,16 +47,17 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const run = async () => {
     eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
     try {
-      await onStart.waitUntilComplete();
+      await onStart.waitForCompletion();
       commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
-      await onComplete.waitUntilComplete();
+      await onComplete.waitForCompletion();
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
+      await onError.waitForCompletion();
     } finally {
       eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
-      await onStop.waitUntilComplete();
+      await onStop.waitForCompletion();
       stopped = true; running = false;
       operators.forEach(operator => operator.cleanup());
     }
@@ -66,12 +67,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     const releaseLock = await lock.acquire();
     try {
       if(!stream.isRunning && !stream.isStopped) {
-        await onStart.waitUntilComplete();
+        await onStart.waitForCompletion();
       }
 
       if(!stream.isStopped && !stream.isAutoComplete) {
         stream.isStopRequested = true;
-        await onStop.waitUntilComplete();
+        await onStop.waitForCompletion();
       }
     }
     finally {
