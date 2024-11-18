@@ -12,6 +12,9 @@ export type Emission = {
   reject: (reason: any) => Promise<void>;
   wait: () => Promise<void>;
   link: (child: Emission) => void;
+  finalize(): void;
+  notifyOnCompletion(child: Emission): void;
+  notifyOnError(child: Emission): void;
 }
 
 // Example function to create an Emission with Promise management
@@ -47,8 +50,7 @@ export function createEmission({ value, phantom, failed, pending, complete, erro
         instance.error = reason;
 
         if(instance.ancestor) {
-          delete instance.ancestor.pending;
-          instance.ancestor.reject(reason);
+          instance.ancestor.notifyOnCompletion(instance);
         }
 
         rejectFn(reason);
