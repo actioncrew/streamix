@@ -29,7 +29,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     const newInnerStream = project(emission.value);
 
     // Cancel any existing inner subscription
-    if(currentInnerStream !== newInnerStream) {
+    if(currentInnerStream && currentInnerStream !== newInnerStream) {
       stopCurrentInnerStream();
     }
 

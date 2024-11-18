@@ -1,4 +1,4 @@
-import { createStream, defer, Emission, eventBus, Stream } from '../lib';
+import { createEmission, createStream, defer, Emission, eventBus, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(emissions: Emission[], completed = false, failed = false, error?: Error): Stream {
@@ -24,7 +24,7 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
 
 describe('DeferStream', () => {
   it('should create a new stream each time it is subscribed to', (done) => {
-    const emissions: Emission[] = [{ value: 1 }, { value: 2 }, { value: 3 }];
+    const emissions: Emission[] = [createEmission(1), createEmission(2), createEmission(3)];
     const factory = jest.fn(() => mockStream(emissions, true));
 
     const deferStream = defer(factory);
