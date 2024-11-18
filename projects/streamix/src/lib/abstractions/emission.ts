@@ -15,7 +15,8 @@ export type Emission = {
 }
 
 // Example function to create an Emission with Promise management
-export function createEmission(value?: any) {
+export function createEmission({ value, phantom, failed, pending, complete, error }:
+  { value?: any, phantom?: boolean, failed?: boolean, pending?: boolean, complete?: boolean, error?: any }) {
   let resolveFn: (value: any) => void;
   let rejectFn: (reason: any) => void;
   let completion = new Promise<void>((resolve, reject) => {
@@ -24,7 +25,6 @@ export function createEmission(value?: any) {
   });
 
   const instance: Emission = {
-    value,
     resolve: () => {
       if (resolveFn) {
         delete instance.pending;
@@ -62,6 +62,14 @@ export function createEmission(value?: any) {
       instance.descendants.add(emission);
     }
   };
+
+  // Conditionally set properties if they are provided
+  if (value !== undefined) instance.value = value;
+  if (phantom !== undefined) instance.phantom = phantom;
+  if (failed !== undefined) instance.failed = failed;
+  if (pending !== undefined) instance.pending = pending;
+  if (complete !== undefined) instance.complete = complete;
+  if (error !== undefined) instance.error = error;
 
   return instance;
 }

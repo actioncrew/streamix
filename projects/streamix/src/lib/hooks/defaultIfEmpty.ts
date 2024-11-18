@@ -1,4 +1,4 @@
-import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator, createEmission } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export const defaultIfEmpty = (defaultValue: any): Operator => {
@@ -13,7 +13,7 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
   const callback = (): void => {
     if (!hasEmitted) {
       // If nothing has been emitted, emit the default value
-      eventBus.enqueue({ target: boundStream, payload: { emission: { value: defaultValue }, source: operator }, type: 'emission' });
+      eventBus.enqueue({ target: boundStream, payload: { emission: createEmission({ value: defaultValue }), source: operator }, type: 'emission' });
     }
   };
 

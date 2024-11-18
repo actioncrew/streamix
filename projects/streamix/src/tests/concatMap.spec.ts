@@ -1,4 +1,4 @@
-import { eventBus } from '../lib';
+import { createEmission, eventBus } from '../lib';
 import { concatMap, createStream, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
@@ -95,13 +95,13 @@ describe('ConcatMapOperator', () => {
 export function myInnerStream(value: any): Stream {
   return createStream(async function (this: Stream) {
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulated delay
-    eventBus.enqueue({ target: this, payload: { emission: { value: 'innerValue' + value }, source: this }, type: 'emission' });
+    eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: 'innerValue' + value }), source: this }, type: 'emission' });
   });
 }
 
 export function myRealStream(): Stream {
   return createStream(async function (this: Stream) {
-    eventBus.enqueue({ target: this, payload: { emission: { value: 'streamValue1' }, source: this }, type: 'emission' });
+    eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: 'streamValue1' }), source: this }, type: 'emission' });
   });
 }
 

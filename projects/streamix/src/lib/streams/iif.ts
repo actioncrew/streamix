@@ -1,4 +1,4 @@
-import { createStream, Subscribable, Stream, Subscription } from '../abstractions';
+import { createStream, Subscribable, Stream, Subscription, createEmission } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function iif<T>(
@@ -31,7 +31,7 @@ export function iif<T>(
       return;
     }
 
-    eventBus.enqueue({ target: stream, payload: { emission: { value }, source: stream }, type: 'emission' });
+    eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 
   stream.name = "iif";

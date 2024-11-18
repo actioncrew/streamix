@@ -1,4 +1,4 @@
-import { Stream, createStream } from '../abstractions';
+import { Stream, createEmission, createStream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 // Function to create a FromPromiseStream
@@ -24,10 +24,10 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
 
       // If the stream is not complete, emit the value
       if (!this.shouldComplete()) {
-        eventBus.enqueue({ target: this, payload: { emission: { value: resolvedValue }, source: this }, type: 'emission' });
+        eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: resolvedValue }), source: this }, type: 'emission' });
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { emission: { error, failed: true }, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     }
   });
 
