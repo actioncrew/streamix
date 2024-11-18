@@ -1,103 +1,76 @@
-import { createStream, Emission, Stream } from '../abstractions';
-import { createLock, promisified, Promisified } from '../utils';
+import { createLock, createSemaphore } from '../utils';
 
 export const eventBus = createBus() as Bus;
 eventBus.run();
 
 export type BusEvent = {
-  target: any,
+  target: any;
   type: 'emission' | 'start' | 'stop' | 'complete' | 'error' | 'subscribers';
-  payload?: any,
-  timeStamp?: Date
+  payload?: any;
+  timeStamp?: Date;
 };
 
 export type Bus = {
-  run(): Promise<void>;
-  enqueue(event: BusEvent): Promise<void>;
+  run(): void;
+  enqueue(event: BusEvent): void;
+  name?: string;
 };
 
-// Create the functional version of the Subject
 export function createBus(): Bus {
-  const bufferSize = 64;
-  const buffer: Array<Promisified<any> | null> = new Array(bufferSize).fill(null);
-  let head = 0; let tail = 0;
-  let itemsCount = 0;
+  const bufferSize = 64; // Adjust buffer size as needed
+  const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
+  let head = 0;
+  let tail = 0;
 
-  const emissionAvailable = promisified<void>();
-  const spaceAvailable = promisified<void>();
+  const lock = createLock();
+  const itemsAvailable = createSemaphore(0); // Semaphore for items available in the buffer
+  const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
 
-  const lock = createLock(); // Functional lock for controlling access
-
-  const bus = {
-    run: async function (this: any): Promise<void> {
-      spaceAvailable.resolve(); // Initially, space is available
-
+  const bus: Bus = {
+    async run(): Promise<void> {
       while (true) {
-        // Wait for the next emission or completion signal
-        await emissionAvailable.promise();
+        // Wait for an available item or space in the buffer
+        await itemsAvailable.acquire(); // Wait for an item to be available
 
-        // Process each buffered value sequentially
-        while (itemsCount > 0) {
-          const promisifiedValue = buffer[head];
-          if (promisifiedValue) {
-            const event = promisifiedValue() as BusEvent;
-
-            switch(event.type) {
-              case 'start': await event.target.onStart.parallel(event.payload); break;
-              case 'stop': await event.target.onStop.parallel(event.payload); break;
-              case 'emission': await event.target.onEmission.parallel(event.payload); break;
-              case 'complete': await event.target.onComplete.parallel(event.payload); break;
-              case 'error': await event.target.onError.parallel(event.payload); break;
-            }
-
-            promisifiedValue.resolve(event);
-
-            // Move the head forward in the cyclic buffer and reduce the count
-            head = (head + 1) % bufferSize;
-            itemsCount--;
-
-            // Resolve the spaceAvailable promise if there's space now
-            if (itemsCount < bufferSize) {
-              spaceAvailable.resolve();
-            }
+        const event = buffer[head];
+        if (event) {
+          console.log(event.target, event.type);
+          // Process the event here (you can call your handler based on event type)
+          switch(event.type) {
+            case 'start': await event.target.onStart.parallel(event.payload); break;
+            case 'stop': await event.target.onStop.parallel(event.payload); break;
+            case 'emission': await event.target.onEmission.parallel(event.payload); break;
+            case 'complete': await event.target.onComplete.parallel(event.payload); break;
+            case 'error': await event.target.onError.parallel(event.payload); break;
           }
 
-          // Reset `emissionAvailable` after processing all buffered values
-          emissionAvailable.reset();
+          // Move head forward in the buffer and reduce the available item count
+          head = (head + 1) % bufferSize;
+          spaceAvailable.release(); // Release the space in the buffer
         }
       }
     },
 
-    enqueue: async function (this: Bus, event: BusEvent): Promise<void> {
-      // Acquire the lock before proceeding
+    async enqueue(event: BusEvent): Promise<void> {
       const releaseLock = await lock.acquire();
 
       try {
-        // Wait until there is space in the buffer
-        if (itemsCount === bufferSize) {
-          await spaceAvailable.promise();
-          spaceAvailable.reset();
-        }
+        await spaceAvailable.acquire(); // Wait until space is available in the buffer
+        event.timeStamp = new Date(); // Add timestamp for the event
 
-        event.timeStamp = new Date();
-        const promisifiedValue = promisified<any>(event);
-
-        // Place the new value at the tail and advance the tail position
-        buffer[tail] = promisifiedValue;
+        // Place the event into the buffer and update the tail position
+        buffer[tail] = event;
         tail = (tail + 1) % bufferSize;
-        itemsCount++;
 
-        // Resolve emissionAvailable if the buffer was empty
-        emissionAvailable.resolve();
-
-        return promisifiedValue.promise() as Promise<void>;
+        // Release the semaphore to notify the consumer that an item is available
+        itemsAvailable.release();
       } finally {
-        releaseLock(); // Release the lock after finishing
+        releaseLock(); // Always release the lock to avoid blocking other operations
       }
     },
-
-    name: "bus"
   };
+
+  bus.name = 'bus';
 
   return bus;
 }

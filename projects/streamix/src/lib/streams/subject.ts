@@ -30,8 +30,7 @@ export function createSubject<T = any>(): Subject<T> {
 
       await started;
 
-      promise = eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
-      return promise;
+      eventBus.enqueue({ target: this, payload: { emission: { value }, source: this }, type: 'emission' });
     } finally {
       releaseLock();
     }
