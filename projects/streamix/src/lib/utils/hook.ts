@@ -1,3 +1,4 @@
+// Define HookType as an interface for the hook methods
 export interface Hook {
   process(params?: any): Promise<void>;
   parallel(params?: any): Promise<void>;
@@ -6,15 +7,15 @@ export interface Hook {
   remove(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
   clear(this: Hook): Hook;
   contains(this: Hook, ownerOrCallback: object | Function, callback?: Function): boolean;
-  waitUntilComplete(): Promise<void>;
+  waitForCompletion(): Promise<void>;
   length: number;
-  scheduled: boolean;
 }
 
-export function hook(): Hook & { scheduled: boolean } {
+export function hook(): Hook {
   let callbackMap: Map<WeakRef<object>, Set<Function>> | null = null;
   let scheduled = false;
-  let completionPromise: Promise<void> | null = null;
+  let resolveWait: (() => void) | null = null;
+  let waitingPromise: Promise<void> | null = null;
 
   const getCallbackMap = () => {
     if (!callbackMap) callbackMap = new Map();
@@ -22,10 +23,8 @@ export function hook(): Hook & { scheduled: boolean } {
   };
 
   async function process(params?: any): Promise<void> {
-    if (!callbackMap) return;
-
-    // Create a completion promise that resolves when all callbacks are finished
-    completionPromise = (async () => {
+    try {
+      if (!callbackMap) return;
       for (const [ownerRef, callbacks] of callbackMap) {
         const owner = ownerRef.deref();
         if (owner) {
@@ -36,40 +35,38 @@ export function hook(): Hook & { scheduled: boolean } {
           callbackMap.delete(ownerRef);
         }
       }
-    })();
-
-    await completionPromise;
+    } finally {
+      resolveWait && resolveWait();
+    }
   }
 
   async function parallel(params?: any): Promise<void> {
-    if (!callbackMap) return;
-
-    // Create a completion promise that resolves when all callbacks are finished
     const promises: Promise<void>[] = [];
-    for (const [ownerRef, callbacks] of callbackMap) {
-      const owner = ownerRef.deref();
-      if (owner) {
-        for (const callback of callbacks) {
-          promises.push(callback.call(owner, params));
+    try {
+      if (!callbackMap) return;
+      for (const [ownerRef, callbacks] of callbackMap) {
+        const owner = ownerRef.deref();
+        if (owner) {
+          for (const callback of callbacks) {
+            promises.push(callback.call(owner, params));
+          }
+        } else {
+          callbackMap.delete(ownerRef);
         }
-      } else {
-        callbackMap.delete(ownerRef);
       }
+      await Promise.all(promises);
+    } finally {
+      resolveWait && resolveWait();
     }
-
-    completionPromise = Promise.all(promises).then(() => {});
-    await completionPromise;
   }
 
-  async function waitUntilComplete(): Promise<void> {
-    const map = getCallbackMap();
-    if(map.size > 0) {
-      while (!completionPromise) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
+  async function waitForCompletion(): Promise<void> {
+    // Prepare to wait for future processes to complete (if there are any)
+    waitingPromise = new Promise<void>((resolve) => {
+      resolveWait = resolve;
+    });
 
-      await completionPromise;
-    }
+    return waitingPromise;
   }
 
   function chain(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook {
@@ -146,12 +143,11 @@ export function hook(): Hook & { scheduled: boolean } {
     remove,
     clear,
     contains,
-    waitUntilComplete,
-    get scheduled() {
-      return scheduled;
-    },
+    waitForCompletion,
     get length() {
-      return callbackMap ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0) : 0;
-    }
+      return callbackMap
+        ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0)
+        : 0;
+    },
   };
 }
