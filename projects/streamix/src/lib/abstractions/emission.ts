@@ -5,6 +5,7 @@ export type Emission = {
   failed?: boolean;            // Indicates failure
   pending?: boolean;           // Indicates pending processing
   complete?: boolean;          // Completion state
+  finalized?: boolean;         // No further child emissions
   error?: any;                 // Error, if applicable
   ancestor?: Emission;         // Emission that is pending and ancest this instance
   descendants?: Set<Emission>; // Track all descendants
@@ -61,7 +62,9 @@ export function createEmission({ value, phantom, failed, pending, complete, erro
       emission.ancestor = instance;
       instance.descendants.add(emission);
     },
-    finalize: (): void => {},
+    finalize: (): void => {
+      instance.finalized = true;
+    },
     notifyOnCompletion: (child: Emission): void => {},
     notifyOnError: (child: Emission, reason: any): void => {}
   };
