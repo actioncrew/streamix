@@ -47,18 +47,18 @@ export function createBus(): Bus {
             case 'error': await event.target.onError.parallel(event.payload); break;
           }
 
+          if(pendingEmissions.has(event.target)) {
+            const pendingSet = pendingEmissions.get(event.target);
+            const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
+            pendingEmissions.set(event.target, new Set(stillPending));
+          }
+
           if (event.target && event.payload?.emission?.pending) {
             let set = pendingEmissions.get(event.target) ?? new Set();
             if(!set.has(event.payload.emission)) {
               set.add(event.payload.emission);
             }
             pendingEmissions.set(event.target, set);
-          }
-
-          if(pendingEmissions.has(event.target)) {
-            const pendingSet = pendingEmissions.get(event.target);
-            const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
-            pendingEmissions.set(event.target, new Set(stillPending));
           }
 
           // Move head forward in the buffer and reduce the available item count
