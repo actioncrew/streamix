@@ -21,8 +21,6 @@ export function createSubject<T = any>(): Subject<T> {
       console.warn('Cannot push value to a stopped Subject.');
       return Promise.resolve();
     }
-
-    this.isRunning = true;
     
     // Create and link the child emission
     const emission = createEmission({ value });
