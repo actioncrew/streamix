@@ -12,14 +12,17 @@ export type BusEvent = {
 };
 
 export type Bus = {
+  harmonize: boolean;
   run(): void;
   enqueue(event: BusEvent): void;
   name?: string;
 };
 
-export function createBus(): Bus {
+export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): Bus {
 
-  const bufferSize = 64; // Adjust buffer size as needed
+  const bufferSize = config?.bufferSize || 64; // Adjust buffer size as needed
+  const harmonize = config?.harmonize || true; // Adjust buffer size as needed
+
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
 
@@ -31,6 +34,7 @@ export function createBus(): Bus {
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
 
   const bus: Bus = {
+    harmonize,
     async run(): Promise<void> {
       while (true) {
         // Wait for an available item or space in the buffer
@@ -92,6 +96,5 @@ export function createBus(): Bus {
   };
 
   bus.name = 'bus';
-
   return bus;
 }
