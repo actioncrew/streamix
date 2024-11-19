@@ -25,7 +25,7 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
 
 describe('DeferStream', () => {
   it('should create a new stream each time it is subscribed to', (done) => {
-    const emissions: Emission[] = [createEmission(1), createEmission(2), createEmission(3)];
+    const emissions: Emission[] = [createEmission({ value: 1 }), createEmission({ value: 2 }), createEmission({ value: 3 })];
     const factory = jest.fn(() => mockStream(emissions, true));
 
     const deferStream = defer(factory);

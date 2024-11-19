@@ -1,4 +1,4 @@
-import { Emission } from '../abstractions';
+import { createEmission, Emission } from '../abstractions';
 import { createStream, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
@@ -29,7 +29,7 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
       if (isDone) {
         done = true;
       } else {
-        const emission = { value } as Emission;
+        const emission = createEmission({ value });
         eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
       }
     }
