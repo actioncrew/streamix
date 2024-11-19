@@ -65,8 +65,49 @@ export function createEmission({ value, phantom, failed, pending, complete, erro
     finalize: (): void => {
       instance.finalized = true;
     },
-    notifyOnCompletion: (child: Emission): void => {},
-    notifyOnError: (child: Emission, reason: any): void => {}
+    notifyOnCompletion: (child: Emission): void => {
+      if(instance.finalized) {
+        const descendants = Array.from(instance.descendants || []);
+        const allResolved = descendants.every(descendant => descendant.complete || descendant.failed || descendant.phantom);
+        const shouldFail = descendants.some(descendant => descendant.failed);
+        const shouldComplete = !shouldFail && allResolved;
+
+        if(allResolved) {
+          instance.complete = true;
+        }
+
+        if(shouldFail) {
+          const error = new Error("One or more child emission failed");
+          instance.reject(error.message);
+          instance.ancestor && instance.ancestor.notifyOnError(instance, error);
+        }
+
+        if(shouldComplete) {
+          instance.resolve();
+        }
+      }
+    },
+    notifyOnError: (child: Emission, reason: any): void => {
+      if(instance.finalized) {
+        const descendants = Array.from(instance.descendants || []);
+        const allResolved = descendants.every(descendant => descendant.complete || descendant.failed || descendant.phantom);
+        const shouldFail = true;
+        const shouldComplete = !shouldFail && allResolved;
+
+        if(allResolved) {
+          instance.complete = true;
+        }
+
+        if(shouldFail) {
+          instance.reject(reason.message);
+          instance.ancestor && instance.ancestor.notifyOnError(instance, reason);
+        }
+
+        if(shouldComplete) {
+          instance.resolve();
+        }
+      }
+    }
   };
 
   // Conditionally set properties if they are provided
