@@ -7,9 +7,6 @@ export type Subject<T = any> = Stream<T> & {
 
 // Create the functional version of the Subject
 export function createSubject<T = any>(): Subject<T> {
-  let promise: Promise<void> | undefined;
-  let lastPromise: Promise<void> | undefined;
-
   const stream = createStream<T>(() => Promise.resolve()) as Subject;
   stream.run = () => Promise.resolve();
   
