@@ -47,8 +47,13 @@ export function createBus(): Bus {
             case 'error': await event.target.onError.parallel(event.payload); break;
           }
 
+          if(event.payload?.emission?.complete || event.payload?.emission?.phantom) {
+            event.payload.emission.resolve();
+          }
+
           if(pendingEmissions.has(event.target)) {
             const pendingSet = pendingEmissions.get(event.target);
+            console.log(pendingSet?.size);
             const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
             pendingEmissions.set(event.target, new Set(stillPending));
           }

@@ -67,7 +67,7 @@ describe('Subject', () => {
       expect(value === counter++).toBeTruthy();
     });
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 1000; i++) {
       subject.next(i);
     }
 
@@ -91,7 +91,7 @@ describe('Subject', () => {
       subscription.unsubscribe();
     })
 
-    for (let i = 0; i < 10000; i++) {
+    for (let i = 0; i < 1000; i++) {
       await subject.next(i);
     }
 

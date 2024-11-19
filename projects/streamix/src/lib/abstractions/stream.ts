@@ -64,19 +64,13 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    const releaseLock = await lock.acquire();
-    try {
-      if(!stream.isRunning && !stream.isStopped) {
-        await onStart.waitForCompletion();
-      }
-
-      if(!stream.isStopped && !stream.isAutoComplete) {
-        stream.isStopRequested = true;
-        await onStop.waitForCompletion();
-      }
+    if(!stream.isRunning && !stream.isStopped) {
+      await onStart.waitForCompletion();
     }
-    finally {
-      releaseLock();
+
+    if(!stream.isStopped && !stream.isAutoComplete) {
+      stream.isStopRequested = true;
+      await onStop.waitForCompletion();
     }
   };
 
@@ -120,9 +114,9 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       if (!emission.phantom && !emission.pending) {
         await subscribers.parallel({ emission, source });
+        emission.complete = true;
       }
 
-      emission.complete = true;
     } catch (error) {
       emission.failed = true;
       emission.error = error;
