@@ -14,7 +14,7 @@ describe('switchMap operator', () => {
     });
 
     switchedStream.onStop.once(() => {
-      expect(results).toEqual([30, 300]); // Should switch to new inner streams and emit all values
+      expect(results).toEqual([10, 100, 20, 200, 30, 300]); // Should switch to new inner streams and emit all values
       done();
     });
   });

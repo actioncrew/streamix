@@ -118,10 +118,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       if (!emission.pending) {
         emission.complete = true;
+        emission.resolve()
       }
     } catch (error) {
-      emission.failed = true;
-      emission.error = error;
+      emission.reject(error);
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
     }
   };

@@ -25,6 +25,8 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
+  const stopMarkers: Map<any, any> = new Map();
+  const completeMarkers: Map<any, any> = new Map();
 
   let head = 0;
   let tail = 0;
@@ -45,37 +47,61 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
          // Process the event here (you can call your handler based on event type)
           switch(event.type) {
             case 'start':
-              event.target.onStart.parallel(event.payload); break;
+              await event.target.onStart.parallel(event.payload); break;
             case 'stop':
-              Promise.all(Array.from(pendingEmissions.get(event.target)!).map(emission => emission.wait()))
-                .then(() => event.target.onStop.parallel(event.payload));
+              if (!pendingEmissions.get(event.target)?.size) {
+                await event.target.onStop.parallel(event.payload); break;
+              } else {
+                stopMarkers.set(event.target, event.payload);
+              }
               break;
             case 'emission':
-              event.target.onEmission.parallel(event.payload).then(() => {
-                if(event.payload?.emission?.complete || event.payload?.emission?.phantom) {
-                  event.payload.emission.resolve();
+              if(event.target.isStopRequested) {
+                if(event.payload && event.payload.emission) {
+                  event.payload.emission.ancestor?.finalize();
+                  event.payload.emission.phantom = true;
+                }
+              }
+
+              await event.target.onEmission.parallel(event.payload);
+
+              if(pendingEmissions.has(event.target)) {
+                const pendingSet = pendingEmissions.get(event.target);
+                const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
+                pendingEmissions.set(event.target, new Set(stillPending));
+              }
+
+              if (event.target && event.payload?.emission?.pending) {
+                let set = pendingEmissions.get(event.target) ?? new Set();
+                if(!set.has(event.payload.emission)) {
+                  set.add(event.payload.emission);
+                }
+                pendingEmissions.set(event.target, set);
+              }
+
+              if (!pendingEmissions.get(event.target)?.size) {
+                if(completeMarkers.has(event.target)) {
+                  const payload = completeMarkers.get(event.target);
+                  completeMarkers.delete(event.target);
+                  await event.target.onComplete.parallel(payload);
                 }
 
-                if(pendingEmissions.has(event.target)) {
-                  const pendingSet = pendingEmissions.get(event.target);
-                  const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
-                  pendingEmissions.set(event.target, new Set(stillPending));
+                if(stopMarkers.has(event.target)) {
+                  const payload = stopMarkers.get(event.target);
+                  stopMarkers.delete(event.target);
+                  await event.target.onStop.parallel(payload);
                 }
-
-                if (event.target && event.payload?.emission?.pending) {
-                  let set = pendingEmissions.get(event.target) ?? new Set();
-                  if(!set.has(event.payload.emission)) {
-                    set.add(event.payload.emission);
-                  }
-                  pendingEmissions.set(event.target, set);
-                }
-              }); break;
+              }
+              break;
             case 'complete':
-              Promise.all(Array.from(pendingEmissions.get(event.target)!).map(emission => emission.wait()))
-                .then(() => event.target.onComplete.parallel(event.payload));
+              if (!pendingEmissions.get(event.target)?.size) {
+                await event.target.onComplete.parallel(event.payload);
+              } else {
+                completeMarkers.set(event.target, true);
+              }
               break;
             case 'error':
-              event.target.onError.parallel(event.payload); break;
+              await event.target.onError.parallel(event.payload); break;
           }
 
           // Move head forward in the buffer and reduce the available item count
