@@ -16,13 +16,14 @@ export function iif<T>(
 
     // Start the selected stream
     subscription = selectedStream.subscribe((value) => handleEmission(this, value));
-    selectedStream.onStop.once(() => subscription.unsubscribe());
+
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+      subscription.unsubscribe()
+    });
 
     // Wait for the completion of the selected stream
     await selectedStream.awaitCompletion();
-    this.onComplete.once(() => {
-      this.isAutoComplete = true;
-    });
   });
 
   // Handle emissions from the selected stream

@@ -21,7 +21,7 @@ export type Bus = {
 export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): Bus {
 
   const bufferSize = config?.bufferSize || 64; // Adjust buffer size as needed
-  const harmonize = config?.harmonize || true; // Adjust buffer size as needed
+  const harmonize = config?.harmonize || false; // Adjust buffer size as needed
 
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
