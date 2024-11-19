@@ -1,4 +1,4 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, createStream, Emission, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export type Subject<T = any> = Stream<T> & {
@@ -19,24 +19,35 @@ export function createSubject<T = any>(): Subject<T> {
     } while(lastPromise !== promise);
   }) as any;
 
-  stream.next = async function (this: Stream, value?: T): Promise<void> {
-    const releaseLock = await this.lock.acquire();
-    try {
-      // If the stream is stopped, further emissions are not allowed
-      if (this.isStopRequested || this.isStopped) {
-        console.warn('Cannot push value to a stopped Subject.');
-        return Promise.resolve();
-      }
-
-      await started;
-
-      eventBus.enqueue({ target: this, payload: { emission: createEmission({ value }), source: this }, type: 'emission' });
-    } finally {
-      releaseLock();
+  stream.next = function (this: Stream, value?: T): Promise<void> {
+    // If the stream is stopped, further emissions are not allowed
+    if (this.isStopRequested || this.isStopped) {
+      console.warn('Cannot push value to a stopped Subject.');
+      return Promise.resolve();
     }
+
+    // Once the stream starts, link and emit the actual child emission
+    return started
+      .then(() => {
+        running = true; // Mark the stream as running
+
+        // Create and link the child emission
+        const emission = createEmission({ value });
+
+        // Enqueue the child emission
+        eventBus.enqueue({
+          target: this,
+          payload: { emission, source: this },
+          type: 'emission',
+        });
+
+        return emission;
+      }).then((emission: Emission) => emission.wait());
   };
 
+
   let started = stream.onStart.waitForCompletion();
+  let running = false;
 
   stream.name = "subject";
   return stream;

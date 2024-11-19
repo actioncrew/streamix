@@ -53,7 +53,6 @@ export function createBus(): Bus {
 
           if(pendingEmissions.has(event.target)) {
             const pendingSet = pendingEmissions.get(event.target);
-            console.log(pendingSet?.size);
             const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
             pendingEmissions.set(event.target, new Set(stillPending));
           }
