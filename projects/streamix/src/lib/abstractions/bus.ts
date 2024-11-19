@@ -56,13 +56,6 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               }
               break;
             case 'emission':
-              if(event.target.isStopRequested) {
-                if(event.payload && event.payload.emission) {
-                  event.payload.emission.ancestor?.finalize();
-                  event.payload.emission.phantom = true;
-                }
-              }
-
               await event.target.onEmission.parallel(event.payload);
 
               if(pendingEmissions.has(event.target)) {
