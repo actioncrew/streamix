@@ -65,7 +65,7 @@ export function hook(): Hook {
 
   async function waitForCompletion(): Promise<void> {
     // Prepare to wait for future processes to complete (if there are any)
-    if(pendingCount === 0) {
+    if(!pendingCount && scheduled) {
       waitingPromise = new Promise<void>((resolve) => {
         resolveWait = resolve;
       });
