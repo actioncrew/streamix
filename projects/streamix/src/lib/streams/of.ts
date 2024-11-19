@@ -1,15 +1,19 @@
-import { createStream, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 export function of<T = any>(value: T): Stream<T> {
   // Create the custom run function for the OfStream
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+    })
+
     try {
       if (!this.shouldComplete()) {
-        await this.onEmission.parallel({ emission: { value }, source: this });
-        this.isAutoComplete = true; // Set auto-complete after emitting the value
+        eventBus.enqueue({ target: this, payload: { emission: createEmission({ value }), source: this }, type: 'emission' });
       }
     } catch (error) {
-      await this.onError.parallel({ error }); // Handle any errors during emission
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     }
   });
 

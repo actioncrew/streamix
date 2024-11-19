@@ -1,4 +1,6 @@
 export interface Subscription {
   (): any;
-  unsubscribe(): Promise<void>;
+  started?: Promise<void>;
+  completed?: Promise<void>;
+  unsubscribe(): void;
 }

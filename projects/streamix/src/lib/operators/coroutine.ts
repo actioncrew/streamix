@@ -1,7 +1,14 @@
 import { Emission, Operator, Subscribable, createOperator } from '../abstractions';
 import { EMPTY } from '../streams';
 
-export const coroutine = (...functions: Function[]) => {
+export type Coroutine = Operator & {
+  finalize: () => Promise<void>;
+  processTask: (data: any) => Promise<any>;
+  getIdleWorker: () => Promise<Worker>;
+  returnWorker: (worker: Worker) => void;
+};
+
+export const coroutine = (...functions: Function[]): Coroutine => {
   if (functions.length === 0) {
     throw new Error("At least one function (the main task) is required.");
   }
@@ -24,12 +31,39 @@ export const coroutine = (...functions: Function[]) => {
 
     const mainTaskBody = mainTask.toString().replace(/function[\s]*\(/, `function ${mainTask.name}(`);
 
+
     const workerBody = `
+      function __async(thisArg, _arguments, generatorFunc) {
+        return new Promise((resolve, reject) => {
+          const generator = generatorFunc.apply(thisArg, _arguments || []);
+
+          function step(nextFunc) {
+            let result;
+            try {
+              result = nextFunc();
+            } catch (error) {
+              reject(error);
+              return;
+            }
+            if (result.done) {
+              resolve(result.value);
+            } else {
+              Promise.resolve(result.value).then(
+                (value) => step(() => generator.next(value)),
+                (error) => step(() => generator.throw(error))
+              );
+            }
+          }
+
+          step(() => generator.next());
+        });
+      }
+
       ${injectedDependencies}
       const mainTask = ${mainTaskBody};
-      onmessage = (event) => {
+      onmessage = async (event) => {
         try {
-          const result = mainTask(event.data);
+          const result = await mainTask(event.data);
           postMessage(result);
         } catch (error) {
           postMessage({ error: error.message });
@@ -104,7 +138,7 @@ export const coroutine = (...functions: Function[]) => {
     workerQueue.length = 0; // Clear the queue
   };
 
-  const operator = createOperator(handle) as any;
+  const operator = createOperator(handle) as Coroutine;
   operator.name = 'coroutine';
   operator.init = init;
   operator.finalize = finalize;

@@ -1,19 +1,19 @@
-import { createOperator, Stream, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { createOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { Emission } from '../abstractions';
 
-export const take = (count: number) => {
+export const take = <T>(count: number): Operator => {
   let emittedCount = 0;
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
     if (emittedCount < count) {
       emittedCount++;
 
-      if (emittedCount === count) {
-        stream.isAutoComplete = true; // Mark the stream for auto completion
+      if(emittedCount === count) {
+        stream.isAutoComplete = true;
       }
-      return emission; // Return the emission if within count
+      return emission;
     } else {
-      emission.isPhantom = true; // Mark as phantom if beyond count
+      emission.phantom = true; // Mark as phantom if beyond count
       return emission;
     }
   };

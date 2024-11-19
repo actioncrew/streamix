@@ -1,9 +1,9 @@
-import { createStream, Subscribable, Stream } from '../abstractions';
+import { createStream, Subscribable, Stream, createEmission, Subscription } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   let innerStream: Subscribable<T> | undefined;
-  let handleEmissionFn: (event: { emission: { value: T }, source: Subscribable<T> }) => void;
-
+  let subscription!: Subscription | undefined;
   // Define the run method
   // Create and return the stream with the defined run function
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
@@ -11,40 +11,30 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       // Create a new inner stream from the factory
       innerStream = factory();
 
-      // Set up emission handling for the inner stream
-      handleEmissionFn = ({ emission }) => handleEmission(this, emission.value);
-      innerStream.onEmission.chain(this, handleEmissionFn);
-
       // Start the inner stream
-      innerStream.subscribe();
+      subscription = innerStream.subscribe(value => handleEmission(this, value));
 
-      // Wait for the completion of the inner stream
-      await innerStream.awaitCompletion();
+      innerStream.onComplete.once(async () => {
+        this.isAutoComplete = true;
+        await cleanupInnerStream();
+      });
 
+      await this.awaitCompletion();
     } catch (error) {
-      await this.onError.parallel({ error });
-    } finally {
-      await cleanupInnerStream();
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     }
   });
 
   // Handle emissions from the inner stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    if (stream.shouldComplete()) {
-      return;
-    }
-
-    await stream.onEmission.parallel({
-      emission: { value },
-      source: stream,
-    });
+    eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 
   // Clean up the inner stream when complete
   const cleanupInnerStream = async (): Promise<void> => {
     if (innerStream) {
-      innerStream.onEmission.remove(stream, handleEmissionFn);
-      await innerStream.complete();
+      innerStream.isAutoComplete = true;
+      subscription?.unsubscribe();
       innerStream = undefined;
     }
   };

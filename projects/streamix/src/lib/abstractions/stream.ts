@@ -1,5 +1,6 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
-import { hook, HookType, promisified } from "../utils";
+import { eventBus } from ".";
+import { hook, Hook, promisified, createLock, Lock } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -9,7 +10,8 @@ export type Stream<T = any> = Subscribable<T> & {
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
   run: () => Promise<void>; // Run stream logic
   name?: string;
-  subscribers: HookType;
+  subscribers: Hook;
+  lock: Lock;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -25,12 +27,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let head: Operator | undefined;
   let tail: Operator | undefined;
 
-  const completionPromise = promisified<void>();
+  const completion = promisified<void>();
+  const commencement = promisified<void>();
+  let lock = createLock();
 
-  let isAutoComplete = false;
-  let isStopRequested = false;
-  let isStopped = false;
-  let isRunning = false;
+  let autoComplete = false;
+  let stopRequested = false;
+  let stopped = false;
+  let running = false;
   let currentValue: T | undefined;
 
   const onStart = hook();
@@ -41,77 +45,84 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const subscribers = hook();
 
   const run = async () => {
+    eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
     try {
-      await onStart.parallel(); // Trigger start hook
+      await onStart.waitForCompletion();
+      commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
-      await onComplete.parallel(); // Trigger complete hook
+      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      await onComplete.waitForCompletion();
     } catch (error) {
-      await onError.parallel({ error }); // Handle any errors
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
+      await onError.waitForCompletion();
     } finally {
-      isStopped = true;
-      isRunning = false;
-      await onStop.parallel(); // Finalize the stop hook
+      eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
+      await onStop.waitForCompletion();
+      stopped = true; running = false;
+      operators.forEach(operator => operator.cleanup());
     }
   };
 
   const complete = async (): Promise<void> => {
-    if (!isAutoComplete) {
-      isStopRequested = true;
-      return new Promise<void>((resolve) => {
-        onStop.once(() => resolve());
-        completionPromise.resolve();
-      });
+    if(!stream.isRunning && !stream.isStopped) {
+      await onStart.waitForCompletion();
     }
-    return completionPromise.promise(); // Ensure the completion resolves correctly
+
+    if(!stream.isStopped && !stream.isAutoComplete) {
+      stream.isStopRequested = true;
+      await onStop.waitForCompletion();
+    }
   };
 
-  const awaitCompletion = () => completionPromise.promise();
+  const awaitCompletion = () => completion.promise();
 
-  const bindOperators = function(this: Stream<T>, ...newOperators: Operator[]): Stream<T> {
-    this.operators.length = 0;
-    this.head = undefined;
-    this.tail = undefined;
+  const bindOperators = function(...newOperators: Operator[]): Stream<T> {
+    operators.length = 0;
+    stream.head = undefined;
+    stream.tail = undefined;
 
     newOperators.forEach((operator, index) => {
-      this.operators.push(operator);
+      operators.push(operator);
 
-      if (!this.head) {
-        this.head = operator;
+      if (!stream.head) {
+        stream.head = operator;
       } else {
-        this.tail!.next = operator;
+        stream.tail!.next = operator;
       }
-      this.tail = operator;
+      stream.tail = operator;
 
       if ('stream' in operator && index !== newOperators.length - 1) {
         throw new Error('Only the last operator in a stream can contain an outerStream property.');
       }
     });
 
-    return this;
+    return stream;
   };
 
-  const emit = async function(this: Stream<T>, { emission, source }: { emission: Emission; source: any }): Promise<void> {
+  const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      let next = isStream(source) ? this.head : undefined;
+      let next = isStream(source) ? source.head : undefined;
       next = isOperator(source) ? source.next : next;
 
-      if (emission.isFailed) throw emission.error;
+      if (emission.failed) throw emission.error;
 
-      if (!emission.isPhantom) {
-        emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
+      if (!emission.phantom && !emission.pending) {
+        emission = await (next?.process(emission, stream) ?? Promise.resolve(emission));
       }
 
-      if (emission.isFailed) throw emission.error;
+      if (emission.failed) throw emission.error;
 
-      if (!emission.isPhantom) {
-        await this.subscribers.parallel({ emission, source });
+      if (!emission.phantom && !emission.pending) {
+        await subscribers.parallel({ emission, source });
       }
 
-      emission.isComplete = true;
+      if (!emission.pending) {
+        emission.complete = true;
+        emission.resolve()
+      }
     } catch (error) {
-      emission.isFailed = true;
-      emission.error = error;
-      await this.onError.parallel({ error });
+      emission.reject(error);
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
     }
   };
 
@@ -121,33 +132,36 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
     };
 
-    onEmission.chain(boundCallback);
+    subscribers.chain(boundCallback);
 
-    if (!isRunning) {
-      isRunning = true;
-      queueMicrotask(run);
+    if (!running && !stopRequested) {
+      running = true;
+      queueMicrotask(stream.run);
     }
 
-    const value: any = () => currentValue;
-    value.unsubscribe = async () => {
-      await complete();
-      onEmission.remove(boundCallback);
+    const subscription: any = () => currentValue;
+    subscription.unsubscribe = () => {
+      complete().then(() => subscribers.remove(boundCallback));
     };
 
-    return value;
+    subscription.started = commencement.promise();
+    subscription.completed = completion.promise();
+
+    return subscription as Subscription;
   };
 
-  const pipe = function(this: Stream<T>, ...operators: Operator[]): Pipeline<T> {
-    return createPipeline<T>(this).bindOperators(...operators);
+  const pipe = function(...operators: Operator[]): Pipeline<T> {
+    return createPipeline<T>(stream).bindOperators(...operators);
   };
 
-  const shouldComplete = () => isAutoComplete || isStopRequested;
+  const shouldComplete = () => autoComplete || stopRequested;
 
   const stream = {
     type: "stream" as "stream",
     operators,
     head,
     tail,
+    lock,
     bindOperators,
     emit,
     subscribe,
@@ -178,24 +192,24 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       return subscribers;
     },
     get isAutoComplete() {
-      return isAutoComplete;
+      return autoComplete;
     },
     set isAutoComplete(value: boolean) {
-      if (value) completionPromise.resolve();
-      isAutoComplete = value;
+      if (value) completion.resolve();
+      autoComplete = value;
     },
     get isStopRequested() {
-      return isStopRequested;
+      return stopRequested;
     },
     set isStopRequested(value: boolean) {
-      if (value) completionPromise.resolve();
-      isStopRequested = value;
+      if (value) completion.resolve();
+      stopRequested = value;
     },
     get isRunning() {
-      return isRunning;
+      return running;
     },
     get isStopped() {
-      return isStopped;
+      return stopped;
     }
   };
 

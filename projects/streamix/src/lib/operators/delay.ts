@@ -1,29 +1,35 @@
-import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
+import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, Stream } from '../abstractions';
 
-export const delay = (delayTime: number) => {
-  let applyDelay: (emission: Emission) => Promise<Emission>;
-  let completionPromise: Promise<void>;
-
-  const init = (stream: Stream) => {
-    applyDelay = (emission: Emission) => new Promise<Emission>((resolve) => {
-      const timeout = setTimeout(() => resolve(emission), delayTime);
-
-      // Handle stream completion to clear the timeout
-      completionPromise = stream.awaitCompletion().then(() => {
-        emission.isPhantom = true; // Mark emission as phantom when stream completes
-        clearTimeout(timeout);
-        resolve(emission);
-      });
-    });
-  };
-
+export const delay = (delayTime: number): Operator => {
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
-    await applyDelay(emission); // Apply the delay to the emission
+    // Mark the emission as pending
+    emission.pending = true;
+
+    // Schedule the delayed emission
+    const delayedEmission = createEmission({ value: emission.value });
+
+    const timeout = setTimeout(() => {
+      // Link and emit the delayed emission
+      emission.link(delayedEmission);
+      eventBus.enqueue({
+        target: stream,
+        payload: { emission: delayedEmission, source: operator },
+        type: 'emission',
+      });
+
+      // Finalize the original emission
+      emission.finalize();
+
+      // Remove timeout from the tracking map
+      clearTimeout(timeout);
+    }, delayTime);
+
+    // Return the pending emission immediately
     return emission;
   };
 
   const operator = createOperator(handle);
   operator.name = 'delay';
-  operator.init = init;
+
   return operator;
 };

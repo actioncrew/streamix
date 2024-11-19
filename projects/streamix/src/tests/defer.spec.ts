@@ -1,17 +1,18 @@
-import { createStream, defer, Emission, Stream } from '../lib';
+import { createEmission, createStream, defer, Emission, eventBus, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(emissions: Emission[], completed = false, failed = false, error?: Error): Stream {
   // Create the custom run function for the MockStream
   const stream = createStream(async (): Promise<void> => {
     if (failed && error) {
-      await stream.onError.parallel({ error });
+      const emission = createEmission({ error, failed: true });
+      eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
       return;
     }
 
     for (const emission of emissions) {
       if (stream.isStopRequested) return; // Exit if stop is requested
-      await stream.onEmission.parallel({ emission, source: stream });
+      eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
     }
 
     if (completed) {
@@ -24,7 +25,7 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
 
 describe('DeferStream', () => {
   it('should create a new stream each time it is subscribed to', (done) => {
-    const emissions: Emission[] = [{ value: 1 }, { value: 2 }, { value: 3 }];
+    const emissions: Emission[] = [createEmission({ value: 1 }), createEmission({ value: 2 }), createEmission({ value: 3 })];
     const factory = jest.fn(() => mockStream(emissions, true));
 
     const deferStream = defer(factory);

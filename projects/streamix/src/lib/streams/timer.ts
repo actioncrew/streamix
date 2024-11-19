@@ -1,4 +1,5 @@
-import { createStream, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
@@ -22,10 +23,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       }
 
       // Initial emission
-      await this.onEmission.parallel({
-        emission: { value: timerValue },
-        source: this
-      });
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
       timerValue++;
 
       if (actualIntervalMs > 0) {
@@ -39,24 +37,24 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
                 return;
               }
 
-              await this.onEmission.parallel({
-                emission: { value: timerValue },
-                source: this
-              });
+              eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
+
               timerValue++;
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              await this.onError.parallel({ error });
+              eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
               resolve();
             }
           }, actualIntervalMs);
         });
       } else {
-        this.isAutoComplete = true;
+        this.onComplete.once(() => {
+          this.isAutoComplete = true;
+        });
       }
     } catch (error) {
-      await this.onError.parallel({ error });
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

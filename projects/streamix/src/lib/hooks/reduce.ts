@@ -1,6 +1,7 @@
-import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
+import { createEmission, eventBus } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
-export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) => {
+export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Operator => {
   let boundStream: Stream;
   let accumulatedValue = seed;
 
@@ -11,13 +12,13 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any) =>
 
   const callback = async (): Promise<void> => {
     // Emit the accumulated value once the stream completes
-    await boundStream.onEmission.parallel({ emission: { value: accumulatedValue }, source: boundStream });
+    eventBus.enqueue({ target: boundStream,  payload: { emission: createEmission({ value: accumulatedValue }), source: boundStream }, type: 'emission' });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
     // Accumulate the value using the provided accumulator function
     accumulatedValue = accumulator(accumulatedValue, emission.value!);
-    emission.isPhantom = true; // Mark the emission as phantom
+    emission.phantom = true; // Mark the emission as phantom
     return emission; // Return the emission
   };
 

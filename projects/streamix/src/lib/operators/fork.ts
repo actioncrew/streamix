@@ -4,8 +4,11 @@ import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
 import { Subscription } from '../abstractions';
 
-export const concatMap = (project: (value: any) => Subscribable): Operator => {
-  let currentInnerStream: Subscribable | null = null;
+
+export const fork = <T = any, R = T>(
+  options: Array<{ on: (value: T) => boolean; handler: () => Subscribable<R> }>
+): Operator => {
+  let innerStream: Subscribable | null = null;
   let emissionQueue: Emission[] = [];
   let pendingEmissions: number = 0;
   const executionCounter: Counter = counter(0);
@@ -24,7 +27,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
     emissionQueue.push(emission);
     pendingEmissions++;
 
-    if(!currentInnerStream) {
+    if(!innerStream) {
       await processQueue();
     }
 
@@ -42,20 +45,28 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const processEmission = async (emission: Emission): Promise<void> => {
-    currentInnerStream = project(emission.value);
+    // Find the matching case based on the selector
+    const matchedCase = options.find(({ on }) => on(emission.value));
 
-    if (currentInnerStream) {
-      // Immediately set up listeners on the new inner stream
-      currentInnerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
+    if (matchedCase) {
+      innerStream = matchedCase.handler(); // Use the selected stream
 
-      currentInnerStream.onStop.once(() => completeInnerStream(subscription!));
+      if (innerStream) {
+        // Immediately set up listeners on the new inner stream
+        innerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
 
-      subscription = currentInnerStream.subscribe((value) => handleInnerEmission(value));
+        innerStream.onStop.once(() => completeInnerStream(subscription!));
+
+        subscription = innerStream.subscribe((value) => handleInnerEmission(value));
+      }
+    } else {
+      // If no case matches, emit an error
+      await handleStreamError(emission, `No handler found for value: ${emission.value}`);
     }
   };
 
   const handleInnerEmission = (value: any) => {
-    outputStream.next(value);
+    outputStream.next(value); // Emit the inner emission
   };
 
   const completeInnerStream = async (subscription: Subscription) => {
@@ -65,8 +76,10 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
+    emission.error = error;
+    emission.failed = true;
     eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error'});
-    stopStreams(currentInnerStream, outputStream);
+    stopStreams(innerStream, outputStream);
     executionCounter.increment();
   };
 
@@ -74,8 +87,8 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    await stopStreams(currentInnerStream, inputStream, outputStream);
-    currentInnerStream = null;
+    await stopStreams(innerStream, inputStream, outputStream);
+    innerStream = null;
   };
 
   const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {

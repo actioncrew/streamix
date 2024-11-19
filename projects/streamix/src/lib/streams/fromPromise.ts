@@ -1,5 +1,5 @@
-import { Stream } from '../abstractions/stream';
-import { createStream } from '../abstractions/stream';
+import { Stream, createEmission, createStream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
@@ -7,6 +7,10 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     let resolvedValue: Awaited<T> | void; // Renamed to avoid conflict
     let isResolved = false;
+
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+    });
 
     try {
       // Await the promise directly
@@ -20,11 +24,10 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
 
       // If the stream is not complete, emit the value
       if (!this.shouldComplete()) {
-        await this.onEmission.parallel({ emission: { value: resolvedValue }, source: this });
-        this.isAutoComplete = true; // Mark the stream for auto completion
+        eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: resolvedValue }), source: this }, type: 'emission' });
       }
     } catch (error) {
-      await this.onError.parallel({ error }); // Handle any errors
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     }
   });
 

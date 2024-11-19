@@ -10,11 +10,13 @@ export const bufferCount = (bufferSize: number): Operator => {
     if (buffer.length >= bufferSize) {
       const bufferedArray = buffer;
       buffer = [];  // Clear the buffer after emitting
-      return { value: bufferedArray }; // Emit the full buffer
+      emission.value = bufferedArray;
+      return emission; // Emit the full buffer
     }
 
     // If buffer isn't full, return a phantom emission
-    return { isPhantom: true };
+    emission.phantom = true;
+    return emission;
   };
 
   const operator = createOperator(handle); // Create the operator using createOperator

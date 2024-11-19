@@ -1,46 +1,51 @@
-import { createStream, Stream, Subscribable } from '../abstractions';
+import { createEmission, createStream, Stream, Subscribable } from '../abstractions';
+import { catchAny } from '../utils'; // Ensure catchAny is imported from the correct location
+import { eventBus } from '../abstractions';
 
 export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined }));
-  const handlers: Array<(event: { emission: { value: T }, source: Subscribable }) => void> = [];
+  const handlers: Array<(value: T) => void> = [];
 
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
-    sources.forEach(source => source.subscribe());
 
-    try {
-      await Promise.race([
-        this.awaitCompletion(),
-        Promise.all(sources.map(source => source.awaitCompletion()))
-      ]);
-    } catch (error) {
-      await this.onError.parallel({ error });
-    } finally {
-      this.complete();
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+    });
+
+    const [error] = await catchAny(Promise.race([
+      this.awaitCompletion(),
+      Promise.all(sources.map(source => source.awaitCompletion()))
+    ]));
+
+    if (error) {
+      eventBus.enqueue({ target: this, payload: {emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     }
   });
 
   sources.forEach((source, index) => {
-    handlers[index] = async (event) => {
+    handlers[index] = async (value: T) => {
       if (stream.shouldComplete()) return;
 
-      values[index] = { hasValue: true, value: event.emission.value };
+      values[index] = { hasValue: true, value };
 
       if (values.every(v => v.hasValue)) {
-        return stream.onEmission.parallel({
-          emission: { value: values.map(v => v.value!) },
-          source: stream,
+        eventBus.enqueue({
+          target: stream,
+          payload: { emission: createEmission({ value: values.map(v => v.value!) }),
+          source: stream },
+          type: 'emission'
         });
       }
     };
-
-    source.onEmission.chain(stream, handlers[index]);
   });
+
+  const subscriptions = sources.map((source, index) => source.subscribe((value) => handlers[index](value)));
 
   const originalComplete = stream.complete.bind(stream);
   stream.complete = async function(): Promise<void> {
     sources.forEach((source, index) => {
-      source.onEmission.remove(stream, handlers[index]);
       source.complete();
+      subscriptions[index].unsubscribe();
     });
     return originalComplete();
   };
