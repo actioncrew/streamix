@@ -72,6 +72,7 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
         const shouldComplete = !shouldFail && allResolved;
 
         if(allResolved) {
+          delete instance.pending;
           instance.complete = true;
         }
 
@@ -94,6 +95,7 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
         const shouldComplete = !shouldFail && allResolved;
 
         if(allResolved) {
+          delete instance.pending;
           instance.complete = true;
         }
 
