@@ -114,9 +114,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       if (!emission.phantom && !emission.pending) {
         await subscribers.parallel({ emission, source });
-        emission.complete = true;
       }
 
+      if (!emission.pending) {
+        emission.complete = true;
+      }
     } catch (error) {
       emission.failed = true;
       emission.error = error;
