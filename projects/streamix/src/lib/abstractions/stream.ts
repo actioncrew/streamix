@@ -104,11 +104,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       let next = isStream(source) ? source.head : undefined;
       next = isOperator(source) ? source.next : next;
 
-      if(stream.isStopRequested) {
-        emission.ancestor?.finalize();
-        emission.phantom = true;
-      }
-
       if (emission.failed) throw emission.error;
 
       if (!emission.phantom && !emission.pending) {
