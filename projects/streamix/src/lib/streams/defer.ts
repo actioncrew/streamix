@@ -1,10 +1,9 @@
-import { createStream, Subscribable, Stream, createEmission } from '../abstractions';
+import { createStream, Subscribable, Stream, createEmission, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   let innerStream: Subscribable<T> | undefined;
-  let handleEmissionFn: (event: { emission: { value: T }, source: Subscribable<T> }) => void;
-
+  let subscription!: Subscription | undefined;
   // Define the run method
   // Create and return the stream with the defined run function
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
@@ -12,12 +11,8 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       // Create a new inner stream from the factory
       innerStream = factory();
 
-      // Set up emission handling for the inner stream
-      handleEmissionFn = ({ emission }) => handleEmission(this, emission.value);
-      innerStream.onEmission.chain(this, handleEmissionFn);
-
       // Start the inner stream
-      innerStream.subscribe();
+      subscription = innerStream.subscribe(value => handleEmission(this, value));
 
       innerStream.onComplete.once(async () => {
         this.isAutoComplete = true;
@@ -32,10 +27,6 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
 
   // Handle emissions from the inner stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    if (stream.shouldComplete()) {
-      return;
-    }
-
     eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 
@@ -43,7 +34,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   const cleanupInnerStream = async (): Promise<void> => {
     if (innerStream) {
       innerStream.isAutoComplete = true;
-      innerStream.onEmission.remove(stream, handleEmissionFn);
+      subscription?.unsubscribe();
       innerStream = undefined;
     }
   };

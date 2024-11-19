@@ -19,11 +19,10 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
 
     try {
       subscription = currentSource.subscribe(value => handleEmissionFn(value)); // Start the current source
+      currentSource.onComplete.once(() => subscription?.unsubscribe());
       await currentSource.awaitCompletion(); // Wait for the current source to complete
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { emission: createEmission({ error, failed: true }), source: stream }, type: 'emission' });
-    } finally {
-      // currentSource.onStop.once(() => subscription?.unsubscribe());
     }
   };
 
