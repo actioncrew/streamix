@@ -44,29 +44,38 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
         if (event) {
          // Process the event here (you can call your handler based on event type)
           switch(event.type) {
-            case 'start': await event.target.onStart.parallel(event.payload); break;
-            case 'stop': await event.target.onStop.parallel(event.payload); break;
-            case 'emission': await event.target.onEmission.parallel(event.payload); break;
-            case 'complete': await event.target.onComplete.parallel(event.payload); break;
-            case 'error': await event.target.onError.parallel(event.payload); break;
-          }
+            case 'start':
+              event.target.onStart.parallel(event.payload); break;
+            case 'stop':
+              Promise.all(Array.from(pendingEmissions.get(event.target)!).map(emission => emission.wait()))
+                .then(() => event.target.onStop.parallel(event.payload));
+              break;
+            case 'emission':
+              event.target.onEmission.parallel(event.payload).then(() => {
+                if(event.payload?.emission?.complete || event.payload?.emission?.phantom) {
+                  event.payload.emission.resolve();
+                }
 
-          if(event.payload?.emission?.complete || event.payload?.emission?.phantom) {
-            event.payload.emission.resolve();
-          }
+                if(pendingEmissions.has(event.target)) {
+                  const pendingSet = pendingEmissions.get(event.target);
+                  const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
+                  pendingEmissions.set(event.target, new Set(stillPending));
+                }
 
-          if(pendingEmissions.has(event.target)) {
-            const pendingSet = pendingEmissions.get(event.target);
-            const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
-            pendingEmissions.set(event.target, new Set(stillPending));
-          }
-
-          if (event.target && event.payload?.emission?.pending) {
-            let set = pendingEmissions.get(event.target) ?? new Set();
-            if(!set.has(event.payload.emission)) {
-              set.add(event.payload.emission);
-            }
-            pendingEmissions.set(event.target, set);
+                if (event.target && event.payload?.emission?.pending) {
+                  let set = pendingEmissions.get(event.target) ?? new Set();
+                  if(!set.has(event.payload.emission)) {
+                    set.add(event.payload.emission);
+                  }
+                  pendingEmissions.set(event.target, set);
+                }
+              }); break;
+            case 'complete':
+              Promise.all(Array.from(pendingEmissions.get(event.target)!).map(emission => emission.wait()))
+                .then(() => event.target.onComplete.parallel(event.payload));
+              break;
+            case 'error':
+              event.target.onError.parallel(event.payload); break;
           }
 
           // Move head forward in the buffer and reduce the available item count

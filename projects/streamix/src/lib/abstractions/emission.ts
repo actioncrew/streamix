@@ -63,6 +63,9 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
     },
     finalize: (): void => {
       instance.finalized = true;
+      if(!instance.descendants?.size) {
+        instance.resolve();
+      }
     },
     notifyOnCompletion: (child: Emission): void => {
       if(instance.finalized) {
