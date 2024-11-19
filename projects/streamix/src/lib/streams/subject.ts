@@ -10,45 +10,34 @@ export function createSubject<T = any>(): Subject<T> {
   let promise: Promise<void> | undefined;
   let lastPromise: Promise<void> | undefined;
 
-  const stream = createStream<T>(async function (this: any): Promise<void> {
-    await started;
-    await this.awaitCompletion();
-    do {
-      lastPromise = promise;
-      await lastPromise;
-    } while(lastPromise !== promise);
-  }) as any;
-
+  const stream = createStream<T>(() => Promise.resolve()) as Subject;
+  stream.run = () => Promise.resolve();
+  
+  stream.complete (this: Stream) => {
+    this.isStopRequested = true;
+    this.isRunning = false; this.isStopped = true;
+  };
+  
   stream.next = function (this: Stream, value?: T): Promise<void> {
     // If the stream is stopped, further emissions are not allowed
     if (this.isStopRequested || this.isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
       return Promise.resolve();
     }
+    
+    // Create and link the child emission
+    const emission = createEmission({ value });
 
-    // Once the stream starts, link and emit the actual child emission
-    return started
-      .then(() => {
-        running = true; // Mark the stream as running
+    // Enqueue the emission
+    eventBus.enqueue({
+      target: this,
+      payload: { emission, source: this },
+      type: 'emission',
+    });
 
-        // Create and link the child emission
-        const emission = createEmission({ value });
-
-        // Enqueue the child emission
-        eventBus.enqueue({
-          target: this,
-          payload: { emission, source: this },
-          type: 'emission',
-        });
-
-        return emission;
-      }).then((emission: Emission) => emission.wait());
+    return emission.wait();
   };
-
-
-  let started = stream.onStart.waitForCompletion();
-  let running = false;
-
+  
   stream.name = "subject";
   return stream;
 }
