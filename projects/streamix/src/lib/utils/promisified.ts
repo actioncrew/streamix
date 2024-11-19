@@ -1,4 +1,4 @@
-export type PromisifiedType<T> = ReturnType<typeof promisified<T>>;
+export type Promisified<T> = ReturnType<typeof promisified<T>>;
 export function promisified<T>(initialValue?: T) {
   let _value = initialValue;
   let _default = initialValue;
@@ -14,19 +14,21 @@ export function promisified<T>(initialValue?: T) {
     return _value;
   }
 
-  innerFunction.resolve = function (value: T): void {
+  innerFunction.resolve = function (value: T): Promise<T> {
     if (_promise.then === undefined) {
       throw new Error('Promise already settled');
     }
     _value = value;
     _resolve(value);
+    return _promise;
   };
 
-  innerFunction.reject = function (reason?: any): void {
+  innerFunction.reject = function (reason?: any): Promise<T> {
     if (_promise.then === undefined) {
       throw new Error('Promise already settled');
     }
     _reject(reason);
+    return _promise;
   };
 
   innerFunction.promise = () => _promise;

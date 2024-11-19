@@ -1,6 +1,7 @@
+import { createEmission, eventBus } from '../abstractions';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
-export const startWith = (value: any) => {
+export const startWith = (value: any): Operator => {
   let boundStream: Stream;
 
   const init = function(this: Operator, stream: Stream) {
@@ -8,9 +9,9 @@ export const startWith = (value: any) => {
     boundStream.onStart.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
   };
 
-  const callback = async (instance: Operator, params?: any): Promise<void> => {
+  const callback = (instance: Operator, params?: any): void => {
     // Emit the provided initial value when the stream starts
-    await boundStream.onEmission.parallel({ emission: { value }, source: instance });
+    eventBus.enqueue({ target: boundStream, payload: { emission: createEmission({ value }), source: instance }, type: 'emission' });
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {

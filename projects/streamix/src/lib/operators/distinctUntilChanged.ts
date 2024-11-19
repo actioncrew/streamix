@@ -1,8 +1,8 @@
-import { createOperator } from '../abstractions';
-import { Emission } from '../abstractions/emission';
-import { Subscribable } from '../abstractions/subscribable';
+import { createOperator, Operator } from '../abstractions';
+import { Emission } from '../abstractions';
+import { Subscribable } from '../abstractions';
 
-export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) => boolean) => {
+export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) => boolean): Operator => {
   let lastEmittedValue: T | undefined = undefined;
 
   const init = () => {
@@ -19,7 +19,7 @@ export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) =
       lastEmittedValue = currentValue;
       return emission;
     } else {
-      emission.isPhantom = true;
+      emission.phantom = true;
       return emission;
     }
   };

@@ -1,11 +1,11 @@
 import { Subscribable } from '../abstractions';
-import { Emission } from '../abstractions/emission';
+import { Emission } from '../abstractions';
 import { createOperator, Operator } from '../abstractions';
 
-export const map = (transform: (value: any) => any) => {
+export const map = (transform: (value: any) => any): Operator => {
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
-    const value = transform(emission.value); // Transform the emission value
-    return { value }; // Return the modified emission
+    emission.value = transform(emission.value); // Transform the emission value
+    return emission; // Return the modified emission
   };
 
   const operator = createOperator(handle); // Create the operator using createOperator

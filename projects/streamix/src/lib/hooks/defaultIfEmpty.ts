@@ -1,6 +1,7 @@
-import { Emission, Subscribable, Stream, createOperator } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator, createEmission } from '../abstractions';
+import { eventBus } from '../abstractions';
 
-export const defaultIfEmpty = (defaultValue: any) => {
+export const defaultIfEmpty = (defaultValue: any): Operator => {
   let boundStream: Stream;
   let hasEmitted = false;
 
@@ -9,16 +10,16 @@ export const defaultIfEmpty = (defaultValue: any) => {
     boundStream.onComplete.chain(callback); // Chain the callback to be triggered on stream completion
   };
 
-  const callback = async (): Promise<void> => {
+  const callback = (): void => {
     if (!hasEmitted) {
       // If nothing has been emitted, emit the default value
-      return boundStream.onEmission.parallel({ emission: { value: defaultValue }, source: null });
+      eventBus.enqueue({ target: boundStream, payload: { emission: createEmission({ value: defaultValue }), source: operator }, type: 'emission' });
     }
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
     // Mark the emission if it's not a phantom or failed
-    if (!emission.isPhantom && !emission.isFailed) {
+    if (!emission.phantom && !emission.failed) {
       hasEmitted = true;
     }
     return emission; // Pass the emission forward

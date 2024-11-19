@@ -1,7 +1,7 @@
 import { createBehaviorSubject } from '../lib';
 
 describe('BehaviorSubject', () => {
-  it('should emit the current value to new subscribers immediately', async () => {
+  it('should emit the current value to new subscribers immediately', (done) => {
     const initialValue = 'initial_value';
     const behaviorSubject = createBehaviorSubject(initialValue);
 
@@ -11,13 +11,14 @@ describe('BehaviorSubject', () => {
     });
 
     behaviorSubject.next('value1');
+    behaviorSubject.next('value2');
+    behaviorSubject.complete();
 
     // Simulate a new subscriber after the value has been updated
     behaviorSubject.onStop.once(() => {
-      expect(emittedValues).toEqual([initialValue, 'value1']);
+      expect(emittedValues).toEqual([initialValue, 'value1', 'value2']);
       subscription.unsubscribe();
+      done();
     });
-
-    behaviorSubject.complete();
   });
 });

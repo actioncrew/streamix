@@ -1,177 +1,112 @@
+import { createEmission, eventBus } from '../lib';
 import { concatMap, createStream, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
 
   let project: (value: any) => Stream;
-  let mockStream: Stream; // Assuming AbstractStream defines basic functionalities
 
   beforeEach(() => {
-    project = (value: any) => {
-      return myInnerStream(value); // Replace with your inner stream implementation
-    };
-    mockStream = myRealStream(); // Replace with your real stream implementation
+    project = (value: any) => myInnerStream(value); // Replace with your inner stream implementation
   });
 
-  it('should handle empty stream', async () => {
-    const operator = concatMap(project);
-    operator.init(mockStream);
+  it('should handle an empty stream', (done) => {
+    const mockStream$ = from([]).pipe(concatMap(project));
 
-    const request = { value: null, isPhantom: false };
-
-    const result = await operator.handle(request, mockStream);
-
-    expect(result).toEqual(request);
-  });
-
-  it('should handle cancelled stream', async () => {
-    const operator = concatMap(project);
-    operator.init(mockStream);
-
-    const request = { value: 'data', isPhantom: true };
-    const result = await operator.handle(request, mockStream);
-
-    expect(result).toEqual({ ...request, isPhantom: true });
-  });
-
-  it('should project value and subscribe to inner stream (integration test)', async () => {
-    const operator = concatMap(project);
-    operator.init(mockStream);
-
-    const request = { value: 'data', isPhantom: false };
-    const expectedValue = 'innerValue'; // Expected value from inner stream
-    const result = await operator.handle(request, mockStream);
-
-    expect(result).toEqual(request); // Assuming handle returns the original request
-  });
-
-  it('should handle multiple emissions sequentially', async () => {
-    const operator = concatMap(project);
-    operator.init(mockStream);
-
-    const requests = [
-      { value: 'data1', isPhantom: false },
-      { value: 'data2', isPhantom: false },
-    ];
-
-    const results = await Promise.all(
-      requests.map(request => operator.handle(request, mockStream))
-    );
-
-    results.forEach((result, index) => {
-      expect(result).toEqual(requests[index]);
-    });
-  });
-
-  it('should handle errors in inner stream', async () => {
-    const errorProject = (value: any) => {
-      return errorInnerStream(value); // Replace with your error inner stream implementation
-    };
-    const operator = concatMap(errorProject);
-    operator.init(mockStream);
-
-    const request = { value: 'data', isPhantom: false };
-
-    try {
-      await operator.handle(request, mockStream);
-    } catch (error: any) {
-      expect(error.message).toEqual('Inner Stream Error'); // Check for specific error object
-    };
-  });
-
-  it('should complete inner stream before processing next emission', (done) => {
-    const emissions = [
-      'data1',
-      'data2',
-      'data3',
-      'data4',
-      'data5',
-    ];
-
-    let processedOrder: any[] = [];
-    const mockStream$ = from(emissions).pipe(concatMap(value => of(value)));
-
-    mockStream$.subscribe((value: any) => {
-      processedOrder.push(value);
-    });
+    const emittedValues: any[] = [];
+    mockStream$.subscribe(value => emittedValues.push(value));
 
     mockStream$.onStop.once(() => {
-      expect(processedOrder).toEqual(['data1', 'data2', 'data3', 'data4', 'data5']);
+      expect(emittedValues).toEqual([]);
       done();
     });
   });
 
+  it('should project values and subscribe to inner stream in sequence', (done) => {
+    const mockStream$ = from(['1', '2', '3', '4', '5']).pipe(concatMap(project));
+    const emittedValues: any[] = [];
 
-  it('should handle multiple emissions from outer stream and inner stream', (done) => {
-
-    const outerEmissions = ['outer1', 'outer2'];
-    const innerValues1 = ['inner1a', 'inner1b', 'inner1c'];
-    const innerValues2 = ['inner2a', 'inner2b', 'inner2c'];
-
-    const projectFunction = (value: any) => {
-      if (value === 'outer1') {
-        return from(innerValues1);
-      } else if (value === 'outer2') {
-        return from(innerValues2);
-      } else {
-        return from([]);
-      }
-    };
-
-    const results: any[] = [];
-
-    const operator = concatMap(projectFunction);
-    operator.init(mockStream);
-
-    const mockStream$ = from(outerEmissions).pipe(operator);
-
-    mockStream$.subscribe((value: any) => {
-      results.push(value)
-    });
+    mockStream$.subscribe(value =>
+      emittedValues.push(value)
+    );
 
     mockStream$.onStop.once(() => {
-      expect(results.length).toEqual(6);
-      expect(results).toEqual([
-        'inner1a', 'inner1b', 'inner1c',
-        'inner2a', 'inner2b', 'inner2c'
-      ]);
+      expect(emittedValues).toEqual(['innerValue1', 'innerValue2', 'innerValue3', 'innerValue4', 'innerValue5']); // Expect each value from inner streams in sequence
+      done();
+    });
+  });
+
+  it('should complete inner stream before processing next outer emission', (done) => {
+    const emissions = ['1', '2', '3'];
+    const mockStream$ = from(emissions).pipe(concatMap(value => of(value)));
+
+    const emittedValues: any[] = [];
+    mockStream$.subscribe(value =>
+      emittedValues.push(value)
+    );
+
+    mockStream$.onStop.once(() => {
+      expect(emittedValues).toEqual(emissions); // Sequential handling expected
+      done();
+    });
+  });
+
+  it('should handle errors in inner stream without affecting other emissions', (done) => {
+    const errorProject = (value: any) => errorInnerStream(value);
+    const values = ['1', '2'];
+    const mockStream$ = from(values).pipe(concatMap(value => (value === '2' ? errorInnerStream(value) : project(value))));
+
+    const emittedValues: any[] = [];
+    const errors: any[] = [];
+
+    mockStream$.subscribe((value) => emittedValues.push(value));
+    mockStream$.onError.once(({ error }: any) =>
+      errors.push(error)
+    );
+
+    mockStream$.onStop.once(() => {
+      expect(emittedValues).toEqual(['innerValue1']);
+      expect(errors[0].message).toEqual('Inner Stream Error'); // Only second emission should throw
+      done();
+    });
+  });
+
+  it('should correctly concatenate emissions from both outer and inner streams', (done) => {
+    const outerValues = ['outer1', 'outer2'];
+    const innerValues1 = ['inner1a', 'inner1b'];
+    const innerValues2 = ['inner2a', 'inner2b'];
+
+    const projectFn = (value: any) => {
+      return value === 'outer1' ? from(innerValues1) : from(innerValues2);
+    };
+
+    const mockStream$ = from(outerValues).pipe(concatMap(projectFn));
+    const emittedValues: any[] = [];
+
+    mockStream$.subscribe(value => emittedValues.push(value));
+
+    mockStream$.onStop.once(() => {
+      expect(emittedValues).toEqual(['inner1a', 'inner1b', 'inner2a', 'inner2b']);
       done();
     });
   });
 });
 
-// Example Inner Stream Implementation (Replace with your actual implementation)
+// Inner Stream Implementations (Replace with your actual implementations)
 export function myInnerStream(value: any): Stream {
-  // Create the custom run function for MyInnerStream
-  const run = async (stream: Stream): Promise<void> => {
-    // Simulate inner stream behavior (emission, completion, error)
-    await new Promise((resolve) => setTimeout(resolve, 10)); // Simulate delay
-    await stream.onEmission.parallel({ emission: { value }, source: stream }); // Emit the projected value
-  };
-
-  // Create the stream using createStream and the custom run function
-  return createStream(run);
+  return createStream(async function (this: Stream) {
+    await new Promise((resolve) => setTimeout(resolve, 10)); // Simulated delay
+    eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: 'innerValue' + value }), source: this }, type: 'emission' });
+  });
 }
 
-// Example Real Stream Implementation (Replace with your actual implementation)
 export function myRealStream(): Stream {
-  // Create the custom run function for MyRealStream
-  const run = async (stream: Stream): Promise<void> => {
-    // Simulate your real stream behavior (emitting values)
-    await stream.onEmission.parallel({ emission: { value: 'streamValue1' }, source: stream });
-  };
-
-  // Create the stream using createStream and the custom run function
-  return createStream(run);
+  return createStream(async function (this: Stream) {
+    eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: 'streamValue1' }), source: this }, type: 'emission' });
+  });
 }
 
-
-// Example Error Inner Stream Implementation (Replace with your actual implementation)
 export function errorInnerStream(value: any): Stream {
-  // Create the custom run function for ErrorInnerStream
-  const run = async (stream: Stream): Promise<void> => {
+  return createStream(async function (this: Stream) {
     throw new Error('Inner Stream Error');
-  };
-
-  // Create the stream using createStream and the custom run function
-  return createStream(run);
+  });
 }

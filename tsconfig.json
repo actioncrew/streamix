@@ -16,18 +16,18 @@
     "moduleResolution": "bundler",
     "importHelpers": true,
     "target": "ES2022",
-    "paths": {
-      "@actioncrew/streamix": [
-        "./projects/streamix/src/lib/index.ts",
-        "./dist/streamix/index.d.ts"
-      ]
-    },
     "module": "ES2022",
     "useDefineForClassFields": false,
     "lib": [
       "ES2022",
       "dom"
-    ]
+    ],
+    "paths": {
+      "@actioncrew/streamix": [
+        "./projects/streamix/src/lib/index.ts",
+        "./dist/streamix/index.d.ts"
+      ]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

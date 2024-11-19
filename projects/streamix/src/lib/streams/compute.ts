@@ -1,48 +1,49 @@
-import { createStream, Stream } from '../abstractions';
-import { coroutine } from '../operators';
+import { createEmission, createStream, Stream } from '../abstractions';
+import { Coroutine } from '../operators';
+import { catchAny } from '../utils';
+import { eventBus } from '../abstractions';
 
-export function compute(task: ReturnType<typeof coroutine>, params: any): Stream<any> {
+export function compute(task: Coroutine, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
   const stream = createStream<any>(async function(this: Stream<any>): Promise<void> {
-    let promise: Promise<void>;
+    let promise = new Promise<void>(async (resolve, reject) => {
 
-    promise = new Promise<void>(async (resolve, reject) => {
+      const worker = await task.getIdleWorker();
+      worker.postMessage(params);
 
-      if (this.isRunning) {
-        const worker = await task.getIdleWorker();
-        worker.postMessage(params);
-
-        // Handle messages from the worker
-        worker.onmessage = async (event: any) => {
-          await this.onEmission.parallel({ emission: { value: event.data }, source: this });
+      // Handle messages from the worker
+      worker.onmessage = async (event: any) => {
+        if(event.data.error) {
+          task.returnWorker(worker);
+          reject(event.data.error);
+        } else {
+          eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event.data }), source: this }, type: 'emission' });
           task.returnWorker(worker);
           resolve();
-        };
+        }
+      };
 
-        // Handle errors from the worker
-        worker.onerror = async (error: any) => {
-          await this.onEmission.parallel({ emission: { isFailed: true, error }, source: this });
-          task.returnWorker(worker);
-          reject(error);
-        };
-      } else {
-        resolve(); // Resolve immediately if not running
-      }
+      // Handle errors from the worker
+      worker.onerror = async (error: any) => {
+        task.returnWorker(worker);
+        reject(error);
+      };
     });
 
-    try {
-      await Promise.race([this.awaitCompletion(), promise]);
-    } catch (error) {
-      console.warn('Error during computation:', error);
-    } finally {
-      if (this.shouldComplete()) {
-        await promise; // Wait for promise to resolve
-        await this.complete(); // Complete the stream
-      }
+    this.onComplete.once(() => {
+      this.isAutoComplete = true;
+    });
+
+    const [error] = await catchAny(Promise.race([this.awaitCompletion(), promise]));
+    if(error) {
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
+    } else {
+      await promise;
     }
+
+    return promise;
   });
 
   stream.name = "compute";
-  // Create the stream using createStream and the custom run function
   return stream;
 }

@@ -85,6 +85,5 @@ describe('DefaultIfEmptyOperator', () => {
     })
 
     processedStream.complete();
-
   });
 });

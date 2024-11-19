@@ -1,6 +1,6 @@
 import { Stream } from '../abstractions';
-import { createSubject, Subject } from '../';
-import { hook, HookType } from '../utils';
+import { createSubject } from '../streams';
+import { hook } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
@@ -43,9 +43,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const getFirstChunk = () => chunks[0];
   const getLastChunk = () => chunks[chunks.length - 1];
 
-  const bindOperators = function (this: Pipeline<T>, ...ops: Operator[]): Pipeline<T> {
-    const getFirstChunk = () => this.chunks[0];
-    const getLastChunk = () => this.chunks[this.chunks.length - 1];
+  const bindOperators = function (...ops: Operator[]): Pipeline<T> {
 
     chunks.forEach((c) => c.onError.remove(pipeline, onErrorCallback));
     getFirstChunk().onStart.remove(pipeline, onStartCallback);
@@ -74,7 +72,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
         // Create a new chunk using the source subject
         chunk = sourceSubject;
       }
-      this.chunks.push(chunk);
+      chunks.push(chunk);
     } else {
       chunk = getLastChunk();
     }
@@ -86,14 +84,14 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       const clonedOperator = operator.clone();
       clonedOperator.init(chunk);
       chunkOperators.push(clonedOperator);
-      this.operators.push(clonedOperator);
+      operators.push(clonedOperator);
 
       // If operator has a stream, finalize current chunk and start a new one
       if ('stream' in clonedOperator) {
         chunk.bindOperators(...chunkOperators);
         chunkOperators = [];
         chunk = clonedOperator.stream as any;
-        this.chunks.push(chunk);  // Push new chunk to `this.chunks`
+        chunks.push(chunk);  // Push new chunk to `this.chunks`
       }
     });
 
@@ -101,17 +99,17 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     chunk.bindOperators(...chunkOperators);
 
     // Re-bind hooks across chunks
-    this.chunks.forEach((c) => c.onError.chain(pipeline, onErrorCallback));
+    chunks.forEach((c) => c.onError.chain(pipeline, onErrorCallback));
     getFirstChunk().onStart.chain(pipeline, onStartCallback);
     getLastChunk().subscribers.chain(pipeline, onEmissionCallback);
     getLastChunk().onComplete.chain(pipeline, onCompleteCallback);
     getLastChunk().onStop.chain(pipeline, onStopCallback);
 
-    return this;  // Return `this` to allow chaining
+    return pipeline;  // Return `this` to allow chaining
   };
 
-  const pipe = function(this: Pipeline<T>, ...ops: Operator[]): Pipeline<T> {
-    return createPipeline<T>(this).bindOperators(...ops);
+  const pipe = function(...ops: Operator[]): Pipeline<T> {
+    return createPipeline<T>(pipeline).bindOperators(...ops);
   };
 
   const subscribe = (callback?: (value: T) => void): Subscription => {
@@ -121,24 +119,39 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     };
 
     onEmission.chain(pipeline, boundCallback);
+    const subscriptions: Subscription[] = [];
 
     for (let i = chunks.length - 1; i >= 0; i--) {
-      chunks[i].subscribe();
+      subscriptions.push(chunks[i].subscribe());
     }
 
-    const value: any = () => currentValue;
-    value.unsubscribe = async () => {
-      await complete();
-      onEmission.remove(pipeline, boundCallback);
+    const subscription: any = () => currentValue;
+    subscription.unsubscribe = async () => {
+      complete();
+      onStop.once(()=> {
+        subscriptions.forEach((subscription) => subscription.unsubscribe());
+        onEmission.remove(pipeline, boundCallback);
+      });
     }
-    return value as Subscription;
+
+    subscription.started = Promise.all(subscriptions.map(subscription => subscription.started));
+    subscription.completed = Promise.all(subscriptions.map(subscription => subscription.completed));
+    return subscription as Subscription;
   };
 
   const complete = async (): Promise<void> => {
-    for (let i = 0; i < chunks.length; i++) {
-      await chunks[i].complete();
-    }
-  };
+    // Mark the first chunk as requested to stop
+    await chunks[0].complete();
+
+    // Wait for all chunks to finish processing
+    await Promise.all(
+      chunks.map(chunk =>
+        new Promise<void>((resolve) => {
+          chunk.onStop.once(resolve);
+        })
+      )
+    );
+  }
 
   const pipeline: Pipeline<T> = {
     type: "pipeline" as "pipeline",
@@ -214,7 +227,7 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
       subject.next(value); // Emit to active subscribers
   });
 
-  source.onStop.once(() => subject.complete());
+  source.onStop.once(() => subject.isStopRequested = true);
 
   const pipeline = createPipeline<T>(subject);
   let subscribers = 0;
@@ -240,7 +253,7 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
           originalSubscription.unsubscribe();
           subscribers--;
           if (subscribers === 0) {
-              await subscription.unsubscribe(); // Unsubscribe from source if no more subscribers
+            subscription.unsubscribe(); // Unsubscribe from source if no more subscribers
           }
       };
 

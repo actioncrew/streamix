@@ -15,7 +15,6 @@ describe('tap operator', () => {
     });
 
     tappedStream.onStop.once(() => {
-      console.log(tappedStream);
       // Check if side effect function was called for each emission
       expect(sideEffectFn).toHaveBeenCalledTimes(5);
 

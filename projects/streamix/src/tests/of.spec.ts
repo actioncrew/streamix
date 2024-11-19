@@ -50,12 +50,12 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     const emittedValues: any[] = [];
+
+    ofStream.complete();
+
     ofStream.subscribe((value) => {
       emittedValues.push(value);
     });
-
-    ofStream.complete();
-    await ofStream.run();
 
     expect(emittedValues).toEqual([]);
   });
