@@ -99,10 +99,15 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return stream;
   };
 
-  const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
+  const emit = async function(this: Stream, { emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
       let next = isStream(source) ? source.head : undefined;
       next = isOperator(source) ? source.next : next;
+
+      if(this.isStopRequested) {
+        emission.ancestor?.finalize();
+        emission.phantom = true;
+      }
 
       if (emission.failed) throw emission.error;
 
