@@ -7,47 +7,38 @@ export type Subject<T = any> = Stream<T> & {
 
 // Create the functional version of the Subject
 export function createSubject<T = any>(): Subject<T> {
-  const stream = createStream<T>(() => Promise.resolve()) as Subject;
-  let started = false;
 
-  stream.run = () => Promise.resolve();
-
-  stream.complete = async function (this: Stream): Promise<void> {
-    if(!this.isStopped) {
-      this.isStopRequested = true;
-      eventBus.enqueue({ target: this, type: 'complete' });
-      eventBus.enqueue({ target: this, type: 'stop' });
-      return Promise.all([this.onComplete.waitForCompletion(), this.onStop.waitForCompletion()]).then(() => {
-        this.isRunning = false; this.isStopped = true;
-        this.operators.forEach(operator => operator.cleanup());
-      })
-    }
-  };
+  const stream = createStream<T>(async function (this: any): Promise<void> {
+    await started;
+    await this.awaitCompletion();
+  }) as any;
 
   stream.next = function (this: Stream, value?: T): Promise<void> {
     // If the stream is stopped, further emissions are not allowed
-    if (!this.isRunning || this.isStopRequested || this.isStopped) {
+    if (this.isStopRequested || this.isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
       return Promise.resolve();
     }
 
-    if(!started) {
-      eventBus.enqueue({ target: this, type: 'start' });
-      started = true;
-    }
+    return started
+      .then(() => {
+        running = true; // Mark the stream as running
 
-    // Create and link the child emission
-    const emission = createEmission({ value });
+        const emission = createEmission({ value });
 
-    // Enqueue the emission
-    eventBus.enqueue({
-      target: this,
-      payload: { emission, source: this },
-      type: 'emission',
-    });
+        eventBus.enqueue({
+          target: this,
+          payload: { emission, source: this },
+          type: 'emission',
+        });
 
-    return emission.wait();
+        return emission;
+      }).then((emission: Emission) => emission.wait());
   };
+
+
+  let started = stream.onStart.waitForCompletion();
+  let running = false;
 
   stream.name = "subject";
   return stream;
