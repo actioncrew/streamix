@@ -1,4 +1,4 @@
-export type Lock = {
+export type SimpleLock = {
   acquire(): Promise<() => void>;
 };
 
