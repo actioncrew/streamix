@@ -139,9 +139,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       queueMicrotask(stream.run);
     }
 
-    const subscription: any = () => currentValue;
+    const subscription: Subscription = () => currentValue;
+    subscription.unsubscribed = false;
+
     subscription.unsubscribe = () => {
-      complete().then(() => subscribers.remove(boundCallback));
+      if(!subscription.unsubscribed) {
+        stream.complete().then(() => subscribers.remove(boundCallback));
+        subscription.unsubscribed = true;
+      }
     };
 
     subscription.started = commencement.promise();
@@ -208,8 +213,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     get isRunning() {
       return running;
     },
+    set isRunning(value: boolean) {
+      running = value;
+    },
     get isStopped() {
       return stopped;
+    },
+    set isStopped(value: boolean) {
+      stopped = value;
     }
   };
 
