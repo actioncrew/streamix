@@ -121,7 +121,7 @@ export function createSubject<T = any>(): Subject<T> {
     }
   };
 
-  stream.onStop.once(() => {
+  stream.onStop.chain(() => {
     stream.isStopped = true; stream.isRunning = false;
     stream.operators.forEach(operator => operator.cleanup());
     finalized.resolve()
