@@ -247,17 +247,22 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
       const originalSubscription = originalSubscribe(observer);
       subscribers++;
 
-      const value: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
+      const subscription: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
+      subscription.unsubscribed = false
 
-      value.unsubscribe = async () => {
+      subscription.unsubscribe = async () => {
+        if(!subscription.unsubscribed) {
           originalSubscription.unsubscribe();
           subscribers--;
           if (subscribers === 0) {
-            subscription.unsubscribe(); // Unsubscribe from source if no more subscribers
+            subscription.unsubscribe();
           }
+          subscription.unsubscribed = true;
+        }
+
       };
 
-      return value;
+      return subscription;
   };
 
   return pipeline;
