@@ -1,5 +1,6 @@
 import { createEmission, createStream, Emission, Stream, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
+import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
   next(value?: T): Emission;
@@ -11,6 +12,12 @@ export function createSubject<T = any>(): Subject<T> {
   const stream = createStream<T>(async () => Promise.resolve()) as Subject;
   let queue: Emission[] = [];
   let currentValue: T | undefined;
+  let lastCallCounter = performance.now();
+  let autoComplete = false;
+  let stopRequested = false;
+
+  const commencement = awaitable<void>();
+  const completion = awaitable<void>();
 
   stream.run = function(this: Subject<T>): Promise<void> {
     return Promise.resolve();
@@ -29,6 +36,8 @@ export function createSubject<T = any>(): Subject<T> {
         target: this,
         type: 'stop'
       });
+
+      completion.resolve();
     }
 
     queue = queue.filter(emission => !emission.complete);
@@ -61,10 +70,11 @@ export function createSubject<T = any>(): Subject<T> {
 
     queue.push(emission);
 
-    if(queue.length > 64) {
+    const counter = performance.now();
+    if(counter - lastCallCounter > 1000) {
       queue = queue.filter(emission => !emission.complete);
     }
-
+    lastCallCounter = counter;
     return emission;
   };
 
@@ -73,6 +83,42 @@ export function createSubject<T = any>(): Subject<T> {
       return currentValue;
     },
     enumerable: true,
+    configurable: true
+  });
+
+  Object.defineProperty(stream, "isAutoComplete", {
+    get() {
+      return autoComplete;
+    },
+    set(value: boolean) {
+      if (value) {
+        if(stream.isRunning && !stream.isAutoComplete && !stream.isStopRequested) {
+          eventBus.enqueue({ target: stream, type: 'complete' });
+          eventBus.enqueue({ target: stream, type: 'stop' });
+        }
+
+        completion.resolve();
+      }
+      autoComplete = value;
+    },
+    configurable: true
+  });
+
+  Object.defineProperty(stream, "isStopRequested", {
+    get() {
+      return stopRequested;
+    },
+    set(value: boolean) {
+      if (value) {
+        if(stream.isRunning && !stream.isAutoComplete && !stream.isStopRequested) {
+          eventBus.enqueue({ target: stream, type: 'complete' });
+          eventBus.enqueue({ target: stream, type: 'stop' });
+        }
+
+        completion.resolve();
+      }
+      stopRequested = value;
+    },
     configurable: true
   });
 
@@ -86,6 +132,8 @@ export function createSubject<T = any>(): Subject<T> {
 
     if (!stream.isRunning && !stream.isStopRequested) {
       stream.isRunning = true;
+      commencement.resolve();
+
       eventBus.enqueue({
         target: this,
         type: 'start'
