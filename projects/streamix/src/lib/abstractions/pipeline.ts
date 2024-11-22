@@ -268,6 +268,3 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
   return pipeline;
 };
 
-export const pipe = <T>(stream: Stream<T>, ...ops: Operator[]): Pipeline<T> => {
-  return createPipeline<T>(stream).bindOperators(...ops);
-};

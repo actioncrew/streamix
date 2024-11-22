@@ -1,4 +1,4 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperatorType as isOperator } from "../abstractions";
 import { eventBus } from ".";
 import { hook, Hook, promisified, createLock, SimpleLock } from "../utils";
 
