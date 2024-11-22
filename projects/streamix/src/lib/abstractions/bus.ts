@@ -80,22 +80,25 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                 pendingEmissions.set(event.target, set);
 
                 emission.wait().then(async () => {
+                  let set = pendingEmissions.get(event.target)!;
                   set.delete(emission);
 
                   if(!set.size) {
                     pendingEmissions.delete(event.target);
                   }
 
-                  if(completeMarkers.has(event.target)) {
-                    const payload = completeMarkers.get(event.target);
-                    completeMarkers.delete(event.target);
-                    await event.target.onComplete.parallel(payload);
-                  }
+                  if(!set.size) {
+                    if(completeMarkers.has(event.target)) {
+                      const payload = completeMarkers.get(event.target);
+                      completeMarkers.delete(event.target);
+                      await event.target.onComplete.parallel(payload);
+                    }
 
-                  if(stopMarkers.has(event.target)) {
-                    const payload = stopMarkers.get(event.target);
-                    stopMarkers.delete(event.target);
-                    await event.target.onStop.parallel(payload);
+                    if(stopMarkers.has(event.target)) {
+                      const payload = stopMarkers.get(event.target);
+                      stopMarkers.delete(event.target);
+                      await event.target.onStop.parallel(payload);
+                    }
                   }
                 });
               }
