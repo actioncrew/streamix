@@ -48,8 +48,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const subscribers = hook();
 
   const run = async () => {
-    eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
     try {
+      eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
       await onStart.waitForCompletion();
       commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
