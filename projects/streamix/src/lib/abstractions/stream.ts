@@ -1,6 +1,6 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperatorType as isOperator } from "../abstractions";
 import { eventBus } from ".";
-import { hook, Hook, promisified, createLock, SimpleLock } from "../utils";
+import { hook, Hook, awaitable, createLock, SimpleLock } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -28,8 +28,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let head: Operator | undefined;
   let tail: Operator | undefined;
 
-  const completion = promisified<void>();
-  const commencement = promisified<void>();
+  const completion = awaitable<void>();
+  const commencement = awaitable<void>();
   let lock = createLock();
 
   let autoComplete = false;
