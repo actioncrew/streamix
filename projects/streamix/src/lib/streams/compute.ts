@@ -17,7 +17,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
           task.returnWorker(worker);
           reject(event.data.error);
         } else {
-          stream.emissionCounter++;
+          this.emissionCounter++;
           eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event.data }), source: this }, type: 'emission' });
           task.returnWorker(worker);
           resolve();
