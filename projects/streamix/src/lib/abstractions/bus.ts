@@ -82,6 +82,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                 emission.wait().then(async () => {
                   set.delete(emission);
 
+                  if(!set.size) {
+                    pendingEmissions.delete(event.target);
+                  }
+
                   if(completeMarkers.has(event.target)) {
                     const payload = completeMarkers.get(event.target);
                     completeMarkers.delete(event.target);
