@@ -1,5 +1,5 @@
-export type Promisified<T> = ReturnType<typeof promisified<T>>;
-export function promisified<T>(initialValue?: T) {
+export type Awaitable<T> = ReturnType<typeof awaitable<T>>;
+export function awaitable<T>(initialValue?: T) {
   let _value = initialValue;
   let _default = initialValue;
   let _resolve!: (value: T) => void;
@@ -48,10 +48,10 @@ export function promisified<T>(initialValue?: T) {
   return innerFunction;
 }
 
-promisified.all = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any[]> {
+awaitable.all = function (promises: Array<ReturnType<typeof awaitable<any>>>): Promise<any[]> {
   return Promise.all(promises.map(p => p.promise()));
 };
 
-promisified.race = function (promises: Array<ReturnType<typeof promisified<any>>>): Promise<any> {
+awaitable.race = function (promises: Array<ReturnType<typeof awaitable<any>>>): Promise<any> {
   return Promise.race(promises.map(p => p.promise()));
 };

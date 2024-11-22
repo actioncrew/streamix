@@ -7,7 +7,6 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   const output = createSubject();
   let activeInnerStreams: Subscribable[] = [];
   let processingPromises: Promise<void>[] = [];
-  let emissionNumber = 0;
   const executionNumber: Counter = counter(0);
   let isFinalizing = false;
   let input: Subscribable | undefined;
@@ -19,18 +18,17 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     input = stream;
 
     // Finalize when the input or output stream stops
-    input.onStop.once(() => queueMicrotask(() => executionNumber.waitFor(emissionNumber).then(finalize)));
+    input.onStop.once(() => queueMicrotask(() => executionNumber.waitFor(input!.emissionCounter).then(finalize)));
     output.onStop.once(finalize);
   };
 
   const handle = async (emission: Emission): Promise<Emission> => {
-    emissionNumber++;
 
     // Process the emission asynchronously
     processEmission(emission, output);
 
     // Mark the emission as phantom and return immediately
-    emission.phantom = true;
+    emission.pending = true;
     return emission;
   };
 
@@ -46,11 +44,11 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     activeInnerStreams.push(innerStream);
 
     const processingPromise = new Promise<void>((resolve) => {
-      const promises: Set<Promise<void>> = new Set();
 
       const handleCompletion = async () => {
-        await Promise.all(promises);
         executionNumber.increment();
+        emission.finalize();
+
         removeInnerStream(innerStream);
 
         processingPromises = processingPromises.filter((p) => p !== processingPromise);
@@ -59,7 +57,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
 
       const handleInnerEmission = (value: any) => {
         // Add promises from stream.next() to ensure parallel processing
-        promises.add(stream.next(value));
+        emission.link(stream.next(value));
       };
 
       // Handle errors for each inner stream independently
@@ -78,7 +76,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
 
       // Add the unsubscribe function to the subscriptions array
       subscriptions.push(subscription);
-    });
+    }) as any;
 
     processingPromises.push(processingPromise);
   };

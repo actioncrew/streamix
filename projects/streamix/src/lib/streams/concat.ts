@@ -14,6 +14,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   // Function to run the current source
   const runCurrentSource = async (stream: Stream<T>, currentSource: Subscribable): Promise<void> => {
     const handleEmissionFn = async (value: T) => {
+      stream.emissionCounter++;
       eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
     };
 

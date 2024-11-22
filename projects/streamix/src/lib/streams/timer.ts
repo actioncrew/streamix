@@ -23,6 +23,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       }
 
       // Initial emission
+      stream.emissionCounter++;
       eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
       timerValue++;
 
@@ -37,6 +38,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
                 return;
               }
 
+              stream.emissionCounter++;
               eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
 
               timerValue++;

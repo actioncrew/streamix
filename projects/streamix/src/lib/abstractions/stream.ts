@@ -1,6 +1,6 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, pipe, isOperatorType as isOperator } from "../abstractions";
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperatorType as isOperator } from "../abstractions";
 import { eventBus } from ".";
-import { hook, Hook, promisified, createLock, Lock } from "../utils";
+import { hook, Hook, awaitable, createLock, SimpleLock } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -11,7 +11,8 @@ export type Stream<T = any> = Subscribable<T> & {
   run: () => Promise<void>; // Run stream logic
   name?: string;
   subscribers: Hook;
-  lock: Lock;
+  lock: SimpleLock;
+  emissionCounter: number;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -27,8 +28,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let head: Operator | undefined;
   let tail: Operator | undefined;
 
-  const completion = promisified<void>();
-  const commencement = promisified<void>();
+  const completion = awaitable<void>();
+  const commencement = awaitable<void>();
   let lock = createLock();
 
   let autoComplete = false;
@@ -36,6 +37,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let stopped = false;
   let running = false;
   let currentValue: T | undefined;
+
+  let emissionCounter = 0;
 
   const onStart = hook();
   const onComplete = hook();
@@ -45,8 +48,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const subscribers = hook();
 
   const run = async () => {
-    eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
     try {
+      eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
       await onStart.waitForCompletion();
       commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
@@ -101,6 +104,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
+      emissionCounter++;
+
       let next = isStream(source) ? source.head : undefined;
       next = isOperator(source) ? source.next : next;
 
@@ -139,9 +144,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       queueMicrotask(stream.run);
     }
 
-    const subscription: any = () => currentValue;
+    const subscription: Subscription = () => currentValue;
+    subscription.unsubscribed = false;
+
     subscription.unsubscribe = () => {
-      complete().then(() => subscribers.remove(boundCallback));
+      if(!subscription.unsubscribed) {
+        stream.complete().then(() => subscribers.remove(boundCallback));
+        subscription.unsubscribed = true;
+      }
     };
 
     subscription.started = commencement.promise();
@@ -170,6 +180,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     awaitCompletion,
     complete,
     shouldComplete,
+    emissionCounter,
     get value() {
       return currentValue;
     },
@@ -208,8 +219,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     get isRunning() {
       return running;
     },
+    set isRunning(value: boolean) {
+      running = value;
+    },
     get isStopped() {
       return stopped;
+    },
+    set isStopped(value: boolean) {
+      stopped = value;
     }
   };
 

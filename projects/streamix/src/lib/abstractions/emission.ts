@@ -27,6 +27,25 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
     rejectFn = reject;
   });
 
+  const processDescendants = function (emission: Emission) {
+    const descendants = Array.from(emission.descendants || []);
+    const allResolved = descendants.every(descendant => descendant.complete || descendant.failed || descendant.phantom);
+    const shouldFail = descendants.some(descendant => descendant.failed);
+
+    if (allResolved) {
+      delete emission.pending;
+      emission.complete = true;
+    }
+
+    if (shouldFail) {
+      const error = new Error("One or more child emissions failed");
+      emission.reject(error);
+      emission.ancestor?.notifyOnError(emission, error);
+    } else if (allResolved) {
+      emission.resolve();
+    }
+  }
+
   const instance: Emission = Object.assign(emission, {
     resolve: () => {
       if (resolveFn) {
@@ -63,53 +82,16 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
     },
     finalize: (): void => {
       instance.finalized = true;
-      if(!instance.descendants?.size) {
-        instance.resolve();
-      }
+      processDescendants(instance);
     },
     notifyOnCompletion: (child: Emission): void => {
       if(instance.finalized) {
-        const descendants = Array.from(instance.descendants || []);
-        const allResolved = descendants.every(descendant => descendant.complete || descendant.failed || descendant.phantom);
-        const shouldFail = descendants.some(descendant => descendant.failed);
-        const shouldComplete = !shouldFail && allResolved;
-
-        if(allResolved) {
-          delete instance.pending;
-          instance.complete = true;
-        }
-
-        if(shouldFail) {
-          const error = new Error("One or more child emission failed");
-          instance.reject(error.message);
-          instance.ancestor && instance.ancestor.notifyOnError(instance, error);
-        }
-
-        if(shouldComplete) {
-          instance.resolve();
-        }
+        processDescendants(instance);
       }
     },
     notifyOnError: (child: Emission, reason: any): void => {
       if(instance.finalized) {
-        const descendants = Array.from(instance.descendants || []);
-        const allResolved = descendants.every(descendant => descendant.complete || descendant.failed || descendant.phantom);
-        const shouldFail = true;
-        const shouldComplete = !shouldFail && allResolved;
-
-        if(allResolved) {
-          delete instance.pending;
-          instance.complete = true;
-        }
-
-        if(shouldFail) {
-          instance.reject(reason.message);
-          instance.ancestor && instance.ancestor.notifyOnError(instance, reason);
-        }
-
-        if(shouldComplete) {
-          instance.resolve();
-        }
+        processDescendants(instance);
       }
     }
   });

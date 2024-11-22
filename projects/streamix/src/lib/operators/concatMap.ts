@@ -3,32 +3,31 @@ import { Subscribable, Emission, createOperator, Operator } from '../abstraction
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
 import { Subscription } from '../abstractions';
+import { createEmission } from '../abstractions';
 
 export const concatMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
   let emissionQueue: Emission[] = [];
-  let pendingEmissions: number = 0;
   const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
-  let inputStream!: Subscribable | undefined;
+  let input!: Subscribable | undefined;
   let subscription: Subscription | undefined;
-  const outputStream = createSubject();
+  const output = createSubject();
 
   const init = (stream: Subscribable) => {
-    inputStream = stream;
-    inputStream.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(pendingEmissions).then(finalize)));
-    outputStream.onStop.once(finalize);
+    input = stream;
+    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output.onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
     emissionQueue.push(emission);
-    pendingEmissions++;
 
     if(!currentInnerStream) {
       await processQueue();
     }
 
-    emission.phantom = true;
+    emission.pending = true;
     return emission;
   };
 
@@ -48,25 +47,26 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
       // Immediately set up listeners on the new inner stream
       currentInnerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
 
-      currentInnerStream.onStop.once(() => completeInnerStream(subscription!));
+      currentInnerStream.onStop.once(() => completeInnerStream(emission, subscription!));
 
-      subscription = currentInnerStream.subscribe((value) => handleInnerEmission(value));
+      subscription = currentInnerStream.subscribe((value) => emission.link(handleInnerEmission(value)));
     }
   };
 
-  const handleInnerEmission = (value: any) => {
-    outputStream.next(value);
+  const handleInnerEmission = (value: any): Emission => {
+    return output.next(value);
   };
 
-  const completeInnerStream = async (subscription: Subscription) => {
+  const completeInnerStream = async (emission: Emission, subscription: Subscription) => {
+    executionCounter.increment();
+    emission.finalize();
     subscription?.unsubscribe();
     await processQueue();
-    executionCounter.increment();
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
-    eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error'});
-    stopStreams(currentInnerStream, outputStream);
+    eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
+    stopStreams(currentInnerStream, output);
     executionCounter.increment();
   };
 
@@ -74,7 +74,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    await stopStreams(currentInnerStream, inputStream, outputStream);
+    await stopStreams(currentInnerStream, input, output);
     currentInnerStream = null;
   };
 
@@ -85,7 +85,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   const operator = createOperator(handle) as any;
   operator.name = 'concatMap';
   operator.init = init;
-  operator.stream = outputStream;
+  operator.stream = output;
 
   return operator;
 };

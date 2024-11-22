@@ -3,7 +3,7 @@ import { Hook } from '../utils';
 
 
 export interface Subscribable<T = any> {
-  type: "stream" | "chunk" | "pipeline";
+  type: "stream" | "pipeline" | "subject";
 
   isAutoComplete: boolean;
   isStopRequested: boolean;
@@ -16,6 +16,8 @@ export interface Subscribable<T = any> {
   onStop: Hook;
   onError: Hook;
   onEmission: Hook;
+
+  emissionCounter: number;
 
   shouldComplete(): boolean;
   awaitCompletion(): Promise<void>;
