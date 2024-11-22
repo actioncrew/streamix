@@ -10,6 +10,7 @@ export function of<T = any>(value: T): Stream<T> {
 
     try {
       if (!this.shouldComplete()) {
+        stream.emissionCounter++;
         eventBus.enqueue({ target: this, payload: { emission: createEmission({ value }), source: this }, type: 'emission' });
       }
     } catch (error) {

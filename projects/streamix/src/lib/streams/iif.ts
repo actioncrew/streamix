@@ -32,6 +32,7 @@ export function iif<T>(
       return;
     }
 
+    stream.emissionCounter++;
     eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 

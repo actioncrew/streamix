@@ -1,9 +1,10 @@
 import { Stream } from '../abstractions';
 import { createSubject } from '../streams';
-import { hook } from '../utils';
+import { counter, hook } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
+import { createEmission } from '../abstractions';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
@@ -17,6 +18,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   let chunks: Stream<T>[] = [];
   let operators: Operator[] = [];
   let currentValue: T | undefined;
+  let emissionCounter = 0;
+  const subscriptions: Subscription[] = [];
 
   const onStart = hook();
   const onComplete = hook();
@@ -25,12 +28,12 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const onEmission = hook();
 
   const onStartCallback = (params: any) => onStart.parallel(params);
-  const onEmissionCallback = (params: any) => onEmission.parallel(params);
+  const onEmissionCallback = (params: any) => { emissionCounter++; onEmission.parallel(params); };
   const onCompleteCallback = (params: any) => onComplete.parallel(params);
   const onStopCallback = (params: any) => onStop.parallel(params);
   const onErrorCallback = (params: any) => onError.parallel(params);
 
-  if (subscribable.type === 'stream') {
+  if (subscribable.type === 'stream' || subscribable.type === 'subject') {
     const chunk = subscribable as unknown as Stream<T>;
     chunks = [chunk];
     operators = [...chunk.operators];
@@ -53,7 +56,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     let chunk: Stream<T>;
 
-    if (subscribable.type !== 'stream' && ops.length > 0) {
+    if (subscribable.type === 'pipeline' && ops.length > 0) {
       const lastChunk = getLastChunk();
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
@@ -64,10 +67,11 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
         // Subscribe to the last chunk's result and replicate emissions to the new Subject
         const subscription = lastChunk.subscribe((value) => {
-          sourceSubject.next(value); // Emit the value to the new subject
+          sourceSubject.next(value);
+          if(lastChunk.emissionCounter === sourceSubject.emissionCounter) {
+            subscription.unsubscribe(); sourceSubject.complete();
+          }
         });
-
-        lastChunk.onStop.once(pipeline, () => { sourceSubject.complete(); subscription.unsubscribe(); });
 
         // Create a new chunk using the source subject
         chunk = sourceSubject;
@@ -119,17 +123,19 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     };
 
     onEmission.chain(pipeline, boundCallback);
-    const subscriptions: Subscription[] = [];
 
-    for (let i = chunks.length - 1; i >= 0; i--) {
+    if(getFirstChunk().value !== undefined) {
+      getFirstChunk().onEmission.parallel({emission: createEmission({ value: getFirstChunk().value }), source: getFirstChunk() });
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
       subscriptions.push(chunks[i].subscribe());
     }
 
     const subscription: any = () => currentValue;
     subscription.unsubscribe = async () => {
-      complete();
-      onStop.once(()=> {
-        subscriptions.forEach((subscription) => subscription.unsubscribe());
+      complete().then(() => {
+        subscriptions.reverse().forEach((subscription) => subscription.unsubscribe());
         onEmission.remove(pipeline, boundCallback);
       });
     }
@@ -158,6 +164,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     stream: getFirstChunk(),
     chunks,
     operators,
+    emissionCounter,
     bindOperators,
     pipe,
     subscribe,
@@ -247,22 +254,24 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
       const originalSubscription = originalSubscribe(observer);
       subscribers++;
 
-      const value: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
+      const subscription: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
+      subscription.unsubscribed = false
 
-      value.unsubscribe = async () => {
+      subscription.unsubscribe = async () => {
+        if(!subscription.unsubscribed) {
           originalSubscription.unsubscribe();
           subscribers--;
           if (subscribers === 0) {
-            subscription.unsubscribe(); // Unsubscribe from source if no more subscribers
+            subscription.unsubscribe();
           }
+          subscription.unsubscribed = true;
+        }
+
       };
 
-      return value;
+      return subscription;
   };
 
   return pipeline;
 };
 
-export const pipe = <T>(stream: Stream<T>, ...ops: Operator[]): Pipeline<T> => {
-  return createPipeline<T>(stream).bindOperators(...ops);
-};
