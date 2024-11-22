@@ -72,26 +72,30 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               }
 
               if (event.target && event.payload?.emission?.pending) {
+                let emission = event.payload.emission;
                 let set = pendingEmissions.get(event.target) ?? new Set();
-                if(!set.has(event.payload.emission)) {
-                  set.add(event.payload.emission);
+                if(!set.has(emission)) {
+                  set.add(emission);
                 }
                 pendingEmissions.set(event.target, set);
+
+                emission.wait().then(async () => {
+                  set.delete(emission);
+
+                  if(completeMarkers.has(event.target)) {
+                    const payload = completeMarkers.get(event.target);
+                    completeMarkers.delete(event.target);
+                    await event.target.onComplete.parallel(payload);
+                  }
+
+                  if(stopMarkers.has(event.target)) {
+                    const payload = stopMarkers.get(event.target);
+                    stopMarkers.delete(event.target);
+                    await event.target.onStop.parallel(payload);
+                  }
+                });
               }
 
-              if (!pendingEmissions.get(event.target)?.size) {
-                if(completeMarkers.has(event.target)) {
-                  const payload = completeMarkers.get(event.target);
-                  completeMarkers.delete(event.target);
-                  await event.target.onComplete.parallel(payload);
-                }
-
-                if(stopMarkers.has(event.target)) {
-                  const payload = stopMarkers.get(event.target);
-                  stopMarkers.delete(event.target);
-                  await event.target.onStop.parallel(payload);
-                }
-              }
               break;
             case 'complete':
               if (!pendingEmissions.get(event.target)?.size) {
