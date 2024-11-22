@@ -1,16 +1,18 @@
 import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, Stream } from '../abstractions';
 
 export const delay = (delayTime: number): Operator => {
+  let queue = Promise.resolve();
+
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
     // Mark the emission as pending
     emission.pending = true;
 
     // Schedule the delayed emission
     const delayedEmission = createEmission({ value: emission.value });
+    emission.link(delayedEmission);
 
-    const timeout = setTimeout(() => {
+    queue = queue.then(() => new Promise<void>((resolve) => setTimeout(() => {
       // Link and emit the delayed emission
-      emission.link(delayedEmission);
       eventBus.enqueue({
         target: stream,
         payload: { emission: delayedEmission, source: operator },
@@ -19,10 +21,8 @@ export const delay = (delayTime: number): Operator => {
 
       // Finalize the original emission
       emission.finalize();
-
-      // Remove timeout from the tracking map
-      clearTimeout(timeout);
-    }, delayTime);
+      resolve();
+    }, delayTime)));
 
     // Return the pending emission immediately
     return emission;
