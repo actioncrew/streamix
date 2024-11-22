@@ -3,7 +3,7 @@ import { Hook } from '../utils';
 
 
 export interface Subscribable<T = any> {
-  type: "stream" | "chunk" | "pipeline";
+  type: "stream" | "pipeline" | "subject";
 
   isAutoComplete: boolean;
   isStopRequested: boolean;

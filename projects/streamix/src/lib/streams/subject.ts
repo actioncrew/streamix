@@ -110,5 +110,6 @@ export function createSubject<T = any>(): Subject<T> {
   }
 
   stream.name = "subject";
+  stream.type = "subject";
   return stream;
 }
