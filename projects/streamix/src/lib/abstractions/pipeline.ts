@@ -123,7 +123,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     onEmission.chain(pipeline, boundCallback);
 
-    for (let i = chunks.length - 1; i >= 0; i--) {
+    for (let i = 0; i < chunks.length; i++) {
       subscriptions.push(chunks[i].subscribe());
     }
 
