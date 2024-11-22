@@ -12,6 +12,7 @@ export type Stream<T = any> = Subscribable<T> & {
   name?: string;
   subscribers: Hook;
   lock: SimpleLock;
+  emissionCounter: number;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -36,6 +37,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let stopped = false;
   let running = false;
   let currentValue: T | undefined;
+
+  let emissionCounter = 0;
 
   const onStart = hook();
   const onComplete = hook();
@@ -101,6 +104,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
+      emissionCounter++;
+
       let next = isStream(source) ? source.head : undefined;
       next = isOperator(source) ? source.next : next;
 
@@ -175,6 +180,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     awaitCompletion,
     complete,
     shouldComplete,
+    emissionCounter,
     get value() {
       return currentValue;
     },

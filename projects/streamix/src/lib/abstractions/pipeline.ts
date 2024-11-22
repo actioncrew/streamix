@@ -1,6 +1,6 @@
 import { Stream } from '../abstractions';
 import { createSubject } from '../streams';
-import { hook } from '../utils';
+import { counter, hook } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
@@ -17,6 +17,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   let chunks: Stream<T>[] = [];
   let operators: Operator[] = [];
   let currentValue: T | undefined;
+  let emissionCounter = 0;
+  const subscriptions: Subscription[] = [];
 
   const onStart = hook();
   const onComplete = hook();
@@ -25,7 +27,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const onEmission = hook();
 
   const onStartCallback = (params: any) => onStart.parallel(params);
-  const onEmissionCallback = (params: any) => onEmission.parallel(params);
+  const onEmissionCallback = (params: any) => { emissionCounter++; onEmission.parallel(params); };
   const onCompleteCallback = (params: any) => onComplete.parallel(params);
   const onStopCallback = (params: any) => onStop.parallel(params);
   const onErrorCallback = (params: any) => onError.parallel(params);
@@ -64,10 +66,11 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
         // Subscribe to the last chunk's result and replicate emissions to the new Subject
         const subscription = lastChunk.subscribe((value) => {
-          sourceSubject.next(value); // Emit the value to the new subject
+          sourceSubject.next(value);
+          if(lastChunk.emissionCounter === sourceSubject.emissionCounter) {
+            subscription.unsubscribe(); sourceSubject.complete();
+          }
         });
-
-        lastChunk.onStop.once(pipeline, () => { sourceSubject.complete(); subscription.unsubscribe(); });
 
         // Create a new chunk using the source subject
         chunk = sourceSubject;
@@ -119,7 +122,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     };
 
     onEmission.chain(pipeline, boundCallback);
-    const subscriptions: Subscription[] = [];
 
     for (let i = chunks.length - 1; i >= 0; i--) {
       subscriptions.push(chunks[i].subscribe());
@@ -127,9 +129,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     const subscription: any = () => currentValue;
     subscription.unsubscribe = async () => {
-      complete();
-      onStop.once(()=> {
-        subscriptions.forEach((subscription) => subscription.unsubscribe());
+      complete().then(() => {
+        subscriptions.reverse().forEach((subscription) => subscription.unsubscribe());
         onEmission.remove(pipeline, boundCallback);
       });
     }
@@ -158,6 +159,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     stream: getFirstChunk(),
     chunks,
     operators,
+    emissionCounter,
     bindOperators,
     pipe,
     subscribe,
