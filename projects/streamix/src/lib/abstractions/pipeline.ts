@@ -4,6 +4,7 @@ import { counter, hook } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
+import { createEmission } from '../abstractions';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
@@ -32,7 +33,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const onStopCallback = (params: any) => onStop.parallel(params);
   const onErrorCallback = (params: any) => onError.parallel(params);
 
-  if (subscribable.type === 'stream') {
+  if (subscribable.type === 'stream' || subscribable.type === 'subject') {
     const chunk = subscribable as unknown as Stream<T>;
     chunks = [chunk];
     operators = [...chunk.operators];
@@ -55,7 +56,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     let chunk: Stream<T>;
 
-    if (subscribable.type !== 'stream' && ops.length > 0) {
+    if (subscribable.type === 'pipeline' && ops.length > 0) {
       const lastChunk = getLastChunk();
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
@@ -122,6 +123,10 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     };
 
     onEmission.chain(pipeline, boundCallback);
+
+    if(getFirstChunk().value !== undefined) {
+      getFirstChunk().onEmission.parallel({emission: createEmission({ value: getFirstChunk().value }), source: getFirstChunk() });
+    }
 
     for (let i = 0; i < chunks.length; i++) {
       subscriptions.push(chunks[i].subscribe());

@@ -197,8 +197,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       })
     );
 
-    this.scene$ =  fromEvent(window, 'resize').pipe(
-      startWith(this.getCanvasSize()),
+    this.scene$ =  resize$.pipe(
       tap(({ width, height }) => {
         this.canvas.width = width;
         this.canvas.height = height;
