@@ -27,7 +27,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
       listener = async (event: Event) => {
         if (this.isRunning) {
           // Emit the event to the stream
-          stream.emissionCounter++;
+          this.emissionCounter++;
           eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event }), source: this }, type: 'emission' });
         }
       };

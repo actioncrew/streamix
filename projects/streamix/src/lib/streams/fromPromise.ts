@@ -24,7 +24,7 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
 
       // If the stream is not complete, emit the value
       if (!this.shouldComplete()) {
-        stream.emissionCounter++;
+        this.emissionCounter++;
         eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: resolvedValue }), source: this }, type: 'emission' });
       }
     } catch (error) {

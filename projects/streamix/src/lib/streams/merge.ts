@@ -15,7 +15,7 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
 
     const handleEmissionFn = async (value: T) => {
       if (!this.shouldComplete()) {
-        stream.emissionCounter++;
+        this.emissionCounter++;
         eventBus.enqueue({ target: this, payload: { emission: createEmission({ value }), source: this }, type: 'emission' });
       }
     };
