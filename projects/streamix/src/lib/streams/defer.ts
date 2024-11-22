@@ -27,6 +27,7 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
 
   // Handle emissions from the inner stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
+    stream.emissionCounter++;
     eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 

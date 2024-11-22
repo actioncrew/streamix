@@ -7,63 +7,58 @@ import { Subscription } from '../abstractions';
 export const switchMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
   let currentSubscription: Subscription | undefined;
-  let pendingEmissions: number = 0;
   const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
-  let inputStream!: Subscribable | undefined;
-  const outputStream = createSubject();
+  let input!: Subscribable | undefined;
+  const output = createSubject();
 
   const init = (stream: Subscribable) => {
-    inputStream = stream;
+    input = stream;
 
     // Finalize when the input or output stream stops
-    inputStream.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(pendingEmissions).then(finalize)));
-    outputStream.onStop.once(finalize);
+    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output.onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
-    // Increment pending emissions for lifecycle tracking
-    pendingEmissions++;
-
     // Process the current emission and start a new inner stream
     const newInnerStream = project(emission.value);
 
     // Cancel any existing inner subscription
     if(currentInnerStream && currentInnerStream !== newInnerStream) {
-      stopCurrentInnerStream();
+      currentSubscription?.unsubscribe();
+      currentSubscription = undefined;
     }
 
     currentInnerStream = newInnerStream;
 
     // Subscribe to the new inner stream
     if (currentInnerStream) {
-      currentSubscription = currentInnerStream.subscribe((value) => handleInnerEmission(value));
+      currentSubscription = currentInnerStream.subscribe((value) => handleInnerEmission(emission, value));
 
       // Handle errors from the inner stream
       currentInnerStream.onError.once(({ error }: any) => handleStreamError(error));
 
       // Complete the inner stream when it stops
-      currentInnerStream.onStop.once(() => stopCurrentInnerStream());
+      currentInnerStream.onStop.once(() => stopCurrentInnerStream(emission));
     }
 
-    // Mark the outer emission as phantom (already processed)
-    emission.phantom = true;
-
+    emission.pending = true;
     return emission;
   };
 
-  const handleInnerEmission = (value: any) => {
-    outputStream.next(value);
+  const handleInnerEmission = (emission: Emission, value: any) => {
+    emission.link(output.next(value));
   };
 
   const handleStreamError = (error: any) => {
-    eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error' });
+    eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
     finalize();
   };
 
-  const stopCurrentInnerStream = () => {
+  const stopCurrentInnerStream = (emission: Emission) => {
     executionCounter.increment();
-    // Unsubscribe and clean up the current inner stream
+    emission.finalize();
     currentSubscription?.unsubscribe();
     currentSubscription = undefined;
     currentInnerStream = null;
@@ -74,7 +69,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     isFinalizing = true;
 
     // Stop all streams (input, current inner, output)
-    stopStreams(inputStream, currentInnerStream, outputStream);
+    stopStreams(input, currentInnerStream, output);
     currentInnerStream = null;
   };
 
@@ -89,7 +84,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
   const operator = createOperator(handle) as any;
   operator.name = 'switchMap';
   operator.init = init;
-  operator.stream = outputStream;
+  operator.stream = output;
 
   return operator;
 };
