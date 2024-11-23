@@ -11,7 +11,6 @@ export const endWith = (value: any): Operator => {
 
   const callback = async (instance: Operator, params?: any): Promise<void> => {
     // Emit the provided initial value when the stream starts
-    boundStream.emissionCounter++;
     eventBus.enqueue({ target: boundStream, payload: { emission: createEmission({ value }), source: instance }, type: 'emission' });
   };
 
