@@ -4,7 +4,7 @@ import { counter, hook } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
-import { createEmission } from '../abstractions';
+import { createEmission, eventBus } from '../abstractions';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
@@ -124,8 +124,14 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     onEmission.chain(pipeline, boundCallback);
 
-    if(getFirstChunk().value !== undefined) {
-      getFirstChunk().onEmission.parallel({emission: createEmission({ value: getFirstChunk().value }), source: getFirstChunk() });
+    let stream = getFirstChunk();
+    
+    if(stream.emissionCounter > 0 && stream.value === undefined) {
+      commencement.then(() => {
+        if (stream.value === undefined && !stream.isAutoComplete && !stream.isStopRequested) {
+          eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value: stream.value }), source: stream }, type: 'emission' });
+        }
+      });
     }
 
     for (let i = 0; i < chunks.length; i++) {
