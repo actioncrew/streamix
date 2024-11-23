@@ -8,7 +8,6 @@ import { createEmission, eventBus } from '../abstractions';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
-  stream: Stream<T>;
   chunks: Stream<T>[];
   operators: Operator[];
   bindOperators: (...operators: Operator[]) => Pipeline<T>;
@@ -167,8 +166,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   }
 
   const pipeline: Pipeline<T> = {
+    name: getFirstChunk().name,
     type: "pipeline" as "pipeline",
-    stream: getFirstChunk(),
     chunks,
     operators,
     emissionCounter,
