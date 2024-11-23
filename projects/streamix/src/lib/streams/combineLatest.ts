@@ -29,7 +29,6 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
       values[index] = { hasValue: true, value };
 
       if (values.every(v => v.hasValue)) {
-        stream.emissionCounter++;
         eventBus.enqueue({
           target: stream,
           payload: { emission: createEmission({ value: values.map(v => v.value!) }),
