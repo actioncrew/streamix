@@ -18,7 +18,7 @@ export const fork = <T = any, R = T>(
 
   const init = (stream: Subscribable) => {
     input = stream;
-    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input.emissionCounter).then(finalize)));
+    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
     output.onStop.once(finalize);
   };
 
