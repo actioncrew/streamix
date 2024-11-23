@@ -7,7 +7,7 @@ eventBus.run();
 
 export type BusEvent = {
   target: any;
-  type: 'emission' | 'start' | 'stop' | 'complete' | 'error' | 'subscribers';
+  type: 'emission' | 'start' | 'stop' | 'complete' | 'error';
   payload?: any;
   timeStamp?: Date;
 };
@@ -50,54 +50,56 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             case 'start':
               await event.target.onStart.parallel(event.payload); break;
             case 'stop':
-              if (!pendingEmissions.get(event.target)?.size) {
+              if (!pendingEmissions.has(event.target)) {
                 await event.target.onStop.parallel(event.payload); break;
               } else {
                 stopMarkers.set(event.target, event.payload);
               }
               break;
             case 'emission':
-              if(event.target.isStopRequested && completeMarkers.has(event.target)) {
-                if(event.payload && event.payload.emission) {
-                  event.payload.emission.ancestor?.finalize();
-                  event.payload.emission.phantom = true;
-                }
-              }
+              let emission = event.payload?.emission || createEmission({});
+              let target = event.target;
+              
+              // if(target.isStopRequested && completeMarkers.has(event.target)) {
+              //   if(emission) {
+              //     emission.ancestor?.finalize();
+              //     emission.phantom = true;
+              //  }
+              // }
 
-              await event.target.onEmission.parallel(event.payload);
+              await target.onEmission.parallel(event.payload);
 
-              if(pendingEmissions.has(event.target)) {
-                const pendingSet = pendingEmissions.get(event.target);
+              if(pendingEmissions.has(target)) {
+                const pendingSet = pendingEmissions.get(target);
                 const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
-                pendingEmissions.set(event.target, new Set(stillPending));
+                pendingEmissions.set(target, new Set(stillPending));
               }
 
-              if (event.target && event.payload?.emission?.pending) {
-                let emission = event.payload.emission;
+              if (target && emission.pending) {
                 let set = pendingEmissions.get(event.target) ?? new Set();
                 if(!set.has(emission)) {
                   set.add(emission);
                 }
-                pendingEmissions.set(event.target, set);
+                pendingEmissions.set(target, set);
 
                 emission.wait().then(async () => {
-                  let set = pendingEmissions.get(event.target)!;
+                  let set = pendingEmissions.get(target)!;
                   set.delete(emission);
 
                   if(!set.size) {
-                    pendingEmissions.delete(event.target);
+                    pendingEmissions.delete(target);
                   }
 
                   if(!set.size) {
-                    if(completeMarkers.has(event.target)) {
-                      const payload = completeMarkers.get(event.target);
-                      completeMarkers.delete(event.target);
-                      await event.target.onComplete.parallel(payload);
+                    if(completeMarkers.has(target)) {
+                      const payload = completeMarkers.get(target);
+                      completeMarkers.delete(target);
+                      await target.onComplete.parallel(payload);
                     }
 
-                    if(stopMarkers.has(event.target)) {
-                      const payload = stopMarkers.get(event.target);
-                      stopMarkers.delete(event.target);
+                    if(stopMarkers.has(target)) {
+                      const payload = stopMarkers.get(target);
+                      stopMarkers.delete(target);
                       await event.target.onStop.parallel(payload);
                     }
                   }
@@ -106,7 +108,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
               break;
             case 'complete':
-              if (!pendingEmissions.get(event.target)?.size) {
+              if (!pendingEmissions.has(event.target)) {
                 await event.target.onComplete.parallel(event.payload);
               } else {
                 completeMarkers.set(event.target, true);
