@@ -15,7 +15,6 @@ export function loop<T>(
       const emission = createEmission({ value: currentValue }) as Emission;
 
       // Emit the current value
-      this.emissionCounter++;
       eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
 
       // Apply the iterateFn to get the next value
