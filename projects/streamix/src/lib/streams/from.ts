@@ -30,7 +30,6 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
         done = true;
       } else {
         const emission = createEmission({ value });
-        this.emissionCounter++;
         eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
 
         if(eventBus.harmonize) {
