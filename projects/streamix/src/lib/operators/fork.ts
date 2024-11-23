@@ -10,22 +10,20 @@ export const fork = <T = any, R = T>(
 ): Operator => {
   let innerStream: Subscribable | null = null;
   let emissionQueue: Emission[] = [];
-  let pendingEmissions: number = 0;
   const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
-  let inputStream!: Subscribable | undefined;
+  let input!: Subscribable | undefined;
   let subscription: Subscription | undefined;
-  const outputStream = createSubject();
+  const output = createSubject();
 
   const init = (stream: Subscribable) => {
-    inputStream = stream;
-    inputStream.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(pendingEmissions).then(finalize)));
-    outputStream.onStop.once(finalize);
+    input = stream;
+    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input.emissionCounter).then(finalize)));
+    output.onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
     emissionQueue.push(emission);
-    pendingEmissions++;
 
     if(!innerStream) {
       await processQueue();
@@ -66,7 +64,7 @@ export const fork = <T = any, R = T>(
   };
 
   const handleInnerEmission = (value: any) => {
-    outputStream.next(value); // Emit the inner emission
+    output.next(value); // Emit the inner emission
   };
 
   const completeInnerStream = async (subscription: Subscription) => {
@@ -78,8 +76,8 @@ export const fork = <T = any, R = T>(
   const handleStreamError = (emission: Emission, error: any) => {
     emission.error = error;
     emission.failed = true;
-    eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error'});
-    stopStreams(innerStream, outputStream);
+    eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
+    stopStreams(innerStream, output);
     executionCounter.increment();
   };
 
@@ -87,7 +85,7 @@ export const fork = <T = any, R = T>(
     if (isFinalizing) return;
     isFinalizing = true;
 
-    await stopStreams(innerStream, inputStream, outputStream);
+    await stopStreams(innerStream, input, output);
     innerStream = null;
   };
 
@@ -98,7 +96,7 @@ export const fork = <T = any, R = T>(
   const operator = createOperator(handle) as any;
   operator.name = 'concatMap';
   operator.init = init;
-  operator.stream = outputStream;
+  operator.stream = output;
 
   return operator;
 };
