@@ -61,7 +61,6 @@ export function createSubject<T = any>(): Subject<T> {
       });
     }
 
-    this.emissionCounter++;
     eventBus.enqueue({
       target: this,
       payload: { emission, source: this },
