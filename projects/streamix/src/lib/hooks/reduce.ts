@@ -12,6 +12,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): O
 
   const callback = async (): Promise<void> => {
     // Emit the accumulated value once the stream completes
+    boundStream.emissionCounter++;
     eventBus.enqueue({ target: boundStream,  payload: { emission: createEmission({ value: accumulatedValue }), source: boundStream }, type: 'emission' });
   };
 
