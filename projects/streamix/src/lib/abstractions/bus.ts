@@ -140,6 +140,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
         await spaceAvailable.acquire(); // Wait until space is available in the buffer
         event.timeStamp = new Date(); // Add timestamp for the event
 
+        if(isStream(event.target) && event.type === 'emission') {
+          event.target.emissionCounter++;
+        }
+        
         // Place the event into the buffer and update the tail position
         buffer[tail] = event;
         tail = (tail + 1) % bufferSize;
