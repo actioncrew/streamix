@@ -76,7 +76,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               }
 
               if (target && emission.pending) {
-                let set = pendingEmissions.get(event.target) ?? new Set();
+                let set = pendingEmissions.get(target) ?? new Set();
                 if(!set.has(emission)) {
                   set.add(emission);
                 }
@@ -100,7 +100,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                     if(stopMarkers.has(target)) {
                       const payload = stopMarkers.get(target);
                       stopMarkers.delete(target);
-                      await event.target.onStop.parallel(payload);
+                      await target.onStop.parallel(payload);
                     }
                   }
                 });
