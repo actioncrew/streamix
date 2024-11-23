@@ -124,14 +124,15 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     onEmission.chain(pipeline, boundCallback);
 
-    let stream = getFirstChunk();
-    
-    if(stream.emissionCounter > 0 && stream.value === undefined) {
-      commencement.then(() => {
-        if (stream.value === undefined && !stream.isAutoComplete && !stream.isStopRequested) {
-          eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value: stream.value }), source: stream }, type: 'emission' });
-        }
-      });
+    if (stream.isRunning) {
+      let stream = getFirstChunk();
+      if(stream.emissionCounter > 0 && stream.value === undefined) {
+        commencement.then(() => {
+          if (stream.value === undefined && !stream.isAutoComplete && !stream.isStopRequested) {
+            eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value: stream.value }), source: stream }, type: 'emission' });
+          }
+        });
+      }
     }
 
     for (let i = 0; i < chunks.length; i++) {
