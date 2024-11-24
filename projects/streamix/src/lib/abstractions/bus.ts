@@ -154,7 +154,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
     name: 'bus',
     harmonize: false,
     run: async function(this: any): Promise<void> {
-      return bus[runSymbol].run();
+      if (this !== bus) {
+        throw new Error("Indirect calls to 'run' are not allowed.");
+      }
+      return bus[runSymbol]();
     },
     enqueue: async function(this: any, event: BusEvent): Promise<void> {
       if (this === bus) {
