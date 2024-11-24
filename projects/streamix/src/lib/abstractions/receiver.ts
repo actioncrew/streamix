@@ -1,9 +1,14 @@
-export type Receiver = {
-  next: (value: any) => void;
-  error: (err: any) => void;
+export type Receiver<T = any> = {
+  next: (value: T) => void;
+  error: (err: Error) => void;
   complete: () => void;
 };
 
-export function isReceiver(): boolean {
-  
-}
+export function isReceiver<T>(obj: any): obj is Receiver<T> {
+  return (
+    obj !== null && obj !== undefined &&
+    typeof obj.next === 'function' &&
+    typeof obj.error === 'function' &&
+    typeof obj.complete === 'function'
+  );
+};
