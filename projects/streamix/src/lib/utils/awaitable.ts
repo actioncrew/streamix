@@ -1,7 +1,6 @@
 export type Awaitable<T> = ReturnType<typeof awaitable<T>>;
 export function awaitable<T>(initialValue?: T) {
   let _value = initialValue;
-  let _default = initialValue;
   let _resolve!: (value: T) => void;
   let _reject!: (reason?: any) => void;
 
@@ -32,14 +31,6 @@ export function awaitable<T>(initialValue?: T) {
   };
 
   innerFunction.promise = () => _promise;
-
-  innerFunction.reset = function () {
-    _promise = new Promise<T>((resolve, reject) => {
-      _resolve = resolve;
-      _reject = reject;
-      _value = _default;
-    });
-  };
 
   innerFunction.then = function <U = void>(callback: (value?: T) => U | PromiseLike<U>): Promise<U> {
     return _promise.then(callback);
