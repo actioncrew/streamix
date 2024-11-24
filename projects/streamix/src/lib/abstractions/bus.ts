@@ -2,8 +2,6 @@ import { createLock, createSemaphore } from '../utils';
 import { Emission } from './emission';
 import { isStream } from '../abstractions';
 
-const protected = Symbol('protected');
-
 export const eventBus = createBus() as Bus;
 eventBus.run();
 
@@ -38,8 +36,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   const itemsAvailable = createSemaphore(0); // Semaphore for items available in the buffer
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
 
-  const bus: Bus = {
-    harmonize,
+  const bus = {
     async run(): Promise<void> {
       while (true) {
         // Wait for an available item or space in the buffer
@@ -128,15 +125,6 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
     },
 
     async enqueue(this: any, event: BusEvent): Promise<void> {
-      // Check if `this` is the eventBus itself (direct call)
-      // if (this === bus) {
-      //  throw new Error("Direct call to 'enqueue' is not allowed. Use 'enqueue.call' with a valid stream.");
-      // }
-
-      // Check if `this` is a valid stream (when using `.call` or `.apply`)
-      // if (!isStream(this)) {
-      //   throw new Error("Unauthorized access to 'enqueue'. Caller must be a valid stream.");
-      // }
       
       const releaseLock = await lock.acquire();
 
@@ -159,10 +147,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       }
     },
   };
-
-  bus.name = 'bus';
+  
   return {
-    [protected]: bus,
+    name: 'bus',
+    harmonize: false,
     run: async function(this: any): Promise<void> {
       return bus.run();
     },
@@ -179,5 +167,5 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
       bus.enqueue(event);
     }
-  };
+  } as Bus;
 }
