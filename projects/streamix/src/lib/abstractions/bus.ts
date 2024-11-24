@@ -161,9 +161,11 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
         throw new Error("Direct call to 'enqueue' is not allowed. Use 'enqueue.call' with a valid stream.");
       }
 
-      if()
-      // Enqueue is now a symbol-protected function; it is only allowed to be called
-      // directly if `this` refers to the bus itself.
+      if (!isStream(this)) {
+        throw new Error("Invalid 'this' context. 'enqueue' must be called with a stream as 'this'.");
+      }
+      
+      // Delegate to the symbol-protected internal method
       bus[enqueueSymbol](event);
     }
   } as Bus;
