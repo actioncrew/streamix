@@ -29,7 +29,7 @@ export const fork = <T = any, R = T>(
       await processQueue();
     }
 
-    emission.phantom = true;
+    emission.pending = true;
     return emission;
   };
 
@@ -69,6 +69,7 @@ export const fork = <T = any, R = T>(
 
   const completeInnerStream = async (subscription: Subscription) => {
     subscription?.unsubscribe();
+    emission.finalize();
     await processQueue();
     executionCounter.increment();
   };
