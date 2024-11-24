@@ -2,6 +2,8 @@ import { createLock, createSemaphore } from '../utils';
 import { Emission } from './emission';
 import { isStream } from '../abstractions';
 
+const protected = Symbol('protected');
+
 export const eventBus = createBus() as Bus;
 eventBus.run();
 
@@ -159,5 +161,23 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   };
 
   bus.name = 'bus';
-  return bus;
+  return {
+    [protected]: bus,
+    run: async function(this: any): Promise<void> {
+      return bus.run();
+    },
+    enqueue: async function(this: any, event: BusEvent): Promise<void> {
+      // Check if `this` is the eventBus itself (direct call)
+      if (this === bus) {
+        throw new Error("Direct call to 'enqueue' is not allowed. Use 'enqueue.call' with a valid stream.");
+      }
+
+      // Check if `this` is a valid stream (when using `.call` or `.apply`)
+      if (!isStream(this)) {
+        throw new Error("Unauthorized access to 'enqueue'. Caller must be a valid stream.");
+      }
+
+      bus.enqueue(event);
+    }
+  };
 }
