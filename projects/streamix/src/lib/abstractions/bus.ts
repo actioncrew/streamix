@@ -13,16 +13,16 @@ export type BusEvent = {
 };
 
 export type Bus = {
-  harmonize: boolean;
+  name?: string;
   run(): void;
   enqueue(event: BusEvent): void;
-  name?: string;
+  harmonize: boolean;
 };
 
 export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): Bus {
 
   const bufferSize = config?.bufferSize || 64; // Adjust buffer size as needed
-  const harmonize = config?.harmonize || false; // Adjust buffer size as needed
+  const harmonize = config?.harmonize || false; // Adjust harmonize flag as needed
 
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
@@ -36,15 +36,18 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   const itemsAvailable = createSemaphore(0); // Semaphore for items available in the buffer
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
 
+  const runSymbol = Symbol('run');
+  const enqueueSymbol = Symbol('enqueue');
+  
   const bus = {
-    async run(): Promise<void> {
+    async [runSymbol](this: any): Promise<void> {
       while (true) {
         // Wait for an available item or space in the buffer
         await itemsAvailable.acquire(); // Wait for an item to be available
 
         const event = buffer[head];
         if (event) {
-         // Process the event here (you can call your handler based on event type)
+          // Process the event here (you can call your handler based on event type)
           switch(event.type) {
             case 'start':
               await event.target.onStart.parallel(event.payload); break;
@@ -58,14 +61,14 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             case 'emission':
               let emission = event.payload?.emission || createEmission({});
               let target = event.target;
-              
+
               // if(target.isStopRequested && completeMarkers.has(event.target)) {
               //   if(emission) {
               //     emission.ancestor?.finalize();
               //     emission.phantom = true;
               //  }
               // }
-
+              
               await target.onEmission.parallel(event.payload);
 
               if(pendingEmissions.has(target)) {
@@ -124,8 +127,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       }
     },
 
-    async enqueue(this: any, event: BusEvent): Promise<void> {
-      
+    async [enqueueSymbol](this: any, event: BusEvent): Promise<void> {
       const releaseLock = await lock.acquire();
 
       try {
@@ -152,20 +154,17 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
     name: 'bus',
     harmonize: false,
     run: async function(this: any): Promise<void> {
-      return bus.run();
+      return bus[runSymbol].run();
     },
     enqueue: async function(this: any, event: BusEvent): Promise<void> {
-      // Check if `this` is the eventBus itself (direct call)
       if (this === bus) {
         throw new Error("Direct call to 'enqueue' is not allowed. Use 'enqueue.call' with a valid stream.");
       }
 
-      // Check if `this` is a valid stream (when using `.call` or `.apply`)
-      if (!isStream(this)) {
-        throw new Error("Unauthorized access to 'enqueue'. Caller must be a valid stream.");
-      }
-
-      bus.enqueue(event);
+      if()
+      // Enqueue is now a symbol-protected function; it is only allowed to be called
+      // directly if `this` refers to the bus itself.
+      bus[enqueueSymbol](event);
     }
   } as Bus;
 }
