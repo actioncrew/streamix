@@ -35,6 +35,7 @@ export function awaitable<T>(initialValue?: any) {
     return _promise;
   };
 
+  innerFunction.state() => _state;
   innerFunction.promise = () => _promise;
 
   innerFunction.then = function <U = void>(callback: (value?: T) => U | PromiseLike<U>): Promise<U> {
