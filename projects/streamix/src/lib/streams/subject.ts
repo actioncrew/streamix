@@ -11,6 +11,7 @@ export function createSubject<T = any>(): Subject<T> {
 
   const stream = createStream<T>(async () => Promise.resolve()) as Subject;
   let currentValue: T | undefined;
+  
   let autoComplete = false;
   let stopRequested = false;
 
@@ -26,18 +27,17 @@ export function createSubject<T = any>(): Subject<T> {
   
   stream.complete = async function (this: Subject): Promise<void> {
     if (this.isRunning) {
+      this.isStopRequested = true;
       
       eventBus.enqueue({
         target: this,
         type: 'complete'
       });
-
+      
       eventBus.enqueue({
         target: this,
         type: 'stop'
       });
-
-      completion.resolve();
     }
   };
 
@@ -82,14 +82,13 @@ export function createSubject<T = any>(): Subject<T> {
     },
     set(value: boolean) {
       if (value) {
-        if(stream.isRunning && !stream.isAutoComplete && !stream.isStopRequested) {
+        if(stream.isRunning && !stream.shouldComplete()) {
+          autoComplete = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
           eventBus.enqueue({ target: stream, type: 'stop' });
         }
-
-        completion.resolve();
       }
-      autoComplete = value;
+      
     },
     configurable: true
   });
@@ -100,14 +99,13 @@ export function createSubject<T = any>(): Subject<T> {
     },
     set(value: boolean) {
       if (value) {
-        if(stream.isRunning && !stream.isAutoComplete && !stream.isStopRequested) {
+        if(stream.isRunning && !stream.shouldComplete()) {
+          stopRequested = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
           eventBus.enqueue({ target: stream, type: 'stop' });
         }
-
-        completion.resolve();
       }
-      stopRequested = value;
+      
     },
     configurable: true
   });
