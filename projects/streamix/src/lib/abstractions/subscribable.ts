@@ -1,4 +1,4 @@
-import { Operator, Pipeline, Subscription } from '../abstractions';
+import { Operator, Pipeline, Receiver, Subscription } from '../abstractions';
 import { Hook } from '../utils';
 
 
@@ -23,7 +23,7 @@ export interface Subscribable<T = any> {
   awaitCompletion(): Promise<void>;
   complete(): Promise<void>;
 
-  subscribe(callback?: (value: T) => any): Subscription;
+  subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
 
   pipe(...operators: Operator[]): Pipeline<T>;
 

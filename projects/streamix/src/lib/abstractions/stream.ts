@@ -145,7 +145,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
           if (emission.failed && callbackOrReceiver.error) {
             callbackOrReceiver.error(emission.error);
-          } else if (!emission.phantom) {
+          } else {
             callbackOrReceiver.next(emission.value);
           }
         } catch (err) {
