@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { isReceiver, Receiver, Stream } from '../abstractions';
 import { createSubject } from '../streams';
 import { counter, hook } from '../utils';
 import { Operator } from '../abstractions';
@@ -116,10 +116,30 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     return createPipeline<T>(pipeline).bindOperators(...ops);
   };
 
-  const subscribe = (callback?: (value: T) => void): Subscription => {
+  const subscribe = (callbackOrReceiver?:((value: T) => void) | Receiver): Subscription => {
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
-      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
+
+      if (isReceiver(callbackOrReceiver)) {
+        // Handle as a Receiver
+        try {
+          pipeline.onStop.chain(callbackOrReceiver, callbackOrReceiver.complete);
+
+          if (emission.failed && callbackOrReceiver.error) {
+            callbackOrReceiver.error(emission.error);
+          } else {
+            callbackOrReceiver.next(emission.value);
+          }
+        } catch (err) {
+          // Catch unexpected errors in Receiver methods
+          console.error('Error in Receiver callback:', err);
+        }
+      } else if (callbackOrReceiver instanceof Function) {
+        // Handle as a simple callback
+        return Promise.resolve(callbackOrReceiver(emission.value));
+      }
+
+      return Promise.resolve();
     };
 
     onEmission.chain(pipeline, boundCallback);
@@ -135,7 +155,10 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     const subscription: any = () => currentValue;
     subscription.unsubscribe = async () => {
       complete().then(() => {
-        subscriptions.reverse().forEach((subscription) => subscription.unsubscribe());
+        subscriptions.forEach((subscription) => subscription.unsubscribe());
+        if(isReceiver(callbackOrReceiver)) {
+          pipeline.onStop.chain(callbackOrReceiver, callbackOrReceiver.complete);
+        }
         onEmission.remove(pipeline, boundCallback);
       });
     }
