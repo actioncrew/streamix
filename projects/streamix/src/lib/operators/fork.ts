@@ -53,7 +53,7 @@ export const fork = <T = any, R = T>(
         // Immediately set up listeners on the new inner stream
         innerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
 
-        innerStream.onStop.once(() => completeInnerStream(subscription!));
+        innerStream.onStop.once(() => completeInnerStream(emission, subscription!));
 
         subscription = innerStream.subscribe((value) => handleInnerEmission(value));
       }
@@ -67,7 +67,7 @@ export const fork = <T = any, R = T>(
     output.next(value); // Emit the inner emission
   };
 
-  const completeInnerStream = async (subscription: Subscription) => {
+  const completeInnerStream = async (emission: Emission, subscription: Subscription) => {
     subscription?.unsubscribe();
     emission.finalize();
     await processQueue();

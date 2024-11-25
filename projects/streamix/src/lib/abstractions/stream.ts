@@ -13,6 +13,8 @@ export type Stream<T = any> = Subscribable<T> & {
   subscribers: Hook;
   lock: SimpleLock;
   emissionCounter: number;
+  commencement: Promise<void>;
+  completion: Promise<void>;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -181,6 +183,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     complete,
     shouldComplete,
     emissionCounter,
+    commencement: commencement.promise(),
+    completion: completion.promise(),
     get value() {
       return currentValue;
     },
@@ -206,14 +210,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       return autoComplete;
     },
     set isAutoComplete(value: boolean) {
-      if (value) completion.resolve();
+      if (value && completion.state() === 'pending') completion.resolve();
       autoComplete = value;
     },
     get isStopRequested() {
       return stopRequested;
     },
     set isStopRequested(value: boolean) {
-      if (value) completion.resolve();
+      if (value && completion.state() === 'pending') completion.resolve();
       stopRequested = value;
     },
     get isRunning() {
