@@ -23,8 +23,7 @@ export function createSubject<T = any>(): Subject<T> {
 
   stream.complete = async function (this: Subject): Promise<void> {
     if (this.isRunning) {
-      this.isRunning = false;
-
+      
       eventBus.enqueue({
         target: this,
         type: 'complete'
@@ -50,6 +49,7 @@ export function createSubject<T = any>(): Subject<T> {
 
     if (!this.isRunning) {
       this.isRunning = true;
+      
       eventBus.enqueue({
         target: this,
         type: 'start'
