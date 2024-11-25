@@ -188,7 +188,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return subscription as Subscription;
   };
 
-  const clone = function(): Stream<T> {
+  const clone = function(callback?: (stream: Stream<T>) => Stream<T>): Stream<T> {
     // Create a new stream using the same run function
     const clonedStream = createStream<T>(runFn);
 
@@ -197,16 +197,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       clonedStream.bindOperators(...stream.operators.map(operator => operator.clone()));
     }
 
-    // Copy basic properties
-    clonedStream.name = stream.name;
-
-    // Reset the state of the cloned stream
-    clonedStream.isAutoComplete = false;
-    clonedStream.isStopRequested = false;
-    clonedStream.isRunning = false;
-    clonedStream.isStopped = false;
-
-    return clonedStream;
+    return callback ? callback(clonedStream) : clonedStream;
   };
 
   const pipe = function(...operators: Operator[]): Pipeline<T> {
@@ -216,7 +207,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const shouldComplete = () => autoComplete || stopRequested;
 
   const stream = {
-    name: 'stream',
     type: 'stream' as 'stream',
     operators,
     head,
