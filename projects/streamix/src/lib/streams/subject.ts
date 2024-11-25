@@ -18,9 +18,7 @@ export function createSubject<T = any>(): Subject<T> {
   const commencement = awaitable<void>();
   const completion = awaitable<void>();
 
-  stream.run = function(this: Subject<T>): Promise<void> {
-    return Promise.resolve();
-  };
+  delete stream.run;
   
   stream.awaitCompletion = () => completion.promise();
   stream.shouldComplete = () => autoComplete || stopRequested;
