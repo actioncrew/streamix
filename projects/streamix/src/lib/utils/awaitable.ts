@@ -18,6 +18,7 @@ export function awaitable<T>(initialValue?: any) {
     if (_promise.then === undefined) {
       throw new Error('Promise already settled');
     }
+    
     _value = value;
     _state = 'fullfilled';
     _resolve(value);
