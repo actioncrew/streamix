@@ -19,8 +19,8 @@ export function awaitable<T>(initialValue?: any) {
       throw new Error('Promise already settled');
     }
     _value = value;
-    _resolve(value);
     _state = 'fullfilled';
+    _resolve(value);
     return _promise;
   };
 
@@ -28,8 +28,9 @@ export function awaitable<T>(initialValue?: any) {
     if (_promise.then === undefined) {
       throw new Error('Promise already settled');
     }
-    _reject(reason);
+    
     _state = 'rejected';
+    _reject(reason);
     return _promise;
   };
 
