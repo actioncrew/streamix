@@ -1,6 +1,7 @@
 export type Awaitable<T> = ReturnType<typeof awaitable<T>>;
-export function awaitable<T>(initialValue?: T) {
-  let _value = initialValue;
+export function awaitable<T>(initialValue?: any) {
+  let _state: 'pending' | 'fullfilled' | 'rejected';
+  let _value: any = initialValue;
   let _resolve!: (value: T) => void;
   let _reject!: (reason?: any) => void;
 
@@ -19,6 +20,7 @@ export function awaitable<T>(initialValue?: T) {
     }
     _value = value;
     _resolve(value);
+    _state = 'fullfilled';
     return _promise;
   };
 
@@ -27,6 +29,7 @@ export function awaitable<T>(initialValue?: T) {
       throw new Error('Promise already settled');
     }
     _reject(reason);
+    _state = 'rejected';
     return _promise;
   };
 
