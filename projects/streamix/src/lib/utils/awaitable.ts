@@ -15,7 +15,7 @@ export function awaitable<T>(initialValue?: any) {
   }
 
   innerFunction.resolve = function (value: T): Promise<T> {
-    if (_promise.then === undefined) {
+    if (_state !== 'pending') {
       throw new Error('Promise already settled');
     }
     
@@ -26,7 +26,7 @@ export function awaitable<T>(initialValue?: any) {
   };
 
   innerFunction.reject = function (reason?: any): Promise<T> {
-    if (_promise.then === undefined) {
+    if (_state !== 'pending') {
       throw new Error('Promise already settled');
     }
     
@@ -35,7 +35,6 @@ export function awaitable<T>(initialValue?: any) {
     return _promise;
   };
 
-  innerFunction.state() => _state;
   innerFunction.promise = () => _promise;
 
   innerFunction.then = function <U = void>(callback: (value?: T) => U | PromiseLike<U>): Promise<U> {
