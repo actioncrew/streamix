@@ -188,16 +188,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return subscription as Subscription;
   };
 
-  const clone = function(callback?: (stream: Stream<T>) => Stream<T>): Stream<T> {
-    // Create a new stream using the same run function
-    const clonedStream = createStream<T>(runFn);
-
-    // Clone the operator chain
-    if (stream.operators.length) {
-      clonedStream.bindOperators(...stream.operators.map(operator => operator.clone()));
-    }
-
-    return callback ? callback(clonedStream) : clonedStream;
+  const clone = function(): Stream<T> {
+    return cloneStream(stream, () => createStream<T>(runFn), (clone) => {
+      return clone;
+    });
   };
 
   const pipe = function(...operators: Operator[]): Pipeline<T> {
@@ -275,4 +269,17 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   stream.onEmission.chain(stream, stream.emit);
   return stream; // Return the stream instance
+}
+
+
+export function cloneStream<T>(stream: Stream<T>, createInstance: () => Stream<T>, extendClone?: (clonedStream: Stream<T>) => Stream<T>): Stream<T> {
+  const clone = createInstance();
+
+  // Assume streams have operators and shared properties
+  if (stream.operators?.length) {
+    clone.bindOperators(...stream.operators.map((op) => op.clone()));
+  }
+
+  // Allow additional customization of the clone
+  return extendClone ? extendClone(clone) : clone;
 }
