@@ -10,9 +10,7 @@ export type Subject<T = any> = Stream<T> & {
 export function createSubject<T = any>(): Subject<T> {
 
   const stream = createStream<T>(async () => Promise.resolve()) as Subject;
-  let queue: Emission[] = [];
   let currentValue: T | undefined;
-  let lastCallCounter = performance.now();
   let autoComplete = false;
   let stopRequested = false;
 
@@ -39,9 +37,6 @@ export function createSubject<T = any>(): Subject<T> {
 
       completion.resolve();
     }
-
-    queue = queue.filter(emission => !emission.complete);
-    await Promise.allSettled(queue);
   };
 
   stream.next = function(this: Subject, value?: T): Emission {
@@ -67,13 +62,6 @@ export function createSubject<T = any>(): Subject<T> {
       type: 'emission',
     });
 
-    queue.push(emission);
-
-    const counter = performance.now();
-    if(counter - lastCallCounter > 1000) {
-      queue = queue.filter(emission => !emission.complete);
-    }
-    lastCallCounter = counter;
     return emission;
   };
 
