@@ -1,6 +1,6 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperatorType as isOperator } from "../abstractions";
-import { eventBus } from ".";
-import { hook, Hook, awaitable, createLock, SimpleLock } from "../utils";
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperatorType as isOperator, Receiver, isReceiver } from '../abstractions';
+import { eventBus } from '.';
+import { hook, Hook, awaitable, createLock, SimpleLock } from '../utils';
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -8,7 +8,8 @@ export type Stream<T = any> = Subscribable<T> & {
   tail: Operator | undefined;
   bindOperators: (...operators: Operator[]) => Stream<T>;
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
-  run: () => Promise<void>; // Run stream logic
+  run: () => Promise<void>;
+  clone: () => Stream<T>;
   name?: string;
   subscribers: Hook;
   lock: SimpleLock;
@@ -133,10 +134,30 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  const subscribe = (callback?: (value: T) => void): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
-      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
+
+      if (isReceiver(callbackOrReceiver)) {
+        // Handle as a Receiver
+        try {
+          stream.onStop.chain(callbackOrReceiver, callbackOrReceiver.complete);
+
+          if (emission.failed && callbackOrReceiver.error) {
+            callbackOrReceiver.error(emission.error);
+          } else if (!emission.phantom) {
+            callbackOrReceiver.next(emission.value);
+          }
+        } catch (err) {
+          // Catch unexpected errors in Receiver methods
+          console.error('Error in Receiver callback:', err);
+        }
+      } else if (callbackOrReceiver instanceof Function) {
+        // Handle as a simple callback
+        return Promise.resolve(callbackOrReceiver(emission.value));
+      }
+
+      return Promise.resolve();
     };
 
     subscribers.chain(boundCallback);
@@ -150,8 +171,13 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     subscription.unsubscribed = false;
 
     subscription.unsubscribe = () => {
-      if(!subscription.unsubscribed) {
-        stream.complete().then(() => subscribers.remove(boundCallback));
+      if (!subscription.unsubscribed) {
+        stream.complete().then(() => {
+          if(isReceiver(callbackOrReceiver)) {
+            stream.onStop.remove(callbackOrReceiver, callbackOrReceiver.complete);
+          }
+          subscribers.remove(boundCallback);
+        });
         subscription.unsubscribed = true;
       }
     };
@@ -162,6 +188,27 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return subscription as Subscription;
   };
 
+  const clone = function(): Stream<T> {
+    // Create a new stream using the same run function
+    const clonedStream = createStream<T>(runFn);
+
+    // Clone the operator chain
+    if (stream.operators.length) {
+      clonedStream.bindOperators(...stream.operators.map(operator => operator.clone()));
+    }
+
+    // Copy basic properties
+    clonedStream.name = stream.name;
+
+    // Reset the state of the cloned stream
+    clonedStream.isAutoComplete = false;
+    clonedStream.isStopRequested = false;
+    clonedStream.isRunning = false;
+    clonedStream.isStopped = false;
+
+    return clonedStream;
+  };
+
   const pipe = function(...operators: Operator[]): Pipeline<T> {
     return createPipeline<T>(stream).bindOperators(...operators);
   };
@@ -169,12 +216,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const shouldComplete = () => autoComplete || stopRequested;
 
   const stream = {
-    type: "stream" as "stream",
+    name: 'stream',
+    type: 'stream' as 'stream',
     operators,
     head,
     tail,
     lock,
     bindOperators,
+    clone,
     emit,
     subscribe,
     pipe,

@@ -1,6 +1,6 @@
 // Define HookType as an interface for the hook methods
 export interface Hook {
-  process(params?: any): Promise<void>;
+  invoke(params?: any): Promise<void>;
   parallel(params?: any): Promise<void>;
   chain(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
   once(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
@@ -142,7 +142,7 @@ export function hook(): Hook {
   }
 
   return {
-    process,
+    invoke: process,
     parallel,
     chain,
     once,
