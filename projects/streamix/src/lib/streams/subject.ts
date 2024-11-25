@@ -20,7 +20,10 @@ export function createSubject<T = any>(): Subject<T> {
   stream.run = function(this: Subject<T>): Promise<void> {
     return Promise.resolve();
   };
-
+  
+  stream.awaitCompletion = () => completion.promise();
+  stream.shouldComplete = () => autoComplete || stopRequested;
+  
   stream.complete = async function (this: Subject): Promise<void> {
     if (this.isRunning) {
       
