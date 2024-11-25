@@ -19,10 +19,6 @@ export function loop<T>(
 
       // Apply the iterateFn to get the next value
       currentValue = iterateFn(currentValue);
-
-      if(eventBus.harmonize) {
-        await emission.wait()
-      }
     }
 
     // If the condition fails, complete the stream
