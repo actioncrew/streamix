@@ -109,13 +109,33 @@ export function createSubject<T = any>(): Subject<T> {
     configurable: true
   });
 
-  stream.subscribe = function (callback?: ((value: any) => any)): Subscription {
+  stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
-      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
+
+      if (isReceiver(callbackOrReceiver)) {
+        // Handle as a Receiver
+        try {
+          stream.onStop.chain(callbackOrReceiver, callbackOrReceiver.complete);
+
+          if (emission.failed && callbackOrReceiver.error) {
+            callbackOrReceiver.error(emission.error);
+          } else {
+            callbackOrReceiver.next(emission.value);
+          }
+        } catch (err) {
+          // Catch unexpected errors in Receiver methods
+          console.error('Error in Receiver callback:', err);
+        }
+      } else if (callbackOrReceiver instanceof Function) {
+        // Handle as a simple callback
+        return Promise.resolve(callbackOrReceiver(emission.value));
+      }
+
+      return Promise.resolve();
     };
 
-    stream.subscribers.chain(boundCallback);
+    subscribers.chain(boundCallback);
 
     if (!stream.isRunning && !stream.isStopRequested) {
       stream.isRunning = true;
@@ -127,22 +147,26 @@ export function createSubject<T = any>(): Subject<T> {
       });
     }
 
-    const subscription: Subscription = () => stream.value;
+    const subscription: Subscription = () => currentValue;
     subscription.unsubscribed = false;
 
     subscription.unsubscribe = () => {
-      if(!subscription.unsubscribed) {
-
-        stream.complete().then(() => stream.subscribers.remove(boundCallback));
+      if (!subscription.unsubscribed) {
+        stream.complete().then(() => {
+          if(isReceiver(callbackOrReceiver)) {
+            stream.onStop.remove(callbackOrReceiver, callbackOrReceiver.complete);
+          }
+          subscribers.remove(boundCallback);
+        });
         subscription.unsubscribed = true;
       }
     };
 
-    subscription.started = Promise.resolve();
-    subscription.completed = stream.awaitCompletion();
+    subscription.started = commencement.promise();
+    subscription.completed = completion.promise();
 
     return subscription as Subscription;
-  }
+  };
 
   stream.name = "subject";
   stream.type = "subject";
