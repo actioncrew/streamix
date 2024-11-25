@@ -8,6 +8,7 @@ import { createEmission, eventBus } from '../abstractions';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
+  name: string;
   chunks: Stream<T>[];
   operators: Operator[];
   bindOperators: (...operators: Operator[]) => Pipeline<T>;
@@ -123,15 +124,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     onEmission.chain(pipeline, boundCallback);
 
-    if (stream.isRunning) {
-      let stream = getFirstChunk();
-      if(stream.emissionCounter > 0 && stream.value === undefined) {
-        commencement.then(() => {
-          if (stream.value === undefined && !stream.isAutoComplete && !stream.isStopRequested) {
-            eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value: stream.value }), source: stream }, type: 'emission' });
-          }
-        });
-      }
+    if(getFirstChunk().value !== undefined) {
+      getFirstChunk().onEmission.parallel({emission: createEmission({ value: getFirstChunk().value }), source: getFirstChunk() });
     }
 
     for (let i = 0; i < chunks.length; i++) {
@@ -166,7 +160,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   }
 
   const pipeline: Pipeline<T> = {
-    name: getFirstChunk().name,
+    name: getFirstChunk().name!,
     type: "pipeline" as "pipeline",
     chunks,
     operators,

@@ -18,7 +18,7 @@ export function awaitable<T>(initialValue?: any) {
     if (_state !== 'pending') {
       throw new Error('Promise already settled');
     }
-    
+
     _value = value;
     _state = 'fullfilled';
     _resolve(value);
@@ -29,12 +29,13 @@ export function awaitable<T>(initialValue?: any) {
     if (_state !== 'pending') {
       throw new Error('Promise already settled');
     }
-    
+
     _state = 'rejected';
     _reject(reason);
     return _promise;
   };
 
+  innerFunction.state = () => _state;
   innerFunction.promise = () => _promise;
 
   innerFunction.then = function <U = void>(callback: (value?: T) => U | PromiseLike<U>): Promise<U> {
