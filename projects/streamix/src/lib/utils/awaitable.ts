@@ -1,6 +1,6 @@
 export type Awaitable<T> = ReturnType<typeof awaitable<T>>;
 export function awaitable<T>(initialValue?: any) {
-  let _state: 'pending' | 'fullfilled' | 'rejected';
+  let _state: 'pending' | 'fullfilled' | 'rejected' = 'pending';
   let _value: any = initialValue;
   let _resolve!: (value: T) => void;
   let _reject!: (reason?: any) => void;
