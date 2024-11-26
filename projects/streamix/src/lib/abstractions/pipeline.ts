@@ -171,18 +171,26 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   };
 
   const complete = async (): Promise<void> => {
+    // Create an array of promises, one for each chunk
+    const chunkPromises = chunks.map((chunk) => {
+      // Check if the chunk is already stopped
+      if (chunk.isStopped) {
+        return Promise.resolve(); // Immediately resolve if already stopped
+      }
+
+      // Otherwise, create a promise that resolves when `onStop` fires
+      return new Promise<void>((resolve) => {
+        chunk.onStop.once(resolve);
+      });
+    });
+
     // Mark the first chunk as requested to stop
     await chunks[0].complete();
 
     // Wait for all chunks to finish processing
-    await Promise.all(
-      chunks.map(chunk =>
-        new Promise<void>((resolve) => {
-          chunk.onStop.once(resolve);
-        })
-      )
-    );
-  }
+    await Promise.all(chunkPromises);
+  };
+
 
   const pipeline: Pipeline<T> = {
     type: "pipeline" as "pipeline",
