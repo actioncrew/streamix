@@ -25,7 +25,7 @@ export interface Subscribable<T = any> {
   awaitCompletion(): Promise<void>;
   complete(): Promise<void>;
 
-  subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
+  subscribe(callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription;
 
   pipe(...operators: Operator[]): Pipeline<T>;
 

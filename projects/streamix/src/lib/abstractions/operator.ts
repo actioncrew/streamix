@@ -20,7 +20,7 @@ export type Operator = {
 };
 
 // Assuming OperatorType has a certain structure, we can use type guards
-export function isOperatorType(obj: any): obj is Operator {
+export function isOperator(obj: any): obj is Operator {
   return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.run === 'undefined';
 }
 

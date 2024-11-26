@@ -1,6 +1,6 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperatorType as isOperator, Receiver, isReceiver } from '../abstractions';
-import { eventBus } from '.';
-import { hook, Hook, awaitable, createLock, SimpleLock } from '../utils';
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperator, isReceiver, Receiver } from "../abstractions";
+import { eventBus } from "../abstractions";
+import { hook, Hook, awaitable } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   operators: Operator[];
@@ -8,14 +8,10 @@ export type Stream<T = any> = Subscribable<T> & {
   tail: Operator | undefined;
   bindOperators: (...operators: Operator[]) => Stream<T>;
   emit: (args: { emission: Emission; source: any }) => Promise<void>;
-  run: () => Promise<void>;
-  clone: () => Stream<T>;
+  run: () => Promise<void>; // Run stream logic
   name?: string;
   subscribers: Hook;
-  lock: SimpleLock;
   emissionCounter: number;
-  commencement: Promise<void>;
-  completion: Promise<void>;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -33,7 +29,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const completion = awaitable<void>();
   const commencement = awaitable<void>();
-  let lock = createLock();
 
   let autoComplete = false;
   let stopRequested = false;
@@ -189,12 +184,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return subscription as Subscription;
   };
 
-  const clone = function(): Stream<T> {
-    return cloneStream(stream, () => createStream<T>(runFn), (clone) => {
-      return clone;
-    });
-  };
-
   const pipe = function(...operators: Operator[]): Pipeline<T> {
     return createPipeline<T>(stream).bindOperators(...operators);
   };
@@ -202,13 +191,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const shouldComplete = () => autoComplete || stopRequested;
 
   const stream = {
-    type: 'stream' as 'stream',
+    type: "stream" as "stream",
     operators,
     head,
     tail,
-    lock,
     bindOperators,
-    clone,
     emit,
     subscribe,
     pipe,
@@ -218,8 +205,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     complete,
     shouldComplete,
     emissionCounter,
-    commencement: commencement.promise(),
-    completion: completion.promise(),
     get value() {
       return currentValue;
     },
@@ -271,17 +256,4 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   stream.onEmission.chain(stream, stream.emit);
   return stream; // Return the stream instance
-}
-
-
-export function cloneStream<T>(stream: Stream<T>, createInstance: () => Stream<T>, extendClone?: (clonedStream: Stream<T>) => Stream<T>): Stream<T> {
-  const clone = createInstance();
-
-  // Assume streams have operators and shared properties
-  if (stream.operators?.length) {
-    clone.bindOperators(...stream.operators.map((op) => op.clone()));
-  }
-
-  // Allow additional customization of the clone
-  return extendClone ? extendClone(clone) : clone;
 }
