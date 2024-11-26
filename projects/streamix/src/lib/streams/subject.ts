@@ -1,6 +1,5 @@
-import { createEmission, createStream, Emission, isReceiver, Receiver, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Emission, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
-import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
   next(value?: T): Emission;
@@ -9,177 +8,37 @@ export type Subject<T = any> = Stream<T> & {
 // Create the functional version of the Subject
 export function createSubject<T = any>(): Subject<T> {
 
-  const stream = createStream<T>(async () => Promise.resolve()) as Subject;
-  let currentValue: T | undefined;
+  const stream = createStream<T>(async function (this: any): Promise<void> {
+    await started;
+    await this.awaitCompletion();
+  }) as any;
 
-  let autoComplete = false;
-  let stopRequested = false;
-
-  const commencement = awaitable<void>();
-  const completion = awaitable<void>();
-
-  stream.run = () => Promise.resolve();
-
-  stream.awaitStart = () => commencement.promise();
-  stream.awaitCompletion = () => completion.promise();
-  stream.shouldComplete = () => autoComplete || stopRequested;
-
-  stream.complete = async function (this: Subject): Promise<void> {
-    if (this.isRunning) {
-      this.isStopRequested = true;
-
-      eventBus.enqueue({
-        target: this,
-        type: 'complete'
-      });
-
-      eventBus.enqueue({
-        target: this,
-        type: 'stop'
-      });
-    }
-  };
-
-  stream.next = function(this: Subject, value?: T): Emission {
-    // If the stream is stopped, further emissions are not allowed
+  stream.next = function (this: Stream, value?: T): Emission {
     const emission = createEmission({ value });
 
+    // If the stream is stopped, further emissions are not allowed
     if (this.isStopRequested || this.isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
       return emission;
     }
 
-    if (!this.isRunning) {
-      this.isRunning = true;
+    started.then(() => {
+      running = true; // Mark the stream as running
 
-      queueMicrotask(() => {
-        this.onStart.waitForCompletion().then(() => {
-          commencement.resolve();
-        });
-
-        eventBus.enqueue({
-          target: this,
-          type: 'start'
-        });
-      })
-    }
-
-    eventBus.enqueue({
-      target: this,
-      payload: { emission, source: this },
-      type: 'emission',
+      eventBus.enqueue({
+        target: this,
+        payload: { emission, source: this },
+        type: 'emission',
+      });
     });
 
     return emission;
   };
 
-  Object.defineProperty(stream, 'value', {
-    get: function() {
-      return currentValue;
-    },
-    enumerable: true,
-    configurable: true
-  });
 
-  Object.defineProperty(stream, "isAutoComplete", {
-    get() {
-      return autoComplete;
-    },
-    set(value: boolean) {
-      if (value) {
-        if(stream.isRunning && !stream.shouldComplete()) {
-          autoComplete = value; completion.resolve();
-          eventBus.enqueue({ target: stream, type: 'complete' });
-          eventBus.enqueue({ target: stream, type: 'stop' });
-        }
-      }
-
-    },
-    configurable: true
-  });
-
-  Object.defineProperty(stream, "isStopRequested", {
-    get() {
-      return stopRequested;
-    },
-    set(value: boolean) {
-      if (value) {
-        if(stream.isRunning && !stream.shouldComplete()) {
-          stopRequested = value; completion.resolve();
-          eventBus.enqueue({ target: stream, type: 'complete' });
-          eventBus.enqueue({ target: stream, type: 'stop' });
-        }
-      }
-
-    },
-    configurable: true
-  });
-
-  stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
-    const boundCallback = ({ emission, source }: any) => {
-      currentValue = emission.value;
-
-      if (isReceiver(callbackOrReceiver)) {
-        // Handle as a Receiver
-        try {
-          stream.onStop.chain(callbackOrReceiver, callbackOrReceiver.complete);
-
-          if (emission.failed && callbackOrReceiver.error) {
-            callbackOrReceiver.error(emission.error);
-          } else {
-            callbackOrReceiver.next(emission.value);
-          }
-        } catch (err) {
-          // Catch unexpected errors in Receiver methods
-          console.error('Error in Receiver callback:', err);
-        }
-      } else if (callbackOrReceiver instanceof Function) {
-        // Handle as a simple callback
-        return Promise.resolve(callbackOrReceiver(emission.value));
-      }
-
-      return Promise.resolve();
-    };
-
-    stream.subscribers.chain(boundCallback);
-
-    if (!stream.isRunning && !stream.isStopRequested) {
-      stream.isRunning = true;
-
-      queueMicrotask(() => {
-        stream.onStart.waitForCompletion().then(() => {
-          commencement.resolve();
-        });
-
-        eventBus.enqueue({
-          target: stream,
-          type: 'start'
-        });
-      })
-    }
-
-    const subscription: Subscription = () => currentValue;
-    subscription.unsubscribed = false;
-
-    subscription.unsubscribe = () => {
-      if (!subscription.unsubscribed) {
-        stream.complete().then(() => {
-          if(isReceiver(callbackOrReceiver)) {
-            stream.onStop.remove(callbackOrReceiver, callbackOrReceiver.complete);
-          }
-          stream.subscribers.remove(boundCallback);
-        });
-        subscription.unsubscribed = true;
-      }
-    };
-
-    subscription.started = commencement.promise();
-    subscription.completed = completion.promise();
-
-    return subscription as Subscription;
-  };
+  let started = stream.onStart.waitForCompletion();
+  let running = false;
 
   stream.name = "subject";
-  stream.type = "subject";
   return stream;
 }

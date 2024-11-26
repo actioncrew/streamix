@@ -1,6 +1,5 @@
 import { createLock, createSemaphore } from '../utils';
 import { createEmission, Emission } from './emission';
-import { isStream } from '../abstractions';
 
 export const eventBus = createBus() as Bus;
 eventBus.run();
@@ -13,9 +12,9 @@ export type BusEvent = {
 };
 
 export type Bus = {
-  name?: string;
   run(): void;
   enqueue(event: BusEvent): void;
+  name?: string;
 };
 
 export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): Bus {
@@ -55,9 +54,15 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               }
               break;
             case 'emission':
-              let emission = event.payload?.emission || createEmission({});
+              let emission = event.payload?.emission ?? createEmission({});
               let target = event.target;
 
+              // if(target.isStopRequested && completeMarkers.has(target)) {
+              //     emission.ancestor?.finalize();
+              //     emission.phantom = true;
+              // }
+
+              event.target.emissionCounter++;
               await target.onEmission.parallel(event.payload);
 
               if(pendingEmissions.has(target)) {
@@ -96,7 +101,6 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                   }
                 });
               }
-
               break;
             case 'complete':
               if (!pendingEmissions.has(event.target)) {
@@ -116,17 +120,12 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       }
     },
 
-    async enqueue(this: any, event: BusEvent): Promise<void> {
-
+    async enqueue(event: BusEvent): Promise<void> {
       const releaseLock = await lock.acquire();
 
       try {
         await spaceAvailable.acquire(); // Wait until space is available in the buffer
         event.timeStamp = new Date(); // Add timestamp for the event
-
-        if(isStream(event.target) && event.type === 'emission') {
-          event.target.emissionCounter++;
-        }
 
         // Place the event into the buffer and update the tail position
         buffer[tail] = event;
