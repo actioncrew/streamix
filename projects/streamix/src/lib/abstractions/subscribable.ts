@@ -19,6 +19,8 @@ export interface Subscribable<T = any> {
 
   emissionCounter: number;
 
+  awaitStart(): Promise<void>;
+
   shouldComplete(): boolean;
   awaitCompletion(): Promise<void>;
   complete(): Promise<void>;

@@ -1,4 +1,4 @@
-import { cloneStream, createEmission, createStream, Emission, Stream, Subscription } from '../abstractions';
+import { cloneStream, createEmission, createStream, Emission, isReceiver, Receiver, Stream, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
 import { awaitable } from '../utils';
 
@@ -11,27 +11,28 @@ export function createSubject<T = any>(): Subject<T> {
 
   const stream = createStream<T>(async () => Promise.resolve()) as Subject;
   let currentValue: T | undefined;
-  
+
   let autoComplete = false;
   let stopRequested = false;
 
   const commencement = awaitable<void>();
   const completion = awaitable<void>();
 
-  delete stream.run;
-  
+  stream.run = () => Promise.resolve();
+
+  stream.awaitStart = () => commencement.promise();
   stream.awaitCompletion = () => completion.promise();
   stream.shouldComplete = () => autoComplete || stopRequested;
-  
+
   stream.complete = async function (this: Subject): Promise<void> {
     if (this.isRunning) {
       this.isStopRequested = true;
-      
+
       eventBus.enqueue({
         target: this,
         type: 'complete'
       });
-      
+
       eventBus.enqueue({
         target: this,
         type: 'stop'
@@ -50,11 +51,17 @@ export function createSubject<T = any>(): Subject<T> {
 
     if (!this.isRunning) {
       this.isRunning = true;
-      
-      eventBus.enqueue({
-        target: this,
-        type: 'start'
-      });
+
+      queueMicrotask(() => {
+        this.onStart.waitForCompletion().then(() => {
+          commencement.resolve();
+        });
+
+        eventBus.enqueue({
+          target: this,
+          type: 'start'
+        });
+      })
     }
 
     eventBus.enqueue({
@@ -86,7 +93,7 @@ export function createSubject<T = any>(): Subject<T> {
           eventBus.enqueue({ target: stream, type: 'stop' });
         }
       }
-      
+
     },
     configurable: true
   });
@@ -103,7 +110,7 @@ export function createSubject<T = any>(): Subject<T> {
           eventBus.enqueue({ target: stream, type: 'stop' });
         }
       }
-      
+
     },
     configurable: true
   });
@@ -134,16 +141,21 @@ export function createSubject<T = any>(): Subject<T> {
       return Promise.resolve();
     };
 
-    subscribers.chain(boundCallback);
+    stream.subscribers.chain(boundCallback);
 
     if (!stream.isRunning && !stream.isStopRequested) {
       stream.isRunning = true;
-      commencement.resolve();
 
-      eventBus.enqueue({
-        target: this,
-        type: 'start'
-      });
+      queueMicrotask(() => {
+        stream.onStart.waitForCompletion().then(() => {
+          commencement.resolve();
+        });
+
+        eventBus.enqueue({
+          target: stream,
+          type: 'start'
+        });
+      })
     }
 
     const subscription: Subscription = () => currentValue;
@@ -155,7 +167,7 @@ export function createSubject<T = any>(): Subject<T> {
           if(isReceiver(callbackOrReceiver)) {
             stream.onStop.remove(callbackOrReceiver, callbackOrReceiver.complete);
           }
-          subscribers.remove(boundCallback);
+          stream.subscribers.remove(boundCallback);
         });
         subscription.unsubscribed = true;
       }

@@ -7,10 +7,8 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
 
   // Initialize the operator and set up the subscription-based handling
   const init = (stream: Stream) => {
-    // Override the `run` method to start other streams
-    const originalRun = stream.run;
 
-    stream.run = async () => {
+    stream.onStart.once(async () => {
       // Subscribe to other streams and collect their latest values
       streams.forEach((source, index) => {
         const latestValue = latestValues[index];
@@ -27,8 +25,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
 
       // Wait until all streams are started before running the main stream
       await Promise.all(subscriptions.map(sub => sub.started));
-      await originalRun.call(stream);
-    };
+    });
 
     // Cleanup on stream termination
     stream.onStop.once(finalize);

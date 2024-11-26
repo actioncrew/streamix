@@ -80,6 +80,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
+  const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
 
   const bindOperators = function(...newOperators: Operator[]): Stream<T> {
@@ -212,6 +213,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     subscribe,
     pipe,
     run,
+    awaitStart,
     awaitCompletion,
     complete,
     shouldComplete,
