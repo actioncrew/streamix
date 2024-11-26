@@ -145,7 +145,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     onEmission.chain(pipeline, boundCallback);
 
     if(getFirstChunk().value !== undefined) {
-      getFirstChunk().onEmission.parallel({emission: createEmission({ value: getFirstChunk().value }), source: getFirstChunk() });
+      pipeline.awaitStart().then(() => {
+        getFirstChunk().onEmission.parallel({emission: createEmission({ value: getFirstChunk().value }), source: getFirstChunk() });
+      });
     }
 
     for (let i = 0; i < chunks.length; i++) {
@@ -206,6 +208,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     get isRunning() {
       return getLastChunk().isRunning;
     },
+
+    awaitStart: () => getLastChunk().awaitStart(),
+
     shouldComplete: () => getLastChunk().shouldComplete(),
     awaitCompletion: () => getLastChunk().awaitCompletion(),
     complete,
