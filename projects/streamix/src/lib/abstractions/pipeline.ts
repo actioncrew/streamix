@@ -18,7 +18,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   let chunks: Stream<T>[] = [];
   let operators: Operator[] = [];
   let currentValue: T | undefined;
-  let emissionCounter = 0;
   const subscriptions: Subscription[] = [];
 
   const onStart = hook();
@@ -28,7 +27,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const onEmission = hook();
 
   const onStartCallback = (params: any) => onStart.parallel(params);
-  const onEmissionCallback = (params: any) => { emissionCounter++; onEmission.parallel(params); };
+  const onEmissionCallback = (params: any) => onEmission.parallel(params);
   const onCompleteCallback = (params: any) => onComplete.parallel(params);
   const onStopCallback = (params: any) => onStop.parallel(params);
   const onErrorCallback = (params: any) => onError.parallel(params);
@@ -155,7 +154,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     }
 
     const subscription: any = () => currentValue;
-    subscription.unsubscribe = async () => {
+    subscription.unsubscribe = () => {
       complete().then(() => {
         subscriptions.forEach((subscription) => subscription.unsubscribe());
         if(isReceiver(callbackOrReceiver)) {
@@ -197,7 +196,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     name: getFirstChunk().name!,
     chunks,
     operators,
-    emissionCounter,
+    emissionCounter: getLastChunk().emissionCouter,
     bindOperators,
     pipe,
     subscribe,
