@@ -4,7 +4,7 @@ import { counter, hook } from '../utils';
 import { Operator } from '../abstractions';
 import { Subscribable } from './subscribable';
 import { Subscription } from './subscription';
-import { createEmission, eventBus } from '../abstractions';
+import { createEmission } from '../abstractions';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
@@ -116,7 +116,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     return createPipeline<T>(pipeline).bindOperators(...ops);
   };
 
-  const subscribe = (callbackOrReceiver?:((value: T) => void) | Receiver): Subscription => {
+  const subscribe = (callbackOrReceiver?:((value: T) => void) | Receiver<T>): Subscription => {
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
 
@@ -185,8 +185,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   }
 
   const pipeline: Pipeline<T> = {
-    name: getFirstChunk().name!,
     type: "pipeline" as "pipeline",
+    name: getFirstChunk().name!,
     chunks,
     operators,
     emissionCounter,
@@ -208,9 +208,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     get isRunning() {
       return getLastChunk().isRunning;
     },
-
     awaitStart: () => getLastChunk().awaitStart(),
-
     shouldComplete: () => getLastChunk().shouldComplete(),
     awaitCompletion: () => getLastChunk().awaitCompletion(),
     complete,

@@ -1,4 +1,4 @@
-import { cloneStream, createEmission, createStream, Emission, isReceiver, Receiver, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Emission, isReceiver, Receiver, Stream, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
 import { awaitable } from '../utils';
 
