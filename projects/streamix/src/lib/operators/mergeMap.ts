@@ -60,19 +60,17 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
         emission.link(stream.next(value));
       };
 
-      // Handle errors for each inner stream independently
-      innerStream[hooks].onError.once((error: any) => {
+      const handleStreamError = (err: any) => {
         eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
         finalize();
-      });
-
-      // Handle inner stream completion
-      innerStream[hooks].onStop.once(() => {
-        handleCompletion();
-      });
+      }
 
       // Subscribe to inner stream emissions
-      const subscription = innerStream.subscribe(handleInnerEmission);
+      const subscription = innerStream.subscribe({
+        next: handleInnerEmission,
+        error: handleStreamError,
+        complete: handleCompletion
+      });
 
       // Add the unsubscribe function to the subscriptions array
       subscriptions.push(subscription);
