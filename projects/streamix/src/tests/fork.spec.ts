@@ -1,4 +1,4 @@
-import { fork, of, createStream, from, concatMap } from '../lib';  // Adjust the import path accordingly
+import { fork, of, from } from '../lib';  // Adjust the import path accordingly
 
 describe('fork operator', () => {
   let source$: any;
@@ -18,13 +18,12 @@ describe('fork operator', () => {
 
     source$ = from([1, 5, 10, 20]).pipe(fork(options));
 
-    source$.subscribe((value: any) => {
-      result.push(value);
-    });
-
-    source$.onStop.once(() => {
-      expect(result).toEqual(['Small number', 'Small number', 'Medium number', 'Large number']);
-      done();
+    source$.subscribe({
+      next: (value: any) => result.push(value),
+      complete: () => {
+        expect(result).toEqual(['Small number', 'Small number', 'Medium number', 'Large number']);
+        done();
+      }
     });
   });
 
@@ -33,14 +32,15 @@ describe('fork operator', () => {
 
     const source$ = from([1, 10, 20]).pipe(fork(options));
 
-    source$.subscribe((value: any) => result.push(value));
-
-    source$.onStop.once(() => {
-      // Test each value matches the correct case
-      expect(result[0]).toBe('Small number');
-      expect(result[1]).toBe('Medium number');
-      expect(result[2]).toBe('Large number');
-      done();
+    source$.subscribe({
+      next: (value: any) => result.push(value),
+      complete: () => {
+        // Test each value matches the correct case
+        expect(result[0]).toBe('Small number');
+        expect(result[1]).toBe('Medium number');
+        expect(result[2]).toBe('Large number');
+        done();
+      }
     });
   });
 
@@ -52,10 +52,12 @@ describe('fork operator', () => {
 
     const source$ = from([1, 5, 10, 20]).pipe(fork(invalidOptions)); // Emissions: 1, 5, 10, 20
 
-    source$.subscribe((value: any) => result.push(value));
-    source$.onError.once(({ error }: any) => {
-      expect(error).toBe('No handler found for value: 1');
-      done();
+    source$.subscribe({
+      next: (value: any) => result.push(value),
+      error: (error: any) => {
+        expect(error.message).toBe('No handler found for value: 1');
+        done();
+      }
     });
   });
 
@@ -72,10 +74,12 @@ describe('fork operator', () => {
 
     const source$ = of(10).pipe(fork(options)); // Single emission: 10
 
-    source$.subscribe((value: any) => result.push(value));
-    source$.onStop.once(() => {
-      expect(result).toEqual(['Custom stream result']);
-      done();
+    source$.subscribe({
+      next: (value: any) => result.push(value),
+      complete: () => {
+        expect(result).toEqual(['Custom stream result']);
+        done();
+      }
     });
   });
 });

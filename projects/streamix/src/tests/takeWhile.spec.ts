@@ -45,13 +45,12 @@ describe('takeWhile operator', () => {
 
     let results: any[] = [];
 
-    takenWhileStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenWhileStream.onStop.once(() => {
-      expect(results).toEqual([]); // Should not emit any values because predicate returns false immediately
-      done();
+    takenWhileStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([]); // Should not emit any values because predicate returns false immediately
+        done();
+      }
     });
   });
 });

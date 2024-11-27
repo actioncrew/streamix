@@ -9,36 +9,36 @@ describe('ConcatStream', () => {
     const concatStream = concat(source1, source2);
 
     const emittedValues: any[] = [];
-    const subscription = concatStream.subscribe(value => {
-      emittedValues.push(value);
+    const subscription = concatStream.subscribe({
+      next: value => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual([
+          'source1_value1',
+          'source1_value2',
+          'source2_value1',
+          'source2_value2',
+        ]);
+
+        subscription.unsubscribe();
+        done();
+      }
     });
-
-    concatStream.onStop.once(() => {
-      expect(emittedValues).toEqual([
-        'source1_value1',
-        'source1_value2',
-        'source2_value1',
-        'source2_value2',
-      ]);
-
-      subscription.unsubscribe();
-      done();
-    })
   });
 
   it('should complete when all sources have emitted', (done) => {
+    let isCompleted = false;
+
     const source1 = from(['source1_value1', 'source1_value2']);
     const source2 = from(['source2_value1', 'source2_value2']);
 
     const concatStream = concat(source1, source2);
-    const subscription = concatStream.subscribe(() => {});
-
-    let isCompleted = false;
-    concatStream.onStop.once(() => {
-      isCompleted = true;
-      expect(isCompleted).toBe(true);
-      subscription.unsubscribe();
-      done();
+    const subscription = concatStream.subscribe({
+      complete: () => {
+        isCompleted = true;
+        expect(isCompleted).toBe(true);
+        subscription.unsubscribe();
+        done();
+      }
     });
   });
 });

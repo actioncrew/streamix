@@ -59,7 +59,8 @@ export const fork = <T = any, R = T>(
       }
     } else {
       // If no case matches, emit an error
-      await handleStreamError(emission, `No handler found for value: ${emission.value}`);
+      finalize();
+      throw new Error(`No handler found for value: ${emission.value}`);
     }
   };
 
@@ -75,22 +76,19 @@ export const fork = <T = any, R = T>(
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
-    emission.error = error;
-    emission.failed = true;
     eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
-    stopStreams(innerStream, output);
-    executionCounter.increment();
+    finalize();
   };
 
-  const finalize = async () => {
+  const finalize = () => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    await stopStreams(innerStream, input, output);
+    stopStreams(innerStream, input, output);
     innerStream = null;
   };
 
-  const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {
+  const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
     streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isAutoComplete = true; });
   };
 

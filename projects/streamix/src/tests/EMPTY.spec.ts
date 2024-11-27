@@ -24,18 +24,17 @@ describe('EmptyStream', () => {
 describe('EMPTY constant', () => {
   it('should behave the same as an instance of EmptyStream', async () => {
     let emittedValues: any[] = [];
-    const subscription = EMPTY.subscribe((value) => {
-      emittedValues.push(value);
+    const subscription = EMPTY.subscribe({
+      next:(value) => emittedValues.push(value),
+      complete: () => {
+        // Ensure no values were emitted
+        expect(emittedValues).toHaveLength(0);
+
+        // Ensure the stream is auto-completed
+        expect(EMPTY.isAutoComplete).toBe(true);
+
+        subscription.unsubscribe();
+      }
     });
-
-    EMPTY.onStop.once(() => {
-      // Ensure no values were emitted
-      expect(emittedValues).toHaveLength(0);
-
-      // Ensure the stream is auto-completed
-      expect(EMPTY.isAutoComplete).toBe(true);
-
-      subscription.unsubscribe();
-    })
   });
 });

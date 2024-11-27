@@ -6,20 +6,19 @@ describe('IntervalStream', () => {
     const intervalStream = interval(intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = intervalStream.subscribe((value) => {
-      emittedValues.push(value);
-    });
+    const subscription = intervalStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        // Check that values are emitted at approximately the correct interval
+        expect(emittedValues.length).toBeGreaterThan(1);
+        for (let i = 1; i < emittedValues.length; i++) {
+          const timeDiff = emittedValues[i] - emittedValues[i - 1];
+          expect(timeDiff).toBeGreaterThanOrEqual(intervalMs - 10); // Allow for slight timing variations
+          expect(timeDiff).toBeLessThanOrEqual(intervalMs + 10);
+        }
 
-    intervalStream.onStop.once(() => {
-      // Check that values are emitted at approximately the correct interval
-      expect(emittedValues.length).toBeGreaterThan(1);
-      for (let i = 1; i < emittedValues.length; i++) {
-        const timeDiff = emittedValues[i] - emittedValues[i - 1];
-        expect(timeDiff).toBeGreaterThanOrEqual(intervalMs - 10); // Allow for slight timing variations
-        expect(timeDiff).toBeLessThanOrEqual(intervalMs + 10);
+        subscription.unsubscribe();
       }
-
-      subscription.unsubscribe();
     });
   });
 

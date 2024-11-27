@@ -21,13 +21,12 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     let isComplete = false;
-    ofStream.subscribe(() => {
-      isComplete = true;
-    });
-
-    ofStream.onStop.once(() => {
-      expect(isComplete).toBe(true);
-      done();
+    ofStream.subscribe({
+      next: () => isComplete = true,
+      complete: () => {
+        expect(isComplete).toBe(true);
+        done();
+      }
     })
   });
 

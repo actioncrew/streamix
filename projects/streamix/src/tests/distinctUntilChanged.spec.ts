@@ -1,4 +1,4 @@
-import { distinctUntilChanged, Emission, from, Stream } from '../lib';
+import { distinctUntilChanged, from } from '../lib';
 
 
 describe('distinctUntilChanged', () => {
@@ -24,14 +24,13 @@ describe('distinctUntilChanged', () => {
 
     let count = 0;
 
-    distinctStream.subscribe((value) => {
-      count++;
+    distinctStream.subscribe({
+      next: (value) => count++,
+      complete: () => {
+        expect(count).toBe(3); // Only three distinct values should be emitted
+        done();
+      }
     });
-
-    distinctStream.onStop.once(() => {
-      expect(count).toBe(3); // Only three distinct values should be emitted
-      done();
-    }); // Adjust timeout based on your test stream implementation
   });
 
   it('should handle non-primitive values correctly', (done) => {
@@ -64,14 +63,13 @@ describe('distinctUntilChanged', () => {
 
     let emittedValues: any[] = [];
 
-    distinctStream.subscribe((value) => {
-      emittedValues.push(value);
-    });
-
-    distinctStream.onStop.once(() => {
-      // Ensure emitted values are distinct based on reference
-      expect(emittedValues).toEqual(expectedValues);
-      done();
+    distinctStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        // Ensure emitted values are distinct based on reference
+        expect(emittedValues).toEqual(expectedValues);
+        done();
+      }
     });
   });
 });

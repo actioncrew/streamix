@@ -1,4 +1,4 @@
-import { delay, from, Stream } from '../lib';
+import { delay, from } from '../lib';
 
 describe('DelayOperator', () => {
   it('should delay each value by the specified time', (done) => {
@@ -10,15 +10,16 @@ describe('DelayOperator', () => {
     const startTime = Date.now();
     let emitCount = 0;
 
-    delayedStream.subscribe((value) => {
-      emitCount++;
-      const elapsedTime = Date.now() - startTime;
-      expect(elapsedTime).toBeGreaterThanOrEqual(emitCount * delayTime);
-    });
-
-    delayedStream.onStop.once(() => {
-      expect(emitCount).toBe(3);
-      done();
+    delayedStream.subscribe({
+      next: (value) => {
+        emitCount++;
+        const elapsedTime = Date.now() - startTime;
+        expect(elapsedTime).toBeGreaterThanOrEqual(emitCount * delayTime);
+      },
+      complete: () => {
+        expect(emitCount).toBe(3);
+        done();
+      }
     });
   });
 
@@ -30,16 +31,17 @@ describe('DelayOperator', () => {
 
     let emitCount = 0;
 
-    let subscription = delayedStream.subscribe((value) => {
-      emitCount++;
-      if (emitCount === 2) {
-        subscription.unsubscribe();
+    let subscription = delayedStream.subscribe({
+      next: (value) => {
+        emitCount++;
+        if (emitCount === 2) {
+          subscription.unsubscribe();
+        }
+      },
+      complete: () => {
+        expect(emitCount).toBeLessThan(3);
+        done();
       }
-    });
-
-    delayedStream.onStop.once(() => {
-      expect(emitCount).toBeLessThan(3);
-      done();
     });
   });
 
@@ -51,13 +53,12 @@ describe('DelayOperator', () => {
 
     const delayedStream = testStream.pipe(delay(delayTime));
 
-    delayedStream.subscribe((value) => {
-      emitCount++;
-    });
-
-    delayedStream.onStop.once(() => {
-      expect(emitCount).toBe(5);
-      done();
+    delayedStream.subscribe({
+      next: (value) => emitCount++,
+      complete: () => {
+        expect(emitCount).toBe(5);
+        done();
+      }
     });
   });
 });

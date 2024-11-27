@@ -66,19 +66,18 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
   const handleStreamError = (emission: Emission, error: any) => {
     eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
-    stopStreams(currentInnerStream, output);
-    executionCounter.increment();
+    finalize();
   };
 
-  const finalize = async () => {
+  const finalize = () => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    await stopStreams(currentInnerStream, input, output);
+    stopStreams(currentInnerStream, input, output);
     currentInnerStream = null;
   };
 
-  const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {
+  const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
     streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isAutoComplete = true; });
   };
 

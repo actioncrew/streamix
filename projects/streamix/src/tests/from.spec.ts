@@ -6,16 +6,15 @@ describe('from function', () => {
     const stream = from(values);
 
     let emittedValues: any[] = [];
-    const subscription = stream.subscribe((value) => {
-      emittedValues.push(value);
+    const subscription = stream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete:() => {
+        expect(emittedValues).toEqual(values);
+        expect(stream.isAutoComplete).toBe(true);
+
+        subscription.unsubscribe();
+      }
     });
-
-    stream.onStop.once(() => {
-      expect(emittedValues).toEqual(values);
-      expect(stream.isAutoComplete).toBe(true);
-
-      subscription.unsubscribe();
-    })
   });
 
   // it('should stop emitting values when stop is requested', async () => {

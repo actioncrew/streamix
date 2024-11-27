@@ -8,20 +8,19 @@ describe('MergeStream', () => {
     const mergeStream = merge(source1, source2);
 
     const emittedValues: any[] = [];
-    const subscription = mergeStream.subscribe((value) => {
-      emittedValues.push(value);
-    });
+    const subscription = mergeStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues.sort()).toEqual([
+          'source1_value1',
+          'source1_value2',
+          'source2_value1',
+          'source2_value2',
+        ]);
 
-    mergeStream.onStop.once(() => {
-      expect(emittedValues.sort()).toEqual([
-        'source1_value1',
-        'source1_value2',
-        'source2_value1',
-        'source2_value2',
-      ]);
-
-      subscription.unsubscribe();
-      done()
+        subscription.unsubscribe();
+        done();
+      }
     });
   });
 
@@ -33,13 +32,12 @@ describe('MergeStream', () => {
 
     let subscriptionCalls = 0;
 
-    mergeStream.subscribe(() => {
-      subscriptionCalls++;
-    });
-
-    mergeStream.onStop.once(() => {
-      expect(subscriptionCalls).toBe(4);
-      done();
+    mergeStream.subscribe({
+      next: () => subscriptionCalls++,
+      complete: () => {
+        expect(subscriptionCalls).toBe(4);
+        done();
+      }
     })
   });
 });
