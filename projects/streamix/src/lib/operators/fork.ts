@@ -51,11 +51,11 @@ export const fork = <T = any, R = T>(
 
       if (innerStream) {
         // Immediately set up listeners on the new inner stream
-        innerStream[hooks].onError.once(({ error }: any) => handleStreamError(emission, error));
-
-        innerStream[hooks].onStop.once(() => completeInnerStream(emission, subscription!));
-
-        subscription = innerStream.subscribe((value) => handleInnerEmission(value));
+        subscription = innerStream.subscribe({
+          next: (value) => handleInnerEmission(value),
+          error: (err) => handleStreamError(emission, err),
+          complete: () => completeInnerStream(emission, subscription!)
+        });
       }
     } else {
       // If no case matches, emit an error
