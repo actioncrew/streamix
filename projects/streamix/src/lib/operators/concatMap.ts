@@ -45,11 +45,11 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
     if (currentInnerStream) {
       // Immediately set up listeners on the new inner stream
-      currentInnerStream[hooks].onError.once(({ error }: any) => handleStreamError(emission, error));
-
-      currentInnerStream[hooks].onStop.once(() => completeInnerStream(emission, subscription!));
-
-      subscription = currentInnerStream.subscribe((value) => emission.link(handleInnerEmission(value)));
+      subscription = currentInnerStream.subscribe({
+        next: (value) => emission.link(handleInnerEmission(value)),
+        error: (err) => handleStreamError(emission, err),
+        complete: () => completeInnerStream(emission, subscription!)
+      });
     }
   };
 
