@@ -63,6 +63,6 @@ describe('withLatestFrom operator', () => {
       }
     });
 
-    combinedStream[internals].complete();
+    combinedStream.complete();
   });
 });

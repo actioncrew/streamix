@@ -40,8 +40,8 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   };
 
   // Override the complete method to ensure cleanup
-  const originalComplete = stream[internals].complete.bind(stream);
-  stream[internals].complete = async (): Promise<void> => {
+  const originalComplete = stream.complete.bind(stream);
+  stream.complete = async (): Promise<void> => {
     await cleanupInnerStream();
     return originalComplete();
   };

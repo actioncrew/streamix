@@ -49,7 +49,7 @@ describe('OfStream', () => {
 
     const emittedValues: any[] = [];
 
-    ofStream[internals].complete();
+    ofStream.complete();
 
     ofStream.subscribe((value) => {
       emittedValues.push(value);
