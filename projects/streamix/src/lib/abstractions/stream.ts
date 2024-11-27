@@ -130,46 +130,52 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    // Convert a callback into a Receiver if needed
+    const receiver: Receiver<T> =
+      typeof callbackOrReceiver === 'function'
+        ? { next: callbackOrReceiver } // Wrap callback in `next`
+        : callbackOrReceiver || {};   // Use the provided Receiver or an empty object
+
+    // Chain the `complete` method to the `onStop` hook if present
+    if (receiver.complete) {
+      stream.onStop.chain(receiver, receiver.complete);
+    }
+
+    // Define the bound callback for handling emissions
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
 
-      if (isReceiver(callbackOrReceiver)) {
-        // Handle as a Receiver
-        try {
-          stream.onStop.chain(callbackOrReceiver, callbackOrReceiver.complete);
-
-          if (emission.failed && callbackOrReceiver.error) {
-            callbackOrReceiver.error(emission.error);
-          } else {
-            callbackOrReceiver.next(emission.value);
-          }
-        } catch (err) {
-          // Catch unexpected errors in Receiver methods
-          console.error('Error in Receiver callback:', err);
+      try {
+        if (emission.failed && receiver.error) {
+          receiver.error(emission.error as Error); // Call `error` if emission failed
+        } else if (receiver.next) {
+          receiver.next(emission.value); // Call `next` for successful emissions
         }
-      } else if (callbackOrReceiver instanceof Function) {
-        // Handle as a simple callback
-        return Promise.resolve(callbackOrReceiver(emission.value));
+      } catch (err) {
+        console.error('Error in Receiver callback:', err);
       }
 
       return Promise.resolve();
     };
 
+    // Add the bound callback to the subscribers
     subscribers.chain(boundCallback);
 
+    // Start the stream if it isn't running and stopping hasn't been requested
     if (!running && !stopRequested) {
       running = true;
       queueMicrotask(stream.run);
     }
 
+    // Create the subscription object
     const subscription: Subscription = () => currentValue;
     subscription.unsubscribed = false;
 
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
         stream.complete().then(() => {
-          if(isReceiver(callbackOrReceiver)) {
-            stream.onStop.remove(callbackOrReceiver, callbackOrReceiver.complete);
+          if (receiver.complete) {
+            stream.onStop.remove(receiver, receiver.complete);
           }
           subscribers.remove(boundCallback);
         });
