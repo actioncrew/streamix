@@ -76,7 +76,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       await onStart.waitForCompletion();
     }
 
-    if(!stream[flags].isStopped && !stream[flags].isAutoComplete) {
+    if(!stream[flags].isStopped) {
       stream[flags].isStopRequested = true;
       await onStop.waitForCompletion();
     }
