@@ -103,6 +103,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
+
       let next = isStream(source) ? source.head : undefined;
       next = isOperator(source) ? source.next : next;
 
@@ -115,7 +116,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       if (emission.failed) throw emission.error;
 
       if (!emission.phantom && !emission.pending) {
-        emissionCounter++;
         await subscribers.parallel({ emission, source });
       }
 
