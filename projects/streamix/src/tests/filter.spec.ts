@@ -9,16 +9,17 @@ describe('FilterOperator', () => {
 
     let didEmit = false;
 
-    filteredStream.subscribe((value) => {
-      didEmit = true;
-      expect(value).toBeGreaterThanOrEqual(2); // Only even numbers should be emitted
-    });
-
-    filteredStream.onStop.once(() => {
-      if (!didEmit) {
-        done(new Error('No values emitted'));
-      } else {
-        done();
+    filteredStream.subscribe({
+      next: (value) => {
+        didEmit = true;
+        expect(value).toBeGreaterThanOrEqual(2); // Only even numbers should be emitted
+      },
+      complete: () => {
+        if (!didEmit) {
+          done(new Error('No values emitted'));
+        } else {
+          done();
+        }
       }
     });
   });
@@ -31,17 +32,17 @@ describe('FilterOperator', () => {
 
     let didEmit = false;
 
-    filteredStream.subscribe((value) => {
-      didEmit = true;
-      done(new Error('Unexpected value emitted'));
-    });
-
-    // Manually check for completion after a timeout
-    filteredStream.onStop.once(() => {
-      if (didEmit) {
-        done(new Error('Should not emit if no values pass the predicate'));
-      } else {
-        done();
+    filteredStream.subscribe({
+      next: (value) => {
+        didEmit = true;
+        done(new Error('Unexpected value emitted'));
+      },
+      complete: () => {
+        if (didEmit) {
+          done(new Error('Should not emit if no values pass the predicate'));
+        } else {
+          done();
+        }
       }
     });
   });
@@ -54,16 +55,14 @@ describe('FilterOperator', () => {
 
     const filteredStream = testStream.pipe(filter(predicate));
 
-    filteredStream.subscribe((value) => {
-      count++;
-    });
-
-    // Manually check for completion and expected number of emissions after a timeout
-    filteredStream.onStop.once(() => {
-      if (count === 3) {
-        done();
-      } else {
-        done(new Error('Did not emit all allowed values or stopped prematurely'));
+    filteredStream.subscribe({
+      next: (value) => count++,
+      complete: () => {
+        if (count === 3) {
+          done();
+        } else {
+          done(new Error('Did not emit all allowed values or stopped prematurely'));
+        }
       }
     });
   });

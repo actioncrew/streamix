@@ -1,18 +1,24 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperatorType as isOperator } from "../abstractions";
-import { eventBus } from ".";
-import { hook, Hook, awaitable, createLock, SimpleLock } from "../utils";
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperator, isReceiver, Receiver, createReceiver, hooks, SubscribableHooks, SubscribableInternals, internals, flags } from "../abstractions";
+import { eventBus } from "../abstractions";
+import { hook, Hook, awaitable } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
-  operators: Operator[];
-  head: Operator | undefined;
-  tail: Operator | undefined;
-  bindOperators: (...operators: Operator[]) => Stream<T>;
-  emit: (args: { emission: Emission; source: any }) => Promise<void>;
-  run: () => Promise<void>; // Run stream logic
   name?: string;
-  subscribers: Hook;
-  lock: SimpleLock;
+  operators: Operator[];
   emissionCounter: number;
+  run: () => Promise<void>;
+
+  [internals]: SubscribableInternals & {
+    head: Operator | undefined;
+    tail: Operator | undefined;
+    bindOperators: (...operators: Operator[]) => Stream<T>;
+    emit: (args: { emission: Emission; source: any }) => Promise<void>;
+    awaitStart: () => Promise<void>;
+  },
+
+  [hooks]: SubscribableHooks & {
+    subscribers: Hook;
+  }
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -30,7 +36,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const completion = awaitable<void>();
   const commencement = awaitable<void>();
-  let lock = createLock();
 
   let autoComplete = false;
   let stopRequested = false;
@@ -67,32 +72,33 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    if(!stream.isRunning && !stream.isStopped) {
+    if(!stream[flags].isRunning && !stream[flags].isStopped) {
       await onStart.waitForCompletion();
     }
 
-    if(!stream.isStopped && !stream.isAutoComplete) {
-      stream.isStopRequested = true;
+    if(!stream[flags].isStopped) {
+      stream[flags].isStopRequested = true;
       await onStop.waitForCompletion();
     }
   };
 
+  const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
 
   const bindOperators = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
-    stream.head = undefined;
-    stream.tail = undefined;
+    stream[internals].head = undefined;
+    stream[internals].tail = undefined;
 
     newOperators.forEach((operator, index) => {
       operators.push(operator);
 
-      if (!stream.head) {
-        stream.head = operator;
+      if (!stream[internals].head) {
+        stream[internals].head = operator;
       } else {
-        stream.tail!.next = operator;
+        stream[internals].tail!.next = operator;
       }
-      stream.tail = operator;
+      stream[internals].tail = operator;
 
       if ('stream' in operator && index !== newOperators.length - 1) {
         throw new Error('Only the last operator in a stream can contain an outerStream property.');
@@ -104,9 +110,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-      emissionCounter++;
 
-      let next = isStream(source) ? source.head : undefined;
+      let next = isStream(source) ? source[internals].head : undefined;
       next = isOperator(source) ? source.next : next;
 
       if (emission.failed) throw emission.error;
@@ -131,25 +136,62 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  const subscribe = (callback?: (value: T) => void): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    // Convert a callback into a Receiver if needed
+    const receiver = createReceiver(callbackOrReceiver);
+    const errorCallback = ({ error }: any) => receiver.error!(error);
+
+    // Chain the `complete` method to the `onStop` hook if present
+    if (receiver.complete) {
+      stream[hooks].onStop.chain(receiver, receiver.complete);
+    }
+
+    if (receiver.error) {
+      stream[hooks].onError.chain(receiver, errorCallback);
+    }
+
+    // Define the bound callback for handling emissions
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
-      return callback ? Promise.resolve(callback(emission.value)) : Promise.resolve();
+
+      try {
+        if (emission.failed && receiver.error) {
+          receiver.error(emission.error); // Call `error` if emission failed
+        } else if (receiver.next) {
+          receiver.next(emission.value); // Call `next` for successful emissions
+        }
+      } catch (err) {
+        console.error('Error in Receiver callback:', err);
+      }
+
+      return Promise.resolve();
     };
 
+    // Add the bound callback to the subscribers
     subscribers.chain(boundCallback);
 
+    // Start the stream if it isn't running and stopping hasn't been requested
     if (!running && !stopRequested) {
       running = true;
       queueMicrotask(stream.run);
     }
 
+    // Create the subscription object
     const subscription: Subscription = () => currentValue;
     subscription.unsubscribed = false;
 
     subscription.unsubscribe = () => {
-      if(!subscription.unsubscribed) {
-        stream.complete().then(() => subscribers.remove(boundCallback));
+      if (!subscription.unsubscribed) {
+        stream.complete().then(() => {
+          if (receiver.complete) {
+            stream[hooks].onStop.remove(receiver, receiver.complete);
+          }
+
+          if (receiver.error) {
+            stream[hooks].onError.remove(receiver, errorCallback);
+          }
+          subscribers.remove(boundCallback);
+        });
         subscription.unsubscribed = true;
       }
     };
@@ -161,7 +203,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const pipe = function(...operators: Operator[]): Pipeline<T> {
-    return createPipeline<T>(stream).bindOperators(...operators);
+    return createPipeline<T>(stream)[internals].bindOperators(...operators);
   };
 
   const shouldComplete = () => autoComplete || stopRequested;
@@ -169,67 +211,76 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const stream = {
     type: "stream" as "stream",
     operators,
-    head,
-    tail,
-    lock,
-    bindOperators,
-    emit,
     subscribe,
     pipe,
     run,
-    awaitCompletion,
     complete,
-    shouldComplete,
     emissionCounter,
     get value() {
       return currentValue;
     },
-    get onStart() {
-      return onStart;
+
+    [internals]: {
+      head,
+      tail,
+      bindOperators,
+      emit,
+      awaitStart,
+      awaitCompletion,
+      shouldComplete,
     },
-    get onComplete() {
-      return onComplete;
+
+    [hooks]: {
+      get onStart() {
+        return onStart;
+      },
+      get onComplete() {
+        return onComplete;
+      },
+      get onStop() {
+        return onStop;
+      },
+      get onError() {
+        return onError;
+      },
+      get onEmission() {
+        return onEmission;
+      },
+      get subscribers() {
+        return subscribers;
+      }
     },
-    get onStop() {
-      return onStop;
-    },
-    get onError() {
-      return onError;
-    },
-    get onEmission() {
-      return onEmission;
-    },
-    get subscribers() {
-      return subscribers;
-    },
-    get isAutoComplete() {
-      return autoComplete;
-    },
-    set isAutoComplete(value: boolean) {
-      if (value) completion.resolve();
-      autoComplete = value;
-    },
-    get isStopRequested() {
-      return stopRequested;
-    },
-    set isStopRequested(value: boolean) {
-      if (value) completion.resolve();
-      stopRequested = value;
-    },
-    get isRunning() {
-      return running;
-    },
-    set isRunning(value: boolean) {
-      running = value;
-    },
-    get isStopped() {
-      return stopped;
-    },
-    set isStopped(value: boolean) {
-      stopped = value;
+
+    [flags]: {
+      get isAutoComplete() {
+        return autoComplete;
+      },
+      set isAutoComplete(value: boolean) {
+        if (value && completion.state() === 'pending') completion.resolve();
+        autoComplete = value;
+      },
+      get isStopRequested() {
+        return stopRequested;
+      },
+      set isStopRequested(value: boolean) {
+        if (value && completion.state() === 'pending') completion.resolve();
+        stopRequested = value;
+      },
+      get isRunning() {
+        return running;
+      },
+      set isRunning(value: boolean) {
+        running = value;
+      },
+      get isStopped() {
+        return stopped;
+      },
+      set isStopped(value: boolean) {
+        stopped = value;
+      }
     }
   };
 
-  stream.onEmission.chain(stream, stream.emit);
+  stream[hooks].onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
 }

@@ -9,13 +9,12 @@ describe('take operator', () => {
 
     let results: any[] = [];
 
-    takenStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenStream.onStop.once(() => {
-      expect(results).toEqual([1, 2, 3]); // Should emit only the first three values
-      done();
+    takenStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([1, 2, 3]); // Should emit only the first three values
+        done();
+      }
     });
   });
 
@@ -27,13 +26,12 @@ describe('take operator', () => {
 
     let results: any[] = [];
 
-    takenStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenStream.onStop.once(() => {
-      expect(results).toEqual([1, 2]); // Should emit all values because count is greater than number of emissions
-      done();
+    takenStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([1, 2]); // Should emit all values because count is greater than number of emissions
+        done();
+      }
     });
   });
 
@@ -45,13 +43,12 @@ describe('take operator', () => {
 
     let results: any[] = [];
 
-    takenStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenStream.onStop.once(() => {
-      expect(results).toEqual([]); // Should emit no values because the stream is empty
-      done();
+    takenStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([]); // Should emit no values because the stream is empty
+        done();
+      }
     });
   });
 });

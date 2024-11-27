@@ -1,4 +1,4 @@
-import { createOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { createOperator, flags, Operator, Stream, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const take = <T>(count: number): Operator => {
@@ -9,7 +9,7 @@ export const take = <T>(count: number): Operator => {
       emittedCount++;
 
       if(emittedCount === count) {
-        stream.isAutoComplete = true;
+        stream[flags].isAutoComplete = true;
       }
       return emission;
     } else {

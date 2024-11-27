@@ -1,4 +1,4 @@
-import { createEmission, eventBus } from '../abstractions';
+import { createEmission, eventBus, hooks } from '../abstractions';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const startWith = (value: any): Operator => {
@@ -6,7 +6,7 @@ export const startWith = (value: any): Operator => {
 
   const init = function(this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream.onStart.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
+    boundStream[hooks].onStart.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
   };
 
   const callback = (instance: Operator, params?: any): void => {

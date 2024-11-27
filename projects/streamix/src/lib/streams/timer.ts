@@ -1,4 +1,4 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, createStream, flags, hooks, internals, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
@@ -10,7 +10,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   const stream = createStream<number>(async function(this: Stream<number>): Promise<void> {
     try {
       if (delayMs === 0) {
-        if (this.shouldComplete()) return;
+        if (this[internals].shouldComplete()) return;
       } else {
         await new Promise<void>((resolve) => {
           timeoutId = setTimeout(() => {
@@ -19,11 +19,10 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
           }, delayMs);
         });
 
-        if (this.shouldComplete()) return;
+        if (this[internals].shouldComplete()) return;
       }
 
       // Initial emission
-      stream.emissionCounter++;
       eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
       timerValue++;
 
@@ -31,14 +30,13 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
         await new Promise<void>((resolve) => {
           intervalId = setInterval(async () => {
             try {
-              if (this.shouldComplete()) {
+              if (this[internals].shouldComplete()) {
                 clearInterval(intervalId);
                 intervalId = undefined;
                 resolve();
                 return;
               }
 
-              stream.emissionCounter++;
               eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
 
               timerValue++;
@@ -51,8 +49,8 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
           }, actualIntervalMs);
         });
       } else {
-        this.onComplete.once(() => {
-          this.isAutoComplete = true;
+        this[hooks].onComplete.once(() => {
+          this[flags].isAutoComplete = true;
         });
       }
     } catch (error) {

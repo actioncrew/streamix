@@ -1,5 +1,5 @@
 import { createSubject, Subject } from '../streams';
-import { Emission, createOperator, Operator, Subscribable, Subscription } from '../abstractions';
+import { Emission, createOperator, Operator, Subscribable, Subscription, hooks, flags } from '../abstractions';
 import { Counter, catchAny, counter } from '../utils';
 import { eventBus } from '../abstractions';
 
@@ -18,8 +18,8 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     input = stream;
 
     // Finalize when the input or output stream stops
-    input.onStop.once(() => queueMicrotask(() => executionNumber.waitFor(input!.emissionCounter).then(finalize)));
-    output.onStop.once(finalize);
+    input[hooks].onStop.once(() => queueMicrotask(() => executionNumber.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onStop.once(finalize);
   };
 
   const handle = async (emission: Emission): Promise<Emission> => {
@@ -60,19 +60,17 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
         emission.link(stream.next(value));
       };
 
-      // Handle errors for each inner stream independently
-      innerStream.onError.once((error: any) => {
-        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
-        handleCompletion(); // Ensure this stream is marked complete
-      });
-
-      // Handle inner stream completion
-      innerStream.onStop.once(() => {
-        handleCompletion();
-      });
+      const handleStreamError = (err: any) => {
+        eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
+        finalize();
+      }
 
       // Subscribe to inner stream emissions
-      const subscription = innerStream.subscribe(handleInnerEmission);
+      const subscription = innerStream.subscribe({
+        next: handleInnerEmission,
+        error: handleStreamError,
+        complete: handleCompletion
+      });
 
       // Add the unsubscribe function to the subscriptions array
       subscriptions.push(subscription);
@@ -91,22 +89,22 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     }
   };
 
-  const finalize = async () => {
+  const finalize = () => {
     if (isFinalizing) { return; }
     isFinalizing = true;
 
-    activeInnerStreams.forEach(stream => stream.isAutoComplete = true);
+    activeInnerStreams.forEach(stream => stream[flags].isAutoComplete = true);
     activeInnerStreams = [];
     stopInputStream();
     stopOutputStream();
   };
 
   const stopInputStream = () => {
-    input!.isAutoComplete = true;
+    input![flags].isAutoComplete = true;
   };
 
   const stopOutputStream = () => {
-    output.isAutoComplete = true;
+    output[flags].isAutoComplete = true;
   };
 
   const operator = createOperator(handle) as any;

@@ -9,13 +9,12 @@ describe('switchMap operator', () => {
 
     let results: any[] = [];
 
-    switchedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    switchedStream.onStop.once(() => {
-      expect(results).toEqual([10, 100, 20, 200, 30, 300]); // Should switch to new inner streams and emit all values
-      done();
+    switchedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([10, 100, 20, 200, 30, 300]); // Should switch to new inner streams and emit all values
+        done();
+      }
     });
   });
 });

@@ -1,30 +1,39 @@
-import { createEmission, createStream, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, hooks, Stream, Subscribable, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
-  let subscription: Subscription | undefined;
+  let activeSubscription: Subscription | undefined;
 
-  // Create the custom run function for the ConcatStream
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
-    for (let currentSourceIndex = 0; currentSourceIndex < sources.length; currentSourceIndex++) {
-      await runCurrentSource(this, sources[currentSourceIndex]);
+    for (const source of sources) {
+      await processSource(this, source);
     }
   });
 
-  // Function to run the current source
-  const runCurrentSource = async (stream: Stream<T>, currentSource: Subscribable): Promise<void> => {
-    const handleEmissionFn = async (value: T) => {
-      stream.emissionCounter++;
-      eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
-    };
+  const processSource = async (stream: Stream<T>, source: Subscribable): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      activeSubscription = source.subscribe({
+        next: (value) => emitValue(stream, value),
+        error: (err) => {
+          emitError(stream, err);
+          reject(err); // Terminate the processing chain
+        },
+        complete: () => {
+          activeSubscription?.unsubscribe();
+          resolve(); // Proceed to the next source
+        },
+      });
+    });
+  };
 
-    try {
-      subscription = currentSource.subscribe(value => handleEmissionFn(value)); // Start the current source
-      currentSource.onComplete.once(() => subscription?.unsubscribe());
-      await currentSource.awaitCompletion(); // Wait for the current source to complete
-    } catch (error) {
-      eventBus.enqueue({ target: stream, payload: { emission: createEmission({ error, failed: true }), source: stream }, type: 'emission' });
-    }
+  const emitValue = (stream: Stream<T>, value: T) => {
+    const emission = createEmission({ value });
+    eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
+  };
+
+  const emitError = (stream: Stream<T>, error: any) => {
+    const emission = createEmission({ error, failed: true });
+    eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
   };
 
   stream.name = "concat";

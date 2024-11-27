@@ -1,4 +1,4 @@
-import { createStream, Subscribable, Stream, Subscription, createEmission } from '../abstractions';
+import { createStream, Subscribable, Stream, Subscription, createEmission, hooks, flags, internals } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function iif<T>(
@@ -17,22 +17,21 @@ export function iif<T>(
     // Start the selected stream
     subscription = selectedStream.subscribe((value) => handleEmission(this, value));
 
-    this.onComplete.once(() => {
-      this.isAutoComplete = true;
+    this[hooks].onComplete.once(() => {
+      this[flags].isAutoComplete = true;
       subscription.unsubscribe()
     });
 
     // Wait for the completion of the selected stream
-    await selectedStream.awaitCompletion();
+    await selectedStream[internals].awaitCompletion();
   });
 
   // Handle emissions from the selected stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    if (stream.shouldComplete()) {
+    if (stream[internals].shouldComplete()) {
       return;
     }
 
-    stream.emissionCounter++;
     eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 

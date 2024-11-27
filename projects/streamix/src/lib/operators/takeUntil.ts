@@ -1,4 +1,4 @@
-import { createOperator, Operator, Stream, Subscription } from '../abstractions';
+import { createOperator, flags, hooks, Operator, Stream, Subscription } from '../abstractions';
 import { Emission } from '../abstractions';
 import { Subscribable } from '../abstractions';
 
@@ -27,7 +27,7 @@ export const takeUntil = (notifier: Subscribable): Operator => {
     };
 
     // Clean up the notifier subscription on stream stop
-    stream.onStop.once(async () => {
+    stream[hooks].onStop.once(async () => {
       await subscription?.unsubscribe();
       subscription = null;
     });
@@ -35,7 +35,7 @@ export const takeUntil = (notifier: Subscribable): Operator => {
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
     if (stopRequested) {
-      stream.isAutoComplete = true;
+      stream[flags].isAutoComplete = true;
       emission.phantom = true; // Mark emission as phantom to indicate it's ignored
       return emission;
     }

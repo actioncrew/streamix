@@ -1,4 +1,4 @@
-import { of } from '../lib';
+import { internals, of } from '../lib';
 
 describe('OfStream', () => {
   it('should emit the given value', async () => {
@@ -6,13 +6,12 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream.subscribe((value) => {
-      emittedValues.push(value);
-    });
-
-    ofStream.onStop.once(() => {
-      expect(emittedValues).toEqual([value]);
-      subscription.unsubscribe();
+    const subscription = ofStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual([value]);
+        subscription.unsubscribe();
+      }
     })
   });
 
@@ -21,13 +20,12 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     let isComplete = false;
-    ofStream.subscribe(() => {
-      isComplete = true;
-    });
-
-    ofStream.onStop.once(() => {
-      expect(isComplete).toBe(true);
-      done();
+    ofStream.subscribe({
+      next: () => isComplete = true,
+      complete: () => {
+        expect(isComplete).toBe(true);
+        done();
+      }
     })
   });
 

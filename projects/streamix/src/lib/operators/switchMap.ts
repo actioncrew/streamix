@@ -1,4 +1,4 @@
-import { eventBus } from '../abstractions';
+import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
@@ -16,8 +16,8 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     input = stream;
 
     // Finalize when the input or output stream stops
-    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output.onStop.once(finalize);
+    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
@@ -34,13 +34,11 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
 
     // Subscribe to the new inner stream
     if (currentInnerStream) {
-      currentSubscription = currentInnerStream.subscribe((value) => handleInnerEmission(emission, value));
-
-      // Handle errors from the inner stream
-      currentInnerStream.onError.once(({ error }: any) => handleStreamError(error));
-
-      // Complete the inner stream when it stops
-      currentInnerStream.onStop.once(() => stopCurrentInnerStream(emission));
+      currentSubscription = currentInnerStream.subscribe({
+        next: (value) => handleInnerEmission(emission, value),
+        error: (err) => handleStreamError(emission, err),
+        complete: () => stopCurrentInnerStream(emission)
+      });
     }
 
     emission.pending = true;
@@ -51,8 +49,8 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     emission.link(output.next(value));
   };
 
-  const handleStreamError = (error: any) => {
-    eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+  const handleStreamError = (emission: Emission, error: any) => {
+    eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
     finalize();
   };
 
@@ -64,7 +62,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     currentInnerStream = null;
   };
 
-  const finalize = async () => {
+  const finalize = () => {
     if (isFinalizing) return;
     isFinalizing = true;
 
@@ -75,9 +73,9 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
 
   const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
     streams
-      .filter((stream) => stream && stream.isRunning)
+      .filter((stream) => stream && stream[flags].isRunning)
       .forEach((stream) => {
-        stream!.isAutoComplete = true;
+        stream![flags].isAutoComplete = true;
       });
   };
 

@@ -9,13 +9,12 @@ describe('skip operator', () => {
 
     let results: any[] = [];
 
-    skippedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    skippedStream.onStop.once(() => {
-      expect(results).toEqual([4, 5]); // Should skip the first 3 values and emit [4, 5]
-      done();
+    skippedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([4, 5]); // Should skip the first 3 values and emit [4, 5]
+        done();
+      }
     });
   });
 
@@ -27,13 +26,12 @@ describe('skip operator', () => {
 
     let results: any[] = [];
 
-    skippedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    skippedStream.onStop.once(() => {
-      expect(results).toEqual([]); // Should skip all values, resulting in an empty array
-      done();
+    skippedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([]); // Should skip all values, resulting in an empty array
+        done();
+      }
     });
   });
 
@@ -45,13 +43,12 @@ describe('skip operator', () => {
 
     let results: any[] = [];
 
-    skippedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    skippedStream.onStop.once(() => {
-      expect(results).toEqual([1, 2, 3]); // Should emit all values without skipping
-      done();
+    skippedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([1, 2, 3]); // Should emit all values without skipping
+        done();
+      }
     });
   });
 });

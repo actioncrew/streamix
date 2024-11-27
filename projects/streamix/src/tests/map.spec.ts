@@ -9,13 +9,12 @@ describe('map operator', () => {
 
     let results: any[] = [];
 
-    mappedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    mappedStream.onStop.once(() => {
-      expect(results).toEqual([2, 4, 6]);
-      done();
+    mappedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([2, 4, 6]);
+        done();
+      }
     });
   });
 
@@ -32,13 +31,12 @@ describe('map operator', () => {
 
     let results: any[] = [];
 
-    mappedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    mappedStream.onStop.once(() => {
-      expect(results).toEqual([2, 6]); // Only the first value should be emitted before error
-      done();
+    mappedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([2, 6]); // Only the first value should be emitted before error
+        done();
+      }
     });
   });
 });
