@@ -23,7 +23,6 @@ export function createSubject<T = any>(): Subject<T> {
     }
 
     started.then(() => {
-      running = true; // Mark the stream as running
 
       eventBus.enqueue({
         target: this,
@@ -37,7 +36,6 @@ export function createSubject<T = any>(): Subject<T> {
 
 
   let started = stream.onStart.waitForCompletion();
-  let running = false;
 
   stream.name = "subject";
   return stream;
