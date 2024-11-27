@@ -57,7 +57,11 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               let emission = event.payload?.emission ?? createEmission({});
               let target = event.target;
 
-              event.target.emissionCounter++;
+              if(target.isStopRequested && completeMarkers.has(target)) {
+                emission.ancestor?.finalize();
+                emission.phantom = true;
+              }
+
               await target.onEmission.parallel(event.payload);
 
               if(pendingEmissions.has(target)) {
