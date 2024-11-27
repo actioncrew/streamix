@@ -46,11 +46,12 @@ describe('multicast', () => {
     sub2.unsubscribe();
 
     // Emit again to check if no more values are emitted
-    multicastPipeline.subscribe(value => values.push(value));
-
-    multicastPipeline.onStop.once(() => {
-      expect(values).toEqual([]); // Should not add any new values
-      done();
+    multicastPipeline.subscribe({
+      next: value => values.push(value),
+      complete: () => {
+        expect(values).toEqual([]); // Should not add any new values
+        done();
+      }
     });
   });
 });

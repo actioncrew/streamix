@@ -37,7 +37,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
       currentSubscription = currentInnerStream.subscribe((value) => handleInnerEmission(emission, value));
 
       // Handle errors from the inner stream
-      currentInnerStream.onError.once(({ error }: any) => handleStreamError(error));
+      currentInnerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
 
       // Complete the inner stream when it stops
       currentInnerStream.onStop.once(() => stopCurrentInnerStream(emission));
@@ -51,8 +51,8 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     emission.link(output.next(value));
   };
 
-  const handleStreamError = (error: any) => {
-    eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+  const handleStreamError = (emission: Emission, error: any) => {
+    eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
     finalize();
   };
 
@@ -64,7 +64,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     currentInnerStream = null;
   };
 
-  const finalize = async () => {
+  const finalize = () => {
     if (isFinalizing) return;
     isFinalizing = true;
 

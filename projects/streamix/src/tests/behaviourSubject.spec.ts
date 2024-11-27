@@ -6,19 +6,17 @@ describe('BehaviorSubject', () => {
     const behaviorSubject = createBehaviorSubject(initialValue);
 
     const emittedValues: any[] = [];
-    const subscription = behaviorSubject.subscribe((value) => {
-      emittedValues.push(value);
+    const subscription = behaviorSubject.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual([initialValue, 'value1', 'value2']);
+        subscription.unsubscribe();
+        done();
+      }
     });
 
     behaviorSubject.next('value1');
     behaviorSubject.next('value2');
     behaviorSubject.complete();
-
-    // Simulate a new subscriber after the value has been updated
-    behaviorSubject.onStop.once(() => {
-      expect(emittedValues).toEqual([initialValue, 'value1', 'value2']);
-      subscription.unsubscribe();
-      done();
-    });
   });
 });

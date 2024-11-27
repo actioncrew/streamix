@@ -10,13 +10,12 @@ describe('scan operator', () => {
 
     let results: any[] = [];
 
-    scannedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    scannedStream.onStop.once(() => {
-      expect(results).toEqual([1, 3, 6]);
-      done();
+    scannedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([1, 3, 6]);
+        done();
+      }
     });
   });
 
@@ -34,13 +33,12 @@ describe('scan operator', () => {
 
     let results: any[] = [];
 
-    scannedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    scannedStream.onStop.once(() => {
-      expect(results).toEqual([1, 4]); // Only the first value should be accumulated before error
-      done();
+    scannedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([1, 4]); // Only the first value should be accumulated before error
+        done();
+      }
     });
   });
 });

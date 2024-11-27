@@ -62,8 +62,8 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
 
       // Handle errors for each inner stream independently
       innerStream.onError.once((error: any) => {
-        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
-        handleCompletion(); // Ensure this stream is marked complete
+        eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
+        finalize();
       });
 
       // Handle inner stream completion
@@ -91,7 +91,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     }
   };
 
-  const finalize = async () => {
+  const finalize = () => {
     if (isFinalizing) { return; }
     isFinalizing = true;
 

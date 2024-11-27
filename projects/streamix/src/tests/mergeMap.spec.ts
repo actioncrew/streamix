@@ -10,14 +10,13 @@ describe('mergeMap operator', () => {
 
     let results: any[] = [];
 
-    mergedStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    mergedStream.onStop.once(() => {
-      results.sort((a, b) => a - b);
-      expect(results).toEqual([2, 4, 4, 6, 8, 12]);
-      done();
+    mergedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        results.sort((a, b) => a - b);
+        expect(results).toEqual([2, 4, 4, 6, 8, 12]);
+        done();
+      }
     });
   });
 

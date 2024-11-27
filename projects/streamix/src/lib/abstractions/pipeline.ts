@@ -134,9 +134,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       currentValue = emission.value;
 
       try {
-        if (emission.failed && receiver.error) {
-          receiver.error(emission.error);
-        } else if (receiver.next) {
+        if (receiver.next) {
           receiver.next(emission.value);
         }
       } catch (err) {
