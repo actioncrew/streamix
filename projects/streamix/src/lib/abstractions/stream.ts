@@ -1,4 +1,4 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperator, isReceiver, Receiver } from "../abstractions";
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperator, isReceiver, Receiver, createReceiver } from "../abstractions";
 import { eventBus } from "../abstractions";
 import { hook, Hook, awaitable } from "../utils";
 
@@ -131,11 +131,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     // Convert a callback into a Receiver if needed
-    const receiver: Receiver<T> =
-      typeof callbackOrReceiver === 'function'
-        ? { next: callbackOrReceiver } // Wrap callback in `next`
-        : callbackOrReceiver || {};   // Use the provided Receiver or an empty object
-
+    const receiver = createReceiver(callbackOrReceiver);
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
       stream.onStop.chain(receiver, receiver.complete);

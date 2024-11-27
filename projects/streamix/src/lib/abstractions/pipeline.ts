@@ -1,4 +1,4 @@
-import { isReceiver, Receiver, Stream } from '../abstractions';
+import { createReceiver, isReceiver, Receiver, Stream } from '../abstractions';
 import { createSubject } from '../streams';
 import { counter, hook } from '../utils';
 import { Operator } from '../abstractions';
@@ -117,10 +117,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     // Convert callback to Receiver if needed
-    const receiver: Receiver<T> =
-      typeof callbackOrReceiver === 'function'
-        ? { next: callbackOrReceiver }
-        : callbackOrReceiver || {};
+    const receiver = createReceiver(callbackOrReceiver);
 
     // Chain the `complete` method to the `onStop` hook, if present
     if (receiver.complete) {
