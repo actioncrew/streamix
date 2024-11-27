@@ -20,7 +20,6 @@ export type Bus = {
 export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): Bus {
 
   const bufferSize = config?.bufferSize || 64; // Adjust buffer size as needed
-  const harmonize = config?.harmonize || false; // Adjust buffer size as needed
 
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
@@ -58,11 +57,12 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               let target = event.target;
 
               if(target.isStopRequested && completeMarkers.has(target)) {
-                emission.ancestor?.finalize();
                 emission.phantom = true;
+                emission.ancestor?.finalize();
+              } else {
+                target.emissionCounter++;
+                await target.onEmission.parallel(event.payload);
               }
-
-              await target.onEmission.parallel(event.payload);
 
               if(pendingEmissions.has(target)) {
                 const pendingSet = pendingEmissions.get(target);
