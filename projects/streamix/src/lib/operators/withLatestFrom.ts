@@ -1,9 +1,10 @@
 import { flags } from './../abstractions/subscribable';
 import { createOperator, Emission, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
-import { asyncValue } from '../utils';
+import { awaitable } from '../utils';
 
 export const withLatestFrom = (...streams: Subscribable[]): Operator => {
-  let latestValues = streams.map(() => asyncValue());
+  // Use `awaitable` for storing the latest values from streams
+  let latestValues = streams.map(() => awaitable<any>());
   let subscriptions: Subscription[] = [];
 
   // Initialize the operator and set up the subscription-based handling
@@ -17,7 +18,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
         const latestValue = latestValues[index];
 
         // Subscribe to each source stream
-        const subscription = source.subscribe(value => latestValue.set(value));
+        const subscription = source.subscribe(value => latestValue.resolve(value));
 
         // Store each subscription for later cleanup
         subscriptions.push(subscription);
@@ -60,8 +61,8 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
     await Promise.race([latestValuesPromise, terminationPromises]);
 
     // Update the emission with the latest values
-    if (latestValues.every((value) => value.hasValue())) {
-      emission.value = [emission.value, ...latestValues.map(value => value.value())];
+    if (latestValues.every((value) => value.state() === 'fullfilled')) {
+      emission.value = [emission.value, ...latestValues.map(value => value())];
     } else {
       emission.failed = true;
       emission.error = new Error("Some streams are completed without emitting value.");
