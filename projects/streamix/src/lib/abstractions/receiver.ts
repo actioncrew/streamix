@@ -14,11 +14,10 @@ export function isReceiver<T>(obj: any): obj is Receiver<T> {
 };
 
 export function createReceiver<T>(callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Receiver<T> {
-  if (typeof callbackOrReceiver === 'function') {
-    // Wrap the callback into a `Receiver` object
-    return { next: callbackOrReceiver };
-  } else {
-    // Use the provided Receiver or an empty object
-    return callbackOrReceiver || {};
-  }
+  const receiver = (typeof callbackOrReceiver === 'function') ?
+    { next: callbackOrReceiver } :
+    callbackOrReceiver || {};
+
+  receiver.error || ((err) => console.error('Unhandled error:', err));
+  return receiver;
 }

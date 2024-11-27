@@ -118,10 +118,15 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     // Convert callback to Receiver if needed
     const receiver = createReceiver(callbackOrReceiver);
+    const errorCallback = ({ error }: any) => receiver.error!(error);
 
     // Chain the `complete` method to the `onStop` hook, if present
     if (receiver.complete) {
       pipeline.onStop.chain(receiver, receiver.complete);
+    }
+
+    if (receiver.error) {
+      pipeline.onError.chain(receiver, errorCallback);
     }
 
     // Bound callback to handle emissions
@@ -168,6 +173,11 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
         if (receiver.complete) {
           pipeline.onStop.remove(receiver, receiver.complete);
         }
+
+        if (receiver.error) {
+          pipeline.onError.remove(receiver, errorCallback);
+        }
+
         onEmission.remove(pipeline, boundCallback);
       });
     };

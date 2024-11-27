@@ -132,9 +132,15 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     // Convert a callback into a Receiver if needed
     const receiver = createReceiver(callbackOrReceiver);
+    const errorCallback = ({ error }: any) => receiver.error!(error);
+
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
       stream.onStop.chain(receiver, receiver.complete);
+    }
+
+    if (receiver.error) {
+      stream.onError.chain(receiver, errorCallback);
     }
 
     // Define the bound callback for handling emissions
@@ -143,7 +149,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       try {
         if (emission.failed && receiver.error) {
-          receiver.error(emission.error as Error); // Call `error` if emission failed
+          receiver.error(emission.error); // Call `error` if emission failed
         } else if (receiver.next) {
           receiver.next(emission.value); // Call `next` for successful emissions
         }
@@ -172,6 +178,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         stream.complete().then(() => {
           if (receiver.complete) {
             stream.onStop.remove(receiver, receiver.complete);
+          }
+
+          if (receiver.error) {
+            stream.onError.remove(receiver, errorCallback);
           }
           subscribers.remove(boundCallback);
         });
