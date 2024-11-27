@@ -1,22 +1,21 @@
-import { EMPTY } from '../lib';
+import { EMPTY, flags } from '../lib';
 
 describe('EmptyStream', () => {
   it('should auto-complete without emitting any values', async () => {
     const emptyStream = EMPTY;
 
     let emittedValues: any[] = [];
-    const subscription = emptyStream.subscribe((value) => {
-      emittedValues.push(value);
-    });
+    const subscription = emptyStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        // Ensure no values were emitted
+        expect(emittedValues).toHaveLength(0);
 
-    emptyStream.onStop.once(() => {
-      // Ensure no values were emitted
-      expect(emittedValues).toHaveLength(0);
+        // Ensure the stream is auto-completed
+        expect(emptyStream[flags].isAutoComplete).toBe(true);
 
-      // Ensure the stream is auto-completed
-      expect(emptyStream.isAutoComplete).toBe(true);
-
-      subscription.unsubscribe();
+        subscription.unsubscribe();
+      }
     })
   });
 });
@@ -24,18 +23,17 @@ describe('EmptyStream', () => {
 describe('EMPTY constant', () => {
   it('should behave the same as an instance of EmptyStream', async () => {
     let emittedValues: any[] = [];
-    const subscription = EMPTY.subscribe((value) => {
-      emittedValues.push(value);
+    const subscription = EMPTY.subscribe({
+      next:(value) => emittedValues.push(value),
+      complete: () => {
+        // Ensure no values were emitted
+        expect(emittedValues).toHaveLength(0);
+
+        // Ensure the stream is auto-completed
+        expect(EMPTY[flags].isAutoComplete).toBe(true);
+
+        subscription.unsubscribe();
+      }
     });
-
-    EMPTY.onStop.once(() => {
-      // Ensure no values were emitted
-      expect(emittedValues).toHaveLength(0);
-
-      // Ensure the stream is auto-completed
-      expect(EMPTY.isAutoComplete).toBe(true);
-
-      subscription.unsubscribe();
-    })
   });
 });

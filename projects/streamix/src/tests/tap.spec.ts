@@ -10,23 +10,22 @@ describe('tap operator', () => {
 
     let results: any[] = [];
 
-    tappedStream.subscribe((value) => {
-      results.push(value);
-    });
+    tappedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        // Check if side effect function was called for each emission
+        expect(sideEffectFn).toHaveBeenCalledTimes(5);
 
-    tappedStream.onStop.once(() => {
-      // Check if side effect function was called for each emission
-      expect(sideEffectFn).toHaveBeenCalledTimes(5);
+        // Verify that the side effect function received the correct values
+        expect(sideEffectFn).toHaveBeenCalledWith(1);
+        expect(sideEffectFn).toHaveBeenCalledWith(2);
+        expect(sideEffectFn).toHaveBeenCalledWith(3);
 
-      // Verify that the side effect function received the correct values
-      expect(sideEffectFn).toHaveBeenCalledWith(1);
-      expect(sideEffectFn).toHaveBeenCalledWith(2);
-      expect(sideEffectFn).toHaveBeenCalledWith(3);
+        // Ensure that the emitted results are the same as the original stream
+        expect(results).toEqual([0, 1, 2, 3, 4]);
 
-      // Ensure that the emitted results are the same as the original stream
-      expect(results).toEqual([0, 1, 2, 3, 4]);
-
-      done();
+        done();
+      }
     });
   });
 });

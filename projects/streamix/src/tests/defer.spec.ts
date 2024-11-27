@@ -1,4 +1,4 @@
-import { createEmission, createStream, defer, Emission, eventBus, Stream } from '../lib';
+import { createEmission, createStream, defer, Emission, eventBus, flags, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(emissions: Emission[], completed = false, failed = false, error?: Error): Stream {
@@ -11,12 +11,12 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
     }
 
     for (const emission of emissions) {
-      if (stream.isStopRequested) return; // Exit if stop is requested
+      if (stream[flags].isStopRequested) return; // Exit if stop is requested
       eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
     }
 
     if (completed) {
-      stream.isAutoComplete = true; // Set auto-completion flag
+      stream[flags].isAutoComplete = true; // Set auto-completion flag
     }
   });
 
@@ -32,17 +32,16 @@ describe('DeferStream', () => {
 
     // Collect emissions from the deferred stream
     const collectedEmissions: Emission[] = [];
-    const subscription = deferStream.subscribe(async (value) => {
-      collectedEmissions.push(value);
-    });
+    const subscription = deferStream.subscribe({
+      next: (value) => collectedEmissions.push(value),
+      complete: () => {
+        expect(factory).toHaveBeenCalled(); // Check if factory was called
+        expect(collectedEmissions).toHaveLength(3); // Verify all emissions are collected
+        expect(collectedEmissions).toEqual([1, 2, 3]); // Check emission values
 
-    deferStream.onStop.once(() => {
-      expect(factory).toHaveBeenCalled(); // Check if factory was called
-      expect(collectedEmissions).toHaveLength(3); // Verify all emissions are collected
-      expect(collectedEmissions).toEqual([1, 2, 3]); // Check emission values
-
-      subscription.unsubscribe();
-      done()
+        subscription.unsubscribe();
+        done()
+      }
     });
   });
 
@@ -51,12 +50,12 @@ describe('DeferStream', () => {
 
     const deferStream = defer(factory);
 
-    deferStream.subscribe();
-
-    deferStream.onStop.once(() => {
-      expect(factory).toHaveBeenCalled();
-      done();
-    })
+    deferStream.subscribe({
+      complete: () => {
+        expect(factory).toHaveBeenCalled();
+        done();
+      }
+    });
   });
 
   it('should handle stream errors', async () => {
@@ -65,18 +64,15 @@ describe('DeferStream', () => {
 
     const deferStream = defer(factory);
 
-    const failure = new Promise<void>((resolve, reject) => {
-      (deferStream as any).callback = ((e: any) => {
-        if (e === error) resolve();
-        else reject('Expected error not received');
-      });
-      deferStream.onError.chain(deferStream, (deferStream as any).callback);
+    deferStream.subscribe({
+      error: (e) => {
+        if (e !== error)  {
+          throw new Error('Expected error not received');
+        }
+      },
+      complete: () => {
+        expect(factory).toHaveBeenCalled();
+      }
     });
-
-    deferStream.subscribe();
-    deferStream.onStop.once(async () => {
-      expect(factory).toHaveBeenCalled();
-      await failure; // Ensure the error is properly handled
-    })
   });
 });

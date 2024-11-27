@@ -1,4 +1,4 @@
-import { eventBus } from '../abstractions';
+import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
@@ -10,28 +10,26 @@ export const fork = <T = any, R = T>(
 ): Operator => {
   let innerStream: Subscribable | null = null;
   let emissionQueue: Emission[] = [];
-  let pendingEmissions: number = 0;
   const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
-  let inputStream!: Subscribable | undefined;
+  let input!: Subscribable | undefined;
   let subscription: Subscription | undefined;
-  const outputStream = createSubject();
+  const output = createSubject();
 
   const init = (stream: Subscribable) => {
-    inputStream = stream;
-    inputStream.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(pendingEmissions).then(finalize)));
-    outputStream.onStop.once(finalize);
+    input = stream;
+    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
     emissionQueue.push(emission);
-    pendingEmissions++;
 
     if(!innerStream) {
       await processQueue();
     }
 
-    emission.phantom = true;
+    emission.pending = true;
     return emission;
   };
 
@@ -53,52 +51,51 @@ export const fork = <T = any, R = T>(
 
       if (innerStream) {
         // Immediately set up listeners on the new inner stream
-        innerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
-
-        innerStream.onStop.once(() => completeInnerStream(subscription!));
-
-        subscription = innerStream.subscribe((value) => handleInnerEmission(value));
+        subscription = innerStream.subscribe({
+          next: (value) => handleInnerEmission(value),
+          error: (err) => handleStreamError(emission, err),
+          complete: () => completeInnerStream(emission, subscription!)
+        });
       }
     } else {
       // If no case matches, emit an error
-      await handleStreamError(emission, `No handler found for value: ${emission.value}`);
+      finalize();
+      throw new Error(`No handler found for value: ${emission.value}`);
     }
   };
 
   const handleInnerEmission = (value: any) => {
-    outputStream.next(value); // Emit the inner emission
+    output.next(value); // Emit the inner emission
   };
 
-  const completeInnerStream = async (subscription: Subscription) => {
+  const completeInnerStream = async (emission: Emission, subscription: Subscription) => {
     subscription?.unsubscribe();
+    emission.finalize();
     await processQueue();
     executionCounter.increment();
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
-    emission.error = error;
-    emission.failed = true;
-    eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error'});
-    stopStreams(innerStream, outputStream);
-    executionCounter.increment();
+    eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
+    finalize();
   };
 
-  const finalize = async () => {
+  const finalize = () => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    await stopStreams(innerStream, inputStream, outputStream);
+    stopStreams(innerStream, input, output);
     innerStream = null;
   };
 
-  const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {
-    streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isAutoComplete = true; });
+  const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
+    streams.filter(stream => stream && stream[flags].isRunning).forEach(stream => { stream![flags].isAutoComplete = true; });
   };
 
   const operator = createOperator(handle) as any;
   operator.name = 'concatMap';
   operator.init = init;
-  operator.stream = outputStream;
+  operator.stream = output;
 
   return operator;
 };

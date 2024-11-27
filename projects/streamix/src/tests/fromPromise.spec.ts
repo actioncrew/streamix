@@ -1,4 +1,4 @@
-import { fromPromise } from '../lib';
+import { fromPromise, internals } from '../lib';
 
 describe('FromPromiseStream', () => {
   it('should emit value from resolved promise', (done) => {
@@ -7,13 +7,12 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    stream.subscribe((value) => {
-      emittedValues.push(value);
-    });
-
-    stream.onStop.once(() => {
-      expect(emittedValues).toEqual([value]);
-      done();
+    stream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual([value]);
+        done();
+      }
     })
   });
 
@@ -23,13 +22,12 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     let completed = false;
-    stream.subscribe(() => {
-      completed = true;
-    });
-
-    stream.onStop.once(() => {
-      expect(completed).toBe(true);
-      done();
+    stream.subscribe({
+      next: () => completed = true,
+      complete: () => {
+        expect(completed).toBe(true);
+        done();
+      }
     });
   });
 
@@ -39,17 +37,14 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     let receivedError: Error | undefined;
-    const subscription = stream.subscribe(() => {});
-
-    stream.onError.once(({ error }: any) => {
-      receivedError = error;
+    const subscription = stream.subscribe({
+      error: (err: any) => receivedError = error,
+      complete: () => {
+        expect(receivedError).toBe(error);
+        subscription.unsubscribe();
+        done();
+      }
     });
-
-    stream.onStop.once(() => {
-      expect(receivedError).toBe(error);
-      subscription.unsubscribe();
-      done();
-    })
   });
 
   it('should not emit if unsubscribed before run', async () => {
@@ -58,15 +53,14 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    const subscription = stream.subscribe((value) => {
-      emittedValues.push(value);
+    const subscription = stream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual([]);
+      }
     });
 
     subscription.unsubscribe(); // Unsubscribe before running
-
-    stream.onStop.once(() => {
-      expect(emittedValues).toEqual([]);
-    })
   });
 
   it('should not emit if cancelled before run', async () => {

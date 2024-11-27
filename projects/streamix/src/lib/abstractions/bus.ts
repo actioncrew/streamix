@@ -1,18 +1,18 @@
 import { createLock, createSemaphore } from '../utils';
-import { Emission } from './emission';
+import { createEmission, Emission } from './emission';
+import { flags, hooks } from './subscribable';
 
 export const eventBus = createBus() as Bus;
 eventBus.run();
 
 export type BusEvent = {
   target: any;
-  type: 'emission' | 'start' | 'stop' | 'complete' | 'error' | 'subscribers';
+  type: 'emission' | 'start' | 'stop' | 'complete' | 'error';
   payload?: any;
   timeStamp?: Date;
 };
 
 export type Bus = {
-  harmonize: boolean;
   run(): void;
   enqueue(event: BusEvent): void;
   name?: string;
@@ -21,7 +21,6 @@ export type Bus = {
 export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): Bus {
 
   const bufferSize = config?.bufferSize || 64; // Adjust buffer size as needed
-  const harmonize = config?.harmonize || false; // Adjust buffer size as needed
 
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
@@ -36,7 +35,6 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
 
   const bus: Bus = {
-    harmonize,
     async run(): Promise<void> {
       while (true) {
         // Wait for an available item or space in the buffer
@@ -47,72 +45,72 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
          // Process the event here (you can call your handler based on event type)
           switch(event.type) {
             case 'start':
-              await event.target.onStart.parallel(event.payload); break;
+              await event.target[hooks].onStart.parallel(event.payload); break;
             case 'stop':
-              if (!pendingEmissions.get(event.target)?.size) {
-                await event.target.onStop.parallel(event.payload); break;
+              if (!pendingEmissions.has(event.target)) {
+                await event.target[hooks].onStop.parallel(event.payload); break;
               } else {
                 stopMarkers.set(event.target, event.payload);
               }
               break;
             case 'emission':
-              if(event.target.isStopRequested && completeMarkers.has(event.target)) {
-                if(event.payload && event.payload.emission) {
-                  event.payload.emission.ancestor?.finalize();
-                  event.payload.emission.phantom = true;
-                }
+              let emission = event.payload?.emission ?? createEmission({});
+              let target = event.target;
+
+              if(target[flags].isStopRequested && completeMarkers.has(target)) {
+                emission.phantom = true;
+                emission.ancestor?.finalize();
+              } else {
+                target.emissionCounter++;
+                await target[hooks].onEmission.parallel(event.payload);
               }
 
-              await event.target.onEmission.parallel(event.payload);
-
-              if(pendingEmissions.has(event.target)) {
-                const pendingSet = pendingEmissions.get(event.target);
+              if(pendingEmissions.has(target)) {
+                const pendingSet = pendingEmissions.get(target);
                 const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
-                pendingEmissions.set(event.target, new Set(stillPending));
+                pendingEmissions.set(target, new Set(stillPending));
               }
 
-              if (event.target && event.payload?.emission?.pending) {
-                let emission = event.payload.emission;
-                let set = pendingEmissions.get(event.target) ?? new Set();
+              if (target && emission.pending) {
+                let set = pendingEmissions.get(target) ?? new Set();
                 if(!set.has(emission)) {
                   set.add(emission);
                 }
-                pendingEmissions.set(event.target, set);
+                pendingEmissions.set(target, set);
 
                 emission.wait().then(async () => {
-                  let set = pendingEmissions.get(event.target)!;
+                  let set = pendingEmissions.get(target)!;
                   set.delete(emission);
 
                   if(!set.size) {
-                    pendingEmissions.delete(event.target);
+                    pendingEmissions.delete(target);
                   }
 
                   if(!set.size) {
-                    if(completeMarkers.has(event.target)) {
-                      const payload = completeMarkers.get(event.target);
-                      completeMarkers.delete(event.target);
-                      await event.target.onComplete.parallel(payload);
+                    if(completeMarkers.has(target)) {
+                      const payload = completeMarkers.get(target);
+                      completeMarkers.delete(target);
+                      await target[hooks].onComplete.parallel(payload);
                     }
 
-                    if(stopMarkers.has(event.target)) {
-                      const payload = stopMarkers.get(event.target);
-                      stopMarkers.delete(event.target);
-                      await event.target.onStop.parallel(payload);
+                    if(stopMarkers.has(target)) {
+                      const payload = stopMarkers.get(target);
+                      stopMarkers.delete(target);
+                      await target[hooks].onStop.parallel(payload);
                     }
                   }
                 });
               }
-
               break;
             case 'complete':
-              if (!pendingEmissions.get(event.target)?.size) {
-                await event.target.onComplete.parallel(event.payload);
+              if (!pendingEmissions.has(event.target)) {
+                await event.target[hooks].onComplete.parallel(event.payload);
               } else {
                 completeMarkers.set(event.target, true);
               }
               break;
             case 'error':
-              await event.target.onError.parallel(event.payload); break;
+              await event.target[hooks].onError.parallel(event.payload); break;
           }
 
           // Move head forward in the buffer and reduce the available item count

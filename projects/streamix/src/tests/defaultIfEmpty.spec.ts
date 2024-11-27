@@ -1,4 +1,4 @@
-import { concatMap, createSubject, defaultIfEmpty, EMPTY, of } from '../lib';
+import { concatMap, createSubject, defaultIfEmpty, EMPTY, internals, of } from '../lib';
 
 describe('DefaultIfEmptyOperator', () => {
   test('should emit the default value if no values are emitted', (done) => {
@@ -7,13 +7,12 @@ describe('DefaultIfEmptyOperator', () => {
     const processedStream = stream.pipe(defaultIfEmpty(defaultValue));
     const emittedValues: any[] = [];
 
-    processedStream.subscribe((value) => {
-      emittedValues.push(value);
-    });
-
-    processedStream.onStop.once(() => {
-      expect(emittedValues).toEqual([defaultValue]);
-      done();
+    processedStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual([defaultValue]);
+        done();
+      }
     });
 
     processedStream.complete();
@@ -25,18 +24,17 @@ describe('DefaultIfEmptyOperator', () => {
     const processedStream = stream.pipe(defaultIfEmpty(defaultValue));
     const emittedValues: any[] = [];
 
-    processedStream.subscribe((value) => {
-      emittedValues.push(value);
+    processedStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual(['Value 1', 'Value 2']);
+        done();
+      }
     });
 
     stream.next('Value 1');
     stream.next('Value 2');
     processedStream.complete();
-
-    processedStream.onStop.once(() => {
-      expect(emittedValues).toEqual(['Value 1', 'Value 2']);
-      done();
-    });
   });
 
   test('should emit default value when one operator returns EMPTY', (done) => {
@@ -49,17 +47,16 @@ describe('DefaultIfEmptyOperator', () => {
 
     const emittedValues: any[] = [];
 
-    processedStream.subscribe((value) => {
-      emittedValues.push(value);
+    processedStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual([defaultValue]);
+        done();
+      }
     });
 
     stream.next('value 1');
     processedStream.complete();
-
-    processedStream.onStop.once(() => {
-      expect(emittedValues).toEqual([defaultValue]);
-      done();
-    });
   });
 
   test('should not emit default value if values are emitted before', (done) => {
@@ -72,17 +69,16 @@ describe('DefaultIfEmptyOperator', () => {
 
     const emittedValues: any[] = [];
 
-    processedStream.subscribe((value) => {
-      emittedValues.push(value);
+    processedStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual(['Value 3', 'Value 3']);
+        done();
+      }
     });
 
     stream.next('Value 1');
     stream.next('Value 2');
-
-    processedStream.onStop.once(() => {
-      expect(emittedValues).toEqual(['Value 3', 'Value 3']);
-      done();
-    })
 
     processedStream.complete();
   });

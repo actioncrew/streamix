@@ -38,15 +38,10 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     const combinedTimers = combineLatest([firstTimer, secondTimer]);
 
-    const subscription = combinedTimers.subscribe((latestValues: any) => {
-      try {
-        subscription.unsubscribe();
-      } catch (error) {
-        done(error);
-      }
+    const subscription = combinedTimers.subscribe({
+      next: value => subscription.unsubscribe(),
+      complete: () => done()
     });
-
-    combinedTimers.onStop.once(() => done());
   });
 
   it('should handle completion of one stream', (done) => {

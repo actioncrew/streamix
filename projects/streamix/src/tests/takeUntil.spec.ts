@@ -9,13 +9,12 @@ describe('takeUntil operator', () => {
 
     let results: any[] = [];
 
-    takenUntilStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenUntilStream.onStop.once(() => {
-      expect(results).toEqual([1, 2, 3]); // Should emit all values before notifier emits
-      done();
+    takenUntilStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([1, 2, 3]); // Should emit all values before notifier emits
+        done();
+      }
     });
   });
 
@@ -27,13 +26,12 @@ describe('takeUntil operator', () => {
 
     let results: any[] = [];
 
-    takenUntilStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenUntilStream.onStop.once(() => {
-      expect(results.length).toEqual(0); // Should not emit any values because notifier emits immediately
-      done();
+    takenUntilStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results.length).toEqual(0); // Should not emit any values because notifier emits immediately
+        done();
+      }
     });
   });
 
@@ -45,13 +43,12 @@ describe('takeUntil operator', () => {
 
     let results: any[] = [];
 
-    takenUntilStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenUntilStream.onStop.once(() => {
-      expect(results).toEqual([]); // Should not emit any values because the source stream is empty
-      done();
+    takenUntilStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([]); // Should not emit any values because the source stream is empty
+        done();
+      }
     });
   });
 });

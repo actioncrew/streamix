@@ -1,44 +1,49 @@
-
-import { createEmission, createStream, Stream, Subscribable } from '../abstractions';
+import { createEmission, createStream, flags, hooks, internals, Stream, Subscribable, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
-  // Create the custom run function for the MergeStream
+  const subscriptions: Subscription[] = [];
+
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+    const sourcePromises = sources.map((source) => {
+      return new Promise<void>((resolve, reject) => {
+        const subscription = source.subscribe({
+          next: (value) => {
+            const emission = createEmission({ value });
+            eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
+          },
+          error: (err) => {
+            const emission = createEmission({ error: err, failed: true });
+            eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
+            reject(err); // Reject the promise on error
+            finalize(); // Stop all processing on error
+          },
+          complete: () => {
+            subscription.unsubscribe();
+            resolve(); // Resolve the promise when the source completes
+          },
+        });
 
-    // Check if all sources are completed
-    stream.onComplete.once(() => {
-      if (!stream.shouldComplete() && sources.every(source => source.shouldComplete())) {
-        stream.isAutoComplete = true;
-      }
-    });
-
-    const handleEmissionFn = async (value: T) => {
-      if (!this.shouldComplete()) {
-        this.emissionCounter++;
-        eventBus.enqueue({ target: this, payload: { emission: createEmission({ value }), source: this }, type: 'emission' });
-      }
-    };
-
-    const emissionPromises = sources.map((source, index) => {
-      return new Promise<void>(async (resolve) => {
-        await source.awaitCompletion();
-        subscriptions[index].unsubscribe();
-        resolve(); // Resolve when source completes
+        subscriptions.push(subscription);
       });
     });
 
-    // Start all sources
-    const subscriptions = sources.map(source => source.subscribe(value => handleEmissionFn(value)));
-
-    // Wait for all sources to complete
-    await Promise.race([
-      Promise.all(emissionPromises),
-      stream.awaitCompletion(),
-    ]);
+    try {
+      // Wait for all sources to complete or for the stream to stop
+      await Promise.race([
+        Promise.all(sourcePromises),
+        stream[internals].awaitCompletion(),
+      ]);
+    } finally {
+      finalize(); // Ensure cleanup
+    }
   });
 
+  const finalize = () => {
+    subscriptions.forEach((sub) => sub.unsubscribe());
+    subscriptions.length = 0;
+  };
+
   stream.name = "merge";
-  // Create the stream using createStream and the custom run function
   return stream;
 }

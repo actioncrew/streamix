@@ -1,4 +1,4 @@
-import { createOperator, Operator, Subscribable } from '../abstractions';
+import { createOperator, internals, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const takeWhile = (predicate: (value: any, index?: number) => boolean): Operator => {

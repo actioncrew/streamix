@@ -10,14 +10,13 @@ describe('iif operator', () => {
     const pipeline = from([6]).pipe(switchMap(value => iif(() => condition(value), trueStream, falseStream)));
     const result: any[] = [];
 
-    const subscription = pipeline.subscribe((value) => {
-      result.push(value);
-    });
-
-    pipeline.onStop.once(() => {
-      expect(result).toEqual([10, 20, 30]);
-      subscription.unsubscribe();
-      done();
+    const subscription = pipeline.subscribe({
+      next: (value) => result.push(value),
+      complete: () => {
+        expect(result).toEqual([10, 20, 30]);
+        subscription.unsubscribe();
+        done();
+      }
     });
   });
 
@@ -29,14 +28,13 @@ describe('iif operator', () => {
     const pipeline = from([2]).pipe(switchMap(value => iif(() => condition(value), trueStream, falseStream)));
     const result: any[] = [];
 
-    const subscription = pipeline.subscribe((value) => {
-      result.push(value);
-    });
-
-    pipeline.onStop.once(() => {
-      expect(result).toEqual([1, 2, 3]);
-      subscription.unsubscribe();
-      done();
+    const subscription = pipeline.subscribe({
+      next: (value) => result.push(value),
+      complete: () => {
+        expect(result).toEqual([1, 2, 3]);
+        subscription.unsubscribe();
+        done();
+      }
     });
   });
 });

@@ -1,8 +1,10 @@
-import { createOperator, Emission, Operator, Stream, Subscribable, Subscription } from '../abstractions';
-import { asyncValue } from '../utils';
+import { flags } from './../abstractions/subscribable';
+import { createOperator, Emission, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
+import { awaitable } from '../utils';
 
 export const withLatestFrom = (...streams: Subscribable[]): Operator => {
-  let latestValues = streams.map(() => asyncValue());
+  // Use `awaitable` for storing the latest values from streams
+  let latestValues = streams.map(() => awaitable<any>());
   let subscriptions: Subscription[] = [];
 
   // Initialize the operator and set up the subscription-based handling
@@ -16,7 +18,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
         const latestValue = latestValues[index];
 
         // Subscribe to each source stream
-        const subscription = source.subscribe(value => latestValue.set(value));
+        const subscription = source.subscribe(value => latestValue.resolve(value));
 
         // Store each subscription for later cleanup
         subscriptions.push(subscription);
@@ -31,7 +33,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
     };
 
     // Cleanup on stream termination
-    stream.onStop.once(finalize);
+    stream[hooks].onStop.once(finalize);
   };
 
   // Cleanup all subscriptions
@@ -43,8 +45,8 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
 
   // Handle emissions by combining the latest values from all streams
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
-    if (stream.shouldComplete()) {
-      await Promise.all(streams.map(source => source.isStopRequested = true));
+    if (stream[internals].shouldComplete()) {
+      await Promise.all(streams.map(source => source[flags].isStopRequested = true));
     }
 
     // Wait for all latest values to be available
@@ -52,15 +54,15 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
 
     // Monitor for any stream or main stream completion
     const terminationPromises = Promise.race([
-      stream.awaitCompletion(),
-      ...streams.map(source => source.awaitCompletion()),
+      stream[internals].awaitCompletion(),
+      ...streams.map(source => source[internals].awaitCompletion()),
     ]);
 
     await Promise.race([latestValuesPromise, terminationPromises]);
 
     // Update the emission with the latest values
-    if (latestValues.every((value) => value.hasValue())) {
-      emission.value = [emission.value, ...latestValues.map(value => value.value())];
+    if (latestValues.every((value) => value.state() === 'fullfilled')) {
+      emission.value = [emission.value, ...latestValues.map(value => value())];
     } else {
       emission.failed = true;
       emission.error = new Error("Some streams are completed without emitting value.");

@@ -1,4 +1,4 @@
-import { createEmission, eventBus } from '../abstractions';
+import { createEmission, eventBus, hooks } from '../abstractions';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Operator => {
@@ -7,7 +7,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): O
 
   const init = (stream: Stream) => {
     boundStream = stream;
-    boundStream.onComplete.chain(callback); // Trigger the callback when the stream completes
+    boundStream[hooks].onComplete.chain(callback); // Trigger the callback when the stream completes
   };
 
   const callback = async (): Promise<void> => {

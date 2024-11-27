@@ -5,66 +5,66 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe(value => {
-      emittedValues.push(value);
+    const subscription = subject.subscribe({
+      next: value => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual(['value1', 'value2']);
+        subscription.unsubscribe();
+        done();
+      }
     });
 
     subject.next('value1');
     subject.next('value2');
     subject.complete();
-
-    subject.onStop.once(() => {
-      expect(emittedValues).toEqual(['value1', 'value2']);
-      subscription.unsubscribe();
-      done();
-    })
   });
 
   it('should not emit values after unsubscribed', (done) => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe(value => {
-      emittedValues.push(value);
+    const subscription = subject.subscribe({
+      next: value => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual(['value1']);
+        subscription.unsubscribe();
+        done();
+      }
     });
-
 
     subject.next('value1');
     subscription.unsubscribe();
     subject.next('value2');
-
-    subject.onStop.once(() => {
-      expect(emittedValues).toEqual(['value1']);
-      subscription.unsubscribe();
-      done();
-    })
   });
 
   it('should clear emission queue on cancel', (done) => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe(value => {
-      emittedValues.push(value);
+    const subscription = subject.subscribe({
+      next: value => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual(['value1']);
+        subscription.unsubscribe();
+        done();
+      }
     });
 
     subject.next('value1');
     subject.complete();
     subject.next('value2');
-
-    subject.onStop.once(() => {
-      expect(emittedValues).toEqual(['value1']);
-      subscription.unsubscribe();
-      done();
-    })
   });
 
   it('stress test, synchronous case', (done) => {
     const subject = createSubject<any>();
 
     let counter = 0;
-    const subscription = subject.subscribe(value => {
-      expect(value === counter++).toBeTruthy();
+    const subscription = subject.subscribe({
+      next: value => expect(value === counter++).toBeTruthy(),
+      complete: () => {
+        subscription.unsubscribe();
+        done();
+      }
     });
 
     for (let i = 0; i < 1000; i++) {
@@ -72,23 +72,15 @@ describe('Subject', () => {
     }
 
     subject.complete();
-
-    subject.onStop.once(() => {
-      subscription.unsubscribe();
-      done();
-    })
   });
 
   it('stress test, asynchronous case', async () => {
     const subject = createSubject<any>();
 
     let counter = 0;
-    const subscription = subject.subscribe(value => {
-      expect(value === counter++).toBeTruthy();
-    });
-
-    subject.onStop.once(() => {
-      subscription.unsubscribe();
+    const subscription = subject.subscribe({
+      next: value => expect(value === counter++).toBeTruthy(),
+      complete: () => subscription.unsubscribe()
     })
 
     for (let i = 0; i < 1000; i++) {

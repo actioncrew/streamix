@@ -1,4 +1,4 @@
-import { catchError, createSubject, map, Stream, Subject } from '../lib';
+import { catchError, createSubject, internals, map, Stream, Subject } from '../lib';
 
 describe('CatchErrorOperator Functional Test', () => {
   let subject: Subject;
@@ -10,27 +10,23 @@ describe('CatchErrorOperator Functional Test', () => {
     handlerMock = jest.fn().mockResolvedValue(undefined); // mock handler function
   });
 
-  it('should handle errors from a stream and not propagate them', async () => {
+  it('should handle errors from a stream and not propagate them', (done) => {
     // Create a subject and attach the catchError operator to it
     subject = createSubject();
     let error = new Error("Unhandled exception.");
     const streamWithCatchError = subject
       .pipe(map(() => { throw error; }), catchError(handlerMock));
 
-    streamWithCatchError.subscribe(value => {
-      console.log(value);
+    streamWithCatchError.subscribe({
+      next: value => console.log(value),
+      complete: () => { expect(handlerMock).toHaveBeenCalled(); done(); }
     });
 
     subject.next(1);
     streamWithCatchError.complete();
-
-    streamWithCatchError.awaitCompletion().then(() => {
-      expect(handlerMock).toHaveBeenCalled();
-      expect(streamWithCatchError.isStopped).toBe(true); // Stream should complete
-    });
   });
 
-  it('should propagate errors if catchError is not present', async () => {
+  it('should propagate errors if catchError is not present', (done) => {
     // Create a subject and attach the catchError operator to it
     // Create a subject and attach the catchError operator to it
     subject = createSubject();
@@ -38,16 +34,12 @@ describe('CatchErrorOperator Functional Test', () => {
     const streamWithCatchError = subject
       .pipe(map(() => { throw error; }));
 
-    streamWithCatchError.subscribe(value => {
-      console.log(value);
+    streamWithCatchError.subscribe({
+      next: value => console.log(value),
+      complete: () => { expect(handlerMock).not.toHaveBeenCalled(); done(); }
     });
 
     subject.next(1);
     streamWithCatchError.complete();
-
-    streamWithCatchError.awaitCompletion().then(() => {
-      expect(handlerMock).not.toHaveBeenCalled();
-      expect(streamWithCatchError.isStopped).toBe(true); // Stream should complete
-    });
   });
 });

@@ -1,7 +1,7 @@
 export type Awaitable<T> = ReturnType<typeof awaitable<T>>;
-export function awaitable<T>(initialValue?: T) {
-  let _value = initialValue;
-  let _default = initialValue;
+export function awaitable<T>(initialValue?: any) {
+  let _state: 'pending' | 'fullfilled' | 'rejected' = 'pending';
+  let _value: any = initialValue;
   let _resolve!: (value: T) => void;
   let _reject!: (reason?: any) => void;
 
@@ -15,31 +15,28 @@ export function awaitable<T>(initialValue?: T) {
   }
 
   innerFunction.resolve = function (value: T): Promise<T> {
-    if (_promise.then === undefined) {
+    if (_state !== 'pending') {
       throw new Error('Promise already settled');
     }
+
     _value = value;
+    _state = 'fullfilled';
     _resolve(value);
     return _promise;
   };
 
   innerFunction.reject = function (reason?: any): Promise<T> {
-    if (_promise.then === undefined) {
+    if (_state !== 'pending') {
       throw new Error('Promise already settled');
     }
+
+    _state = 'rejected';
     _reject(reason);
     return _promise;
   };
 
+  innerFunction.state = () => _state;
   innerFunction.promise = () => _promise;
-
-  innerFunction.reset = function () {
-    _promise = new Promise<T>((resolve, reject) => {
-      _resolve = resolve;
-      _reject = reject;
-      _value = _default;
-    });
-  };
 
   innerFunction.then = function <U = void>(callback: (value?: T) => U | PromiseLike<U>): Promise<U> {
     return _promise.then(callback);

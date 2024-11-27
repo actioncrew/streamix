@@ -1,4 +1,4 @@
-import { eventBus } from '../abstractions';
+import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
@@ -16,8 +16,8 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
   const init = (stream: Subscribable) => {
     input = stream;
-    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output.onStop.once(finalize);
+    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
@@ -45,11 +45,11 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
     if (currentInnerStream) {
       // Immediately set up listeners on the new inner stream
-      currentInnerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
-
-      currentInnerStream.onStop.once(() => completeInnerStream(emission, subscription!));
-
-      subscription = currentInnerStream.subscribe((value) => emission.link(handleInnerEmission(value)));
+      subscription = currentInnerStream.subscribe({
+        next: (value) => emission.link(handleInnerEmission(value)),
+        error: (err) => handleStreamError(emission, err),
+        complete: () => completeInnerStream(emission, subscription!)
+      });
     }
   };
 
@@ -66,20 +66,19 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
   const handleStreamError = (emission: Emission, error: any) => {
     eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
-    stopStreams(currentInnerStream, output);
-    executionCounter.increment();
+    finalize();
   };
 
-  const finalize = async () => {
+  const finalize = () => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    await stopStreams(currentInnerStream, input, output);
+    stopStreams(currentInnerStream, input, output);
     currentInnerStream = null;
   };
 
-  const stopStreams = async (...streams: (Subscribable | null | undefined)[]) => {
-    streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isAutoComplete = true; });
+  const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
+    streams.filter(stream => stream && stream[flags].isRunning).forEach(stream => { stream![flags].isAutoComplete = true; });
   };
 
   const operator = createOperator(handle) as any;
