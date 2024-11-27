@@ -1,11 +1,11 @@
-import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator, hooks } from '../abstractions';
 
 export const catchError = (handler: (error?: any) => void | Promise<void>): Operator => {
   let boundStream: Stream;
 
   const init = (stream: Stream) => {
     boundStream = stream;
-    boundStream.onError.chain(callback); // Chain the error handling callback to the stream
+    boundStream[hooks].onError.chain(callback); // Chain the error handling callback to the stream
   };
 
   const callback = async ({ error }: any): Promise<void> => {

@@ -1,4 +1,4 @@
-import { eventBus } from '../abstractions';
+import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
@@ -16,8 +16,8 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
   const init = (stream: Subscribable) => {
     input = stream;
-    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output.onStop.once(finalize);
+    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
@@ -45,9 +45,9 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
     if (currentInnerStream) {
       // Immediately set up listeners on the new inner stream
-      currentInnerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
+      currentInnerStream[hooks].onError.once(({ error }: any) => handleStreamError(emission, error));
 
-      currentInnerStream.onStop.once(() => completeInnerStream(emission, subscription!));
+      currentInnerStream[hooks].onStop.once(() => completeInnerStream(emission, subscription!));
 
       subscription = currentInnerStream.subscribe((value) => emission.link(handleInnerEmission(value)));
     }
@@ -78,7 +78,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
-    streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isAutoComplete = true; });
+    streams.filter(stream => stream && stream[flags].isRunning).forEach(stream => { stream![flags].isAutoComplete = true; });
   };
 
   const operator = createOperator(handle) as any;

@@ -1,4 +1,4 @@
-import { Subscribable } from '../abstractions/subscribable';
+import { hooks, Subscribable } from '../abstractions/subscribable';
 
 export function lastValueFrom(stream: Subscribable): Promise<any> {
   return new Promise<any>((resolve, reject) => {
@@ -12,11 +12,11 @@ export function lastValueFrom(stream: Subscribable): Promise<any> {
 
     try {
       // Chain the emission handler to capture each emission's value
-      stream.onEmission.chain(emissionHandler);
+      stream[hooks].onEmission.chain(emissionHandler);
 
       // Set up onStop handler to resolve with last value or reject if no emission occurred
-      stream.onStop.once(() => {
-        stream.onEmission.remove(emissionHandler);
+      stream[hooks].onStop.once(() => {
+        stream[hooks].onEmission.remove(emissionHandler);
 
         if (hasEmitted) {
           resolve(lastValue);

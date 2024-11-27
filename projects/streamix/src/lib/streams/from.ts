@@ -1,4 +1,4 @@
-import { createEmission, Emission } from '../abstractions';
+import { createEmission, Emission, flags, hooks, internals } from '../abstractions';
 import { createStream, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
@@ -11,11 +11,11 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
 
     let done = false;
 
-    this.onComplete.once(() => {
-      this.isAutoComplete = true;
+    this[hooks].onComplete.once(() => {
+      this[flags].isAutoComplete = true;
     });
 
-    while (!done && !this.shouldComplete()) {
+    while (!done && !this[internals].shouldComplete()) {
       let result;
 
       // Handle async or sync iteration based on input type

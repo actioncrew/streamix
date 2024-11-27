@@ -1,4 +1,4 @@
-import { eventBus } from '../abstractions';
+import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
@@ -16,8 +16,8 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     input = stream;
 
     // Finalize when the input or output stream stops
-    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output.onStop.once(finalize);
+    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
@@ -37,10 +37,10 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
       currentSubscription = currentInnerStream.subscribe((value) => handleInnerEmission(emission, value));
 
       // Handle errors from the inner stream
-      currentInnerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
+      currentInnerStream[hooks].onError.once(({ error }: any) => handleStreamError(emission, error));
 
       // Complete the inner stream when it stops
-      currentInnerStream.onStop.once(() => stopCurrentInnerStream(emission));
+      currentInnerStream[hooks].onStop.once(() => stopCurrentInnerStream(emission));
     }
 
     emission.pending = true;
@@ -75,9 +75,9 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
 
   const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
     streams
-      .filter((stream) => stream && stream.isRunning)
+      .filter((stream) => stream && stream[flags].isRunning)
       .forEach((stream) => {
-        stream!.isAutoComplete = true;
+        stream![flags].isAutoComplete = true;
       });
   };
 

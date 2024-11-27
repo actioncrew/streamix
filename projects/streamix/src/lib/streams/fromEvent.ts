@@ -1,4 +1,4 @@
-import { createEmission, Stream, Subscription } from '../abstractions';
+import { createEmission, flags, hooks, internals, Stream, Subscription } from '../abstractions';
 import { createStream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
@@ -7,14 +7,14 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
 
   const run = async function(this: Stream<T>): Promise<void> {
     // Clean up the event listener on completion
-    this.onStop.once(() => {
+    this[hooks].onStop.once(() => {
       target.removeEventListener(eventName, listener);
     });
 
     // Wait for completion
-    await this.awaitCompletion();
-    this.onComplete.once(() => {
-      this.isAutoComplete = true;
+    await this[internals].awaitCompletion();
+    this[hooks].onComplete.once(() => {
+      this[flags].isAutoComplete = true;
     });
   };
 
@@ -25,7 +25,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
   stream.subscribe = function(this: Stream<T>, params?: any): Subscription {
     if (!listener) {
       listener = async (event: Event) => {
-        if (this.isRunning) {
+        if (this[flags].isRunning) {
           // Emit the event to the stream
           eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event }), source: this }, type: 'emission' });
         }

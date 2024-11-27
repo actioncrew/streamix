@@ -1,4 +1,4 @@
-import { eventBus } from '../abstractions';
+import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
 import { createSubject } from '../streams';
@@ -18,8 +18,8 @@ export const fork = <T = any, R = T>(
 
   const init = (stream: Subscribable) => {
     input = stream;
-    input.onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output.onStop.once(finalize);
+    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onStop.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
@@ -51,9 +51,9 @@ export const fork = <T = any, R = T>(
 
       if (innerStream) {
         // Immediately set up listeners on the new inner stream
-        innerStream.onError.once(({ error }: any) => handleStreamError(emission, error));
+        innerStream[hooks].onError.once(({ error }: any) => handleStreamError(emission, error));
 
-        innerStream.onStop.once(() => completeInnerStream(emission, subscription!));
+        innerStream[hooks].onStop.once(() => completeInnerStream(emission, subscription!));
 
         subscription = innerStream.subscribe((value) => handleInnerEmission(value));
       }
@@ -89,7 +89,7 @@ export const fork = <T = any, R = T>(
   };
 
   const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
-    streams.filter(stream => stream && stream.isRunning).forEach(stream => { stream!.isAutoComplete = true; });
+    streams.filter(stream => stream && stream[flags].isRunning).forEach(stream => { stream![flags].isAutoComplete = true; });
   };
 
   const operator = createOperator(handle) as any;

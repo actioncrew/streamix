@@ -1,5 +1,5 @@
 
-import { createEmission, createStream, Stream, Subscribable } from '../abstractions';
+import { createEmission, createStream, flags, hooks, internals, Stream, Subscribable } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
@@ -7,21 +7,21 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
 
     // Check if all sources are completed
-    stream.onComplete.once(() => {
-      if (!stream.shouldComplete() && sources.every(source => source.shouldComplete())) {
-        stream.isAutoComplete = true;
+    stream[hooks].onComplete.once(() => {
+      if (!stream[internals].shouldComplete() && sources.every(source => source[internals].shouldComplete())) {
+        stream[flags].isAutoComplete = true;
       }
     });
 
     const handleEmissionFn = async (value: T) => {
-      if (!this.shouldComplete()) {
+      if (!this[internals].shouldComplete()) {
         eventBus.enqueue({ target: this, payload: { emission: createEmission({ value }), source: this }, type: 'emission' });
       }
     };
 
     const emissionPromises = sources.map((source, index) => {
       return new Promise<void>(async (resolve) => {
-        await source.awaitCompletion();
+        await source[internals].awaitCompletion();
         subscriptions[index].unsubscribe();
         resolve(); // Resolve when source completes
       });
@@ -33,7 +33,7 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
     // Wait for all sources to complete
     await Promise.race([
       Promise.all(emissionPromises),
-      stream.awaitCompletion(),
+      stream[internals].awaitCompletion(),
     ]);
   });
 

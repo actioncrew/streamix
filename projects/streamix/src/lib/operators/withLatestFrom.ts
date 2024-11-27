@@ -1,4 +1,5 @@
-import { createOperator, Emission, Operator, Stream, Subscribable, Subscription } from '../abstractions';
+import { flags } from './../abstractions/subscribable';
+import { createOperator, Emission, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export const withLatestFrom = (...streams: Subscribable[]): Operator => {
@@ -31,7 +32,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
     };
 
     // Cleanup on stream termination
-    stream.onStop.once(finalize);
+    stream[hooks].onStop.once(finalize);
   };
 
   // Cleanup all subscriptions
@@ -43,8 +44,8 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
 
   // Handle emissions by combining the latest values from all streams
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
-    if (stream.shouldComplete()) {
-      await Promise.all(streams.map(source => source.isStopRequested = true));
+    if (stream[internals].shouldComplete()) {
+      await Promise.all(streams.map(source => source[flags].isStopRequested = true));
     }
 
     // Wait for all latest values to be available
@@ -52,8 +53,8 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
 
     // Monitor for any stream or main stream completion
     const terminationPromises = Promise.race([
-      stream.awaitCompletion(),
-      ...streams.map(source => source.awaitCompletion()),
+      stream[internals].awaitCompletion(),
+      ...streams.map(source => source[internals].awaitCompletion()),
     ]);
 
     await Promise.race([latestValuesPromise, terminationPromises]);

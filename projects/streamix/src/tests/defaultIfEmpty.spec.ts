@@ -1,4 +1,4 @@
-import { concatMap, createSubject, defaultIfEmpty, EMPTY, of } from '../lib';
+import { concatMap, createSubject, defaultIfEmpty, EMPTY, internals, of } from '../lib';
 
 describe('DefaultIfEmptyOperator', () => {
   test('should emit the default value if no values are emitted', (done) => {
@@ -15,7 +15,7 @@ describe('DefaultIfEmptyOperator', () => {
       }
     });
 
-    processedStream.complete();
+    processedStream[internals].complete();
   });
 
   test('should not emit the default value if values are emitted', (done) => {
@@ -34,7 +34,7 @@ describe('DefaultIfEmptyOperator', () => {
 
     stream.next('Value 1');
     stream.next('Value 2');
-    processedStream.complete();
+    processedStream[internals].complete();
   });
 
   test('should emit default value when one operator returns EMPTY', (done) => {
@@ -56,7 +56,7 @@ describe('DefaultIfEmptyOperator', () => {
     });
 
     stream.next('value 1');
-    processedStream.complete();
+    processedStream[internals].complete();
   });
 
   test('should not emit default value if values are emitted before', (done) => {
@@ -80,6 +80,6 @@ describe('DefaultIfEmptyOperator', () => {
     stream.next('Value 1');
     stream.next('Value 2');
 
-    processedStream.complete();
+    processedStream[internals].complete();
   });
 });

@@ -1,4 +1,4 @@
-import { Emission, Subscribable, Stream, createOperator, Operator, createEmission } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator, createEmission, hooks } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export const defaultIfEmpty = (defaultValue: any): Operator => {
@@ -7,7 +7,7 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
 
   const init = (stream: Stream) => {
     boundStream = stream;
-    boundStream.onComplete.chain(callback); // Chain the callback to be triggered on stream completion
+    boundStream[hooks].onComplete.chain(callback); // Chain the callback to be triggered on stream completion
   };
 
   const callback = async (): Promise<void> => {

@@ -1,4 +1,4 @@
-import { createEmission, createStream, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, hooks, internals, Stream, Subscribable, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
@@ -19,8 +19,8 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
 
     try {
       subscription = currentSource.subscribe(value => handleEmissionFn(value)); // Start the current source
-      currentSource.onComplete.once(() => subscription?.unsubscribe());
-      await currentSource.awaitCompletion(); // Wait for the current source to complete
+      currentSource[hooks].onComplete.once(() => subscription?.unsubscribe());
+      await currentSource[internals].awaitCompletion(); // Wait for the current source to complete
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { emission: createEmission({ error, failed: true }), source: stream }, type: 'emission' });
     }

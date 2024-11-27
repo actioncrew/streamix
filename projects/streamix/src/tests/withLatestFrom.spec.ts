@@ -1,4 +1,4 @@
-import { Emission, from, Stream, withLatestFrom } from '../lib';
+import { Emission, from, internals, Stream, withLatestFrom } from '../lib';
 
 describe('withLatestFrom operator', () => {
   it('should combine emissions with latest value from other stream', (done) => {
@@ -63,6 +63,6 @@ describe('withLatestFrom operator', () => {
       }
     });
 
-    combinedStream.complete();
+    combinedStream[internals].complete();
   });
 });

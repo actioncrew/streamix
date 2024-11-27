@@ -1,4 +1,4 @@
-import { fromPromise } from '../lib';
+import { fromPromise, internals } from '../lib';
 
 describe('FromPromiseStream', () => {
   it('should emit value from resolved promise', (done) => {
@@ -7,13 +7,12 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    stream.subscribe((value) => {
-      emittedValues.push(value);
-    });
-
-    stream.onStop.once(() => {
-      expect(emittedValues).toEqual([value]);
-      done();
+    stream.subscribe({
+      next: (value) => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual([value]);
+        done();
+      }
     })
   });
 
@@ -23,13 +22,12 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     let completed = false;
-    stream.subscribe(() => {
-      completed = true;
-    });
-
-    stream.onStop.once(() => {
-      expect(completed).toBe(true);
-      done();
+    stream.subscribe({
+      next: () => completed = true,
+      complete: () => {
+        expect(completed).toBe(true);
+        done();
+      }
     });
   });
 
@@ -75,7 +73,7 @@ describe('FromPromiseStream', () => {
       emittedValues.push(value);
     });
 
-    stream.complete(); // Cancel before running
+    stream[internals].complete(); // Cancel before running
 
     expect(emittedValues).toEqual([]);
   });
