@@ -115,57 +115,70 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     return createPipeline<T>(pipeline).bindOperators(...ops);
   };
 
-  const subscribe = (callbackOrReceiver?:((value: T) => void) | Receiver<T>): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    // Convert callback to Receiver if needed
+    const receiver: Receiver<T> =
+      typeof callbackOrReceiver === 'function'
+        ? { next: callbackOrReceiver }
+        : callbackOrReceiver || {};
+
+    // Chain the `complete` method to the `onStop` hook, if present
+    if (receiver.complete) {
+      pipeline.onStop.chain(receiver, receiver.complete);
+    }
+
+    // Bound callback to handle emissions
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
 
-      if (isReceiver(callbackOrReceiver)) {
-        // Handle as a Receiver
-        try {
-          pipeline.onStop.chain(callbackOrReceiver, callbackOrReceiver.complete);
-
-          if (emission.failed && callbackOrReceiver.error) {
-            callbackOrReceiver.error(emission.error);
-          } else {
-            callbackOrReceiver.next(emission.value);
-          }
-        } catch (err) {
-          // Catch unexpected errors in Receiver methods
-          console.error('Error in Receiver callback:', err);
+      try {
+        if (emission.failed && receiver.error) {
+          receiver.error(emission.error);
+        } else if (receiver.next) {
+          receiver.next(emission.value);
         }
-      } else if (callbackOrReceiver instanceof Function) {
-        // Handle as a simple callback
-        return Promise.resolve(callbackOrReceiver(emission.value));
+      } catch (err) {
+        console.error('Error in Receiver callback:', err);
       }
 
       return Promise.resolve();
     };
 
+    // Chain the callback to handle emissions
     onEmission.chain(pipeline, boundCallback);
 
-    if(getFirstChunk().value !== undefined) {
+    // If the first chunk has a defined value, emit it after pipeline starts
+    const firstChunk = getFirstChunk();
+    if (firstChunk.value !== undefined) {
       pipeline.awaitStart().then(() => {
-        getFirstChunk().onEmission.parallel({emission: createEmission({ value: getFirstChunk().value }), source: getFirstChunk() });
+        firstChunk.onEmission.parallel({
+          emission: createEmission({ value: firstChunk.value }),
+          source: firstChunk,
+        });
       });
     }
 
-    for (let i = 0; i < chunks.length; i++) {
-      subscriptions.push(chunks[i].subscribe());
-    }
+    // Subscribe to all chunks and track subscriptions
+    const subscriptions: Subscription[] = chunks.map((chunk) => chunk.subscribe());
 
+    // Define the subscription object
     const subscription: any = () => currentValue;
+
+    // Unsubscribe logic
     subscription.unsubscribe = () => {
       complete().then(() => {
-        subscriptions.forEach((subscription) => subscription.unsubscribe());
-        if(isReceiver(callbackOrReceiver)) {
-          pipeline.onStop.chain(callbackOrReceiver, callbackOrReceiver.complete);
+        subscriptions.forEach((sub) => sub.unsubscribe());
+        if (receiver.complete) {
+          pipeline.onStop.remove(receiver, receiver.complete);
         }
         onEmission.remove(pipeline, boundCallback);
       });
-    }
+    };
 
-    subscription.started = Promise.all(subscriptions.map(subscription => subscription.started));
-    subscription.completed = Promise.all(subscriptions.map(subscription => subscription.completed));
+    // Combine `started` and `completed` promises for all chunk subscriptions
+    subscription.started = Promise.all(subscriptions.map((sub) => sub.started));
+    subscription.completed = Promise.all(subscriptions.map((sub) => sub.completed));
+
     return subscription as Subscription;
   };
 
