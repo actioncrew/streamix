@@ -11,10 +11,6 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
 
     let done = false;
 
-    this[hooks].onComplete.once(() => {
-      this[flags].isAutoComplete = true;
-    });
-
     while (!done && !this[internals].shouldComplete()) {
       let result;
 
@@ -33,6 +29,11 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
         eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
       }
     }
+
+    if (!this[flags].isStopRequested) {
+      this[flags].isAutoComplete = true;
+    }
+
   });
 
   stream.name = "from";
