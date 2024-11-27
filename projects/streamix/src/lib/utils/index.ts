@@ -4,4 +4,3 @@ export * from './hook';
 export * from './lock';
 export * from './awaitable';
 export * from './semaphore';
-export * from './value';
