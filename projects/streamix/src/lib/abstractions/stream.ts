@@ -182,7 +182,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
-        stream[internals].complete().then(() => {
+        stream.complete().then(() => {
           if (receiver.complete) {
             stream[hooks].onStop.remove(receiver, receiver.complete);
           }
@@ -214,6 +214,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     subscribe,
     pipe,
     run,
+    complete,
     emissionCounter,
     get value() {
       return currentValue;
@@ -226,7 +227,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       emit,
       awaitStart,
       awaitCompletion,
-      complete,
       shouldComplete,
     },
 

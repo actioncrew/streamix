@@ -41,10 +41,10 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
 
   const subscriptions = sources.map((source, index) => source.subscribe((value) => handlers[index](value)));
 
-  const originalComplete = stream[internals].complete.bind(stream);
-  stream[internals].complete = async function(): Promise<void> {
+  const originalComplete = stream.complete.bind(stream);
+  stream.complete = async function(): Promise<void> {
     sources.forEach((source, index) => {
-      source[internals].complete();
+      source.complete();
       subscriptions[index].unsubscribe();
     });
     return originalComplete();

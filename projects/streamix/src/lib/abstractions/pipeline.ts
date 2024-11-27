@@ -72,7 +72,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
         });
 
         lastChunk[hooks].onStop.once(() => {
-          sourceSubject[internals].complete(); subscription.unsubscribe();
+          sourceSubject.complete(); subscription.unsubscribe();
         });
         // Create a new chunk using the source subject
         chunk = sourceSubject;
@@ -204,7 +204,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     });
 
     // Mark the first chunk as requested to stop
-    await chunks[0][internals].complete();
+    await chunks[0].complete();
 
     // Wait for all chunks to finish processing
     await Promise.all(chunkPromises);
@@ -218,6 +218,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     operators,
     emissionCounter: getLastChunk().emissionCounter,
     pipe,
+    complete,
     subscribe,
     get value() {
       return currentValue;
@@ -228,7 +229,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       awaitStart: () => getLastChunk()[internals].awaitStart(),
       shouldComplete: () => getLastChunk()[internals].shouldComplete(),
       awaitCompletion: () => getLastChunk()[internals].awaitCompletion(),
-      complete,
     },
 
     [flags]: {

@@ -9,7 +9,7 @@ export const takeWhile = (predicate: (value: any, index?: number) => boolean): O
 
     if (!shouldContinue) {
       emission.phantom = true; // Mark emission as phantom
-      stream[internals].complete(); // Complete the stream if the condition fails
+      stream.complete(); // Complete the stream if the condition fails
       return emission;
     }
 

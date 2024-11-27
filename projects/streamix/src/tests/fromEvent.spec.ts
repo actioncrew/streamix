@@ -22,6 +22,6 @@ describe('fromEvent function', () => {
     // Simulate click events
     element.click();
     element.click();
-    stream[internals].complete();
+    stream.complete();
   });
 });

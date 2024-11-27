@@ -14,7 +14,7 @@ export function createSubject<T = any>(): Subject<T> {
     await stream[internals].awaitCompletion();
   }) as any;
 
-  stream.complete = stream[internals].complete;
+  stream.complete = stream.complete;
 
   stream.next = function (this: Stream, value?: T): Emission {
     const emission = createEmission({ value });

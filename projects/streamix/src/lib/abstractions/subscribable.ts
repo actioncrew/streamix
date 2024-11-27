@@ -11,6 +11,8 @@ export interface Subscribable<T = any> {
   subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
   pipe(...operators: Operator[]): Pipeline<T>;
 
+  complete(): Promise<void>;
+
   value: T | undefined;
 
   [flags]: SubscribableFlags;
@@ -40,5 +42,4 @@ export interface SubscribableInternals {
   awaitStart(): Promise<void>;
   shouldComplete(): boolean;
   awaitCompletion(): Promise<void>;
-  complete(): Promise<void>;
 }
