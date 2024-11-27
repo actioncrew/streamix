@@ -4,13 +4,10 @@ import { eventBus } from '../abstractions';
 export function of<T = any>(value: T): Stream<T> {
   // Create the custom run function for the OfStream
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
-    this[hooks].onComplete.once(() => {
-      this[flags].isAutoComplete = true;
-    })
-
     try {
       if (!this[internals].shouldComplete()) {
         eventBus.enqueue({ target: this, payload: { emission: createEmission({ value }), source: this }, type: 'emission' });
+        this[flags].isAutoComplete = true;
       }
     } catch (error) {
       eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });

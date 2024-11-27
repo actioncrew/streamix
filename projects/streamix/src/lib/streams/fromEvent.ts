@@ -11,11 +11,12 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
       target.removeEventListener(eventName, listener);
     });
 
-    // Wait for completion
-    await this[internals].awaitCompletion();
     this[hooks].onComplete.once(() => {
       this[flags].isAutoComplete = true;
     });
+
+    // Wait for completion
+    await this[internals].awaitCompletion();
   };
 
   // Create the stream using createStream

@@ -44,7 +44,6 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
   const originalComplete = stream.complete.bind(stream);
   stream.complete = async function(): Promise<void> {
     sources.forEach((source, index) => {
-      source.complete();
       subscriptions[index].unsubscribe();
     });
     return originalComplete();
