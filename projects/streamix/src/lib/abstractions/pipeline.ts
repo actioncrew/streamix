@@ -196,7 +196,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     name: getFirstChunk().name!,
     chunks,
     operators,
-    emissionCounter: getLastChunk().emissionCouter,
+    emissionCounter: getLastChunk().emissionCounter,
     bindOperators,
     pipe,
     subscribe,
