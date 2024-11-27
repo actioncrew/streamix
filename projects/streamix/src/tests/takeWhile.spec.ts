@@ -9,13 +9,12 @@ describe('takeWhile operator', () => {
 
     let results: any[] = [];
 
-    takenWhileStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenWhileStream.onStop.once(() => {
-      expect(results).toEqual([1, 2, 3]); // Should emit values until predicate returns false
-      done();
+    takenWhileStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([1, 2, 3]); // Should emit values until predicate returns false
+        done();
+      }
     });
   });
 
@@ -27,13 +26,12 @@ describe('takeWhile operator', () => {
 
     let results: any[] = [];
 
-    takenWhileStream.subscribe((value) => {
-      results.push(value);
-    });
-
-    takenWhileStream.onStop.once(() => {
-      expect(results).toEqual([]); // Should not emit any values from an empty stream
-      done();
+    takenWhileStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([]); // Should not emit any values from an empty stream
+        done();
+      }
     });
   });
 

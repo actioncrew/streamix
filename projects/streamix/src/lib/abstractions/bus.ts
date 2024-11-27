@@ -1,5 +1,6 @@
 import { createLock, createSemaphore } from '../utils';
 import { createEmission, Emission } from './emission';
+import { flags, hooks } from './subscribable';
 
 export const eventBus = createBus() as Bus;
 eventBus.run();
@@ -44,10 +45,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
          // Process the event here (you can call your handler based on event type)
           switch(event.type) {
             case 'start':
-              await event.target.onStart.parallel(event.payload); break;
+              await event.target[hooks].onStart.parallel(event.payload); break;
             case 'stop':
               if (!pendingEmissions.has(event.target)) {
-                await event.target.onStop.parallel(event.payload); break;
+                await event.target[hooks].onStop.parallel(event.payload); break;
               } else {
                 stopMarkers.set(event.target, event.payload);
               }
@@ -56,12 +57,12 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               let emission = event.payload?.emission ?? createEmission({});
               let target = event.target;
 
-              if(target.isStopRequested && completeMarkers.has(target)) {
+              if(target[flags].isStopRequested && completeMarkers.has(target)) {
                 emission.phantom = true;
                 emission.ancestor?.finalize();
               } else {
                 target.emissionCounter++;
-                await target.onEmission.parallel(event.payload);
+                await target[hooks].onEmission.parallel(event.payload);
               }
 
               if(pendingEmissions.has(target)) {
@@ -89,13 +90,13 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                     if(completeMarkers.has(target)) {
                       const payload = completeMarkers.get(target);
                       completeMarkers.delete(target);
-                      await target.onComplete.parallel(payload);
+                      await target[hooks].onComplete.parallel(payload);
                     }
 
                     if(stopMarkers.has(target)) {
                       const payload = stopMarkers.get(target);
                       stopMarkers.delete(target);
-                      await target.onStop.parallel(payload);
+                      await target[hooks].onStop.parallel(payload);
                     }
                   }
                 });
@@ -103,13 +104,13 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               break;
             case 'complete':
               if (!pendingEmissions.has(event.target)) {
-                await event.target.onComplete.parallel(event.payload);
+                await event.target[hooks].onComplete.parallel(event.payload);
               } else {
                 completeMarkers.set(event.target, true);
               }
               break;
             case 'error':
-              await event.target.onError.parallel(event.payload); break;
+              await event.target[hooks].onError.parallel(event.payload); break;
           }
 
           // Move head forward in the buffer and reduce the available item count

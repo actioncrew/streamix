@@ -1,4 +1,4 @@
-import { createOperator, Operator, Subscribable } from '../abstractions';
+import { createOperator, internals, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const takeWhile = (predicate: (value: any, index?: number) => boolean): Operator => {
@@ -9,7 +9,7 @@ export const takeWhile = (predicate: (value: any, index?: number) => boolean): O
 
     if (!shouldContinue) {
       emission.phantom = true; // Mark emission as phantom
-      stream.complete(); // Complete the stream if the condition fails
+      stream[internals].complete(); // Complete the stream if the condition fails
       return emission;
     }
 

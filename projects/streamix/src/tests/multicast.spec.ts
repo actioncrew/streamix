@@ -1,4 +1,4 @@
-import { from, map, multicast } from '../lib'; // Adjust the import path as needed
+import { from, hooks, map, multicast } from '../lib'; // Adjust the import path as needed
 
 describe('multicast', () => {
   test('should multicast values to multiple subscribers', (done) => {
@@ -10,7 +10,7 @@ describe('multicast', () => {
     multicastPipeline.subscribe(value => values.push(value));
     multicastPipeline.subscribe(value => values.push(value));
 
-    multicastPipeline.onStop.once(() => {
+    multicastPipeline[hooks].onStop.once(() => {
       expect(values).toEqual([2, 2, 3, 3, 4, 4]);
       done();
     })
@@ -25,7 +25,7 @@ describe('multicast', () => {
     multicastPipeline.subscribe((value) => values.push(value as number));
     multicastPipeline.subscribe(value => values.push(value as number));
 
-    multicastPipeline.onStop.once(() => {
+    multicastPipeline[hooks].onStop.once(() => {
       expect(source).toHaveBeenCalledTimes(1); // The source should be called only once
       expect(values).toEqual([2, 2, 3, 3, 4, 4]);
       done();

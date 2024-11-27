@@ -1,4 +1,4 @@
-import { createEmission, createStream, Stream, Subscribable } from '../abstractions';
+import { createEmission, createStream, flags, hooks, internals, Stream, Subscribable } from '../abstractions';
 import { catchAny } from '../utils'; // Ensure catchAny is imported from the correct location
 import { eventBus } from '../abstractions';
 
@@ -8,13 +8,13 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
 
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
 
-    this.onComplete.once(() => {
-      this.isAutoComplete = true;
+    this[hooks].onComplete.once(() => {
+      this[flags].isAutoComplete = true;
     });
 
     const [error] = await catchAny(Promise.race([
-      this.awaitCompletion(),
-      Promise.all(sources.map(source => source.awaitCompletion()))
+      this[internals].awaitCompletion(),
+      Promise.all(sources.map(source => source[internals].awaitCompletion()))
     ]));
 
     if (error) {
@@ -24,7 +24,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
 
   sources.forEach((source, index) => {
     handlers[index] = async (value: T) => {
-      if (stream.shouldComplete()) return;
+      if (stream[internals].shouldComplete()) return;
 
       values[index] = { hasValue: true, value };
 
@@ -41,10 +41,10 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
 
   const subscriptions = sources.map((source, index) => source.subscribe((value) => handlers[index](value)));
 
-  const originalComplete = stream.complete.bind(stream);
-  stream.complete = async function(): Promise<void> {
+  const originalComplete = stream[internals].complete.bind(stream);
+  stream[internals].complete = async function(): Promise<void> {
     sources.forEach((source, index) => {
-      source.complete();
+      source[internals].complete();
       subscriptions[index].unsubscribe();
     });
     return originalComplete();

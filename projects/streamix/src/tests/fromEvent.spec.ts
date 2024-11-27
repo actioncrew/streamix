@@ -1,4 +1,4 @@
-import { fromEvent } from '../lib';
+import { fromEvent, internals } from '../lib';
 
 describe('fromEvent function', () => {
   it('should emit events from the element', (done) => {
@@ -22,6 +22,6 @@ describe('fromEvent function', () => {
     // Simulate click events
     element.click();
     element.click();
-    stream.complete();
+    stream[internals].complete();
   });
 });

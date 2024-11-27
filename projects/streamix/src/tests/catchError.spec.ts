@@ -1,4 +1,4 @@
-import { catchError, createSubject, map, Stream, Subject } from '../lib';
+import { catchError, createSubject, internals, map, Stream, Subject } from '../lib';
 
 describe('CatchErrorOperator Functional Test', () => {
   let subject: Subject;
@@ -23,7 +23,7 @@ describe('CatchErrorOperator Functional Test', () => {
     });
 
     subject.next(1);
-    streamWithCatchError.complete();
+    streamWithCatchError[internals].complete();
   });
 
   it('should propagate errors if catchError is not present', (done) => {
@@ -40,6 +40,6 @@ describe('CatchErrorOperator Functional Test', () => {
     });
 
     subject.next(1);
-    streamWithCatchError.complete();
+    streamWithCatchError[internals].complete();
   });
 });

@@ -1,4 +1,4 @@
-import { createStream, Subscribable, Stream, createEmission, Subscription } from '../abstractions';
+import { createStream, Subscribable, Stream, createEmission, Subscription, hooks, flags, internals } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
@@ -14,12 +14,12 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       // Start the inner stream
       subscription = innerStream.subscribe(value => handleEmission(this, value));
 
-      innerStream.onComplete.once(async () => {
-        this.isAutoComplete = true;
+      innerStream[hooks].onComplete.once(async () => {
+        this[flags].isAutoComplete = true;
         await cleanupInnerStream();
       });
 
-      await this.awaitCompletion();
+      await this[internals].awaitCompletion();
     } catch (error) {
       eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
     }
@@ -33,15 +33,15 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   // Clean up the inner stream when complete
   const cleanupInnerStream = async (): Promise<void> => {
     if (innerStream) {
-      innerStream.isAutoComplete = true;
+      innerStream[flags].isAutoComplete = true;
       subscription?.unsubscribe();
       innerStream = undefined;
     }
   };
 
   // Override the complete method to ensure cleanup
-  const originalComplete = stream.complete.bind(stream);
-  stream.complete = async (): Promise<void> => {
+  const originalComplete = stream[internals].complete.bind(stream);
+  stream[internals].complete = async (): Promise<void> => {
     await cleanupInnerStream();
     return originalComplete();
   };

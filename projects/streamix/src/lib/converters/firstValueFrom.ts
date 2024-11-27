@@ -1,4 +1,4 @@
-import { Subscribable } from '../abstractions/subscribable';
+import { hooks, Subscribable } from '../abstractions/subscribable';
 
 export function firstValueFrom(stream: Subscribable): Promise<any> {
   return new Promise<any>((resolve, reject) => {
@@ -7,18 +7,18 @@ export function firstValueFrom(stream: Subscribable): Promise<any> {
     const emissionHandler = async ({ emission }: any) => {
       if (!hasEmitted) {
         hasEmitted = true;
-        stream.onEmission.remove(emissionHandler);
+        stream[hooks].onEmission.remove(emissionHandler);
         resolve(emission.value);
       }
     };
 
     try {
       // Chain the emission handler to capture the first emission
-      stream.onEmission.chain(emissionHandler);
+      stream[hooks].onEmission.chain(emissionHandler);
 
       // Set up onStop handler to clean up and reject if no emission occurred
-      stream.onStop.once(() => {
-        stream.onEmission.remove(emissionHandler);
+      stream[hooks].onStop.once(() => {
+        stream[hooks].onEmission.remove(emissionHandler);
 
         if (!hasEmitted) {
           reject("Subscribable has not emitted any value.");

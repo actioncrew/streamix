@@ -1,4 +1,4 @@
-import { createEmission, createStream, defer, Emission, eventBus, Stream } from '../lib';
+import { createEmission, createStream, defer, Emission, eventBus, flags, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(emissions: Emission[], completed = false, failed = false, error?: Error): Stream {
@@ -11,12 +11,12 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
     }
 
     for (const emission of emissions) {
-      if (stream.isStopRequested) return; // Exit if stop is requested
+      if (stream[flags].isStopRequested) return; // Exit if stop is requested
       eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
     }
 
     if (completed) {
-      stream.isAutoComplete = true; // Set auto-completion flag
+      stream[flags].isAutoComplete = true; // Set auto-completion flag
     }
   });
 

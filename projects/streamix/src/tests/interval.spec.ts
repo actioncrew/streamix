@@ -1,4 +1,4 @@
-import { interval } from '../lib';
+import { internals, interval } from '../lib';
 
 describe('IntervalStream', () => {
   it('should emit values at specified interval', async () => {
@@ -48,7 +48,7 @@ describe('IntervalStream', () => {
       emittedValues.push(value);
     });
 
-    intervalStream.complete();
+    intervalStream[internals].complete();
 
     const previousLength = emittedValues.length;
     await new Promise((resolve) => setTimeout(resolve, intervalMs * 2)); // Wait for potential additional emissions

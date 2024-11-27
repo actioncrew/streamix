@@ -1,4 +1,4 @@
-import { createEmission, Emission } from '../abstractions';
+import { createEmission, Emission, flags, internals } from '../abstractions';
 import { createStream, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
@@ -11,7 +11,7 @@ export function loop<T>(
 
   // Create the stream with a custom run function
   const stream = createStream<T>(async function(this: Stream<T>) {
-    while (condition(currentValue) && !this.shouldComplete()) {
+    while (condition(currentValue) && !this[internals].shouldComplete()) {
       const emission = createEmission({ value: currentValue }) as Emission;
 
       // Emit the current value
@@ -22,8 +22,8 @@ export function loop<T>(
     }
 
     // If the condition fails, complete the stream
-    if (!this.shouldComplete()) {
-      this.isAutoComplete = true;
+    if (!this[internals].shouldComplete()) {
+      this[flags].isAutoComplete = true;
     }
   });
 
