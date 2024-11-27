@@ -34,13 +34,11 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
 
     // Subscribe to the new inner stream
     if (currentInnerStream) {
-      currentSubscription = currentInnerStream.subscribe((value) => handleInnerEmission(emission, value));
-
-      // Handle errors from the inner stream
-      currentInnerStream[hooks].onError.once(({ error }: any) => handleStreamError(emission, error));
-
-      // Complete the inner stream when it stops
-      currentInnerStream[hooks].onStop.once(() => stopCurrentInnerStream(emission));
+      currentSubscription = currentInnerStream.subscribe({
+        next: (value) => handleInnerEmission(emission, value),
+        error: (err) => handleStreamError(emission, err),
+        complete: () => stopCurrentInnerStream(emission)
+      });
     }
 
     emission.pending = true;
