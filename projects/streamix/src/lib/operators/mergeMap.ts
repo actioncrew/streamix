@@ -90,13 +90,16 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const finalize = () => {
-    if (isFinalizing) { return; }
+    if (isFinalizing) return;
     isFinalizing = true;
 
-    activeInnerStreams.forEach(stream => stream[flags].isAutoComplete = true);
-    activeInnerStreams = [];
-    stopInputStream();
-    stopOutputStream();
+    // Wait for all inner streams and the outer stream to complete
+    Promise.all(processingPromises).finally(() => {
+      activeInnerStreams.forEach((stream) => (stream[flags].isAutoComplete = true));
+      activeInnerStreams = [];
+      stopInputStream();
+      stopOutputStream();
+    });
   };
 
   const stopInputStream = () => {
