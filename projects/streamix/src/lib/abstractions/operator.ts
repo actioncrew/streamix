@@ -1,3 +1,4 @@
+import { internals } from './subscribable';
 import { Stream, Subscribable, Emission } from '../abstractions';
 
 export type HookOperator = {
@@ -41,11 +42,11 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
         if ('stream' in this) {
           chunk.emissionCounter++;
         }
-        
+
         // Handle the emission with the provided handle function
         emission = await handleFn(emission, chunk);
 
-        if(this === chunk.tail && !('stream' in this) && !emission.phantom && !emission.failed) {
+        if (this === chunk[internals].tail && !emission.phantom && !emission.failed && !('stream' in this)) {
           chunk.emissionCounter++;
         }
 
