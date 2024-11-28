@@ -61,7 +61,6 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                 emission.phantom = true;
                 emission.ancestor?.finalize();
               } else {
-                target.emissionCounter++;
                 await target[hooks].onEmission.parallel(event.payload);
               }
 
