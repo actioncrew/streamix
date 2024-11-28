@@ -72,11 +72,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    if(!stream[flags].isRunning && !stream[flags].isStopped) {
+    if (!running && !stopped) {
       await onStart.waitForCompletion();
     }
 
-    if(!stream[flags].isStopped) {
+    if(!stopped) {
       stream[flags].isStopRequested = true;
       await onStop.waitForCompletion();
     }
@@ -284,6 +284,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  stream[hooks].onEmission.chain(stream, stream[internals].emit);
+  onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
 }
