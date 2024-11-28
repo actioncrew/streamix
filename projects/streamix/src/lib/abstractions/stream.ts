@@ -146,11 +146,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
-      stream[hooks].onStop.chain(receiver, receiver.complete);
+      onStop.chain(receiver, receiver.complete);
     }
 
     if (receiver.error) {
-      stream[hooks].onError.chain(receiver, errorCallback);
+      onError.chain(receiver, errorCallback);
     }
 
     // Define the bound callback for handling emissions
@@ -185,13 +185,13 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
-        stream.complete().then(() => {
+        complete().then(() => {
           if (receiver.complete) {
-            stream[hooks].onStop.remove(receiver, receiver.complete);
+            onStop.remove(receiver, receiver.complete);
           }
 
           if (receiver.error) {
-            stream[hooks].onError.remove(receiver, errorCallback);
+            onError.remove(receiver, errorCallback);
           }
           subscribers.remove(boundCallback);
         });
