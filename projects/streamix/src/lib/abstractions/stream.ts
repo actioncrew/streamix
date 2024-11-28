@@ -72,11 +72,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    if(!stream[flags].isRunning && !stream[flags].isStopped) {
+    if(!running && !stopped) {
       await onStart.waitForCompletion();
     }
 
-    if(!stream[flags].isStopped) {
+    if(!stopped) {
       stream[flags].isStopRequested = true;
       await onStop.waitForCompletion();
     }
@@ -87,24 +87,24 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const bindOperators = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
-    stream[internals].head = undefined;
-    stream[internals].tail = undefined;
+    head = undefined; tail = undefined;
 
     newOperators.forEach((operator, index) => {
       operators.push(operator);
 
-      if (!stream[internals].head) {
-        stream[internals].head = operator;
+      if (!head) {
+        head = operator;
       } else {
-        stream[internals].tail!.next = operator;
+        tail!.next = operator;
       }
-      stream[internals].tail = operator;
+      tail = operator;
 
       if ('stream' in operator && index !== newOperators.length - 1) {
         throw new Error('Only the last operator in a stream can contain an outerStream property.');
       }
     });
 
+    stream[internals].head = head; stream[internals].tail = tail;
     return stream;
   };
 
@@ -147,11 +147,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
-      stream[hooks].onStop.chain(receiver, receiver.complete);
+      onStop.chain(receiver, receiver.complete);
     }
 
     if (receiver.error) {
-      stream[hooks].onError.chain(receiver, errorCallback);
+      onError.chain(receiver, errorCallback);
     }
 
     // Define the bound callback for handling emissions
@@ -188,11 +188,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       if (!subscription.unsubscribed) {
         stream.complete().then(() => {
           if (receiver.complete) {
-            stream[hooks].onStop.remove(receiver, receiver.complete);
+            onStop.remove(receiver, receiver.complete);
           }
 
           if (receiver.error) {
-            stream[hooks].onError.remove(receiver, errorCallback);
+            onError.remove(receiver, errorCallback);
           }
           subscribers.remove(boundCallback);
         });
@@ -285,6 +285,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  stream[hooks].onEmission.chain(stream, stream[internals].emit);
+  onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
 }
