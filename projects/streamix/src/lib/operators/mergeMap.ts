@@ -1,4 +1,4 @@
-import { createSubject, Subject } from '../streams';
+import { createSubject, EMPTY, Subject } from '../streams';
 import { Emission, createOperator, Operator, Subscribable, Subscription, hooks, flags } from '../abstractions';
 import { Counter, catchAny, counter } from '../utils';
 import { eventBus } from '../abstractions';
@@ -16,6 +16,12 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
 
   const init = (stream: Subscribable) => {
     input = stream;
+
+    if (input === EMPTY) {
+      // If the input stream is EMPTY, complete immediately
+      output[flags].isAutoComplete = true;
+      return;
+    }
 
     // Finalize when the input or output stream stops
     input[hooks].onStop.once(() => queueMicrotask(() => executionNumber.waitFor(input!.emissionCounter).then(finalize)));
@@ -46,10 +52,10 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     const processingPromise = new Promise<void>((resolve) => {
 
       const handleCompletion = async () => {
+        removeInnerStream(innerStream);
+
         executionNumber.increment();
         emission.finalize();
-
-        removeInnerStream(innerStream);
 
         processingPromises = processingPromises.filter((p) => p !== processingPromise);
         resolve();
@@ -93,13 +99,12 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    // Wait for all inner streams and the outer stream to complete
-    Promise.all(processingPromises).finally(() => {
-      activeInnerStreams.forEach((stream) => (stream[flags].isAutoComplete = true));
-      activeInnerStreams = [];
-      stopInputStream();
-      stopOutputStream();
-    });
+    subscriptions.forEach(subscription => subscription.unsubscribe());
+    subscriptions.length = 0;
+
+    activeInnerStreams = [];
+    stopInputStream();
+    stopOutputStream();
   };
 
   const stopInputStream = () => {

@@ -1,7 +1,7 @@
 import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
-import { createSubject } from '../streams';
+import { createSubject, EMPTY } from '../streams';
 import { Subscription } from '../abstractions';
 
 
@@ -18,6 +18,13 @@ export const fork = <T = any, R = T>(
 
   const init = (stream: Subscribable) => {
     input = stream;
+
+    if (input === EMPTY) {
+      // If the input stream is EMPTY, complete immediately
+      output[flags].isAutoComplete = true;
+      return;
+    }
+
     input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
     output[hooks].onStop.once(finalize);
   };
