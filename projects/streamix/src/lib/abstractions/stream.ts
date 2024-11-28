@@ -87,18 +87,18 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const bindOperators = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
-    stream[internals].head = undefined;
-    stream[internals].tail = undefined;
+    head = undefined;
+    tail = undefined;
 
     newOperators.forEach((operator, index) => {
       operators.push(operator);
 
-      if (!stream[internals].head) {
-        stream[internals].head = operator;
+      if (!head) {
+        head = operator;
       } else {
-        stream[internals].tail!.next = operator;
+        tail!.next = operator;
       }
-      stream[internals].tail = operator;
+      tail = operator;
 
       if ('stream' in operator && index !== newOperators.length - 1) {
         throw new Error('Only the last operator in a stream can contain an outerStream property.');
@@ -110,13 +110,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-
       let next = isStream(source) ? source[internals].head : undefined;
       next = isOperator(source) ? source.next : next;
 
       if (emission.failed) throw emission.error;
 
-      if (next === undefined && !emission.phantom) {
+      if (head === undefined && !emission.phantom) {
         emissionCounter++;
       }
       
