@@ -44,6 +44,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     if (error) {
       eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
       executionNumber.increment();
+      emission.phantom = true;
       return;
     }
 
