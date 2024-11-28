@@ -116,6 +116,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       if (emission.failed) throw emission.error;
 
+      if (next === undefined && !emission.phantom) {
+        emissionCounter++;
+      }
+      
       if (!emission.phantom && !emission.pending) {
         emission = await (next?.process(emission, stream) ?? Promise.resolve(emission));
       }
