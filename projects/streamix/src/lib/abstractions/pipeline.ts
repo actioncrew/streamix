@@ -72,7 +72,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
         });
 
         lastChunk[hooks].onStop.once(() => {
-          sourceSubject.complete(); subscription.unsubscribe();
+          sourceSubject[flags].isAutoComplete = true;
+          subscription.unsubscribe();
         });
         // Create a new chunk using the source subject
         chunk = sourceSubject;
