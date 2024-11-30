@@ -23,7 +23,6 @@ describe('switchMap operator', () => {
 
     const project = (value: number) => {
       const innerStream = createSubject();
-      (innerStream as any).dfjskd = "stream" + value;
       setTimeout(() => innerStream.next(value * 10), 50);   // Emit 10
       setTimeout(() => innerStream.next(value * 100), 150); // Emit 100
       setTimeout(() => innerStream.complete(), 500);        // Complete inner stream
