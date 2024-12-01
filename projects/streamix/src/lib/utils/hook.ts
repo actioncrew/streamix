@@ -151,9 +151,12 @@ export function hook(): Hook {
     contains,
     waitForCompletion,
     get length() {
-      return callbackMap
-        ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0)
-        : 0;
-    },
+      if (!callbackMap) { return 0; }
+      let total = 0;
+      for (const callbacks of callbackMap.values()) {
+        total += callbacks.size;
+      }
+      return total;
+    }
   };
 }
