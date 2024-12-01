@@ -21,9 +21,6 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
 
         // Store each subscription for later cleanup
         subscriptions.push(subscription);
-
-        // Wait until each subscription is started
-        subscription.started?.then(() => console.log(`Stream ${index} started`));
       });
 
       // Wait until all streams are started before running the main stream
