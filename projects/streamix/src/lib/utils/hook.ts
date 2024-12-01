@@ -23,7 +23,7 @@ export function hook(): Hook {
     return callbackMap;
   };
 
-  async function process(params?: any): Promise<void> {
+  async function invoke(params?: any): Promise<void> {
     try {
       if (!callbackMap) return;
       for (const [ownerRef, callbacks] of callbackMap) {
@@ -142,7 +142,7 @@ export function hook(): Hook {
   }
 
   return {
-    invoke: process,
+    invoke,
     parallel,
     chain,
     once,
