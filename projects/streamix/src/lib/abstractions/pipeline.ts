@@ -119,37 +119,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   };
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
-    // Convert callback to Receiver if needed
-    const receiver = createReceiver(callbackOrReceiver);
-    const errorCallback = ({ error }: any) => receiver.error!(error);
-
-    // Chain the `complete` method to the `onStop` hook, if present
-    if (receiver.complete) {
-      pipeline[hooks].onStop.chain(receiver, receiver.complete);
-    }
-
-    if (receiver.error) {
-      pipeline[hooks].onError.chain(receiver, errorCallback);
-    }
-
-    // Bound callback to handle emissions
-    const boundCallback = ({ emission, source }: any) => {
-      currentValue = emission.value;
-
-      try {
-        if (receiver.next) {
-          receiver.next(emission.value);
-        }
-      } catch (err) {
-        console.error('Error in Receiver callback:', err);
-      }
-
-      return Promise.resolve();
-    };
-
-    // Chain the callback to handle emissions
-    onEmission.chain(pipeline, boundCallback);
-
     // If the first chunk has a defined value, emit it after pipeline starts
     const firstChunk = getFirstChunk();
     if (firstChunk.value !== undefined) {
@@ -162,7 +131,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     }
 
     // Define the subscription object
-    const subscription = getLastChunk().subscribe();
+    const subscription = getLastChunk().subscribe(callbackOrReceiver);
 
     if(!getFirstChunk().isRunning) {
       getFirstChunk().isRunning = true;
