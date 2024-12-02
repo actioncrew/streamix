@@ -133,9 +133,13 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     // Define the subscription object
     const subscription = getLastChunk().subscribe(callbackOrReceiver);
 
-    if(!firstChunk.isRunning) {
-      firstChunk.isRunning = true;
-      queueMicrotask(firstChunk.run);
+    // Loop through chunks in reverse order (starting from the last one)
+    for (let i = chunks.length - 2; i >= 0; i--) {
+      const chunk = chunks[i];
+      if(!chunk.isRunning) {
+        chunk.isRunning = true;
+        queueMicrotask(chunk.run);
+      }
     }
 
     return subscription;
