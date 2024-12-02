@@ -1,4 +1,4 @@
-import { createSubject, defer, delay, EMPTY, from, switchMap } from '../lib';
+import { createSubject, delay, EMPTY, from, switchMap } from '../lib';
 
 describe('switchMap operator', () => {
   it('should switch to new inner streams correctly', (done) => {
