@@ -27,13 +27,15 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const onStop = hook();
   const onError = hook();
   const onEmission = hook();
-
+  const subscribers = hook();
+  
   const onStartCallback = (params: any) => onStart.parallel(params);
   const onEmissionCallback = (params: any) => onEmission.parallel(params);
   const onCompleteCallback = (params: any) => onComplete.parallel(params);
   const onStopCallback = (params: any) => onStop.parallel(params);
   const onErrorCallback = (params: any) => onError.parallel(params);
-
+  const subscribersCallback = (params: any) => subscribers.parallel(params);
+  
   if (subscribable.type === 'stream' || subscribable.type === 'subject') {
     const chunk = subscribable as unknown as Stream<T>;
     chunks = [chunk];
@@ -51,7 +53,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     chunks.forEach((c) => c[hooks].onError.remove(pipeline, onErrorCallback));
     getFirstChunk()[hooks].onStart.remove(pipeline, onStartCallback);
-    getLastChunk()[hooks].subscribers.remove(pipeline, onEmissionCallback);
+    getLastChunk()[hooks].subscribers.remove(pipeline, subscribersCallback);
+    getLastChunk()[hooks].onEmission.remove(pipeline, onEmissionCallback);
     getLastChunk()[hooks].onComplete.remove(pipeline, onCompleteCallback);
     getLastChunk()[hooks].onStop.remove(pipeline, onStopCallback);
 
@@ -107,7 +110,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     // Re-bind hooks across chunks
     chunks.forEach((c) => c[hooks].onError.chain(pipeline, onErrorCallback));
     getFirstChunk()[hooks].onStart.chain(pipeline, onStartCallback);
-    getLastChunk()[hooks].subscribers.chain(pipeline, onEmissionCallback);
+    getLastChunk()[hooks].subscribers.chain(pipeline, subscribersCallback);
+    getLastChunk()[hooks].onEmission.chain(pipeline, onEmissionCallback);
     getLastChunk()[hooks].onComplete.chain(pipeline, onCompleteCallback);
     getLastChunk()[hooks].onStop.chain(pipeline, onStopCallback);
 
@@ -132,8 +136,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     // Define the subscription object
     const subscription = getLastChunk().subscribe(callbackOrReceiver);
-
-    let previousPromise = Promise.resolve();
+    let previousPromise = getLastChunk().awaitStart();
 
     // Loop through chunks in reverse order
     for (let i = chunks.length - 2; i >= 0; i--) {
@@ -144,8 +147,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
         // Chain the execution of this chunk to the previous one
         previousPromise = previousPromise
-          .then(() => chunk.awaitStart())
-          .then(() => queueMicrotask(chunk.run));
+          .then(() => queueMicrotask(chunk.run))
+          .then(() => chunk.awaitStart());
       }
     }
     return subscription;
@@ -250,7 +253,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
   chunks.forEach((c) => c[hooks].onError.chain(pipeline, onErrorCallback));
   getFirstChunk()[hooks].onStart.chain(pipeline, onStartCallback);
-  getLastChunk()[hooks].subscribers.chain(pipeline, onEmissionCallback);
+  getLastChunk()[hooks].subscribers.chain(pipeline, subscribersCallback);
+  getLastChunk()[hooks].onEmission.chain(pipeline, onEmissionCallback);
   getLastChunk()[hooks].onComplete.chain(pipeline, onCompleteCallback);
   getLastChunk()[hooks].onStop.chain(pipeline, onStopCallback);
 
