@@ -162,7 +162,14 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     }
 
     // Subscribe to all chunks and track subscriptions
-    const subscriptions: Subscription[] = chunks.map((chunk) => chunk.subscribe());
+    const subscriptions: Subscription[] = [];
+
+    // Loop through chunks in reverse order (starting from the last one)
+    for (let i = chunks.length - 1; i >= 0; i--) {
+      const chunk = chunks[i];
+      const subscription = chunk.subscribe();
+      subscriptions.push(subscription);
+    }
 
     // Define the subscription object
     const subscription: any = () => currentValue;
@@ -227,23 +234,23 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     [internals]: {
       bindOperators,
-      awaitStart: () => getLastChunk()[internals].awaitStart(),
-      shouldComplete: () => getLastChunk()[internals].shouldComplete(),
-      awaitCompletion: () => getLastChunk()[internals].awaitCompletion(),
+      awaitStart: () => getFirstChunk()[internals].awaitStart(),
+      shouldComplete: () => getFirstChunk()[internals].shouldComplete(),
+      awaitCompletion: () => getFirstChunk()[internals].awaitCompletion(),
     },
 
     [flags]: {
       get isAutoComplete() {
-        return getLastChunk()[flags].isAutoComplete;
+        return getFirstChunk()[flags].isAutoComplete;
       },
       set isAutoComplete(value: boolean) {
-        getLastChunk()[flags].isAutoComplete = value;
+        getFirstChunk()[flags].isAutoComplete = value;
       },
       get isStopRequested() {
-        return getLastChunk()[flags].isStopRequested;
+        return getFirstChunk()[flags].isStopRequested;
       },
       set isStopRequested(value: boolean) {
-        getLastChunk()[flags].isStopRequested = value;
+        getFirstChunk()[flags].isStopRequested = value;
       },
       get isStopped() {
         return getLastChunk()[flags].isStopped;
