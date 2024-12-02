@@ -133,9 +133,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     // Define the subscription object
     const subscription = getLastChunk().subscribe(callbackOrReceiver);
 
-    if(!getFirstChunk().isRunning) {
-      getFirstChunk().isRunning = true;
-      queueMicrotask(getFirstChunk().run);
+    if(!firstChunk.isRunning) {
+      firstChunk.isRunning = true;
+      queueMicrotask(firstChunk.run);
     }
 
     return subscription;
