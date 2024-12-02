@@ -161,40 +161,15 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       });
     }
 
-    // Subscribe to all chunks and track subscriptions
-    const subscriptions: Subscription[] = [];
+    // Define the subscription object
+    const subscription = getLastChunk().subscribe();
 
-    // Loop through chunks in reverse order (starting from the last one)
-    for (let i = chunks.length - 1; i >= 0; i--) {
-      const chunk = chunks[i];
-      const subscription = chunk.subscribe();
-      subscriptions.push(subscription);
+    if(!getFirstChunk().isRunning) {
+      getFirstChunk().isRunning = true;
+      queueMicrotask(getFirstChunk().run);
     }
 
-    // Define the subscription object
-    const subscription: any = () => currentValue;
-
-    // Unsubscribe logic
-    subscription.unsubscribe = () => {
-      complete().then(() => {
-        subscriptions.forEach((sub) => sub.unsubscribe());
-        if (receiver.complete) {
-          pipeline[hooks].onStop.remove(receiver, receiver.complete);
-        }
-
-        if (receiver.error) {
-          pipeline[hooks].onError.remove(receiver, errorCallback);
-        }
-
-        onEmission.remove(pipeline, boundCallback);
-      });
-    };
-
-    // Combine `started` and `completed` promises for all chunk subscriptions
-    subscription.started = Promise.all(subscriptions.map((sub) => sub.started));
-    subscription.completed = Promise.all(subscriptions.map((sub) => sub.completed));
-
-    return subscription as Subscription;
+    return subscription;
   };
 
   const complete = async (): Promise<void> => {
