@@ -149,7 +149,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     });
 
     // Mark the first chunk as requested to stop
-    await chunks[0].complete();
+    await getFirstChunk().complete();
 
     // Wait for all chunks to finish processing
     await Promise.all(chunkPromises);
@@ -203,32 +203,21 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     },
 
     [hooks]: {
-      // Getter for onStart hook
       get onStart() {
         return getFirstChunk()[hooks].onStart;
       },
-
-      // Getter for onComplete hook
       get onComplete() {
         return getLastChunk()[hooks].onComplete;
       },
-
-      // Getter for onStop hook
       get onStop() {
         return getLastChunk()[hooks].onStop;
       },
-
-      // Getter for onError hook
       get onError() {
         return onError;
       },
-
-      // Getter for onEmission hook
       get onEmission() {
-        return getLastChunk()[hooks].onEmission;
+        return getLastChunk()[hooks].subscribers;
       },
-
-      // Getter for subscribers hook
       get subscribers() {
         return getLastChunk()[hooks].subscribers;
       }
