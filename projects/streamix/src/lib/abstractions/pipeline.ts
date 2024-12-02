@@ -236,14 +236,26 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       get isAutoComplete() {
         return getLastChunk()[flags].isAutoComplete;
       },
+      set isAutoComplete(value: boolean) {
+        getLastChunk()[flags].isAutoComplete = value;
+      },
       get isStopRequested() {
         return getLastChunk()[flags].isStopRequested;
+      },
+      set isStopRequested(value: boolean) {
+        getLastChunk()[flags].isStopRequested = value;
       },
       get isStopped() {
         return getLastChunk()[flags].isStopped;
       },
+      set isStopped(value: boolean) {
+        getLastChunk()[flags].isStopped = value;
+      },
       get isRunning() {
         return getLastChunk()[flags].isRunning;
+      },
+      set isRunning(value: boolean) {
+        getLastChunk()[flags].isRunning = value;
       }
     },
 
