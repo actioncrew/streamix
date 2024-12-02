@@ -133,15 +133,21 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     // Define the subscription object
     const subscription = getLastChunk().subscribe(callbackOrReceiver);
 
-    // Loop through chunks in reverse order (starting from the last one)
+    let previousPromise = Promise.resolve();
+
+    // Loop through chunks in reverse order
     for (let i = chunks.length - 2; i >= 0; i--) {
       const chunk = chunks[i];
-      if(!chunk.isRunning) {
+
+      if (!chunk.isRunning) {
         chunk.isRunning = true;
-        queueMicrotask(chunk.run);
+
+        // Chain the execution of this chunk to the previous one
+        previousPromise = previousPromise
+          .then(() => chunk.awaitStart())
+          .then(() => queueMicrotask(chunk.run));
       }
     }
-
     return subscription;
   };
 
