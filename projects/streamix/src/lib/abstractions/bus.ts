@@ -99,16 +99,14 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
         });
       }
 
-
       async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
         while (postponedEvents.length > 0) {
           yield postponedEvents.shift()!;
         }
 
-        yield event;
-
         switch (event.type) {
           case 'start':
+            yield event;
             const emissionEvents = (await event.target[hooks].onStart.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
             for (const emissionEvent of emissionEvents) {
               yield* await processEvent(emissionEvent());
@@ -116,6 +114,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             break;
           case 'finalize':
             if (!pendingEmissions.has(event.target)) {
+              yield event;
               const emissionEvents = (await event.target[hooks].finalize.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
               for (const emissionEvent of emissionEvents) {
                 yield* await processEvent(emissionEvent());
@@ -125,6 +124,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             }
             break;
           case 'emission':
+            yield event;
             let emission = event.payload?.emission ?? createEmission({});
             const target = event.target;
 
@@ -144,6 +144,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             break;
           case 'complete':
             if (!pendingEmissions.has(event.target)) {
+              yield event;
               const completeEvents = (await event.target[hooks].onComplete.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
               for (const completeEvent of completeEvents) {
                 yield* await processEvent(completeEvent());
@@ -153,6 +154,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             }
             break;
           case 'error':
+            yield event;
             const errorEvents = (await event.target[hooks].onError.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
             for (const errorEvent of errorEvents) {
               yield* await processEvent(errorEvent());
@@ -162,10 +164,9 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       }
 
       while (true) {
-
         await itemsAvailable.acquire();
-
         const event = buffer[head];
+        
         if (event) {
           // Process the current event
           for await (const current of processEvent(event)) {
