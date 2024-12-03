@@ -1,4 +1,4 @@
-import { createLock, createSemaphore, createQueue, Queue } from '../utils';
+import { createLock, createSemaphore } from '../utils';
 import { createEmission, Emission } from './emission';
 import { flags, hooks } from './subscribable';
 
@@ -48,21 +48,21 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   const lock = createLock();
   const itemsAvailable = createSemaphore(0); // Semaphore for items available in the buffer
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
+  const postponedEvents: Array<BusEvent> = [];
 
   const bus: Bus = {
     async * run(): AsyncGenerator<BusEvent> {
-      async function* trackPendingEmission(target: any, emission: Emission) {
+      function trackPendingEmission(target: any, emission: Emission) {
         const pendingSet = pendingEmissions.get(target) || new Set();
         if (!pendingSet.has(emission)) {
           pendingSet.add(emission);
           pendingEmissions.set(target, pendingSet);
-        }
+        };
 
-        const eventQueue = createQueue<BusEvent>();
-        const addToQueue = (event: BusEvent) => eventQueue.enqueue(event);
+        const addToQueue = (event: BusEvent) => postponedEvents.push(event);
 
         // Process the emission asynchronously in a microtask
-        emission.wait().then(async () => {
+        emission.wait().then(() => {
           pendingSet.delete(emission);
 
           if (pendingSet.size === 0) {
@@ -97,14 +97,14 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             }
           }
         });
-
-        while (true) {
-          const event = await eventQueue.dequeue();
-          yield event;
-        }
       }
 
+
       async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
+        while (postponedEvents.length > 0) {
+          yield postponedEvents.shift()!;
+        }
+
         yield event;
 
         switch (event.type) {
@@ -139,9 +139,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             }
 
             if (emission.pending) {
-              for await (const pendingEvent of trackPendingEmission(target, emission)) { 
-                yield pendingEvent; 
-              }
+              trackPendingEmission(target, emission);
             }
             break;
           case 'complete':
