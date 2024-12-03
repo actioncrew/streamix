@@ -9,7 +9,6 @@ export const eventBus = createBus() as Bus;
   }
 })();
 
-
 export type BusEvent = {
   target: any;
   type: 'emission' | 'start' | 'finalize' | 'complete' | 'error';
