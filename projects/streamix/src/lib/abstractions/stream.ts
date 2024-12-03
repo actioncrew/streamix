@@ -62,7 +62,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
       await onError.waitForCompletion();
     } finally {
-      eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
+      eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
       await finalize.waitForCompletion();
       stopped = true; running = false;
       operators.forEach(operator => operator.cleanup());
