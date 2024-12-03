@@ -16,9 +16,7 @@ export type Stream<T = any> = Subscribable<T> & {
     awaitStart: () => Promise<void>;
   },
 
-  [hooks]: SubscribableHooks & {
-    subscribers: Hook;
-  }
+  [hooks]: SubscribableHooks;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -47,7 +45,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const onStart = hook();
   const onComplete = hook();
-  const onStop = hook();
+  const finalize = hook();
   const onError = hook();
   const onEmission = hook();
   const subscribers = hook();
@@ -64,21 +62,21 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
       await onError.waitForCompletion();
     } finally {
-      eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
-      await onStop.waitForCompletion();
+      eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
+      await finalize.waitForCompletion();
       stopped = true; running = false;
       operators.forEach(operator => operator.cleanup());
     }
   };
 
   const complete = async (): Promise<void> => {
-    if(!stream[flags].isRunning && !stream[flags].isStopped) {
+    if(!running && !stopped) {
       await onStart.waitForCompletion();
     }
 
-    if(!stream[flags].isStopped) {
+    if(!stopped) {
       stream[flags].isStopRequested = true;
-      await onStop.waitForCompletion();
+      await finalize.waitForCompletion();
     }
   };
 
@@ -87,24 +85,24 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const bindOperators = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
-    stream[internals].head = undefined;
-    stream[internals].tail = undefined;
+    head = undefined; tail = undefined;
 
     newOperators.forEach((operator, index) => {
       operators.push(operator);
 
-      if (!stream[internals].head) {
-        stream[internals].head = operator;
+      if (!head) {
+        head = operator;
       } else {
-        stream[internals].tail!.next = operator;
+        tail!.next = operator;
       }
-      stream[internals].tail = operator;
+      tail = operator;
 
       if ('stream' in operator && index !== newOperators.length - 1) {
         throw new Error('Only the last operator in a stream can contain an outerStream property.');
       }
     });
 
+    stream[internals].head = head; stream[internals].tail = tail;
     return stream;
   };
 
@@ -115,6 +113,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       next = isOperator(source) ? source.next : next;
 
       if (emission.failed) throw emission.error;
+
+      if (next === undefined && !emission.phantom && !emission.pending) {
+        emissionCounter++;
+      }
 
       if (!emission.phantom && !emission.pending) {
         emission = await (next?.process(emission, stream) ?? Promise.resolve(emission));
@@ -143,11 +145,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
-      stream[hooks].onStop.chain(receiver, receiver.complete);
+      finalize.chain(receiver, receiver.complete);
     }
 
     if (receiver.error) {
-      stream[hooks].onError.chain(receiver, errorCallback);
+      onError.chain(receiver, errorCallback);
     }
 
     // Define the bound callback for handling emissions
@@ -184,11 +186,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       if (!subscription.unsubscribed) {
         stream.complete().then(() => {
           if (receiver.complete) {
-            stream[hooks].onStop.remove(receiver, receiver.complete);
+            finalize.remove(receiver, receiver.complete);
           }
 
           if (receiver.error) {
-            stream[hooks].onError.remove(receiver, errorCallback);
+            onError.remove(receiver, errorCallback);
           }
           subscribers.remove(boundCallback);
         });
@@ -237,14 +239,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       get onComplete() {
         return onComplete;
       },
-      get onStop() {
-        return onStop;
-      },
       get onError() {
         return onError;
       },
       get onEmission() {
         return onEmission;
+      },
+      get finalize() {
+        return finalize;
       },
       get subscribers() {
         return subscribers;
@@ -281,6 +283,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
   };
 
-  stream[hooks].onEmission.chain(stream, stream[internals].emit);
+  onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
 }

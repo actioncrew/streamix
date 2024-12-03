@@ -24,9 +24,10 @@ export interface Subscribable<T = any> {
 export interface SubscribableHooks {
   onStart: Hook;
   onComplete: Hook;
-  onStop: Hook;
   onError: Hook;
   onEmission: Hook;
+  finalize: Hook;
+  subscribers: Hook;
 }
 
 export interface SubscribableFlags {

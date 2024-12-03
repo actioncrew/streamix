@@ -1,7 +1,7 @@
 import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
-import { createSubject } from '../streams';
+import { createSubject, EMPTY } from '../streams';
 import { Subscription } from '../abstractions';
 import { createEmission } from '../abstractions';
 
@@ -16,8 +16,15 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
 
   const init = (stream: Subscribable) => {
     input = stream;
-    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].onStop.once(finalize);
+
+    if (input === EMPTY) {
+      // If the input stream is EMPTY, complete immediately
+      output[flags].isAutoComplete = true;
+      return;
+    }
+
+    input[hooks].finalize.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].finalize.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
@@ -58,14 +65,15 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const completeInnerStream = async (emission: Emission, subscription: Subscription) => {
+    subscription?.unsubscribe();
     executionCounter.increment();
     emission.finalize();
-    subscription?.unsubscribe();
     await processQueue();
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
     eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
+    emission.phantom = true;
     finalize();
   };
 

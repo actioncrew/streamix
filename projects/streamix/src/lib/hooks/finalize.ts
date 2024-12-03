@@ -6,7 +6,7 @@ export const finalize = (callback: () => void | Promise<void>): Operator => {
   const init = (stream: Stream) => {
     boundStream = stream;
     // Chain the callback to the stream's onStop event
-    boundStream[hooks].onStop.chain(callback);
+    boundStream[hooks].finalize.chain(callback);
   };
 
   const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {

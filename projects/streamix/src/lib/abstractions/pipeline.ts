@@ -22,16 +22,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   let operators: Operator[] = [];
   let currentValue: T | undefined;
 
-  const onStart = hook();
-  const onComplete = hook();
-  const onStop = hook();
   const onError = hook();
-  const onEmission = hook();
 
-  const onStartCallback = (params: any) => onStart.parallel(params);
-  const onEmissionCallback = (params: any) => onEmission.parallel(params);
-  const onCompleteCallback = (params: any) => onComplete.parallel(params);
-  const onStopCallback = (params: any) => onStop.parallel(params);
   const onErrorCallback = (params: any) => onError.parallel(params);
 
   if (subscribable.type === 'stream' || subscribable.type === 'subject') {
@@ -50,10 +42,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const bindOperators = function (...ops: Operator[]): Pipeline<T> {
 
     chunks.forEach((c) => c[hooks].onError.remove(pipeline, onErrorCallback));
-    getFirstChunk()[hooks].onStart.remove(pipeline, onStartCallback);
-    getLastChunk()[hooks].subscribers.remove(pipeline, onEmissionCallback);
-    getLastChunk()[hooks].onComplete.remove(pipeline, onCompleteCallback);
-    getLastChunk()[hooks].onStop.remove(pipeline, onStopCallback);
 
     let chunk: Stream<T>;
 
@@ -71,8 +59,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
           sourceSubject.next(value);
         });
 
-        lastChunk[hooks].onStop.once(() => {
-          sourceSubject.complete(); subscription.unsubscribe();
+        lastChunk[hooks].finalize.once(() => {
+          sourceSubject[flags].isAutoComplete = true;
+          subscription.unsubscribe();
         });
         // Create a new chunk using the source subject
         chunk = sourceSubject;
@@ -105,10 +94,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     // Re-bind hooks across chunks
     chunks.forEach((c) => c[hooks].onError.chain(pipeline, onErrorCallback));
-    getFirstChunk()[hooks].onStart.chain(pipeline, onStartCallback);
-    getLastChunk()[hooks].subscribers.chain(pipeline, onEmissionCallback);
-    getLastChunk()[hooks].onComplete.chain(pipeline, onCompleteCallback);
-    getLastChunk()[hooks].onStop.chain(pipeline, onStopCallback);
 
     return pipeline;  // Return `this` to allow chaining
   };
@@ -118,37 +103,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   };
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
-    // Convert callback to Receiver if needed
-    const receiver = createReceiver(callbackOrReceiver);
-    const errorCallback = ({ error }: any) => receiver.error!(error);
-
-    // Chain the `complete` method to the `onStop` hook, if present
-    if (receiver.complete) {
-      pipeline[hooks].onStop.chain(receiver, receiver.complete);
-    }
-
-    if (receiver.error) {
-      pipeline[hooks].onError.chain(receiver, errorCallback);
-    }
-
-    // Bound callback to handle emissions
-    const boundCallback = ({ emission, source }: any) => {
-      currentValue = emission.value;
-
-      try {
-        if (receiver.next) {
-          receiver.next(emission.value);
-        }
-      } catch (err) {
-        console.error('Error in Receiver callback:', err);
-      }
-
-      return Promise.resolve();
-    };
-
-    // Chain the callback to handle emissions
-    onEmission.chain(pipeline, boundCallback);
-
     // If the first chunk has a defined value, emit it after pipeline starts
     const firstChunk = getFirstChunk();
     if (firstChunk.value !== undefined) {
@@ -160,33 +114,24 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       });
     }
 
-    // Subscribe to all chunks and track subscriptions
-    const subscriptions: Subscription[] = chunks.map((chunk) => chunk.subscribe());
-
     // Define the subscription object
-    const subscription: any = () => currentValue;
+    const subscription = getLastChunk().subscribe(callbackOrReceiver);
+    let previousPromise = getLastChunk()[internals].awaitStart();
 
-    // Unsubscribe logic
-    subscription.unsubscribe = () => {
-      complete().then(() => {
-        subscriptions.forEach((sub) => sub.unsubscribe());
-        if (receiver.complete) {
-          pipeline[hooks].onStop.remove(receiver, receiver.complete);
-        }
+    // Loop through chunks in reverse order
+    for (let i = chunks.length - 2; i >= 0; i--) {
+      const chunk = chunks[i];
 
-        if (receiver.error) {
-          pipeline[hooks].onError.remove(receiver, errorCallback);
-        }
+      if (!chunk[flags].isRunning) {
+        chunk[flags].isRunning = true;
 
-        onEmission.remove(pipeline, boundCallback);
-      });
-    };
-
-    // Combine `started` and `completed` promises for all chunk subscriptions
-    subscription.started = Promise.all(subscriptions.map((sub) => sub.started));
-    subscription.completed = Promise.all(subscriptions.map((sub) => sub.completed));
-
-    return subscription as Subscription;
+        // Chain the execution of this chunk to the previous one
+        previousPromise = previousPromise
+          .then(() => queueMicrotask(chunk.run))
+          .then(() => chunk[internals].awaitStart());
+      }
+    }
+    return subscription;
   };
 
   const complete = async (): Promise<void> => {
@@ -199,17 +144,16 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
       // Otherwise, create a promise that resolves when `onStop` fires
       return new Promise<void>((resolve) => {
-        chunk[hooks].onStop.once(resolve);
+        chunk[hooks].finalize.once(resolve);
       });
     });
 
     // Mark the first chunk as requested to stop
-    await chunks[0].complete();
+    await getFirstChunk().complete();
 
     // Wait for all chunks to finish processing
     await Promise.all(chunkPromises);
   };
-
 
   const pipeline: Pipeline<T> = {
     type: "pipeline" as "pipeline",
@@ -226,60 +170,61 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     [internals]: {
       bindOperators,
-      awaitStart: () => getLastChunk()[internals].awaitStart(),
-      shouldComplete: () => getLastChunk()[internals].shouldComplete(),
-      awaitCompletion: () => getLastChunk()[internals].awaitCompletion(),
+      awaitStart: () => getFirstChunk()[internals].awaitStart(),
+      shouldComplete: () => getFirstChunk()[internals].shouldComplete(),
+      awaitCompletion: () => getFirstChunk()[internals].awaitCompletion(),
     },
 
     [flags]: {
       get isAutoComplete() {
-        return getLastChunk()[flags].isAutoComplete;
+        return getFirstChunk()[flags].isAutoComplete;
+      },
+      set isAutoComplete(value: boolean) {
+        getFirstChunk()[flags].isAutoComplete = value;
       },
       get isStopRequested() {
-        return getLastChunk()[flags].isStopRequested;
+        return getFirstChunk()[flags].isStopRequested;
+      },
+      set isStopRequested(value: boolean) {
+        getFirstChunk()[flags].isStopRequested = value;
       },
       get isStopped() {
         return getLastChunk()[flags].isStopped;
       },
+      set isStopped(value: boolean) {
+        getLastChunk()[flags].isStopped = value;
+      },
       get isRunning() {
         return getLastChunk()[flags].isRunning;
+      },
+      set isRunning(value: boolean) {
+        getLastChunk()[flags].isRunning = value;
       }
     },
 
     [hooks]: {
-      // Getter for onStart hook
       get onStart() {
-        return onStart;
+        return getFirstChunk()[hooks].onStart;
       },
-
-      // Getter for onComplete hook
       get onComplete() {
-        return onComplete;
+        return getLastChunk()[hooks].onComplete;
       },
-
-      // Getter for onStop hook
-      get onStop() {
-        return onStop;
+      get finalize() {
+        return getLastChunk()[hooks].finalize;
       },
-
-      // Getter for onError hook
       get onError() {
         return onError;
       },
-
-      // Getter for onEmission hook
       get onEmission() {
-        return onEmission;
+        return getLastChunk()[hooks].subscribers;
+      },
+      get subscribers() {
+        return getLastChunk()[hooks].subscribers;
       }
     }
   };
 
   chunks.forEach((c) => c[hooks].onError.chain(pipeline, onErrorCallback));
-  getFirstChunk()[hooks].onStart.chain(pipeline, onStartCallback);
-  getLastChunk()[hooks].subscribers.chain(pipeline, onEmissionCallback);
-  getLastChunk()[hooks].onComplete.chain(pipeline, onCompleteCallback);
-  getLastChunk()[hooks].onStop.chain(pipeline, onStopCallback);
-
   return pipeline;
 };
 
@@ -295,7 +240,7 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
       subject.next(value); // Emit to active subscribers
   });
 
-  source[hooks].onStop.once(() => subject[flags].isStopRequested = true);
+  source[hooks].finalize.once(() => subject[flags].isStopRequested = true);
 
   const pipeline = createPipeline<T>(subject);
   let subscribers = 0;

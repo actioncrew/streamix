@@ -20,7 +20,7 @@ describe('takeUntil operator', () => {
 
   it('should handle case where notifier emits immediately', (done) => {
     const testStream = timer(0, 500);
-    const notifier = of('stop');
+    const notifier = of('finalize');
 
     const takenUntilStream = testStream.pipe(takeUntil(notifier));
 
@@ -37,7 +37,7 @@ describe('takeUntil operator', () => {
 
   it('should handle empty stream', (done) => {
     const testStream = from([]);
-    const notifier = from(['stop']);
+    const notifier = from(['finalize']);
 
     const takenUntilStream = testStream.pipe(takeUntil(notifier));
 

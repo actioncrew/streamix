@@ -1,7 +1,7 @@
 // Define HookType as an interface for the hook methods
 export interface Hook {
-  invoke(params?: any): Promise<void>;
-  parallel(params?: any): Promise<void>;
+  invoke(params?: any): Promise<any[]>;
+  parallel(params?: any): Promise<any[]>;
   chain(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
   once(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
   remove(this: Hook, ownerOrCallback: object | Function, callback?: Function): Hook;
@@ -23,14 +23,15 @@ export function hook(): Hook {
     return callbackMap;
   };
 
-  async function process(params?: any): Promise<void> {
+  async function invoke(params?: any): Promise<any[]> {
+    const results: any[] = [];
     try {
-      if (!callbackMap) return;
+      if (!callbackMap) return results; // Return an empty array if no callbacks
       for (const [ownerRef, callbacks] of callbackMap) {
         const owner = ownerRef.deref();
         if (owner) {
           for (const callback of callbacks) {
-            await callback.call(owner, params);
+            results.push(await callback.call(owner, params));
           }
         } else {
           callbackMap.delete(ownerRef);
@@ -40,12 +41,13 @@ export function hook(): Hook {
       resolveWait && resolveWait();
       pendingCount = 0;
     }
+    return results;
   }
 
-  async function parallel(params?: any): Promise<void> {
-    const promises: Promise<void>[] = [];
+  async function parallel(params?: any): Promise<any[]> {
+    const promises: Promise<any>[] = [];
     try {
-      if (!callbackMap) return;
+      if (!callbackMap) return promises; // Return an empty array if no callbacks
       for (const [ownerRef, callbacks] of callbackMap) {
         const owner = ownerRef.deref();
         if (owner) {
@@ -56,7 +58,7 @@ export function hook(): Hook {
           callbackMap.delete(ownerRef);
         }
       }
-      await Promise.all(promises);
+      return await Promise.all(promises);
     } finally {
       resolveWait && resolveWait();
       pendingCount = 0;
@@ -142,7 +144,7 @@ export function hook(): Hook {
   }
 
   return {
-    invoke: process,
+    invoke,
     parallel,
     chain,
     once,
@@ -151,9 +153,12 @@ export function hook(): Hook {
     contains,
     waitForCompletion,
     get length() {
-      return callbackMap
-        ? Array.from(callbackMap.values()).reduce((total, callbacks) => total + callbacks.size, 0)
-        : 0;
-    },
+      if (!callbackMap) { return 0; }
+      let total = 0;
+      for (const callbacks of callbackMap.values()) {
+        total += callbacks.size;
+      }
+      return total;
+    }
   };
 }
