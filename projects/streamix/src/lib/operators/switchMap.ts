@@ -23,8 +23,8 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     }
 
     // Finalize when the input or output stream stops
-    input[hooks].onStop.once(() => queueMicrotask(async () => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].onStop.once(finalize);
+    input[hooks].finalize.once(() => queueMicrotask(async () => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].finalize.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {

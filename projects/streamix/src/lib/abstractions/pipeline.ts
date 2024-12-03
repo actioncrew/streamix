@@ -59,7 +59,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
           sourceSubject.next(value);
         });
 
-        lastChunk[hooks].onStop.once(() => {
+        lastChunk[hooks].finalize.once(() => {
           sourceSubject[flags].isAutoComplete = true;
           subscription.unsubscribe();
         });
@@ -144,7 +144,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
       // Otherwise, create a promise that resolves when `onStop` fires
       return new Promise<void>((resolve) => {
-        chunk[hooks].onStop.once(resolve);
+        chunk[hooks].finalize.once(resolve);
       });
     });
 
@@ -209,8 +209,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       get onComplete() {
         return getLastChunk()[hooks].onComplete;
       },
-      get onStop() {
-        return getLastChunk()[hooks].onStop;
+      get finalize() {
+        return getLastChunk()[hooks].finalize;
       },
       get onError() {
         return onError;
@@ -240,7 +240,7 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
       subject.next(value); // Emit to active subscribers
   });
 
-  source[hooks].onStop.once(() => subject[flags].isStopRequested = true);
+  source[hooks].finalize.once(() => subject[flags].isStopRequested = true);
 
   const pipeline = createPipeline<T>(subject);
   let subscribers = 0;

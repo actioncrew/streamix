@@ -17,7 +17,7 @@ export function firstValueFrom(stream: Subscribable): Promise<any> {
       stream[hooks].onEmission.chain(emissionHandler);
 
       // Set up onStop handler to clean up and reject if no emission occurred
-      stream[hooks].onStop.once(() => {
+      stream[hooks].finalize.once(() => {
         stream[hooks].onEmission.remove(emissionHandler);
 
         if (!hasEmitted) {

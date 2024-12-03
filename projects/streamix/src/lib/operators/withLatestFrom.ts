@@ -29,7 +29,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
     };
 
     // Cleanup on stream termination
-    stream[hooks].onStop.once(finalize);
+    stream[hooks].finalize.once(finalize);
   };
 
   // Cleanup all subscriptions
