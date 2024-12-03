@@ -102,11 +102,11 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
 
       async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
-        yield event;
-
         while (pendingEvents.length > 0) {
           yield pendingEvents.shift()!;
         }
+
+        yield event;
 
         switch (event.type) {
           case 'start':
