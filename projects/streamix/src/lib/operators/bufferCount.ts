@@ -26,7 +26,7 @@ export class BufferCountOperator extends Operator {
     }
 
     // Return a phantom emission if buffer is not yet full
-    return { isPhantom: true };
+    return { phantom: true };
   }
 }
 

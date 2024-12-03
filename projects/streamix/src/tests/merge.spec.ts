@@ -31,14 +31,14 @@ describe('MergeStream', () => {
 
     const mergeStream = merge(source1, source2);
 
-    let isComplete = false;
+    let subscriptionCalls = 0;
 
     mergeStream.subscribe(() => {
-      isComplete = true;
+      subscriptionCalls++;
     });
 
     mergeStream.onStop.once(() => {
-      expect(isComplete).toBe(true);
+      expect(subscriptionCalls).toBe(4);
       done();
     })
   });

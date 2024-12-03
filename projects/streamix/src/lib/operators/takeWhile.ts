@@ -11,7 +11,7 @@ export class TakeWhileOperator extends Operator {
   async handle(emission: Emission, stream: Subscribable): Promise<Emission> {
     const shouldContinue = this.predicate(emission.value);
     if (!shouldContinue) {
-      emission.isPhantom = true;
+      emission.phantom = true;
       stream.complete();
       return emission
     }

@@ -6,12 +6,12 @@ export abstract class Stream<T = any> implements Subscribable<T> {
   head: Operator | undefined;
   tail: Operator | undefined;
 
-  #completionPromise = promisified<void>();
-  #isAutoComplete = false;
-  #isStopRequested = false;
+  #completion = promisified<void>();
+  #autoComplete = false;
+  #stopRequested = false;
 
-  #isStopped = false;
-  #isRunning = false;
+  #stopped = false;
+  #running = false;
 
   #onStart = hook();
   #onComplete = hook();
@@ -53,37 +53,37 @@ export abstract class Stream<T = any> implements Subscribable<T> {
   }
 
   get isAutoComplete() {
-    return this.#isAutoComplete;
+    return this.#autoComplete;
   }
 
   set isAutoComplete(value: boolean) {
-    if (value) this.#completionPromise.resolve();
-    this.#isAutoComplete = value;
+    if (value) this.#completion.resolve();
+    this.#autoComplete = value;
   }
 
   get isStopRequested() {
-    return this.#isStopRequested;
+    return this.#stopRequested;
   }
 
   set isStopRequested(value: boolean) {
-    if (value) this.#completionPromise.resolve();
-    this.#isStopRequested = value;
+    if (value) this.#completion.resolve();
+    this.#stopRequested = value;
   }
 
   get isRunning() {
-    return this.#isRunning;
+    return this.#running;
   }
 
   set isRunning(value: boolean) {
-    this.#isRunning = value;
+    this.#running = value;
   }
 
   get isStopped() {
-    return this.#isStopped;
+    return this.#stopped;
   }
 
   set isStopped(value: boolean) {
-    this.#isStopped = value;
+    this.#stopped = value;
   }
 
   get value(): T | undefined {
@@ -95,21 +95,21 @@ export abstract class Stream<T = any> implements Subscribable<T> {
       let next = (source instanceof Stream) ? this.head : undefined;
       next = (source instanceof Operator) ? source.next : next;
 
-      if (emission.isFailed) throw emission.error;
+      if (emission.failed) throw emission.error;
 
-      if (!emission.isPhantom) {
+      if (!emission.phantom) {
         emission = await (next?.process(emission, this) ?? Promise.resolve(emission));
       }
 
-      if (emission.isFailed) throw emission.error;
+      if (emission.failed) throw emission.error;
 
-      if (!emission.isPhantom) {
+      if (!emission.phantom) {
         await this.#subscribers.parallel({ emission, source: this });
       }
 
-      emission.isComplete = true;
+      emission.complete = true;
     } catch (error: any) {
-      emission.isFailed = true;
+      emission.failed = true;
       emission.error = error;
       await this.onError.parallel({ error });
     }
@@ -139,15 +139,15 @@ export abstract class Stream<T = any> implements Subscribable<T> {
   }
 
   awaitCompletion() {
-    return this.#completionPromise.promise();
+    return this.#completion.promise();
   }
 
   complete(): Promise<void> {
     if (!this.isAutoComplete) {
       this.isStopRequested = true;
       return new Promise<void>((resolve) => {
-        this.onStop.once(() => resolve());
-        this.#completionPromise.promise();
+        this.onStop.once(() => { this.operators.forEach(operator => operator.cleanup()); resolve(); });
+        this.#completion.resolve();
       });
     }
     return Promise.resolve();
@@ -177,7 +177,7 @@ export abstract class Stream<T = any> implements Subscribable<T> {
 
     this.#subscribers.chain(this, boundCallback);
 
-    if (!this.isRunning) {
+    if (!this.isRunning && !this.isStopRequested) {
       this.isRunning = true;
       this.queueMicrotask();
     }

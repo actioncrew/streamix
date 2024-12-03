@@ -14,7 +14,7 @@ export class DelayOperator extends Operator {
       const timeout = setTimeout(() => resolve(emission), this.delayTime);
 
       this.completionPromise = stream.awaitCompletion().then(() => {
-        emission.isPhantom = true;
+        emission.phantom = true;
         clearTimeout(timeout);
         resolve(emission);
       });
