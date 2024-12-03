@@ -27,6 +27,7 @@ export interface SubscribableHooks {
   onStop: Hook;
   onError: Hook;
   onEmission: Hook;
+  subscribers: Hook;
 }
 
 export interface SubscribableFlags {

@@ -66,8 +66,9 @@ export const fork = <T = any, R = T>(
       }
     } else {
       // If no case matches, emit an error
-      finalize();
-      throw new Error(`No handler found for value: ${emission.value}`);
+      executionCounter.increment();
+      emission.finalize();
+      handleStreamError(emission, new Error(`No handler found for value: ${emission.value}`));
     }
   };
 
@@ -84,7 +85,8 @@ export const fork = <T = any, R = T>(
 
   const handleStreamError = (emission: Emission, error: any) => {
     eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
-    emission.phantom = true;
+    emission.failed = true;
+    emission.error = error;
     finalize();
   };
 
