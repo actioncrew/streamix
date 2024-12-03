@@ -45,7 +45,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const onStart = hook();
   const onComplete = hook();
-  const onStop = hook();
+  const finalize = hook();
   const onError = hook();
   const onEmission = hook();
   const subscribers = hook();
@@ -63,7 +63,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       await onError.waitForCompletion();
     } finally {
       eventBus.enqueue({ target: stream, type: 'stop' }); // Finalize the stop hook
-      await onStop.waitForCompletion();
+      await finalize.waitForCompletion();
       stopped = true; running = false;
       operators.forEach(operator => operator.cleanup());
     }
@@ -76,7 +76,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     if(!stopped) {
       stream[flags].isStopRequested = true;
-      await onStop.waitForCompletion();
+      await finalize.waitForCompletion();
     }
   };
 
@@ -145,7 +145,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
-      onStop.chain(receiver, receiver.complete);
+      finalize.chain(receiver, receiver.complete);
     }
 
     if (receiver.error) {
@@ -186,7 +186,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       if (!subscription.unsubscribed) {
         stream.complete().then(() => {
           if (receiver.complete) {
-            onStop.remove(receiver, receiver.complete);
+            finalize.remove(receiver, receiver.complete);
           }
 
           if (receiver.error) {
@@ -239,14 +239,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       get onComplete() {
         return onComplete;
       },
-      get onStop() {
-        return onStop;
-      },
       get onError() {
         return onError;
       },
       get onEmission() {
         return onEmission;
+      },
+      get finalize() {
+        return finalize;
       },
       get subscribers() {
         return subscribers;

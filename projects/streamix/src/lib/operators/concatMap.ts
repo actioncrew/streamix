@@ -23,8 +23,8 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
       return;
     }
 
-    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].onStop.once(finalize);
+    input[hooks].finalize.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].finalize.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {

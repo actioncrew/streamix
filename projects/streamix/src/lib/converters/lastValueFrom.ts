@@ -15,7 +15,7 @@ export function lastValueFrom(stream: Subscribable): Promise<any> {
       stream[hooks].onEmission.chain(emissionHandler);
 
       // Set up onStop handler to resolve with last value or reject if no emission occurred
-      stream[hooks].onStop.once(() => {
+      stream[hooks].finalize.once(() => {
         stream[hooks].onEmission.remove(emissionHandler);
 
         if (hasEmitted) {

@@ -33,7 +33,7 @@ export const delay = (delayTime: number): Operator => {
           }, delayTime);
 
           // Clear timeout if the stream is stopped
-          stream[hooks].onStop.once(() => {
+          stream[hooks].finalize.once(() => {
             clearTimeout(timer);
             resolve();
           });
