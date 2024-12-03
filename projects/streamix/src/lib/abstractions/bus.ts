@@ -139,7 +139,9 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             }
 
             if (emission.pending) {
-              yield* await trackPendingEmission(target, emission);
+              for await (const pendingEvent of trackPendingEmission(target, emission)) { 
+                yield pendingEvent; 
+              }
             }
             break;
           case 'complete':
