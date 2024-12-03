@@ -12,7 +12,7 @@ export const eventBus = createBus() as Bus;
 
 export type BusEvent = {
   target: any;
-  type: 'emission' | 'start' | 'stop' | 'complete' | 'error';
+  type: 'emission' | 'start' | 'finalize' | 'complete' | 'error';
   payload?: any;
   timeStamp?: Date;
 };
@@ -39,7 +39,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
-  const stopMarkers: Map<any, any> = new Map();
+  const finalizeMarkers: Map<any, any> = new Map();
   const completeMarkers: Map<any, any> = new Map();
 
   let head = 0;
@@ -83,14 +83,14 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               }
             }
 
-            if (stopMarkers.has(target)) {
-              const payload = stopMarkers.get(target);
-              stopMarkers.delete(target);
-              const stopEvents = (await target[hooks].onStop.parallel(payload)).filter(
+            if (finalizeMarkers.has(target)) {
+              const payload = finalizeMarkers.get(target);
+              finalizeMarkers.delete(target);
+              const finalizeEvents = (await target[hooks].finalize.parallel(payload)).filter(
                 (fn: any) => fn instanceof Function
               );
 
-              for (const event of stopEvents) {
+              for (const event of finalizeEvents) {
                 for await (const busEvent of processEvent(event())) {
                   addToQueue(busEvent);
                 }
@@ -115,14 +115,14 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               yield* await processEvent(emissionEvent());
             }
             break;
-          case 'stop':
+          case 'finalize':
             if (!pendingEmissions.has(event.target)) {
-              const emissionEvents = (await event.target[hooks].onStop.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
+              const emissionEvents = (await event.target[hooks].finalize.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
               for (const emissionEvent of emissionEvents) {
                 yield* await processEvent(emissionEvent());
               }
             } else {
-              stopMarkers.set(event.target, event.payload);
+              finalizeMarkers.set(event.target, event.payload);
             }
             break;
           case 'emission':
