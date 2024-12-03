@@ -160,7 +160,9 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
       while (true) {
         while (postponedEvents.length > 0) {
-          yield processEvent(postponedEvents.shift())!;
+          for await (const current of processEvent(postponedEvents.shift()!)) {
+            yield current;
+          }
         }
         
         await itemsAvailable.acquire();
