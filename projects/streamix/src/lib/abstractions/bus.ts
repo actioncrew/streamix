@@ -99,10 +99,6 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       }
 
       async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
-        while (postponedEvents.length > 0) {
-          yield postponedEvents.shift()!;
-        }
-
         switch (event.type) {
           case 'start':
             yield event;
@@ -163,6 +159,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       }
 
       while (true) {
+        while (postponedEvents.length > 0) {
+          yield processEvent(postponedEvents.shift())!;
+        }
+        
         await itemsAvailable.acquire();
         const event = buffer[head];
         
