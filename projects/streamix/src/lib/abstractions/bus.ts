@@ -3,7 +3,12 @@ import { createEmission, Emission } from './emission';
 import { flags, hooks } from './subscribable';
 
 export const eventBus = createBus() as Bus;
-eventBus.run();
+
+(async function startEventBus() {
+  for await (const event of eventBus.run()) {
+  }
+})();
+
 
 export type BusEvent = {
   target: any;
@@ -23,7 +28,7 @@ export function isBusEvent(obj: any): obj is BusEvent {
 }
 
 export type Bus = {
-  run(): void;
+  run(): AsyncGenerator<BusEvent>;
   enqueue(event: BusEvent): void;
   name?: string;
 };
@@ -43,56 +48,78 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   const lock = createLock();
   const itemsAvailable = createSemaphore(0); // Semaphore for items available in the buffer
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
+  const pendingEvents: Array<BusEvent> = [];
 
   const bus: Bus = {
-    async run(): Promise<void> {
-      async function trackPendingEmission(target: any, emission: Emission): Promise<void> {
+    async * run(): AsyncGenerator<BusEvent> {
+      async function trackPendingEmission(target: any, emission: Emission) {
         const pendingSet = pendingEmissions.get(target) || new Set();
         if (!pendingSet.has(emission)) {
           pendingSet.add(emission);
           pendingEmissions.set(target, pendingSet);
-        }
+        };
 
-        await emission.wait()
-        pendingSet.delete(emission);
-        if (pendingSet.size === 0) {
-          pendingEmissions.delete(target);
+        const addToQueue = (event: BusEvent) => pendingEvents.push(event);
 
-          // Process `onComplete` marker first if it exists
-          if (completeMarkers.has(target)) {
-            const payload = completeMarkers.get(target);
-            completeMarkers.delete(target);
-            const completeEvents = (await target[hooks].onComplete.parallel(payload)).filter((fn: any) => fn instanceof Function);
-            for (const event of completeEvents) {
-              await processEvent(event());
+        // Process the emission asynchronously in a microtask
+        queueMicrotask(async () => {
+          await emission.wait();
+          pendingSet.delete(emission);
+
+          if (pendingSet.size === 0) {
+            pendingEmissions.delete(target);
+
+            if (completeMarkers.has(target)) {
+              const payload = completeMarkers.get(target);
+              completeMarkers.delete(target);
+              const completeEvents = (await target[hooks].onComplete.parallel(payload)).filter(
+                (fn: any) => fn instanceof Function
+              );
+
+              for (const event of completeEvents) {
+                for await (const busEvent of processEvent(event())) {
+                  addToQueue(busEvent);
+                }
+              }
+            }
+
+            if (stopMarkers.has(target)) {
+              const payload = stopMarkers.get(target);
+              stopMarkers.delete(target);
+              const stopEvents = (await target[hooks].onStop.parallel(payload)).filter(
+                (fn: any) => fn instanceof Function
+              );
+
+              for (const event of stopEvents) {
+                for await (const busEvent of processEvent(event())) {
+                  addToQueue(busEvent);
+                }
+              }
             }
           }
+        });
+      }
 
-          // Only process `onStop` marker after `onComplete`
-          if (stopMarkers.has(target)) {
-            const payload = stopMarkers.get(target);
-            stopMarkers.delete(target);
-            const stopEvents = (await target[hooks].onStop.parallel(payload)).filter((fn: any) => fn instanceof Function);
-            for (const event of stopEvents) {
-              await processEvent(event());
-            }
-          }
+
+      async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
+        yield event;
+
+        while (pendingEvents.length > 0) {
+          yield pendingEvents.shift()!;
         }
-      };
 
-      async function processEvent(event: BusEvent): Promise<void> {
         switch (event.type) {
           case 'start':
             const emissionEvents = (await event.target[hooks].onStart.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
             for (const emissionEvent of emissionEvents) {
-              await processEvent(emissionEvent());
+              yield* await processEvent(emissionEvent());
             }
             break;
           case 'stop':
             if (!pendingEmissions.has(event.target)) {
               const emissionEvents = (await event.target[hooks].onStop.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
               for (const emissionEvent of emissionEvents) {
-                await processEvent(emissionEvent());
+                yield* await processEvent(emissionEvent());
               }
             } else {
               stopMarkers.set(event.target, event.payload);
@@ -108,19 +135,19 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             } else {
               const emissionEvents = (await target[hooks].onEmission.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
               for (const emissionEvent of emissionEvents) {
-                await processEvent(emissionEvent());
+                yield* await processEvent(emissionEvent());
               }
             }
 
             if (emission.pending) {
-              trackPendingEmission(target, emission);
+              await trackPendingEmission(target, emission);
             }
             break;
           case 'complete':
             if (!pendingEmissions.has(event.target)) {
               const completeEvents = (await event.target[hooks].onComplete.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
               for (const completeEvent of completeEvents) {
-                await processEvent(completeEvent());
+                yield* await processEvent(completeEvent());
               }
             } else {
               completeMarkers.set(event.target, event.payload);
@@ -129,20 +156,22 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
           case 'error':
             const errorEvents = (await event.target[hooks].onError.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
             for (const errorEvent of errorEvents) {
-              await processEvent(errorEvent());
+              yield* await processEvent(errorEvent());
             }
             break;
         }
       }
 
       while (true) {
-        // Wait for an available item in the buffer
+
         await itemsAvailable.acquire();
 
         const event = buffer[head];
         if (event) {
           // Process the current event
-          await processEvent(event);
+          for await (const current of processEvent(event)) {
+            yield current;
+          }
 
           // Move head forward in the buffer and release space
           head = (head + 1) % bufferSize;
