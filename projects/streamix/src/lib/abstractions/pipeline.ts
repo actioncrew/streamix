@@ -23,9 +23,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   let currentValue: T | undefined;
 
   const onError = hook();
-  
+
   const onErrorCallback = (params: any) => onError.parallel(params);
-  
+
   if (subscribable.type === 'stream' || subscribable.type === 'subject') {
     const chunk = subscribable as unknown as Stream<T>;
     chunks = [chunk];
@@ -116,19 +116,19 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     // Define the subscription object
     const subscription = getLastChunk().subscribe(callbackOrReceiver);
-    let previousPromise = getLastChunk().awaitStart();
+    let previousPromise = getLastChunk()[internals].awaitStart();
 
     // Loop through chunks in reverse order
     for (let i = chunks.length - 2; i >= 0; i--) {
       const chunk = chunks[i];
 
-      if (!chunk.isRunning) {
-        chunk.isRunning = true;
+      if (!chunk[flags].isRunning) {
+        chunk[flags].isRunning = true;
 
         // Chain the execution of this chunk to the previous one
         previousPromise = previousPromise
           .then(() => queueMicrotask(chunk.run))
-          .then(() => chunk.awaitStart());
+          .then(() => chunk[internals].awaitStart());
       }
     }
     return subscription;

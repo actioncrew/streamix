@@ -16,9 +16,7 @@ export type Stream<T = any> = Subscribable<T> & {
     awaitStart: () => Promise<void>;
   },
 
-  [hooks]: SubscribableHooks & {
-    subscribers: Hook;
-  }
+  [hooks]: SubscribableHooks;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
