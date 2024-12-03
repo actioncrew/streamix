@@ -46,39 +46,38 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
   const bus: Bus = {
     async run(): Promise<void> {
-      function trackPendingEmission(target: any, emission: Emission): void {
+      async function trackPendingEmission(target: any, emission: Emission): Promise<void> {
         const pendingSet = pendingEmissions.get(target) || new Set();
         if (!pendingSet.has(emission)) {
           pendingSet.add(emission);
           pendingEmissions.set(target, pendingSet);
         }
 
-        emission.wait().then(async () => {
-          pendingSet.delete(emission);
-          if (pendingSet.size === 0) {
-            pendingEmissions.delete(target);
+        await emission.wait()
+        pendingSet.delete(emission);
+        if (pendingSet.size === 0) {
+          pendingEmissions.delete(target);
 
-            // Process `onComplete` marker first if it exists
-            if (completeMarkers.has(target)) {
-              const payload = completeMarkers.get(target);
-              completeMarkers.delete(target);
-              const completeEvents = (await target[hooks].onComplete.parallel(payload)).filter((fn: any) => fn instanceof Function);
-              for (const event of completeEvents) {
-                await processEvent(event());
-              }
-            }
-
-            // Only process `onStop` marker after `onComplete`
-            if (stopMarkers.has(target)) {
-              const payload = stopMarkers.get(target);
-              stopMarkers.delete(target);
-              const stopEvents = (await target[hooks].onStop.parallel(payload)).filter((fn: any) => fn instanceof Function);
-              for (const event of stopEvents) {
-                await processEvent(event());
-              }
+          // Process `onComplete` marker first if it exists
+          if (completeMarkers.has(target)) {
+            const payload = completeMarkers.get(target);
+            completeMarkers.delete(target);
+            const completeEvents = (await target[hooks].onComplete.parallel(payload)).filter((fn: any) => fn instanceof Function);
+            for (const event of completeEvents) {
+              await processEvent(event());
             }
           }
-        });
+
+          // Only process `onStop` marker after `onComplete`
+          if (stopMarkers.has(target)) {
+            const payload = stopMarkers.get(target);
+            stopMarkers.delete(target);
+            const stopEvents = (await target[hooks].onStop.parallel(payload)).filter((fn: any) => fn instanceof Function);
+            for (const event of stopEvents) {
+              await processEvent(event());
+            }
+          }
+        }
       };
 
       async function processEvent(event: BusEvent): Promise<void> {
