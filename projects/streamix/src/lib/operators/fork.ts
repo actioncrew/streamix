@@ -1,7 +1,7 @@
 import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { Counter, counter } from '../utils';
-import { createSubject } from '../streams';
+import { createSubject, EMPTY } from '../streams';
 import { Subscription } from '../abstractions';
 
 
@@ -18,8 +18,15 @@ export const fork = <T = any, R = T>(
 
   const init = (stream: Subscribable) => {
     input = stream;
-    input[hooks].onStop.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].onStop.once(finalize);
+
+    if (input === EMPTY) {
+      // If the input stream is EMPTY, complete immediately
+      output[flags].isAutoComplete = true;
+      return;
+    }
+
+    input[hooks].finalize.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].finalize.once(finalize);
   };
 
   const handle = async (emission: Emission, stream: Subscribable) => {
@@ -59,8 +66,9 @@ export const fork = <T = any, R = T>(
       }
     } else {
       // If no case matches, emit an error
-      finalize();
-      throw new Error(`No handler found for value: ${emission.value}`);
+      executionCounter.increment();
+      emission.finalize();
+      handleStreamError(emission, new Error(`No handler found for value: ${emission.value}`));
     }
   };
 
@@ -77,6 +85,8 @@ export const fork = <T = any, R = T>(
 
   const handleStreamError = (emission: Emission, error: any) => {
     eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
+    emission.failed = true;
+    emission.error = error;
     finalize();
   };
 

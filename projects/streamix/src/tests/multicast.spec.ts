@@ -10,7 +10,7 @@ describe('multicast', () => {
     multicastPipeline.subscribe(value => values.push(value));
     multicastPipeline.subscribe(value => values.push(value));
 
-    multicastPipeline[hooks].onStop.once(() => {
+    multicastPipeline[hooks].finalize.once(() => {
       expect(values).toEqual([2, 2, 3, 3, 4, 4]);
       done();
     })
@@ -25,7 +25,7 @@ describe('multicast', () => {
     multicastPipeline.subscribe((value) => values.push(value as number));
     multicastPipeline.subscribe(value => values.push(value as number));
 
-    multicastPipeline[hooks].onStop.once(() => {
+    multicastPipeline[hooks].finalize.once(() => {
       expect(source).toHaveBeenCalledTimes(1); // The source should be called only once
       expect(values).toEqual([2, 2, 3, 3, 4, 4]);
       done();

@@ -1,4 +1,4 @@
-import { createSubject, Subject } from '../streams';
+import { createSubject, EMPTY, Subject } from '../streams';
 import { Emission, createOperator, Operator, Subscribable, Subscription, hooks, flags } from '../abstractions';
 import { Counter, catchAny, counter } from '../utils';
 import { eventBus } from '../abstractions';
@@ -17,9 +17,15 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   const init = (stream: Subscribable) => {
     input = stream;
 
+    if (input === EMPTY) {
+      // If the input stream is EMPTY, complete immediately
+      output[flags].isAutoComplete = true;
+      return;
+    }
+
     // Finalize when the input or output stream stops
-    input[hooks].onStop.once(() => queueMicrotask(() => executionNumber.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].onStop.once(finalize);
+    input[hooks].finalize.once(() => queueMicrotask(() => executionNumber.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].finalize.once(finalize);
   };
 
   const handle = async (emission: Emission): Promise<Emission> => {
@@ -38,6 +44,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     if (error) {
       eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
       executionNumber.increment();
+      emission.phantom = true;
       return;
     }
 
@@ -46,10 +53,10 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     const processingPromise = new Promise<void>((resolve) => {
 
       const handleCompletion = async () => {
+        removeInnerStream(innerStream);
+
         executionNumber.increment();
         emission.finalize();
-
-        removeInnerStream(innerStream);
 
         processingPromises = processingPromises.filter((p) => p !== processingPromise);
         resolve();
@@ -90,10 +97,12 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const finalize = () => {
-    if (isFinalizing) { return; }
+    if (isFinalizing) return;
     isFinalizing = true;
 
-    activeInnerStreams.forEach(stream => stream[flags].isAutoComplete = true);
+    subscriptions.forEach(subscription => subscription.unsubscribe());
+    subscriptions.length = 0;
+
     activeInnerStreams = [];
     stopInputStream();
     stopOutputStream();

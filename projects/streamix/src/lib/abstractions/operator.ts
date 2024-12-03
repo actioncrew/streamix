@@ -1,3 +1,4 @@
+import { internals } from './subscribable';
 import { Stream, Subscribable, Emission } from '../abstractions';
 
 export type HookOperator = {
@@ -38,11 +39,19 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
 
     process: async function (emission: Emission, chunk: Stream): Promise<Emission> {
       try {
+        if ('stream' in this) {
+          chunk.emissionCounter++;
+        }
+
         // Handle the emission with the provided handle function
         emission = await handleFn(emission, chunk);
 
+        if (this === chunk[internals].tail && !emission.phantom && !emission.failed && !emission.pending && !('stream' in this)) {
+          chunk.emissionCounter++;
+        }
+
         // If there's a next operator and the emission is valid, pass it to the next operator
-        if (this.next && !emission.phantom && !emission.failed) {
+        if (this.next && !emission.phantom && !emission.failed && !emission.pending) {
           return this.next.process(emission, chunk);
         } else {
           return emission; // Return the processed emission

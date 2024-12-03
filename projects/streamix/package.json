@@ -1,6 +1,6 @@
 {
   "name": "@actioncrew/streamix",
-  "version": "0.1.5",
+  "version": "0.1.7",
   "description": "Lightweight RxJS alternative",
   "license": "MIT",
   "keywords": [

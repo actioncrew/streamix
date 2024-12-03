@@ -7,7 +7,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
 
   const run = async function(this: Stream<T>): Promise<void> {
     // Clean up the event listener on completion
-    this[hooks].onStop.once(() => {
+    this[hooks].finalize.once(() => {
       target.removeEventListener(eventName, listener);
     });
 

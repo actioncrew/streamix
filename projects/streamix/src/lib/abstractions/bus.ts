@@ -3,17 +3,32 @@ import { createEmission, Emission } from './emission';
 import { flags, hooks } from './subscribable';
 
 export const eventBus = createBus() as Bus;
-eventBus.run();
+
+(async function startEventBus() {
+  for await (const event of eventBus.run()) {
+  }
+})();
+
 
 export type BusEvent = {
   target: any;
-  type: 'emission' | 'start' | 'stop' | 'complete' | 'error';
+  type: 'emission' | 'start' | 'finalize' | 'complete' | 'error';
   payload?: any;
   timeStamp?: Date;
 };
 
+export function isBusEvent(obj: any): obj is BusEvent {
+  return (
+    obj &&
+    typeof obj === 'object' &&
+    'target' in obj &&
+    'type' in obj &&
+    typeof obj.type === 'string'
+  );
+}
+
 export type Bus = {
-  run(): void;
+  run(): AsyncGenerator<BusEvent>;
   enqueue(event: BusEvent): void;
   name?: string;
 };
@@ -24,7 +39,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
-  const stopMarkers: Map<any, any> = new Map();
+  const finalizeMarkers: Map<any, any> = new Map();
   const completeMarkers: Map<any, any> = new Map();
 
   let head = 0;
@@ -33,89 +48,134 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   const lock = createLock();
   const itemsAvailable = createSemaphore(0); // Semaphore for items available in the buffer
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
+  const pendingEvents: Array<BusEvent> = [];
 
   const bus: Bus = {
-    async run(): Promise<void> {
+    async * run(): AsyncGenerator<BusEvent> {
+      async function trackPendingEmission(target: any, emission: Emission) {
+        const pendingSet = pendingEmissions.get(target) || new Set();
+        if (!pendingSet.has(emission)) {
+          pendingSet.add(emission);
+          pendingEmissions.set(target, pendingSet);
+        };
+
+        const addToQueue = (event: BusEvent) => pendingEvents.push(event);
+
+        // Process the emission asynchronously in a microtask
+        queueMicrotask(async () => {
+          await emission.wait();
+          pendingSet.delete(emission);
+
+          if (pendingSet.size === 0) {
+            pendingEmissions.delete(target);
+
+            if (completeMarkers.has(target)) {
+              const payload = completeMarkers.get(target);
+              completeMarkers.delete(target);
+              const completeEvents = (await target[hooks].onComplete.parallel(payload)).filter(
+                (fn: any) => fn instanceof Function
+              );
+
+              for (const event of completeEvents) {
+                for await (const busEvent of processEvent(event())) {
+                  addToQueue(busEvent);
+                }
+              }
+            }
+
+            if (finalizeMarkers.has(target)) {
+              const payload = finalizeMarkers.get(target);
+              finalizeMarkers.delete(target);
+              const finalizeEvents = (await target[hooks].finalize.parallel(payload)).filter(
+                (fn: any) => fn instanceof Function
+              );
+
+              for (const event of finalizeEvents) {
+                for await (const busEvent of processEvent(event())) {
+                  addToQueue(busEvent);
+                }
+              }
+            }
+          }
+        });
+      }
+
+
+      async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
+        while (pendingEvents.length > 0) {
+          yield pendingEvents.shift()!;
+        }
+
+        yield event;
+
+        switch (event.type) {
+          case 'start':
+            const emissionEvents = (await event.target[hooks].onStart.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
+            for (const emissionEvent of emissionEvents) {
+              yield* await processEvent(emissionEvent());
+            }
+            break;
+          case 'finalize':
+            if (!pendingEmissions.has(event.target)) {
+              const emissionEvents = (await event.target[hooks].finalize.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
+              for (const emissionEvent of emissionEvents) {
+                yield* await processEvent(emissionEvent());
+              }
+            } else {
+              finalizeMarkers.set(event.target, event.payload);
+            }
+            break;
+          case 'emission':
+            let emission = event.payload?.emission ?? createEmission({});
+            const target = event.target;
+
+            if (target[flags].isStopRequested && completeMarkers.has(target)) {
+              emission.phantom = true;
+              emission.ancestor?.finalize();
+            } else {
+              const emissionEvents = (await target[hooks].onEmission.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
+              for (const emissionEvent of emissionEvents) {
+                yield* await processEvent(emissionEvent());
+              }
+            }
+
+            if (emission.pending) {
+              await trackPendingEmission(target, emission);
+            }
+            break;
+          case 'complete':
+            if (!pendingEmissions.has(event.target)) {
+              const completeEvents = (await event.target[hooks].onComplete.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
+              for (const completeEvent of completeEvents) {
+                yield* await processEvent(completeEvent());
+              }
+            } else {
+              completeMarkers.set(event.target, event.payload);
+            }
+            break;
+          case 'error':
+            const errorEvents = (await event.target[hooks].onError.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
+            for (const errorEvent of errorEvents) {
+              yield* await processEvent(errorEvent());
+            }
+            break;
+        }
+      }
+
       while (true) {
-        // Wait for an available item or space in the buffer
-        await itemsAvailable.acquire(); // Wait for an item to be available
+
+        await itemsAvailable.acquire();
 
         const event = buffer[head];
         if (event) {
-         // Process the event here (you can call your handler based on event type)
-          switch(event.type) {
-            case 'start':
-              await event.target[hooks].onStart.parallel(event.payload); break;
-            case 'stop':
-              if (!pendingEmissions.has(event.target)) {
-                await event.target[hooks].onStop.parallel(event.payload); break;
-              } else {
-                stopMarkers.set(event.target, event.payload);
-              }
-              break;
-            case 'emission':
-              let emission = event.payload?.emission ?? createEmission({});
-              let target = event.target;
-
-              if(target[flags].isStopRequested && completeMarkers.has(target)) {
-                emission.phantom = true;
-                emission.ancestor?.finalize();
-              } else {
-                target.emissionCounter++;
-                await target[hooks].onEmission.parallel(event.payload);
-              }
-
-              if(pendingEmissions.has(target)) {
-                const pendingSet = pendingEmissions.get(target);
-                const stillPending = Array.from(pendingSet!).filter(emission => emission.pending);
-                pendingEmissions.set(target, new Set(stillPending));
-              }
-
-              if (target && emission.pending) {
-                let set = pendingEmissions.get(target) ?? new Set();
-                if(!set.has(emission)) {
-                  set.add(emission);
-                }
-                pendingEmissions.set(target, set);
-
-                emission.wait().then(async () => {
-                  let set = pendingEmissions.get(target)!;
-                  set.delete(emission);
-
-                  if(!set.size) {
-                    pendingEmissions.delete(target);
-                  }
-
-                  if(!set.size) {
-                    if(completeMarkers.has(target)) {
-                      const payload = completeMarkers.get(target);
-                      completeMarkers.delete(target);
-                      await target[hooks].onComplete.parallel(payload);
-                    }
-
-                    if(stopMarkers.has(target)) {
-                      const payload = stopMarkers.get(target);
-                      stopMarkers.delete(target);
-                      await target[hooks].onStop.parallel(payload);
-                    }
-                  }
-                });
-              }
-              break;
-            case 'complete':
-              if (!pendingEmissions.has(event.target)) {
-                await event.target[hooks].onComplete.parallel(event.payload);
-              } else {
-                completeMarkers.set(event.target, true);
-              }
-              break;
-            case 'error':
-              await event.target[hooks].onError.parallel(event.payload); break;
+          // Process the current event
+          for await (const current of processEvent(event)) {
+            yield current;
           }
 
-          // Move head forward in the buffer and reduce the available item count
+          // Move head forward in the buffer and release space
           head = (head + 1) % bufferSize;
-          spaceAvailable.release(); // Release the space in the buffer
+          spaceAvailable.release();
         }
       }
     },

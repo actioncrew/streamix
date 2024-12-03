@@ -1,31 +1,33 @@
-import { hooks, Subscribable } from '../abstractions/subscribable';
+import { internals, Subscribable } from '../abstractions';
+import { EMPTY } from '../streams';
 
-export function lastValueFrom(stream: Subscribable): Promise<any> {
-  return new Promise<any>((resolve, reject) => {
+export async function lastValueFrom<T>(stream: Subscribable<T>): Promise<T> {
+  if(stream === EMPTY || stream[internals].shouldComplete()) {
+    throw new Error("Subscribable has not emitted any value.");
+  }
+
+  return new Promise<T>((resolve, reject) => {
     let hasEmitted = false;
-    let lastValue: any;
+    let lastValue: T;
 
-    const emissionHandler = async ({ emission }: any) => {
-      lastValue = emission.value;
-      hasEmitted = true;
-    };
-
-    try {
-      // Chain the emission handler to capture each emission's value
-      stream[hooks].onEmission.chain(emissionHandler);
-
-      // Set up onStop handler to resolve with last value or reject if no emission occurred
-      stream[hooks].onStop.once(() => {
-        stream[hooks].onEmission.remove(emissionHandler);
-
-        if (hasEmitted) {
-          resolve(lastValue);
-        } else {
-          reject("Subscribable has not emitted any value.");
+    const subscription = stream.subscribe({
+      next: (value: T) => {
+        if(!hasEmitted) {
+          hasEmitted = true;
         }
-      });
-    } catch (error) {
-      reject(error);
-    }
+        lastValue = value;
+      },
+      complete: () => {
+        subscription.unsubscribe();
+        if (!hasEmitted) {
+          reject(new Error("Subscribable has not emitted any value."));
+        }
+        resolve(lastValue);
+      },
+      error: (err) => {
+        subscription.unsubscribe(); // Ensure cleanup
+        reject(err); // Reject on error
+      }
+    });
   });
 }

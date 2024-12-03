@@ -27,7 +27,7 @@ export const takeUntil = (notifier: Subscribable): Operator => {
     };
 
     // Clean up the notifier subscription on stream stop
-    stream[hooks].onStop.once(async () => {
+    stream[hooks].finalize.once(async () => {
       await subscription?.unsubscribe();
       subscription = null;
     });
