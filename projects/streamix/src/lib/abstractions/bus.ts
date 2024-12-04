@@ -61,7 +61,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
         const addToQueue = (event: BusEvent) => postponedEvents.push(event);
 
         // Process the emission asynchronously in a microtask
-        emission.wait().then(() => {
+        emission.wait().then(async () => {
           pendingSet.delete(emission);
 
           if (pendingSet.size === 0) {
@@ -164,10 +164,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             yield current;
           }
         }
-        
+
         await itemsAvailable.acquire();
         const event = buffer[head];
-        
+
         if (event) {
           // Process the current event
           for await (const current of processEvent(event)) {
