@@ -44,7 +44,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
         }
 
         // Handle the emission with the provided handle function
-        emission = await handleFn(emission, chunk);
+        emission = await handleFn.call(this, emission, chunk);
 
         if (this === chunk[internals].tail && !emission.phantom && !emission.failed && !emission.pending && !('stream' in this)) {
           chunk.emissionCounter++;
@@ -52,7 +52,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
 
         // If there's a next operator and the emission is valid, pass it to the next operator
         if (this.next && !emission.phantom && !emission.failed && !emission.pending) {
-          return this.next.process(emission, chunk);
+          return this.next.process.call(this.next, emission, chunk);
         } else {
           return emission; // Return the processed emission
         }
@@ -71,6 +71,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
     },
 
     handle: handleFn,
+
     type: 'operator'
   };
 

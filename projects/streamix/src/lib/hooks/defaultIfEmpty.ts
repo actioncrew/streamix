@@ -5,20 +5,20 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
   let boundStream: Stream;
   let hasEmitted = false;
 
-  const init = (stream: Stream) => {
+  const init = function (this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream[hooks].onComplete.chain(callback); // Chain the callback to be triggered on stream completion
+    boundStream[hooks].onComplete.once(callback.bind(this)); // Chain the callback to be triggered on stream completion
   };
 
-  const callback = (): (() => BusEvent) | void => {
+  const callback = function (this: Operator): (() => BusEvent) | void {
     if (!hasEmitted) {
       // If nothing has been emitted, emit the default value
       let emission = createEmission({ value: defaultValue });
-      return () => ({ target: boundStream, payload: { emission, source: operator }, type: 'emission' });
+      return () => ({ target: boundStream, payload: { emission, source: this }, type: 'emission' });
     }
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
     // Mark the emission if it's not a phantom or failed
     if (!emission.phantom && !emission.failed) {
       hasEmitted = true;
