@@ -40,7 +40,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
   };
 
   // Handle emissions by combining the latest values from all streams
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
     if (stream[internals].shouldComplete()) {
       await Promise.all(streams.map(source => source[flags].isStopRequested = true));
     }
@@ -65,23 +65,23 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
       // Update the emission with the latest values
       if (latestValues.every((value) => value.hasValue())) {
         delayedEmission.value = [delayedEmission.value, ...latestValues.map(value => value.value())];
+
+        eventBus.enqueue({
+          target: stream,
+          payload: { emission: delayedEmission, source: this },
+          type: 'emission',
+        });
       } else {
         delayedEmission.failed = true;
         delayedEmission.error = new Error("Some streams are completed without emitting value.");
         finalize();
       }
 
-      eventBus.enqueue({
-        target: stream,
-        payload: { emission: delayedEmission, source: operator },
-        type: 'emission',
-      });
-
       emission.finalize();
     });
 
     return emission;
-  };
+  }
 
   // Create and return the operator
   const operator = createOperator(handle);
