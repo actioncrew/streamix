@@ -134,7 +134,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       }
     } catch (error) {
       emission.reject(error);
-      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
     }
   };
 
