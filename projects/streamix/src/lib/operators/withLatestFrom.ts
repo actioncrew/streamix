@@ -1,5 +1,5 @@
 import { flags } from './../abstractions/subscribable';
-import { createOperator, Emission, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createOperator, Emission, eventBus, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export const withLatestFrom = (...streams: Subscribable[]): Operator => {
@@ -54,16 +54,32 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
       ...streams.map(source => source[internals].awaitCompletion()),
     ]);
 
-    await Promise.race([latestValuesPromise, terminationPromises]);
+    emission.pending = true;
 
-    // Update the emission with the latest values
-    if (latestValues.every((value) => value.hasValue())) {
-      emission.value = [emission.value, ...latestValues.map(value => value.value())];
-    } else {
-      emission.failed = true;
-      emission.error = new Error("Some streams are completed without emitting value.");
-      finalize();
-    }
+    const delayedEmission = createEmission({ value: emission.value });
+    emission.link(delayedEmission);
+
+    queueMicrotask(async () => {
+      await Promise.race([latestValuesPromise, terminationPromises]);
+
+      // Update the emission with the latest values
+      if (latestValues.every((value) => value.hasValue())) {
+        delayedEmission.value = [delayedEmission.value, ...latestValues.map(value => value.value())];
+      } else {
+        delayedEmission.failed = true;
+        delayedEmission.error = new Error("Some streams are completed without emitting value.");
+        finalize();
+      }
+
+      eventBus.enqueue({
+        target: stream,
+        payload: { emission: delayedEmission, source: operator },
+        type: 'emission',
+      });
+
+      emission.finalize();
+    });
+
     return emission;
   };
 
