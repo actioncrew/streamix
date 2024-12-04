@@ -9,7 +9,6 @@ export const eventBus = createBus() as Bus;
   }
 })();
 
-
 export type BusEvent = {
   target: any;
   type: 'emission' | 'start' | 'finalize' | 'complete' | 'error';
@@ -48,22 +47,21 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   const lock = createLock();
   const itemsAvailable = createSemaphore(0); // Semaphore for items available in the buffer
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
-  const pendingEvents: Array<BusEvent> = [];
+  const postponedEvents: Array<BusEvent> = [];
 
   const bus: Bus = {
     async * run(): AsyncGenerator<BusEvent> {
-      async function trackPendingEmission(target: any, emission: Emission) {
+      function trackPendingEmission(target: any, emission: Emission) {
         const pendingSet = pendingEmissions.get(target) || new Set();
         if (!pendingSet.has(emission)) {
           pendingSet.add(emission);
           pendingEmissions.set(target, pendingSet);
         };
 
-        const addToQueue = (event: BusEvent) => pendingEvents.push(event);
+        const addToQueue = (event: BusEvent) => postponedEvents.push(event);
 
         // Process the emission asynchronously in a microtask
-        queueMicrotask(async () => {
-          await emission.wait();
+        emission.wait().then(() => {
           pendingSet.delete(emission);
 
           if (pendingSet.size === 0) {
@@ -100,16 +98,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
         });
       }
 
-
       async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
-        while (pendingEvents.length > 0) {
-          yield pendingEvents.shift()!;
-        }
-
-        yield event;
-
         switch (event.type) {
           case 'start':
+            yield event;
             const emissionEvents = (await event.target[hooks].onStart.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
             for (const emissionEvent of emissionEvents) {
               yield* await processEvent(emissionEvent());
@@ -117,6 +109,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             break;
           case 'finalize':
             if (!pendingEmissions.has(event.target)) {
+              yield event;
               const emissionEvents = (await event.target[hooks].finalize.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
               for (const emissionEvent of emissionEvents) {
                 yield* await processEvent(emissionEvent());
@@ -126,6 +119,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             }
             break;
           case 'emission':
+            yield event;
             let emission = event.payload?.emission ?? createEmission({});
             const target = event.target;
 
@@ -140,11 +134,12 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             }
 
             if (emission.pending) {
-              await trackPendingEmission(target, emission);
+              trackPendingEmission(target, emission);
             }
             break;
           case 'complete':
             if (!pendingEmissions.has(event.target)) {
+              yield event;
               const completeEvents = (await event.target[hooks].onComplete.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
               for (const completeEvent of completeEvents) {
                 yield* await processEvent(completeEvent());
@@ -154,6 +149,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             }
             break;
           case 'error':
+            yield event;
             const errorEvents = (await event.target[hooks].onError.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
             for (const errorEvent of errorEvents) {
               yield* await processEvent(errorEvent());
@@ -163,10 +159,15 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       }
 
       while (true) {
-
+        while (postponedEvents.length > 0) {
+          for await (const current of processEvent(postponedEvents.shift()!)) {
+            yield current;
+          }
+        }
+        
         await itemsAvailable.acquire();
-
         const event = buffer[head];
+        
         if (event) {
           // Process the current event
           for await (const current of processEvent(event)) {
