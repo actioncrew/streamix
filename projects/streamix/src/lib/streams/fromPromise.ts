@@ -23,12 +23,11 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
         this[flags].isAutoComplete = true;
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { error, source: this }, type: 'error' });
     }
   });
 
 
   stream.name = "fromPromise";
-  // Create and return the FromPromiseStream using createStream
   return stream;
 }

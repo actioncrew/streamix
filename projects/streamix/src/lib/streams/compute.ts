@@ -32,7 +32,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
 
     const [error] = await catchAny(Promise.race([this[internals].awaitCompletion(), promise]));
     if(error) {
-      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
     } else {
       await promise;
       this[flags].isAutoComplete = true;

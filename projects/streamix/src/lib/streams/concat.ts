@@ -32,8 +32,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   };
 
   const emitError = (stream: Stream<T>, error: any) => {
-    const emission = createEmission({ error, failed: true });
-    eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
+    eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
   };
 
   stream.name = "concat";
