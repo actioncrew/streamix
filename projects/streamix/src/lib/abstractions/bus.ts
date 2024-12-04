@@ -38,6 +38,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
 
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
   const pendingEmissions: Map<any, Set<Emission>> = new Map();
+  const startMarkers: Map<any, any> = new Map();
   const finalizeMarkers: Map<any, any> = new Map();
   const completeMarkers: Map<any, any> = new Map();
 
@@ -48,17 +49,18 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
   const itemsAvailable = createSemaphore(0); // Semaphore for items available in the buffer
   const spaceAvailable = createSemaphore(bufferSize); // Semaphore for available space in the buffer
   const postponedEvents: Array<BusEvent> = [];
+  let index = 0;
 
   const bus: Bus = {
     async * run(): AsyncGenerator<BusEvent> {
+      const addToQueue = (event: BusEvent) => postponedEvents.push(event);
+
       function trackPendingEmission(target: any, emission: Emission) {
         const pendingSet = pendingEmissions.get(target) || new Set();
         if (!pendingSet.has(emission)) {
           pendingSet.add(emission);
           pendingEmissions.set(target, pendingSet);
         };
-
-        const addToQueue = (event: BusEvent) => postponedEvents.push(event);
 
         // Process the emission asynchronously in a microtask
         emission.wait().then(async () => {
@@ -101,6 +103,10 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
         switch (event.type) {
           case 'start':
+            if(!startMarkers.has(event.target)) {
+              startMarkers.set(event.target, event.payload);
+            }
+
             yield event;
             const emissionEvents = (await event.target[hooks].onStart.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
             for (const emissionEvent of emissionEvents) {
@@ -114,27 +120,39 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               for (const emissionEvent of emissionEvents) {
                 yield* await processEvent(emissionEvent());
               }
+              startMarkers.delete(event.target);
             } else {
               finalizeMarkers.set(event.target, event.payload);
             }
             break;
           case 'emission':
-            yield event;
-            let emission = event.payload?.emission ?? createEmission({});
-            const target = event.target;
+            if(startMarkers.has(event.target)) {
+              yield event;
 
-            if (target[flags].isStopRequested && completeMarkers.has(target)) {
-              emission.phantom = true;
-              emission.ancestor?.finalize();
-            } else {
-              const emissionEvents = (await target[hooks].onEmission.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
-              for (const emissionEvent of emissionEvents) {
-                yield* await processEvent(emissionEvent());
+              let emission = event.payload?.emission ?? createEmission({});
+              const target = event.target;
+
+              if (target[flags].isStopRequested && completeMarkers.has(target)) {
+                emission.phantom = true;
+                emission.ancestor?.finalize();
+              } else {
+                const emissionEvents = (await target[hooks].onEmission.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
+                if (emission.failed) {
+                  yield* await processEvent({ target: event.target, payload: { error: emission.error }, type: 'error' });
+                }
+                else
+                {
+                  for (const emissionEvent of emissionEvents) {
+                    yield* await processEvent(emissionEvent());
+                  }
+                }
               }
-            }
 
-            if (emission.pending) {
-              trackPendingEmission(target, emission);
+              if (emission.pending) {
+                trackPendingEmission(target, emission);
+              }
+            } else {
+              addToQueue(event);
             }
             break;
           case 'complete':
@@ -159,9 +177,22 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
       }
 
       while (true) {
-        while (postponedEvents.length > 0) {
-          for await (const current of processEvent(postponedEvents.shift()!)) {
+        while (postponedEvents.length > 0 && index < postponedEvents.length) {
+          if (postponedEvents[index].type === 'emission' && !startMarkers.has(postponedEvents[index].target)) {
+            break;
+          }
+          for await (const current of processEvent(postponedEvents[index])) {
+            if(postponedEvents[index].type === 'finalize') {
+              startMarkers.delete(postponedEvents[index].target);
+            }
+
+            index++;
             yield current;
+          }
+
+          if(index > 128) {
+            postponedEvents.splice(0, index);
+            index = 0;
           }
         }
 
