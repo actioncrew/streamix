@@ -1,3 +1,4 @@
+import { eventBus } from './bus';
 import { createReceiver, Receiver, Stream } from '../abstractions';
 import { createSubject } from '../streams';
 import { hook } from '../utils';
@@ -105,18 +106,25 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     // If the first chunk has a defined value, emit it after pipeline starts
     const firstChunk = getFirstChunk();
-    if (firstChunk.value !== undefined) {
+    const emissionCount = firstChunk.emissionCounter;
+    if (emissionCount > 0) {
       pipeline[internals].awaitStart().then(() => {
-        firstChunk[hooks].onEmission.parallel({
-          emission: createEmission({ value: firstChunk.value }),
-          source: firstChunk,
-        });
+        if(emissionCount === firstChunk.emissionCounter) {
+          eventBus.enqueue({
+            target: firstChunk,
+            payload: {
+              emission: createEmission({ value: firstChunk.value }),
+              source: firstChunk,
+            },
+            type: 'emission'
+          });
+        }
       });
     }
 
     // Define the subscription object
     const subscription = getLastChunk().subscribe(callbackOrReceiver);
-    let previousPromise = getLastChunk()[internals].awaitStart();
+    let pipelineStarted = getLastChunk()[internals].awaitStart();
 
     // Loop through chunks in reverse order
     for (let i = chunks.length - 2; i >= 0; i--) {
@@ -126,11 +134,14 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
         chunk[flags].isRunning = true;
 
         // Chain the execution of this chunk to the previous one
-        previousPromise = previousPromise
+        pipelineStarted = pipelineStarted
           .then(() => queueMicrotask(chunk.run))
           .then(() => chunk[internals].awaitStart());
       }
     }
+
+    pipeline[internals].awaitStart = () => pipelineStarted;
+    subscription.started = pipelineStarted;
     return subscription;
   };
 
