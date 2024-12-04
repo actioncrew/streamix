@@ -190,7 +190,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
             yield current;
           }
 
-          if(index > 128) {
+          if(index > 1024) {
             postponedEvents.splice(0, index);
             index = 0;
           }
