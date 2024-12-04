@@ -3,7 +3,7 @@ import { Emission, Subscribable, createOperator, Operator, createEmission, event
 export const delay = (delayTime: number): Operator => {
   let queue = Promise.resolve();
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
     // Mark the emission as pending
     emission.pending = true;
 
@@ -22,7 +22,7 @@ export const delay = (delayTime: number): Operator => {
               // Emit the delayed value
               eventBus.enqueue({
                 target: stream,
-                payload: { emission: delayedEmission, source: operator },
+                payload: { emission: delayedEmission, source: this },
                 type: 'emission',
               });
             }

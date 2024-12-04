@@ -18,7 +18,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
     }
 
     if (error) {
-      eventBus.enqueue({ target: this, payload: {emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
     }
   });
 

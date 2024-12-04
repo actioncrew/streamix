@@ -10,7 +10,7 @@ export function of<T = any>(value: T): Stream<T> {
         this[flags].isAutoComplete = true;
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { emission: createEmission({ error, failed: true }), source: this }, type: 'emission' });
+      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
     }
   });
 

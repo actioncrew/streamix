@@ -24,6 +24,9 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
   const originalSubscribe = stream.subscribe.bind(stream); // Store the original start method
 
   stream.subscribe = function(this: Stream<T>, params?: any): Subscription {
+    // Call the original start method
+    let subscription = originalSubscribe(params);
+
     if (!listener) {
       listener = async (event: Event) => {
         if (this[flags].isRunning) {
@@ -36,8 +39,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
       target.addEventListener(eventName, listener);
     }
 
-    // Call the original start method
-    return originalSubscribe(params);
+    return subscription;
   };
 
   stream.name = "fromEvent";

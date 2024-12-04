@@ -13,8 +13,7 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
             eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
           },
           error: (err) => {
-            const emission = createEmission({ error: err, failed: true });
-            eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
+            eventBus.enqueue({ target: this, payload: { error: err }, type: 'error' });
             reject(err); // Reject the promise on error
             finalize(); // Stop all processing on error
           },
