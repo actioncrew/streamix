@@ -7,9 +7,11 @@ export const delay = (delayTime: number): Operator => {
 
   const finalize = () => {
     for (const [emission, { timer, resolve }] of registry.entries()) {
-      emission.finalize();
-      emission.reject(new Error('Emission has not been resolved'));
+      if (!emission.complete) {
+        emission.reject(new Error('Emission was not resolved before stream finalized.'));
+      }
 
+      emission.finalize();
       clearTimeout(timer);
       resolve();
     }
