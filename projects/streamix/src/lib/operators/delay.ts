@@ -19,7 +19,7 @@ export const delay = (delayTime: number): Operator => {
   };
 
   const init = (stream: Subscribable) => {
-    stream[hooks].finalize.once(finalize);
+    stream[hooks].onComplete.once(finalize);
   }
 
   const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
@@ -32,11 +32,16 @@ export const delay = (delayTime: number): Operator => {
       () =>
         new Promise<void>((resolve) => {
           const timer = setTimeout(() => {
-            eventBus.enqueue({
-              target: stream,
-              payload: { emission: delayedEmission, source: this },
-              type: 'emission',
-            });
+            if (stream[flags].isStopRequested) {
+              delayedEmission.phantom = true;
+              delayedEmission.resolve();
+            } else {
+              eventBus.enqueue({
+                target: stream,
+                payload: { emission: delayedEmission, source: this },
+                type: 'emission',
+              });
+            }
 
             emission.finalize();
             registry.delete(emission);
