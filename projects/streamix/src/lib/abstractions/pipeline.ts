@@ -242,53 +242,59 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 export function multicast<T = any>(source: Subscribable<T>, bufferSize: number = Infinity): Subscribable<T> {
   const subject = createSubject<T>();
   const cache: T[] = [];
+  let subscribers = 0;
+
   const subscription = source.subscribe((value) => {
-      // Cache each new emission, respecting the buffer size
-      cache.push(value);
-      if (!isNaN(bufferSize) && cache.length > bufferSize) {
-          cache.shift(); // Keep the cache within the buffer limit
-      }
-      subject.next(value); // Emit to active subscribers
+    // Cache each new emission, respecting the buffer size
+    cache.push(value);
+    if (!isNaN(bufferSize) && cache.length > bufferSize) {
+      cache.shift(); // Keep the cache within the buffer limit
+    }
+    subject.next(value); // Emit to active subscribers
   });
 
+  // Mark the stream as stop requested once the source completes
   source[hooks].finalize.once(() => subject[flags].isStopRequested = true);
 
   const pipeline = createPipeline<T>(subject);
-  let subscribers = 0;
 
   const originalSubscribe = pipeline.subscribe.bind(pipeline);
 
+  // Override the subscribe method to handle cache replay and subscription counting
   pipeline.subscribe = (observer: (value: T) => void): Subscription => {
-      // Replay cached values to the new subscriber
-      const replayCache = async () => {
-          for (const value of cache) {
-              await observer(value);
-          }
-      };
+    // Replay cached values to the new subscriber
+    const replayCache = async () => {
+      for (const value of cache) {
+        await observer(value);
+      }
+    };
 
-      replayCache(); // Trigger replay of cached values
+    // Trigger replay of cached values for new subscriber
+    replayCache();
 
-      const originalSubscription = originalSubscribe(observer);
-      subscribers++;
+    // Original subscription for the new observer
+    const originalSubscription = originalSubscribe(observer);
+    subscribers++;
 
-      const subscription: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
-      subscription.unsubscribed = false
+    // Create a custom unsubscribe logic
+    const customSubscription: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
+    customSubscription.unsubscribed = false;
 
-      subscription.unsubscribe = async () => {
-        if(!subscription.unsubscribed) {
-          originalSubscription.unsubscribe();
-          subscribers--;
-          if (subscribers === 0) {
-            subscription.unsubscribe();
-          }
-          subscription.unsubscribed = true;
+    customSubscription.unsubscribe = async () => {
+      if (!customSubscription.unsubscribed) {
+        customSubscription.unsubscribed = true;
+        originalSubscription.unsubscribe();
+        subscribers--;
+
+        // If there are no more subscribers, stop the subject
+        if (subscribers === 0) {
+          subject.complete(); // Complete the subject if there are no active subscribers
         }
+      }
+    };
 
-      };
-
-      return subscription;
+    return customSubscription;
   };
 
   return pipeline;
 };
-
