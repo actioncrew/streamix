@@ -8,6 +8,7 @@ import { createEmission } from '../abstractions';
 export const concatMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
   let emissionQueue: Emission[] = [];
+  let processingChain = Promise.resolve();
   const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
   let input!: Subscribable | undefined;
@@ -30,34 +31,49 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   const handle = async (emission: Emission, stream: Subscribable) => {
     emissionQueue.push(emission);
 
-    if (!currentInnerStream) {
-      await processQueue();
+    if(!currentInnerStream) {
+      queueMicrotask(processQueue);
     }
 
     emission.pending = true;
     return emission;
   };
 
-  const processQueue = async (): Promise<void> => {
-    // Wait for the queue to be processed sequentially
-    while (emissionQueue.length > 0 && !isFinalizing) {
-      const nextEmission = emissionQueue.shift();
-      if (nextEmission) {
-        await processEmission(nextEmission);
+  const processQueue = (): Promise<void> => {
+    // Ensure the chain processes emissions sequentially
+    processingChain = processingChain.then(async () => {
+      while (emissionQueue.length > 0 && !isFinalizing) {
+        const nextEmission = emissionQueue.shift(); // Dequeue next emission
+        if (nextEmission) {
+          await processEmission(nextEmission); // Process it sequentially
+        }
       }
-    }
+    });
+
+    return processingChain;
   };
 
-  const processEmission = async (emission: Emission): Promise<void> => {
+  const processEmission = (emission: Emission): Promise<void> => {
     currentInnerStream = project(emission.value);
 
     if (currentInnerStream) {
-      // Immediately set up listeners on the new inner stream
-      subscription = currentInnerStream.subscribe({
-        next: (value) => emission.link(handleInnerEmission(value)),
-        error: (err) => handleStreamError(emission, err),
-        complete: () => completeInnerStream(emission, subscription!)
+      return new Promise<void>((resolve) => {
+        subscription = currentInnerStream!.subscribe({
+          next: (value) => {
+            emission.link(handleInnerEmission(value));
+          },
+          error: (err) => {
+            handleStreamError(emission, err);
+            resolve(); // Continue the chain even on error
+          },
+          complete: () => {
+            completeInnerStream(emission, subscription!);
+            resolve(); // Resolve when complete
+          },
+        });
       });
+    } else {
+      return Promise.resolve();
     }
   };
 
@@ -73,7 +89,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
-    eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+    eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
     emission.phantom = true;
     finalize();
   };
