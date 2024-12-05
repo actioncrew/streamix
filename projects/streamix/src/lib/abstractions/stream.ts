@@ -107,8 +107,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       if (emission.failed) throw emission.error;
 
-      if (next === source[internals].head && !emission.phantom) {
-        stream.emissionCounter++;
+      if (next === undefined && !emission.phantom && !emission.pending) {
+        emissionCounter++;
       }
 
       if (!emission.phantom && !emission.pending) {

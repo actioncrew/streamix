@@ -39,12 +39,15 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
 
     process: async function (emission: Emission, chunk: Stream): Promise<Emission> {
       try {
+        if ('stream' in this) {
+          chunk.emissionCounter++;
+        }
 
         // Handle the emission with the provided handle function
         emission = await handleFn.call(this, emission, chunk);
 
-        if (emission.phantom || emission.failed) {
-          chunk.emissionCounter--;
+        if (this === chunk[internals].tail && !emission.phantom && !emission.failed && !emission.pending && !('stream' in this)) {
+          chunk.emissionCounter++;
         }
 
         // If there's a next operator and the emission is valid, pass it to the next operator
