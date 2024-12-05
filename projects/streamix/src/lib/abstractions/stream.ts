@@ -60,7 +60,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
       eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
-      await finalize.waitForCompletion();
       stopped = true; running = false;
       operators.forEach(operator => operator.cleanup());
     }
@@ -71,10 +70,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       await onStart.waitForCompletion();
     }
 
-    if(!stopped) {
-      stream[flags].isStopRequested = true;
-      await finalize.waitForCompletion();
-    }
+    stream[flags].isStopRequested = true;
   };
 
   const awaitStart = () => commencement.promise();
@@ -180,7 +176,9 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
-        stream.complete().then(() => {
+        stream.complete().then(async () => {
+          await finalize.waitForCompletion();
+
           if (receiver.complete) {
             finalize.remove(receiver, receiver.complete);
           }

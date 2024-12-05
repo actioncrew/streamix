@@ -39,7 +39,7 @@ describe('DelayOperator', () => {
         }
       },
       complete: () => {
-        expect(emitCount).toBeLessThan(3);
+        expect(emitCount).toBe(2);
         done();
       }
     });

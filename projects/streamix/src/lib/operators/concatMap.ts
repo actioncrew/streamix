@@ -30,7 +30,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   const handle = async (emission: Emission, stream: Subscribable) => {
     emissionQueue.push(emission);
 
-    if(!currentInnerStream) {
+    if (!currentInnerStream) {
       await processQueue();
     }
 
@@ -39,6 +39,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const processQueue = async (): Promise<void> => {
+    // Wait for the queue to be processed sequentially
     while (emissionQueue.length > 0 && !isFinalizing) {
       const nextEmission = emissionQueue.shift();
       if (nextEmission) {
@@ -72,7 +73,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
-    eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
+    eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
     emission.phantom = true;
     finalize();
   };
