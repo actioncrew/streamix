@@ -10,6 +10,7 @@ export const fork = <T = any, R = T>(
 ): Operator => {
   let innerStream: Subscribable | null = null;
   let emissionQueue: Emission[] = [];
+  let processingChain = Promise.resolve();
   const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
   let input!: Subscribable | undefined;
@@ -33,20 +34,25 @@ export const fork = <T = any, R = T>(
     emissionQueue.push(emission);
 
     if(!innerStream) {
-      await processQueue();
+      queueMicrotask(processQueue);
     }
 
     emission.pending = true;
     return emission;
   };
 
-  const processQueue = async (): Promise<void> => {
-    while (emissionQueue.length > 0 && !isFinalizing) {
-      const nextEmission = emissionQueue.shift();
-      if (nextEmission) {
-        await processEmission(nextEmission);
+  const processQueue = (): Promise<void> => {
+    // Ensure the chain processes emissions sequentially
+    processingChain = processingChain.then(async () => {
+      while (emissionQueue.length > 0 && !isFinalizing) {
+        const nextEmission = emissionQueue.shift(); // Dequeue next emission
+        if (nextEmission) {
+          await processEmission(nextEmission); // Process it sequentially
+        }
       }
-    }
+    });
+
+    return processingChain;
   };
 
   const processEmission = async (emission: Emission): Promise<void> => {
@@ -55,25 +61,32 @@ export const fork = <T = any, R = T>(
 
     if (matchedCase) {
       innerStream = matchedCase.handler(); // Use the selected stream
-
-      if (innerStream) {
-        // Immediately set up listeners on the new inner stream
-        subscription = innerStream.subscribe({
-          next: (value) => handleInnerEmission(value),
-          error: (err) => handleStreamError(emission, err),
-          complete: () => completeInnerStream(emission, subscription!)
+      return new Promise<void>((resolve) => {
+        subscription = innerStream!.subscribe({
+          next: (value) => {
+            emission.link(handleInnerEmission(value));
+          },
+          error: (err) => {
+            handleStreamError(emission, err);
+            resolve(); // Continue the chain even on error
+          },
+          complete: () => {
+            completeInnerStream(emission, subscription!);
+            resolve(); // Resolve when complete
+          },
         });
-      }
+      });
     } else {
       // If no case matches, emit an error
       executionCounter.increment();
       emission.finalize();
       handleStreamError(emission, new Error(`No handler found for value: ${emission.value}`));
+      return Promise.resolve();
     }
   };
 
   const handleInnerEmission = (value: any) => {
-    output.next(value); // Emit the inner emission
+    return output.next(value); // Emit the inner emission
   };
 
   const completeInnerStream = async (emission: Emission, subscription: Subscription) => {
