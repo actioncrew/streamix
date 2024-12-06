@@ -1,6 +1,6 @@
 import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
-import { Counter, counter } from '../utils';
+import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
 import { Subscription } from '../abstractions';
 
@@ -60,7 +60,17 @@ export const fork = <T = any, R = T>(
     const matchedCase = options.find(({ on }) => on(emission.value));
 
     if (matchedCase) {
-      innerStream = matchedCase.handler(); // Use the selected stream
+      const [error, innerStream] = await catchAny(() => matchedCase.handler());
+
+      if (error) {
+        // Handle errors in the projection function
+        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+        executionCounter.increment();
+        delete emission.pending;
+        emission.phantom = true;
+        return;
+      }
+
       return new Promise<void>((resolve) => {
         subscription = innerStream!.subscribe({
           next: (value) => {

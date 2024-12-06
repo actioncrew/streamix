@@ -29,28 +29,39 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
 
   const handle = async (emission: Emission, stream: Subscribable) => {
     // Process the current emission and start a new inner stream
+    queueMicrotask(() => processEmission(emission));
+
+    emission.pending = true;
+    return emission;
+  };
+
+  async function processEmission(emission: Emission) {
+    // Attempt to project the emission into a new inner stream
     const [error, innerStream] = await catchAny(() => project(emission.value));
 
     if (error) {
+      // Handle projection error by emitting an error event and marking the emission as a phantom
       eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
       executionCounter.increment();
+      delete emission.pending;
       emission.phantom = true;
       return emission;
     }
 
-    // Cancel any existing inner subscription
-    if(previousInnerStream && previousInnerStream !== innerStream) {
+    // If there's an existing inner stream and it's different from the new one, stop it
+    if (previousInnerStream && previousInnerStream !== innerStream) {
       stopPreviousInnerStream(emission);
     }
 
     // Subscribe to the new inner stream
     subscribeToInnerStream(innerStream, emission);
 
+    // Update the reference to the current inner stream
     previousInnerStream = innerStream;
 
     emission.pending = true;
-    return emission;
-  };
+    return emission; // Return the processed emission
+  }
 
   const subscribeToInnerStream = (innerStream: Subscribable, emission: Emission) => {
     currentSubscription = innerStream.subscribe({

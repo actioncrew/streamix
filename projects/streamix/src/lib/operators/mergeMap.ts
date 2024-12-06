@@ -5,15 +5,13 @@ import { eventBus } from '../abstractions';
 
 export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   const output = createSubject();
-  let activeInnerStreams: Subscribable[] = [];
-  let processingPromises: Promise<void>[] = [];
-  const executionNumber: Counter = counter(0);
-  let isFinalizing = false;
+  const activeInnerStreams: Set<Subscribable> = new Set();
+  const processingPromises: Set<Promise<void>> = new Set();
+  const executionCounter: Counter = counter(0);
   let input: Subscribable | undefined;
+  let isFinalizing = false;
 
-  // Array to track active subscriptions for inner streams
-  const subscriptions: Subscription[] = [];
-
+  // Initialize the operator with the input stream
   const init = (stream: Subscribable) => {
     input = stream;
 
@@ -23,102 +21,93 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
       return;
     }
 
-    // Finalize when the input or output stream stops
-    input[hooks].finalize.once(() => queueMicrotask(() => executionNumber.waitFor(input!.emissionCounter).then(finalize)));
+    // Finalize when either the input or output stream stops
+    input[hooks].finalize.once(() =>
+      queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize))
+    );
     output[hooks].finalize.once(finalize);
   };
 
+  // Handle each emission from the input stream
   const handle = async (emission: Emission): Promise<Emission> => {
-
-    // Process the emission asynchronously
-    processEmission(emission, output);
-
-    // Mark the emission as phantom and return immediately
-    emission.pending = true;
+    queueMicrotask(() => processEmission(emission));
+    emission.pending = true; // Mark emission as pending
     return emission;
   };
 
-  const processEmission = async (emission: Emission, stream: Subject): Promise<void> => {
+  // Process the emission by projecting it into an inner stream
+  const processEmission = async (emission: Emission): Promise<void> => {
     const [error, innerStream] = await catchAny(() => project(emission.value));
 
     if (error) {
+      // Handle errors in the projection function
       eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
-      executionNumber.increment();
+      executionCounter.increment();
+      delete emission.pending;
       emission.phantom = true;
       return;
     }
 
-    activeInnerStreams.push(innerStream);
+    activeInnerStreams.add(innerStream);
 
+    // Track the processing of the inner stream
     const processingPromise = new Promise<void>((resolve) => {
-
-      const handleCompletion = async () => {
-        removeInnerStream(innerStream);
-
-        executionNumber.increment();
-        emission.finalize();
-
-        processingPromises = processingPromises.filter((p) => p !== processingPromise);
-        resolve();
-      };
-
-      const handleInnerEmission = (value: any) => {
-        // Add promises from stream.next() to ensure parallel processing
-        emission.link(stream.next(value));
-      };
-
-      const handleStreamError = (err: any) => {
-        eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
-        finalize();
-      }
-
-      // Subscribe to inner stream emissions
       const subscription = innerStream.subscribe({
-        next: handleInnerEmission,
-        error: handleStreamError,
-        complete: handleCompletion
+        next: (value) => output.next(value), // Forward emissions from the inner stream
+        error: (err) => {
+          // Handle errors from the inner stream
+          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+          resolve(); // Resolve the processing promise to continue
+        },
+        complete: () => {
+          // Clean up when the inner stream completes
+          activeInnerStreams.delete(innerStream);
+          executionCounter.increment();
+          emission.finalize();
+          resolve();
+        },
       });
 
-      // Add the unsubscribe function to the subscriptions array
-      subscriptions.push(subscription);
-    }) as any;
+      // Cleanup when the processing is done
+      processingPromises.add(processingPromise);
+      processingPromise.finally(() => {
+        processingPromises.delete(processingPromise);
+        subscription.unsubscribe();
+      });
+    });
 
-    processingPromises.push(processingPromise);
+    processingPromises.add(processingPromise);
   };
 
-  const removeInnerStream = (innerStream: Subscribable) => {
-    // Remove the unsubscribe function from the subscriptions array and unsubscribe
-    const index = activeInnerStreams.indexOf(innerStream);
-    if (index !== -1) {
-      subscriptions[index].unsubscribe(); // Call the unsubscribe function
-      activeInnerStreams.splice(index, 1);
-      subscriptions.splice(index, 1); // Remove the unsubscribe function from the array
-    }
-  };
-
-  const finalize = () => {
+  // Finalize the operator by cleaning up all resources
+  const finalize = async () => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    subscriptions.forEach(subscription => subscription.unsubscribe());
-    subscriptions.length = 0;
+    // Wait for all active processing promises to complete
+    await Promise.all(processingPromises);
 
-    activeInnerStreams = [];
-    stopInputStream();
-    stopOutputStream();
+    // Unsubscribe from all active inner streams
+    activeInnerStreams.forEach((stream) => stream.complete());
+    activeInnerStreams.clear();
+
+    // Complete the output stream
+    stopStream(output);
+
+    // Mark the input stream as auto-complete if necessary
+    if (input) stopStream(input);
   };
 
-  const stopInputStream = () => {
-    input![flags].isAutoComplete = true;
+  // Helper to stop a stream gracefully
+  const stopStream = (stream: Subscribable) => {
+    stream[flags].isAutoComplete = true;
   };
 
-  const stopOutputStream = () => {
-    output[flags].isAutoComplete = true;
-  };
-
+  // Create and return the operator
   const operator = createOperator(handle) as any;
   operator.name = 'mergeMap';
   operator.init = init;
   operator.stream = output;
+
   return operator;
 };
