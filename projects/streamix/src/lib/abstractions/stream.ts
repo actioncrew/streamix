@@ -61,7 +61,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      finalize.once(() => operators.forEach(operator => operator.cleanup()));
+      finalize.once(() => {
+        running = false; stopped = true;
+        operators.forEach(operator => operator.cleanup());
+
+      });
       eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
     }
   };
@@ -123,7 +127,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       }
 
       if (!emission.pending) {
-        emission.complete = true;
         emission.resolve()
       }
     } catch (error) {
