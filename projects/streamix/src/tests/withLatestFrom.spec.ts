@@ -1,4 +1,4 @@
-import { Emission, from, internals, Stream, withLatestFrom } from '../lib';
+import { from, withLatestFrom } from '../lib';
 
 describe('withLatestFrom operator', () => {
   it('should combine emissions with latest value from other stream', (done) => {

@@ -1,5 +1,4 @@
-import { eventBus } from './../lib/abstractions/bus';
-import { firstValueFrom, lastValueFrom, eachValueFrom, Stream, createSubject, from, EMPTY } from '../lib';
+import { firstValueFrom, lastValueFrom, eachValueFrom, from, EMPTY } from '../lib';
 
 describe('eachValueFrom', () => {
   it('should get first value from the stream', async () => {

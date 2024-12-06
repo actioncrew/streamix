@@ -1,41 +1,37 @@
-import { Subscribable } from "rxjs";
+import { Subscribable } from "../abstractions";
 
 export async function* eachValueFrom<T>(stream: Subscribable<T>): AsyncGenerator<T> {
   let isCompleted = false;
 
-  // A separate promise to track the completion of the stream
-  const completePromise = new Promise<void>((resolve) => {
-    stream.subscribe({
-      next: () => {},
-      complete: () => {
-        isCompleted = true; // Mark stream completion
-        resolve(); // Resolve when the stream completes
-      },
-      error: (err: any) => {
-        throw err; // Handle error if needed
-      }
-    });
+  // Create an observable iterator
+  const promiseQueue: Promise<T>[] = [];
+
+  const subscription = stream.subscribe({
+    next: (value: T) => {
+      // Add each emitted value to the queue
+      promiseQueue.push(Promise.resolve(value));
+    },
+    complete: () => {
+      // Once complete, mark the stream as completed
+      isCompleted = true;
+    },
+    error: (err: any) => {
+      // Handle errors if needed
+      throw err;
+    }
   });
 
-  while (!isCompleted) {
-    // Use race to handle both emission and completion
-    const value = await Promise.race([
-      new Promise<T>((resolve, reject) => {
-        const subscription = stream.subscribe({
-          next: (value: T) => {
-            resolve(value); // Resolve with the emitted value
-          },
-          error: (err: any) => {
-            reject(err); // Reject on error
-          }
-        });
-      }),
-      completePromise // If the stream completes, this will trigger
-    ]);
-
-    // Yield the value once resolved
-    if (value !== undefined) {
-      yield value;
+  try {
+    // Continuously yield values as they are emitted
+    while (!isCompleted || promiseQueue.length > 0) {
+      // Await the next value from the queue
+      const value = await promiseQueue.shift();
+      if (value !== undefined) {
+        yield value;
+      }
     }
+  } finally {
+    // Ensure subscription cleanup when generator completes
+    subscription.unsubscribe();
   }
 }

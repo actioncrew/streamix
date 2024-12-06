@@ -41,8 +41,8 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
 
   // Handle emissions by combining the latest values from all streams
   const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
-    if (stream[internals].shouldComplete()) {
-      await Promise.all(streams.map(source => source[flags].isStopRequested = true));
+    if (stream[flags].isUnsubscribed) {
+      finalize(); emission.phantom = true; return emission;
     }
 
     // Wait for all latest values to be available
