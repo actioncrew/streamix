@@ -1,6 +1,6 @@
 import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
-import { Counter, counter } from '../utils';
+import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
 import { Subscription } from '../abstractions';
 import { createEmission } from '../abstractions';
@@ -8,6 +8,7 @@ import { createEmission } from '../abstractions';
 export const concatMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
   let emissionQueue: Emission[] = [];
+  let processingChain = Promise.resolve();
   const executionCounter: Counter = counter(0);
   let isFinalizing: boolean = false;
   let input!: Subscribable | undefined;
@@ -31,32 +32,57 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
     emissionQueue.push(emission);
 
     if(!currentInnerStream) {
-      await processQueue();
+      queueMicrotask(processQueue);
     }
 
     emission.pending = true;
     return emission;
   };
 
-  const processQueue = async (): Promise<void> => {
-    while (emissionQueue.length > 0 && !isFinalizing) {
-      const nextEmission = emissionQueue.shift();
-      if (nextEmission) {
-        await processEmission(nextEmission);
+  const processQueue = (): Promise<void> => {
+    // Ensure the chain processes emissions sequentially
+    processingChain = processingChain.then(async () => {
+      while (emissionQueue.length > 0 && !isFinalizing) {
+        const nextEmission = emissionQueue.shift(); // Dequeue next emission
+        if (nextEmission) {
+          await processEmission(nextEmission); // Process it sequentially
+        }
       }
-    }
+    });
+
+    return processingChain;
   };
 
   const processEmission = async (emission: Emission): Promise<void> => {
-    currentInnerStream = project(emission.value);
+    const [error, currentInnerStream] = await catchAny(() => project(emission.value));
+
+    if (error) {
+      // Handle errors in the projection function
+      eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+      executionCounter.increment();
+      delete emission.pending;
+      emission.phantom = true;
+      return;
+    }
 
     if (currentInnerStream) {
-      // Immediately set up listeners on the new inner stream
-      subscription = currentInnerStream.subscribe({
-        next: (value) => emission.link(handleInnerEmission(value)),
-        error: (err) => handleStreamError(emission, err),
-        complete: () => completeInnerStream(emission, subscription!)
+      return new Promise<void>((resolve) => {
+        subscription = currentInnerStream!.subscribe({
+          next: (value) => {
+            emission.link(handleInnerEmission(value));
+          },
+          error: (err) => {
+            handleStreamError(emission, err);
+            resolve(); // Continue the chain even on error
+          },
+          complete: () => {
+            completeInnerStream(emission, subscription!);
+            resolve(); // Resolve when complete
+          },
+        });
       });
+    } else {
+      return Promise.resolve();
     }
   };
 

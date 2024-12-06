@@ -33,10 +33,12 @@ export interface SubscribableHooks {
 export interface SubscribableFlags {
 
   isAutoComplete: boolean;
-  isStopRequested: boolean;
+  isUnsubscribed: boolean;
 
   isStopped: boolean;
   isRunning: boolean;
+
+  isPending: boolean;
 }
 
 export interface SubscribableInternals {

@@ -1,13 +1,30 @@
+import { emitDistinctChangesOnlyDefaultValue } from '@angular/compiler';
 import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, Stream, flags, hooks } from '../abstractions';
 
 export const delay = (delayTime: number): Operator => {
   let queue = Promise.resolve();
+  const registry = new Map<Emission, { timer: any; resolve: () => void }>();
+
+  const finalize = () => {
+    for (const [emission, { timer, resolve }] of registry.entries()) {
+      if (!emission.complete) {
+        emission.reject(new Error('Emission was not resolved before stream finalized.'));
+      }
+
+      emission.finalize();
+      clearTimeout(timer);
+      resolve();
+    }
+    registry.clear();
+  };
+
+  const init = (stream: Subscribable) => {
+    stream[hooks].onComplete.once(finalize);
+  }
 
   const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
-    // Mark the emission as pending
     emission.pending = true;
 
-    // Schedule the delayed emission
     const delayedEmission = createEmission({ value: emission.value });
     emission.link(delayedEmission);
 
@@ -15,11 +32,9 @@ export const delay = (delayTime: number): Operator => {
       () =>
         new Promise<void>((resolve) => {
           const timer = setTimeout(() => {
-            // Check if the stream is still active before emitting
-            if (stream[flags].isStopRequested || stream[flags].isStopped) {
+            if (stream[flags].isUnsubscribed) {
               delayedEmission.phantom = true;
             } else {
-              // Emit the delayed value
               eventBus.enqueue({
                 target: stream,
                 payload: { emission: delayedEmission, source: this },
@@ -27,24 +42,20 @@ export const delay = (delayTime: number): Operator => {
               });
             }
 
-            // Finalize the original emission
             emission.finalize();
+            registry.delete(emission);
             resolve();
           }, delayTime);
 
-          // Clear timeout if the stream is stopped
-          stream[hooks].finalize.once(() => {
-            clearTimeout(timer);
-            resolve();
-          });
+          registry.set(emission, { timer, resolve });
         })
     );
 
-    // Return the pending emission immediately
     return emission;
   };
 
   const operator = createOperator(handle);
+  operator.init = init;
   operator.name = 'delay';
 
   return operator;
