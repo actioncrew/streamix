@@ -18,7 +18,7 @@ export function createSubject<T = any>(): Subject<T> {
     const emission = createEmission({ value });
 
     // If the stream is stopped, further emissions are not allowed
-    if (this[flags].isStopRequested || this[flags].isStopped) {
+    if (this[flags].isUnsubscribed || this[flags].isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
       return emission;
     }

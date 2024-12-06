@@ -32,9 +32,8 @@ export const delay = (delayTime: number): Operator => {
       () =>
         new Promise<void>((resolve) => {
           const timer = setTimeout(() => {
-            if (stream[flags].isStopRequested) {
+            if (stream[flags].isUnsubscribed) {
               delayedEmission.phantom = true;
-              delayedEmission.resolve();
             } else {
               eventBus.enqueue({
                 target: stream,
