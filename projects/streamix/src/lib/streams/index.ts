@@ -5,6 +5,7 @@ export * from './concat';
 export * from './defer';
 export * from './EMPTY';
 export * from './from';
+export * from './fromAnimationFrame';
 export * from './fromEvent';
 export * from './fromPromise';
 export * from './iif';
