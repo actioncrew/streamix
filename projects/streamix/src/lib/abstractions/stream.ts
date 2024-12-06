@@ -64,7 +64,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       finalize.once(() => {
         running = false; stopped = true;
         operators.forEach(operator => operator.cleanup());
-
       });
       eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
     }
