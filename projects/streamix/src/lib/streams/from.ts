@@ -30,10 +30,7 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
       }
     }
 
-    if (!this[flags].isStopRequested) {
-      this[flags].isAutoComplete = true;
-    }
-
+    this[flags].isAutoComplete = true;
   });
 
   stream.name = "from";

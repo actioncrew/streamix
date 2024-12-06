@@ -36,9 +36,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const commencement = awaitable<void>();
 
   let autoComplete = false;
-  let stopRequested = false;
+  let unsubscribed = false;
   let stopped = false;
   let running = false;
+  let pending = false;
+
   let currentValue: T | undefined;
 
   let emissionCounter = 0;
@@ -59,9 +61,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
+      finalize.once(() => operators.forEach(operator => operator.cleanup()));
       eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
-      stopped = true; running = false;
-      operators.forEach(operator => operator.cleanup());
     }
   };
 
@@ -70,7 +71,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       await onStart.waitForCompletion();
     }
 
-    stream[flags].isStopRequested = true;
+    stream[flags].isUnsubscribed = true;
   };
 
   const awaitStart = () => commencement.promise();
@@ -161,11 +162,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       return Promise.resolve();
     };
 
+    unsubscribed = false;
     // Add the bound callback to the subscribers
     subscribers.chain(boundCallback);
 
     // Start the stream if it isn't running and stopping hasn't been requested
-    if (!running && !stopRequested) {
+    if (!running && !unsubscribed) {
       running = true;
       queueMicrotask(stream.run);
     }
@@ -176,8 +178,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
-        subscription.unsubscribed = true;
         if (subscribers.length === 1) {
+          unsubscribed = true;
           stream.complete().then(async () => {
             await finalize.waitForCompletion();
 
@@ -189,6 +191,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
               onError.remove(receiver, errorCallback);
             }
             subscribers.remove(boundCallback);
+            subscription.unsubscribed = true;
           });
         }
       }
@@ -204,7 +207,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return createPipeline<T>(stream)[internals].bindOperators(...operators);
   };
 
-  const shouldComplete = () => autoComplete || stopRequested;
+  const shouldComplete = () => autoComplete || unsubscribed;
 
   const stream = {
     type: "stream" as "stream",
@@ -257,12 +260,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         if (value && completion.state() === 'pending') completion.resolve();
         autoComplete = value;
       },
-      get isStopRequested() {
-        return stopRequested;
+      get isUnsubscribed() {
+        return unsubscribed;
       },
-      set isStopRequested(value: boolean) {
+      set isUnsubscribed(value: boolean) {
         if (value && completion.state() === 'pending') completion.resolve();
-        stopRequested = value;
+        unsubscribed = value;
       },
       get isRunning() {
         return running;
@@ -275,6 +278,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       },
       set isStopped(value: boolean) {
         stopped = value;
+      },
+      get isPending() {
+        return pending;
+      },
+      set isPending(value: boolean) {
+        pending = value;
       }
     }
   };

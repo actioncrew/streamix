@@ -1,5 +1,5 @@
 import { eventBus } from './bus';
-import { createReceiver, Receiver, Stream } from '../abstractions';
+import { Receiver, Stream } from '../abstractions';
 import { createSubject } from '../streams';
 import { hook } from '../utils';
 import { Operator } from '../abstractions';
@@ -182,8 +182,8 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     [internals]: {
       bindOperators,
       awaitStart: () => getFirstChunk()[internals].awaitStart(),
-      shouldComplete: () => getFirstChunk()[internals].shouldComplete(),
-      awaitCompletion: () => getFirstChunk()[internals].awaitCompletion(),
+      shouldComplete: () => getLastChunk()[internals].shouldComplete(),
+      awaitCompletion: () => getLastChunk()[internals].awaitCompletion(),
     },
 
     [flags]: {
@@ -193,11 +193,11 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       set isAutoComplete(value: boolean) {
         getFirstChunk()[flags].isAutoComplete = value;
       },
-      get isStopRequested() {
-        return getFirstChunk()[flags].isStopRequested;
+      get isUnsubscribed() {
+        return getFirstChunk()[flags].isUnsubscribed;
       },
-      set isStopRequested(value: boolean) {
-        getFirstChunk()[flags].isStopRequested = value;
+      set isUnsubscribed(value: boolean) {
+        getFirstChunk()[flags].isUnsubscribed = value;
       },
       get isStopped() {
         return getLastChunk()[flags].isStopped;
@@ -210,6 +210,12 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       },
       set isRunning(value: boolean) {
         getLastChunk()[flags].isRunning = value;
+      },
+      get isPending() {
+        return getLastChunk()[flags].isPending;
+      },
+      set isPending(value: boolean) {
+        getLastChunk()[flags].isPending = value;
       }
     },
 
@@ -254,7 +260,7 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
   });
 
   // Mark the stream as stop requested once the source completes
-  source[hooks].finalize.once(() => subject[flags].isStopRequested = true);
+  source[hooks].finalize.once(() => subject.complete().then(() => subscription.unsubscribe()));
 
   const pipeline = createPipeline<T>(subject);
 

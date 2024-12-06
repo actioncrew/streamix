@@ -67,6 +67,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
           pendingSet.delete(emission);
 
           if (pendingSet.size === 0) {
+
             pendingEmissions.delete(target);
 
             if (completeMarkers.has(target)) {
@@ -95,7 +96,12 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                   addToQueue(busEvent);
                 }
               }
+
+              target[flags].isRunning = false;
+              target[flags].isStopped = true;
             }
+
+            target[flags].isPending = false;
           }
         });
       }
@@ -113,7 +119,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               yield* await processEvent(emissionEvent());
             }
             break;
-          case 'finalize':
+          case 'finalize': {
             if (!pendingEmissions.has(event.target)) {
               yield event;
               const emissionEvents = (await event.target[hooks].finalize.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
@@ -122,9 +128,11 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               }
               startMarkers.delete(event.target);
             } else {
+              event.target[flags].isPending = true;
               finalizeMarkers.set(event.target, event.payload);
             }
             break;
+          }
           case 'emission':
             if(startMarkers.has(event.target)) {
               yield event;
@@ -155,7 +163,7 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               addToQueue(event);
             }
             break;
-          case 'complete':
+          case 'complete': {
             if (!pendingEmissions.has(event.target)) {
               yield event;
               const completeEvents = (await event.target[hooks].onComplete.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
@@ -163,9 +171,11 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                 yield* await processEvent(completeEvent());
               }
             } else {
+              event.target[flags].isPending = true;
               completeMarkers.set(event.target, event.payload);
             }
             break;
+          }
           case 'error':
             yield event;
             const errorEvents = (await event.target[hooks].onError.parallel(event.payload)).filter((fn: any) => fn instanceof Function);

@@ -10,7 +10,7 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
     }
 
     for (const emission of emissions) {
-      if (stream[flags].isStopRequested) return; // Exit if stop is requested
+      if (stream[flags].isUnsubscribed) return; // Exit if stop is requested
       eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
     }
 
