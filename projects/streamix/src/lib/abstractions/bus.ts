@@ -96,9 +96,6 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
                   addToQueue(busEvent);
                 }
               }
-
-              target[flags].isRunning = false;
-              target[flags].isStopped = true;
             }
 
             target[flags].isPending = false;
@@ -140,19 +137,14 @@ export function createBus(config?: {bufferSize?: number, harmonize?: boolean}): 
               let emission = event.payload?.emission ?? createEmission({});
               const target = event.target;
 
-              if (target[flags].isStopRequested && completeMarkers.has(target)) {
-                emission.phantom = true;
-                emission.ancestor?.finalize();
-              } else {
-                const emissionEvents = (await target[hooks].onEmission.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
-                if (emission.failed) {
-                  yield* await processEvent({ target: event.target, payload: { error: emission.error }, type: 'error' });
-                }
-                else
-                {
-                  for (const emissionEvent of emissionEvents) {
-                    yield* await processEvent(emissionEvent());
-                  }
+              const emissionEvents = (await target[hooks].onEmission.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
+              if (emission.failed) {
+                yield* await processEvent({ target: event.target, payload: { error: emission.error }, type: 'error' });
+              }
+              else
+              {
+                for (const emissionEvent of emissionEvents) {
+                  yield* await processEvent(emissionEvent());
                 }
               }
 
