@@ -1,6 +1,6 @@
 import { eventBus, flags, hooks } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
-import { Counter, counter } from '../utils';
+import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
 import { Subscription } from '../abstractions';
 import { createEmission } from '../abstractions';
@@ -53,8 +53,17 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
     return processingChain;
   };
 
-  const processEmission = (emission: Emission): Promise<void> => {
-    currentInnerStream = project(emission.value);
+  const processEmission = async (emission: Emission): Promise<void> => {
+    const [error, currentInnerStream] = await catchAny(() => project(emission.value));
+
+    if (error) {
+      // Handle errors in the projection function
+      eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+      executionCounter.increment();
+      delete emission.pending;
+      emission.phantom = true;
+      return;
+    }
 
     if (currentInnerStream) {
       return new Promise<void>((resolve) => {
