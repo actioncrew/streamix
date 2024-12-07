@@ -11,7 +11,7 @@ export interface Hook {
   length: number;
 }
 
-export function hook(): Hook {
+export function createHook(): Hook {
   let callbackMap: Map<WeakRef<object>, Set<Function>> | null = null;
   let scheduled = false;
   let resolveWait: (() => void) | null = null;
@@ -163,3 +163,5 @@ export function hook(): Hook {
     }
   };
 }
+
+export { createHook as hook };

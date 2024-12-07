@@ -5,7 +5,7 @@ export type Counter = {
   waitFor(target: number): Promise<void>;
 };
 
-export function counter(initialValue: number = 0): Counter {
+export function createCounter(initialValue: number = 0): Counter {
   let count = initialValue;
   const waitForPromises: { target: number; resolve: () => void }[] = [];
 
@@ -43,11 +43,13 @@ export function counter(initialValue: number = 0): Counter {
   };
 
   // The main function returns the current count value
-  const counterFunction = () => count;
+  const counter = () => count;
 
-  counterFunction.increment = increment;
-  counterFunction.decrement = decrement;
-  counterFunction.waitFor = waitFor;
+  counter.increment = increment;
+  counter.decrement = decrement;
+  counter.waitFor = waitFor;
 
-  return counterFunction;
+  return counter;
 }
+
+export { createCounter as counter };
