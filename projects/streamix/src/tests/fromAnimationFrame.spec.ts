@@ -1,10 +1,9 @@
 import { fromAnimationFrame, eventBus } from '../lib';
 
 describe('fromAnimationFrame - Functional Test', () => {
-  let emittedValues: number[];
 
   it('should emit values at the expected rate', async () => {
-    emittedValues = [];
+    let emittedValues: any[] = [];
     // Subscribe to the stream to collect emitted values
     const stream = fromAnimationFrame<number>(
       0, // Initial value
@@ -29,7 +28,7 @@ describe('fromAnimationFrame - Functional Test', () => {
   });
 
   it('should stop when condition is met', async () => {
-    emittedValues = [];
+    let emittedValues: any[] = [];
     // Subscribe to the stream to collect emitted values
     const stream = fromAnimationFrame<number>(
       0, // Initial value
@@ -54,7 +53,7 @@ describe('fromAnimationFrame - Functional Test', () => {
   });
 
   it('should handle infinite loop when condition is always true', async () => {
-    emittedValues = []; // Reset emitted values
+    let emittedValues: any[] = [];
 
     // Set condition to always true (infinite loop)
     const infiniteStream = fromAnimationFrame<number>(
