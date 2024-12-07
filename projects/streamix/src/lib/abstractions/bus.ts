@@ -1,4 +1,4 @@
-import { createSemaphore } from '../utils';
+import { createLock, createSemaphore } from '../utils';
 import { createEmission, Emission } from './emission';
 import { flags, hooks } from './subscribable';
 
@@ -29,7 +29,7 @@ export function isBusEvent(obj: any): obj is BusEvent {
 
 export type Bus = {
   run(): AsyncGenerator<BusEvent>;
-  enqueue(event: BusEvent): void;
+  enqueue(event: BusEvent): Promise<void>;
   name?: string;
 };
 
@@ -43,6 +43,7 @@ export function createBus(config?: { bufferSize?: number }): Bus {
   let head = 0;
   let tail = 0;
 
+  const lock = createLock();
   const itemsAvailable = createSemaphore(0);
   const spaceAvailable = createSemaphore(bufferSize);
   const postponedEvents: BusEvent[] = [];
@@ -67,14 +68,18 @@ export function createBus(config?: { bufferSize?: number }): Bus {
       }
     },
 
-    enqueue(event: BusEvent) {
-      spaceAvailable.acquire().then(() => {
+    async enqueue(event: BusEvent): Promise<void> {
+      const releaseLock = await lock.acquire();
+      try {
+        await spaceAvailable.acquire();
         event.timeStamp = new Date();
         buffer[tail] = event;
         tail = (tail + 1) % bufferSize;
         itemsAvailable.release();
-      });
-    }
+      } finally {
+        releaseLock();
+      }
+    },
   };
 
   async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
