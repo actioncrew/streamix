@@ -180,6 +180,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
+        subscription.unsubscribed = true;
         if (subscribers.length === 1) {
           unsubscribed = true;
           stream.complete().then(async () => {
@@ -193,7 +194,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
               onError.remove(receiver, errorCallback);
             }
             subscribers.remove(boundCallback);
-            subscription.unsubscribed = true;
           });
         }
       }
