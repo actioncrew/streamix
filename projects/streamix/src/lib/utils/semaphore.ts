@@ -36,3 +36,5 @@ export function createSemaphore(maxCount: number): Semaphore {
 
   return { acquire, release };
 }
+
+export { createSemaphore as semaphore };

@@ -1,4 +1,4 @@
-export function asyncValue<T>() {
+export function createAsyncValue<T>() {
   let _value: T | undefined;
   let _hasValue = false;
   let _resolve!: (value: T | PromiseLike<T>) => void;
@@ -6,11 +6,11 @@ export function asyncValue<T>() {
     _resolve = resolve;
   });
 
-  async function innerFunction(): Promise<T> {
+  async function get(): Promise<T> {
     return _hasValue ? Promise.resolve(_value as T) : _promise;
   }
 
-  innerFunction.resolve = function (newValue: T): void {
+  get.resolve = function (newValue: T): void {
     if (!_hasValue) {
       _value = newValue;
       _hasValue = true;
@@ -20,7 +20,7 @@ export function asyncValue<T>() {
     }
   };
 
-  innerFunction.reset = function (): void {
+  get.reset = function (): void {
     _value = undefined;
     _hasValue = false;
     _promise = new Promise<T>((resolve) => {
@@ -28,17 +28,19 @@ export function asyncValue<T>() {
     });
   };
 
-  innerFunction.set = function (newValue: T): void {
-    innerFunction.resolve(newValue);
+  get.set = function (newValue: T): void {
+    get.resolve(newValue);
   };
 
-  innerFunction.hasValue = function (): boolean {
+  get.hasValue = function (): boolean {
     return _hasValue;
   };
 
-  innerFunction.value = function (): T | undefined {
+  get.value = function (): T | undefined {
     return _value;
   }
 
-  return innerFunction;
+  return get;
 }
+
+export { createAsyncValue as asyncValue };
