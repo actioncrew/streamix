@@ -1,4 +1,4 @@
-import { createStream, flags, hooks, Stream } from '../abstractions';
+import { createReceiver, createStream, flags, hooks, Receiver, Stream, Subscription } from '../abstractions';
 
 // Function to create an EmptyStream
 export const empty = <T = any>(): Stream<T> => {
@@ -7,6 +7,23 @@ export const empty = <T = any>(): Stream<T> => {
     // Set the auto-completion flag
     this[flags].isAutoComplete = true;
   });
+
+  stream.subscribe =  (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    const receiver = createReceiver(callbackOrReceiver);
+
+    const subscription = () => undefined;
+
+    Object.assign(subscription, {
+      unsubscribed: false,
+      unsubscribe: () => { /* No-op for EMPTY subscription */ },
+      started: Promise.resolve(), // Immediately resolve started promise
+      completed: Promise.resolve(), // Immediately resolve completed promise
+    });
+
+    receiver.complete && queueMicrotask(receiver.complete);
+
+    return subscription as Subscription;
+  }
 
   stream.name = "EMPTY";
   return stream;
