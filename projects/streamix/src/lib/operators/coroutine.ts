@@ -88,7 +88,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     queueMicrotask(() => processTask(data).then((data) => {
       const child = createEmission({ value: data });
       emission.link(child);
-      eventBus.enqueue({ target: this, payload: { emission: child, source: this }, type: 'emission' });
+      eventBus.enqueue({ target: stream, payload: { emission: child, source: stream }, type: 'emission' });
       emission.finalize();
     }));
     emission.pending = true;

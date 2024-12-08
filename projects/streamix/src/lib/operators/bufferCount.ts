@@ -4,7 +4,7 @@ import { Operator, createOperator } from '../abstractions';
 export const bufferCount = (bufferSize: number): Operator => {
   let buffer: any[] = [];
 
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
+  const handle = (emission: Emission): Emission => {
     buffer.push(emission.value);
 
     if (buffer.length >= bufferSize) {

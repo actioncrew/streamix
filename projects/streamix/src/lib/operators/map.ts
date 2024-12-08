@@ -3,7 +3,7 @@ import { Emission } from '../abstractions';
 import { createOperator, Operator } from '../abstractions';
 
 export const map = (transform: (value: any) => any): Operator => {
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
+  const handle = (emission: Emission): Emission => {
     emission.value = transform(emission.value); // Transform the emission value
     return emission; // Return the modified emission
   };
