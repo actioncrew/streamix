@@ -183,19 +183,22 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         subscription.unsubscribed = true;
         if (subscribers.length === 1) {
           unsubscribed = true;
-          stream.complete().then(async () => {
-            await finalize.waitForCompletion();
-
-            if (receiver.complete) {
-              finalize.remove(receiver, receiver.complete);
-            }
-
-            if (receiver.error) {
-              onError.remove(receiver, errorCallback);
-            }
-            subscribers.remove(boundCallback);
-          });
         }
+
+        stream.complete().then(async () => {
+          if(!stopped) {
+            await finalize.waitForCompletion();
+          }
+
+          if (receiver.complete) {
+            finalize.remove(receiver, receiver.complete);
+          }
+
+          if (receiver.error) {
+            onError.remove(receiver, errorCallback);
+          }
+          subscribers.remove(boundCallback);
+        });
       }
     };
 
