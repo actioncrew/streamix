@@ -15,7 +15,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): O
     return () => ({ target: boundStream,  payload: { emission: createEmission({ value: accumulatedValue }), source: boundStream }, type: 'emission' });
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     // Accumulate the value using the provided accumulator function
     accumulatedValue = accumulator(accumulatedValue, emission.value!);
     emission.phantom = true; // Mark the emission as phantom

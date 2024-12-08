@@ -22,7 +22,7 @@ export const delay = (delayTime: number): Operator => {
     stream[hooks].onComplete.once(finalize);
   }
 
-  const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
+  const handle = function (this: Operator, emission: Emission, stream: Subscribable): Emission {
     emission.pending = true;
 
     const delayedEmission = createEmission({ value: emission.value });

@@ -30,7 +30,7 @@ export const fork = <T = any, R = T>(
     output[hooks].finalize.once(finalize);
   };
 
-  const handle = async (emission: Emission, stream: Subscribable) => {
+  const handle = (emission: Emission, stream: Subscribable) => {
     emissionQueue.push(emission);
 
     if(!innerStream) {

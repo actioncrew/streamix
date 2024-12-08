@@ -19,7 +19,7 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
     }
   };
 
-  const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
+  const handle = function (this: Operator, emission: Emission, stream: Subscribable): Emission {
     // Mark the emission if it's not a phantom or failed
     if (!emission.phantom && !emission.failed) {
       hasEmitted = true;

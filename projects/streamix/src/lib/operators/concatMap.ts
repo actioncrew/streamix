@@ -28,7 +28,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
     output[hooks].finalize.once(finalize);
   };
 
-  const handle = async (emission: Emission, stream: Subscribable) => {
+  const handle = (emission: Emission, stream: Subscribable) => {
     emissionQueue.push(emission);
 
     if(!currentInnerStream) {

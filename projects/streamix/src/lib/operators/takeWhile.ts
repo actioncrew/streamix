@@ -4,7 +4,7 @@ import { Emission } from '../abstractions';
 export const takeWhile = (predicate: (value: any, index?: number) => boolean): Operator => {
   let index = 0; // To track the index of emissions
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     const shouldContinue = predicate(emission.value, index++);
 
     if (!shouldContinue) {

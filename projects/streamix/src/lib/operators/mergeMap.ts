@@ -28,7 +28,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     output[hooks].finalize.once(finalize);
   };
 
-  const handle = async (emission: Emission): Promise<Emission> => {
+  const handle = (emission: Emission): Emission => {
 
     // Process the emission asynchronously
     queueMicrotask(() => processEmission(emission, output));
