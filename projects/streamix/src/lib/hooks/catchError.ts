@@ -12,7 +12,7 @@ export const catchError = (handler: (error?: any) => void | Promise<void>): Oper
     return handler(error); // Call the provided handler when an error occurs
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     return emission; // Pass the emission as is
   };
 

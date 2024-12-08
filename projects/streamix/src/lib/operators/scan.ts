@@ -10,7 +10,7 @@ export const scan = (accumulator: (acc: any, value: any, index?: number) => any,
     index = 0; // Reset index on initialization
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     accumulatedValue = accumulator(accumulatedValue, emission.value!, index++); // Update the accumulated value
     emission.value = accumulatedValue; // Set the updated value to the emission
     return emission; // Return the modified emission

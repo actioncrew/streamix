@@ -14,7 +14,7 @@ export const endWith = (value: any): Operator => {
     return () => ({ target: boundStream, payload: { emission: createEmission({ value }), source: instance }, type: 'emission' });
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     return emission; // Pass the emission forward without modification
   };
 

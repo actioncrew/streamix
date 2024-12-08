@@ -9,7 +9,7 @@ export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) =
     lastEmittedValue = undefined;
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<any> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     const currentValue = emission.value;
 
     const isDistinct = lastEmittedValue === undefined ||

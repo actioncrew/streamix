@@ -13,7 +13,7 @@ export type Operator = {
   init: (stream: Stream) => void;
   cleanup: () => Promise<void>;
   process: (emission: Emission, chunk: Stream) => Promise<Emission>;
-  handle: (emission: Emission, chunk: Stream) => Promise<Emission>;
+  handle: (emission: Emission, chunk: Stream) => Emission;
   clone: () => Operator;
   next?: Operator; // Optional chaining for next operators
   type: string;
@@ -25,7 +25,7 @@ export function isOperator(obj: any): obj is Operator {
   return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.run === 'undefined';
 }
 
-export const createOperator = (handleFn: (emission: Emission, stream: Subscribable) => Promise<Emission>): Operator => {
+export const createOperator = (handleFn: (emission: Emission, stream: Subscribable) => Emission): Operator => {
   let operator: Operator = {
     next: undefined,
 
