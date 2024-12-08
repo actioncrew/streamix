@@ -72,7 +72,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const complete = async (): Promise<void> => {
     if (running) {
       stream[flags].isUnsubscribed = true;
-      if(!stopped) {
+      if (!stopped) {
         await finalize.waitForCompletion();
       }
     }
