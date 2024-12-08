@@ -27,7 +27,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     output[hooks].finalize.once(finalize);
   };
 
-  const handle = (emission: Emission, stream: Subscribable) => {
+  const handle = (emission: Emission) => {
     // Process the current emission and start a new inner stream
     queueMicrotask(() => processEmission(emission));
 

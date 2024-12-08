@@ -4,7 +4,7 @@ import { Emission } from '../abstractions';
 export const skip = (count: number): Operator => {
   let counter = count;
 
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
+  const handle = (emission: Emission): Emission => {
     if (counter <= 0) {
       return emission;
     } else {
