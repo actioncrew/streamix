@@ -71,9 +71,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const complete = async (): Promise<void> => {
     if (running) {
-      if (!stream[hooks].subscribers.length) {
-        stream[flags].isUnsubscribed = true;
-      }
+      stream[flags].isUnsubscribed = true;
       if(!stopped) {
         await finalize.waitForCompletion();
       }
@@ -194,8 +192,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         }
         
         subscribers.remove(boundCallback);
-
-        stream.complete();
+        
+        if (!stream[hooks].subscribers.length) {
+          stream.complete();
+        }
       }
     };
 
