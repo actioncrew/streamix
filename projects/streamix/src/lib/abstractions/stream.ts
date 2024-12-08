@@ -184,8 +184,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
         subscription.unsubscribed = true;
-        
-        await stream.complete();
           
         if (receiver.complete) {
           finalize.remove(receiver, receiver.complete);
@@ -196,6 +194,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         }
         
         subscribers.remove(boundCallback);
+
+        stream.complete();
       }
     };
 
