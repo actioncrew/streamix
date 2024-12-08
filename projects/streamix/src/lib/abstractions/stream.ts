@@ -71,7 +71,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const complete = async (): Promise<void> => {
     if (running) {
-      if (stream[hooks].subscribers.length === 1) {
+      if (!stream[hooks].subscribers.length) {
         stream[flags].isUnsubscribed = true;
       }
       if(!stopped) {
