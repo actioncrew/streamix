@@ -32,24 +32,24 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let head: Operator | undefined;
   let tail: Operator | undefined;
 
-  const completion = awaitable<void>();
   const commencement = awaitable<void>();
+  const completion = awaitable<void>();
 
+  let running = false;
+  let pending = false;
   let autoComplete = false;
   let unsubscribed = false;
   let stopped = false;
-  let running = false;
-  let pending = false;
 
   let currentValue: T | undefined;
 
   let emissionCounter = 0;
 
   const onStart = hook();
-  const onComplete = hook();
-  const finalize = hook();
-  const onError = hook();
   const onEmission = hook();
+  const onComplete = hook();
+  const onError = hook();
+  const finalize = hook();
   const subscribers = hook();
 
   const run = async () => {
@@ -61,20 +61,18 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
+      eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
       finalize.once(() => {
         running = false; stopped = true;
         operators.forEach(operator => operator.cleanup());
       });
-      eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
     }
   };
 
   const complete = async (): Promise<void> => {
-    if(!running && !stopped) {
-      await onStart.waitForCompletion();
+    if (stream[hooks].subscribers.length === 1) {
+      stream[flags].isUnsubscribed = true;
     }
-
-    stream[flags].isUnsubscribed = true;
   };
 
   const awaitStart = () => commencement.promise();
@@ -181,24 +179,21 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
         subscription.unsubscribed = true;
-        if (subscribers.length === 1) {
-          unsubscribed = true;
+        
+        stream.complete();
+        if(!stopped) {
+          await finalize.waitForCompletion();
         }
 
-        stream.complete().then(async () => {
-          if(!stopped) {
-            await finalize.waitForCompletion();
-          }
+        if (receiver.complete) {
+          finalize.remove(receiver, receiver.complete);
+        }
 
-          if (receiver.complete) {
-            finalize.remove(receiver, receiver.complete);
-          }
-
-          if (receiver.error) {
-            onError.remove(receiver, errorCallback);
-          }
-          subscribers.remove(boundCallback);
-        });
+        if (receiver.error) {
+          onError.remove(receiver, errorCallback);
+        }
+        
+        subscribers.remove(boundCallback);
       }
     };
 
