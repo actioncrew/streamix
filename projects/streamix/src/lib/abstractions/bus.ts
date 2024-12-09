@@ -38,7 +38,7 @@ export function createBus(config?: { bufferSize?: number }): Bus {
   const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
 
   const pendingEmissions = new Map<any, Set<Emission>>();
-  const markers = new Map<any, { type: 'finalize' | 'complete'; payload: any }>();
+  const stopMarkers = new Map<any, any>();
 
   let head = 0;
   let tail = 0;
@@ -52,7 +52,7 @@ export function createBus(config?: { bufferSize?: number }): Bus {
     async *run(): AsyncGenerator<BusEvent> {
       while (true) {
         if (postponedEvents.length > 0) {
-          yield* processEvent(postponedEvents.shift()!);
+          yield* await processEvent(postponedEvents.shift()!);
           continue;
         }
 
@@ -63,7 +63,7 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         spaceAvailable.release();
 
         if (event) {
-          yield* processEvent(event);
+          yield* await processEvent(event);
         }
       }
     },
@@ -85,51 +85,31 @@ export function createBus(config?: { bufferSize?: number }): Bus {
   async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
     switch (event.type) {
       case 'start': {
-        yield* triggerHooks(event.target, 'onStart', event);
+        yield* await triggerHooks(event.target, 'onStart', event);
         break;
       }
       case 'finalize': {
         if (!pendingEmissions.has(event.target)) {
-          yield* triggerHooks(event.target, 'finalize', event);
+          yield* await triggerHooks(event.target, 'finalize', event);
         } else {
           event.target[flags].isPending = true;
-          markers.set(event.target, { type: 'finalize', payload: event.payload });
+          stopMarkers.set(event.target, event.payload);
         }
         break;
       }
       case 'emission': {
-        yield event;
-
-        let emission = event.payload?.emission ?? createEmission({});
-        const target = event.target;
-
-        const emissionEvents = (await target[hooks].onEmission.parallel(event.payload)).filter((fn: any) => fn instanceof Function);
-        if (emission.failed) {
-          yield* await processEvent({ target: event.target, payload: { error: emission.error }, type: 'error' });
-        }
-        else
-        {
-          for (const emissionEvent of emissionEvents) {
-            yield* await processEvent(emissionEvent());
-          }
-        }
-
-        if (emission.pending) {
-          trackPendingEmission(target, emission);
+        yield* await triggerHooks(event.target, 'onEmission', event);
+        if (event.payload?.emission?.pending) {
+          trackPendingEmission(event.target, event.payload?.emission);
         }
         break;
       }
       case 'complete': {
-        if (!pendingEmissions.has(event.target)) {
-          yield* triggerHooks(event.target, 'onComplete', event);
-        } else {
-          event.target[flags].isPending = true;
-          markers.set(event.target, { type: 'complete', payload: event.payload });
-        }
+        yield* await triggerHooks(event.target, 'onComplete', event);
         break;
       }
       case 'error': {
-        yield* triggerHooks(event.target, 'onError', event);
+        yield* await triggerHooks(event.target, 'onError', event);
         break;
       }
     }
@@ -143,9 +123,16 @@ export function createBus(config?: { bufferSize?: number }): Bus {
     }
 
     yield event;
+    let emission = event.payload?.emission ?? createEmission({});
+
     const results = (await hook.parallel(event.payload)).filter((fn: any) => typeof fn === 'function');
-    for (const result of results) {
-      yield* processEvent(result());
+    if (emission.failed) {
+      yield* await processEvent({ target: event.target, payload: { error: emission.error }, type: 'error' });
+    }
+    else {
+      for (const result of results) {
+        yield* await processEvent(result());
+      }
     }
   }
 
@@ -160,10 +147,10 @@ export function createBus(config?: { bufferSize?: number }): Bus {
       pendingSet.delete(emission);
       if (pendingSet.size === 0) {
         pendingEmissions.delete(target);
-        if (markers.has(target)) {
-          const { type, payload } = markers.get(target)!;
-          markers.delete(target);
-          eventBus.enqueue({ target, type, payload });
+        if (stopMarkers.has(target)) {
+          const payload = stopMarkers.get(target)!;
+          stopMarkers.delete(target);
+          eventBus.enqueue({ target, type: 'finalize', payload });
         }
         target[flags].isPending = false;
       }
