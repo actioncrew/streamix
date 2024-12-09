@@ -29,7 +29,7 @@ export function isBusEvent(obj: any): obj is BusEvent {
 
 export type Bus = {
   run(): AsyncGenerator<BusEvent>;
-  enqueue(event: BusEvent): Promise<void>;
+  enqueue(event: BusEvent): void;
   name?: string;
 };
 
@@ -63,17 +63,17 @@ export function createBus(config?: { bufferSize?: number }): Bus {
       }
     },
 
-    async enqueue(event: BusEvent): Promise<void> {
-      const releaseLock = await lock.acquire();
-      try {
-        await spaceAvailable.acquire();
-        event.timeStamp = new Date();
-        buffer[tail] = event;
-        tail = (tail + 1) % bufferSize;
-        itemsAvailable.release();
-      } finally {
-        releaseLock();
-      }
+    enqueue(event: BusEvent): void {
+      lock.acquire().then((releaseLock) => {
+        return spaceAvailable.acquire() // Wait for space availability
+          .then(() => {
+            event.timeStamp = new Date();
+            buffer[tail] = event;
+            tail = (tail + 1) % bufferSize;
+            itemsAvailable.release(); // Signal that an item is available
+          })
+          .finally(() => releaseLock());
+      });
     },
   };
 
