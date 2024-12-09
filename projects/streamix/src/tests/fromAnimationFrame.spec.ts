@@ -6,7 +6,7 @@ describe('fromAnimationFrame - Functional Test', () => {
     let emittedValues: any[] = [];
     let count = 0;
     // Subscribe to the stream to collect emitted values
-    const stream = fromAnimationFrame<number>().pipe(takeWhile(() => count < 5));
+    const stream = fromAnimationFrame<number>().pipe(map((value, index) => index), takeWhile(() => count < 5));
 
     stream.subscribe({
       next: (value) => {
@@ -22,7 +22,7 @@ describe('fromAnimationFrame - Functional Test', () => {
     await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for a while to simulate animation frames
 
     // Check that we emitted the expected values
-    expect(emittedValues.length).toEqual(5); // Because the condition is value < 5
+    expect(emittedValues).toEqual([0, 1, 2, 3, 4]); // Because the condition is value < 5
   });
 
   it('should stop when condition is met', (done) => {
