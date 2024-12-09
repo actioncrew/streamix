@@ -74,6 +74,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       stream[flags].isUnsubscribed = true;
       if (!stopped) {
         await finalize.waitForCompletion();
+        finalize.clear();
+        subscribers.clear();
       }
     }
   };
