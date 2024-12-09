@@ -173,7 +173,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       try {
         if (emission.failed && receiver.error) {
           receiver.error(emission.error); // Call `error` if emission failed
-        } else if (receiver.next && ((subscription.unsubscribed && subscription.unsubscribed > emission.root().timestamp) || (stopTimestamp || performance.now()) > emission.root().timestamp)) {
+        } else if (receiver.next && ((subscription.unsubscribed && subscription.unsubscribed >= emission.root().timestamp) || (stopTimestamp || performance.now()) >= emission.root().timestamp)) {
           receiver.next(emission.value); // Call `next` for successful emissions
         }
       } catch (err) {
