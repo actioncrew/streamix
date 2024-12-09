@@ -123,7 +123,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       }
 
       if (!emission.phantom && !emission.pending) {
-        emission = await (next?.process(emission, stream) ?? Promise.resolve(emission));
+        emission = next?.process(emission, stream) ?? emission;
       }
 
       if (emission.failed) throw emission.error;
