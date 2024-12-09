@@ -64,12 +64,12 @@ describe('fromAnimationFrame - Functional Test', () => {
 
     let completed = false;
 
-    infiniteStream.subscribe({
+    let subscription = infiniteStream.subscribe({
       next: (value) => {
         emittedValues.push(value);
         if (value >= 10 && !completed) {
           completed = true;
-          infiniteStream.complete(); // Stop the stream after a few emissions
+          subscription.unsubscribe(); // Stop the stream after a few emissions
         }
       },
       complete: () => {
