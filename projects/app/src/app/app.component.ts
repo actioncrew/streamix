@@ -1,7 +1,10 @@
 import {
   createSubject,
+  delay,
+  fromAnimationFrame,
   fromEvent,
   interval,
+  loop,
   map,
   startWith,
   Subject,
@@ -133,6 +136,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       }))
     );
 
+    let value = 0;
     const draw$ = interval(33).pipe(
       withLatestFrom(rays$),
       tap(([_, { width, height, rays, sun }]) => {

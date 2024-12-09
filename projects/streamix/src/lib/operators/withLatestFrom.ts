@@ -71,7 +71,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
           payload: { emission: delayedEmission, source: this },
           type: 'emission',
         });
-      } else {
+      } else if (!stream[internals].shouldComplete()) {
         delayedEmission.failed = true;
         delayedEmission.error = new Error("Some streams are completed without emitting value.");
         finalize();
