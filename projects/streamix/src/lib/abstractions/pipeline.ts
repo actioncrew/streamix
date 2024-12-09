@@ -57,11 +57,16 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
         // Subscribe to the last chunk's result and replicate emissions to the new Subject
         const subscription = lastChunk.subscribe((value) => {
-          sourceSubject.next(value);
+          if (!sourceSubject[flags].isUnsubscribed) {
+            sourceSubject.next(value);
+          }
         });
 
         lastChunk[hooks].finalize.once(() => {
-          sourceSubject[flags].isAutoComplete = true;
+          if (!sourceSubject[internals].shouldComplete()) {
+            sourceSubject[flags].isAutoComplete = true;
+          }
+
           subscription.unsubscribe();
         });
         // Create a new chunk using the source subject
