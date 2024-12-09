@@ -46,15 +46,10 @@ export function createBus(config?: { bufferSize?: number }): Bus {
   const lock = createLock();
   const itemsAvailable = createSemaphore(0);
   const spaceAvailable = createSemaphore(bufferSize);
-  const postponedEvents: BusEvent[] = [];
 
   const bus: Bus = {
     async *run(): AsyncGenerator<BusEvent> {
       while (true) {
-        if (postponedEvents.length > 0) {
-          yield* await processEvent(postponedEvents.shift()!);
-          continue;
-        }
 
         await itemsAvailable.acquire();
         const event = buffer[head];
