@@ -77,8 +77,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       await onStart.waitForCompletion();
     }
 
-    if(running && !stopped && !unsubscribed) {
-      stream[flags].isUnsubscribed = true;
+    if(running && !stopped) {
+      if (!unsubscribed) {
+        stream[flags].isUnsubscribed = true;
+      }
       await finalize.waitForCompletion();
       stopTimestamp = performance.now();
     }
