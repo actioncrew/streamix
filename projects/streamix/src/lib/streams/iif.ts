@@ -20,21 +20,17 @@ export function iif<T>(
       complete: () => this[flags].isAutoComplete = true
     });
 
-    this[hooks].finalize.once(() => {
-      subscription.unsubscribe();
-    });
-
     // Wait for the completion of the selected stream
     await this[internals].awaitCompletion();
+
+    subscription.unsubscribe();
   });
 
   // Handle emissions from the selected stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    if (stream[internals].shouldComplete()) {
-      return;
+    if (!stream[internals].shouldComplete()) {
+      eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
     }
-
-    eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 
   stream.name = "iif";

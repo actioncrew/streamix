@@ -11,6 +11,7 @@ export function loop<T>(
 
   // Create the stream with a custom run function
   const stream = createStream<T>(async function(this: Stream<T>) {
+
     while (condition(currentValue) && !this[internals].shouldComplete()) {
       const emission = createEmission({ value: currentValue }) as Emission;
 

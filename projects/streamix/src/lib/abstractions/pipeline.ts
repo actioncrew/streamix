@@ -57,11 +57,16 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
         // Subscribe to the last chunk's result and replicate emissions to the new Subject
         const subscription = lastChunk.subscribe((value) => {
-          sourceSubject.next(value);
+          if (!sourceSubject[flags].isUnsubscribed) {
+            sourceSubject.next(value);
+          }
         });
 
         lastChunk[hooks].finalize.once(() => {
-          sourceSubject[flags].isAutoComplete = true;
+          if (!sourceSubject[internals].shouldComplete()) {
+            sourceSubject[flags].isAutoComplete = true;
+          }
+
           subscription.unsubscribe();
         });
         // Create a new chunk using the source subject
@@ -250,17 +255,19 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
   const cache: T[] = [];
   let subscribers = 0;
 
-  const subscription = source.subscribe((value) => {
-    // Cache each new emission, respecting the buffer size
-    cache.push(value);
-    if (!isNaN(bufferSize) && cache.length > bufferSize) {
-      cache.shift(); // Keep the cache within the buffer limit
+  const subscription = source.subscribe({
+    next: (value) => {
+      // Cache each new emission, respecting the buffer size
+      cache.push(value);
+      if (!isNaN(bufferSize) && cache.length > bufferSize) {
+        cache.shift(); // Keep the cache within the buffer limit
+      }
+      subject.next(value); // Emit to active subscribers
+    }, complete: () => {
+      subject.complete();
+      subscription.unsubscribe();
     }
-    subject.next(value); // Emit to active subscribers
   });
-
-  // Mark the stream as stop requested once the source completes
-  source[hooks].finalize.once(() => subject.complete().then(() => subscription.unsubscribe()));
 
   const pipeline = createPipeline<T>(subject);
 
@@ -284,11 +291,10 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
 
     // Create a custom unsubscribe logic
     const customSubscription: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
-    customSubscription.unsubscribed = false;
 
     customSubscription.unsubscribe = async () => {
       if (!customSubscription.unsubscribed) {
-        customSubscription.unsubscribed = true;
+        customSubscription.unsubscribed = performance.now();
         originalSubscription.unsubscribe();
         subscribers--;
 

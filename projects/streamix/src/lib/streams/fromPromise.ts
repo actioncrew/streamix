@@ -18,9 +18,6 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
       // If the stream is not complete, emit the value
       if (!this[internals].shouldComplete()) {
         eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: resolvedValue }), source: this }, type: 'emission' });
-
-        // Set the completion flag to true
-        this[flags].isAutoComplete = true;
       }
     } catch (error) {
       eventBus.enqueue({ target: this, payload: { error, source: this }, type: 'error' });

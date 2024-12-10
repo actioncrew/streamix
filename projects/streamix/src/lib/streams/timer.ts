@@ -48,10 +48,6 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
             }
           }, actualIntervalMs);
         });
-      } else {
-        this[hooks].onComplete.once(() => {
-          this[flags].isAutoComplete = true;
-        });
       }
     } catch (error) {
       eventBus.enqueue({ target: this, payload: { error }, type: 'error' });

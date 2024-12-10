@@ -40,7 +40,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
   };
 
   // Handle emissions by combining the latest values from all streams
-  const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
+  const handle = function (this: Operator, emission: Emission, stream: Subscribable): Emission {
     if (stream[flags].isUnsubscribed) {
       finalize(); emission.phantom = true; return emission;
     }
@@ -71,7 +71,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
           payload: { emission: delayedEmission, source: this },
           type: 'emission',
         });
-      } else {
+      } else if (!stream[internals].shouldComplete()) {
         delayedEmission.failed = true;
         delayedEmission.error = new Error("Some streams are completed without emitting value.");
         finalize();

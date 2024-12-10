@@ -1,4 +1,4 @@
-import { eventBus, flags, hooks } from '../abstractions';
+import { eventBus, flags, hooks, internals } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
@@ -27,7 +27,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     output[hooks].finalize.once(finalize);
   };
 
-  const handle = async (emission: Emission, stream: Subscribable) => {
+  const handle = (emission: Emission) => {
     // Process the current emission and start a new inner stream
     queueMicrotask(() => processEmission(emission));
 
@@ -79,7 +79,9 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const handleInnerEmission = (emission: Emission, value: any) => {
-    emission.link(output.next(value));
+    if (!output[internals].shouldComplete()) {
+      emission.link(output.next(value));
+    }
   };
 
   const handleStreamError = (emission: Emission, error: any) => {

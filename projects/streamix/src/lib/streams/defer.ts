@@ -12,14 +12,19 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       innerStream = factory();
 
       // Start the inner stream
-      subscription = innerStream.subscribe(value => handleEmission(this, value));
-
-      innerStream[hooks].onComplete.once(async () => {
-        this[flags].isAutoComplete = true;
-        await cleanupInnerStream();
+      subscription = innerStream.subscribe({
+        next: value => handleEmission(this, value),
+        complete: () => {
+          if (!this[internals].shouldComplete()) {
+            this[flags].isAutoComplete = true;
+          }
+        }
       });
 
       await this[internals].awaitCompletion();
+
+      await cleanupInnerStream();
+
     } catch (error) {
       eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
     }

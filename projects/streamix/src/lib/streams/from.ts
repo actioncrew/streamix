@@ -29,8 +29,6 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
         eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
       }
     }
-
-    this[flags].isAutoComplete = true;
   });
 
   stream.name = "from";

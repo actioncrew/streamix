@@ -3,13 +3,13 @@ import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@ang
 import { RouterOutlet } from '@angular/router';
 
 @Component({
-  selector: 'app-root',
+  selector: 'app-sand',
   standalone: true,
   imports: [RouterOutlet],
   template: '<canvas #canvas></canvas>',
   styles: ['canvas { display: block; }']
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
+export class AppSandComponent implements AfterViewInit, OnDestroy {
   @ViewChild('canvas', { static: false }) canvasRef!: ElementRef<HTMLCanvasElement>;
   private ctx!: CanvasRenderingContext2D;
   private particles: any[] = [];

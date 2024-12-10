@@ -9,7 +9,7 @@ export const finalize = (callback: () => void | Promise<void>): Operator => {
     boundStream[hooks].finalize.chain(callback);
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     // Pass the emission through without modification
     return emission;
   };

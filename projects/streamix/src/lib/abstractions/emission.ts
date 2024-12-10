@@ -1,4 +1,4 @@
-
+import { timestamp } from 'rxjs';
 export type Emission = {
   value?: any;                 // The payload
   phantom?: boolean;           // Premature completion
@@ -9,6 +9,7 @@ export type Emission = {
   error?: any;                 // Error, if applicable
   ancestor?: Emission;         // Emission that is pending and ancest this instance
   descendants?: Set<Emission>; // Track all descendants
+  timestamp: number;
   resolve: () => Promise<void>;
   reject: (reason: any) => Promise<void>;
   wait: () => Promise<void>;
@@ -16,6 +17,7 @@ export type Emission = {
   finalize(): void;
   notifyOnCompletion(child: Emission): void;
   notifyOnError(child: Emission, error: any): void;
+  root(): Emission;
 }
 
 // Example function to create an Emission with Promise management
@@ -47,6 +49,14 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
   }
 
   const instance: Emission = Object.assign(emission, {
+    timestamp: performance.now(),
+    root () {
+      let current = emission as Emission;
+      while (current.ancestor) {
+        current = current.ancestor;
+      }
+      return current;
+    },
     resolve: () => {
       if (resolveFn) {
         delete instance.pending;

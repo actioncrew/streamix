@@ -11,9 +11,9 @@ export type StreamOperator = {
 
 export type Operator = {
   init: (stream: Stream) => void;
-  cleanup: () => Promise<void>;
-  process: (emission: Emission, chunk: Stream) => Promise<Emission>;
-  handle: (emission: Emission, chunk: Stream) => Promise<Emission>;
+  cleanup: () => void;
+  process: (emission: Emission, chunk: Stream) => Emission;
+  handle: (emission: Emission, chunk: Stream) => Emission;
   clone: () => Operator;
   next?: Operator; // Optional chaining for next operators
   type: string;
@@ -25,7 +25,7 @@ export function isOperator(obj: any): obj is Operator {
   return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.run === 'undefined';
 }
 
-export const createOperator = (handleFn: (emission: Emission, stream: Subscribable) => Promise<Emission>): Operator => {
+export const createOperator = (handleFn: (emission: Emission, stream: Subscribable) => Emission): Operator => {
   let operator: Operator = {
     next: undefined,
 
@@ -33,18 +33,18 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
       // Initialization logic can be added here
     },
 
-    cleanup: async function() {
+    cleanup: function() {
       // Cleanup logic can be added here
     },
 
-    process: async function (emission: Emission, chunk: Stream): Promise<Emission> {
+    process: function (emission: Emission, chunk: Stream): Emission {
       try {
         if ('stream' in this) {
           chunk.emissionCounter++;
         }
 
         // Handle the emission with the provided handle function
-        emission = await handleFn.call(this, emission, chunk);
+        emission = handleFn.call(this, emission, chunk);
 
         if (this === chunk[internals].tail && !emission.phantom && !emission.failed && !emission.pending && !('stream' in this)) {
           chunk.emissionCounter++;
