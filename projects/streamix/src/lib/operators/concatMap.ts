@@ -1,4 +1,4 @@
-import { eventBus, flags, hooks } from '../abstractions';
+import { eventBus, flags, hooks, internals } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
@@ -69,7 +69,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
       return new Promise<void>((resolve) => {
         subscription = currentInnerStream!.subscribe({
           next: (value) => {
-            emission.link(handleInnerEmission(value));
+            handleInnerEmission(emission, value);
           },
           error: (err) => {
             handleStreamError(emission, err);
@@ -86,8 +86,10 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
     }
   };
 
-  const handleInnerEmission = (value: any): Emission => {
-    return output.next(value);
+  const handleInnerEmission = (emission: Emission, value: any) => {
+    if (!output[internals].shouldComplete()) {
+      emission.link(output.next(value));
+    }
   };
 
   const completeInnerStream = async (emission: Emission, subscription: Subscription) => {
