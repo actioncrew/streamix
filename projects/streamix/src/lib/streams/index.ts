@@ -10,6 +10,7 @@ export * from './fromEvent';
 export * from './fromIntersection';
 export * from './fromMutation';
 export * from './fromPromise';
+export * from './fromResize';
 export * from './iif';
 export * from './interval';
 export * from './loop';
