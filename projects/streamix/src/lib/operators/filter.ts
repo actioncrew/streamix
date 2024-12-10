@@ -1,11 +1,11 @@
 import { createOperator, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
-export const filter = (
-  predicateOrValue: ((value: any) => boolean) | any | any[]
+export const filter = <T = any>(
+  predicateOrValue: ((value: T) => boolean) | T | T[]
 ): Operator => {
   const handle = (emission: Emission): Emission => {
-    if (typeof predicateOrValue === 'function') {
+    if (predicateOrValue instanceof Function) {
       // Handle predicate function
       emission.phantom = !predicateOrValue(emission.value);
     } else if (Array.isArray(predicateOrValue)) {
