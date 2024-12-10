@@ -1,18 +1,14 @@
 import {
   createSubject,
-  delay,
-  fromAnimationFrame,
   fromEvent,
   interval,
-  loop,
   map,
   startWith,
-  Subject,
   Subscribable,
   switchMap,
-  takeUntil,
   tap,
   timer,
+  takeUntil,
   withLatestFrom,
 } from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
@@ -27,6 +23,7 @@ import { RouterOutlet } from '@angular/router';
       <span *ngIf="showCursor" class="cursor">_</span>
     </div>
   `,
+  host: { 'data-component-id': 'sun' },
   styles: `
     .caption {
       font-family: monospace;
@@ -84,7 +81,7 @@ export class CaptionComponent implements OnInit {
 }
 
 @Component({
-  selector: 'app-root',
+  selector: 'app-sun',
   standalone: true,
   imports: [RouterOutlet, CaptionComponent],
   template: `
@@ -94,7 +91,7 @@ export class CaptionComponent implements OnInit {
   </div>`,
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
+export class AppSunComponent implements AfterViewInit, OnDestroy {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private fontSize = 12;

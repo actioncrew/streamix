@@ -4,12 +4,11 @@ import {
   interval,
   map,
   startWith,
-  Subject,
   Subscribable,
   switchMap,
-  takeUntil,
   tap,
   timer,
+  takeUntil,
   withLatestFrom,
 } from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
@@ -24,6 +23,7 @@ import { RouterOutlet } from '@angular/router';
       <span *ngIf="showCursor" class="cursor">_</span>
     </div>
   `,
+  host: { 'data-component-id': 'rain' },
   styles: `
     .caption {
       font-family: monospace;
@@ -81,7 +81,7 @@ export class CaptionComponent implements OnInit {
 }
 
 @Component({
-  selector: 'app-root',
+  selector: 'app-rain',
   standalone: true,
   imports: [RouterOutlet, CaptionComponent],
   template: `
@@ -91,7 +91,7 @@ export class CaptionComponent implements OnInit {
   </div>`,
   styleUrl: './app.component.scss'
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
+export class AppRainComponent implements AfterViewInit, OnDestroy {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
   private fontSize = 10;
