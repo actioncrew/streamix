@@ -30,7 +30,7 @@ export function fromIntersection(
     // Start observing the provided DOM element
     observer.observe(element);
 
-    await stream[internals].awaitCompletion();
+    await this[internals].awaitCompletion();
 
     observer.unobserve(element);
     observer.disconnect();
