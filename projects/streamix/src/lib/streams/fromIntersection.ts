@@ -3,8 +3,27 @@ import { createStream, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 /**
- * Creates a custom stream that observes element visibility using IntersectionObserver.
- * Emits boolean values on visibility changes.
+ * Creates a Stream using `IntersectionObserver` for observing element visibility changes.
+ * Uses eventBus for emissions.
+ *
+ * @param element - The DOM element to observe for visibility changes.
+ * @param options - Options to configure `IntersectionObserver`.
+ * @returns A reactive Stream that emits boolean values for visibility changes.
+ *
+ * @example
+ * // Example usage:
+ * import { fromIntersection } from './your-path';
+ *
+ * const elementToObserve = document.getElementById('observeMe');
+ * const intersectionStream = fromIntersection(elementToObserve, {
+ *   threshold: 0.5,
+ * });
+ *
+ * const subscription = intersectionStream.subscribe({
+ *   next: (isVisible) => {
+ *     console.log('Element visibility status:', isVisible);
+ *   },
+ * });
  */
 export function fromIntersection(
   element: Element,

@@ -2,8 +2,24 @@ import { createEmission, hooks, internals, flags, createStream, Stream } from '.
 import { eventBus } from '../abstractions';
 
 /**
- * Creates a custom stream that observes element resizing using ResizeObserver.
- * Emits an object containing the width and height of the observed element on each resize event.
+ * Creates a Stream using `ResizeObserver` for observing element resizing.
+ * Uses eventBus for emissions.
+ *
+ * @param element - The DOM element to observe for resizing.
+ * @returns A reactive Stream that emits resize events with element size information.
+ *
+ * @example
+ * // Example usage:
+ * import { fromResizeObserver } from './your-path';
+ *
+ * const elementToObserve = document.getElementById('resizeMe');
+ * const resizeStream = fromResize(elementToObserve);
+ *
+ * const subscription = resizeStream.subscribe({
+ *   next: (resizeEntry) => {
+ *     console.log('Resize observed:', resizeEntry);
+ *   },
+ * });
  */
 export function fromResize(
   element: Element
