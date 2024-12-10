@@ -13,8 +13,8 @@ import { AppSunComponent } from './sun.component';
       <header>
         <button (click)="navigateTo('sun')">Sun</button>
         <button (click)="navigateTo('rain')">Rain</button>
-        <button (click)="navigateTo('sand')">Sand</button>
-        <button (click)="navigateTo('motion')">Brownian</button>
+        <!-- <button (click)="navigateTo('sand')">Sand</button> -->
+        <!-- <button (click)="navigateTo('motion')">Brownian</button> -->
       </header>
       <main>
         <router-outlet></router-outlet>
