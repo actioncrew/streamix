@@ -20,12 +20,10 @@ export function iif<T>(
       complete: () => this[flags].isAutoComplete = true
     });
 
-    this[hooks].finalize.once(() => {
-      subscription.unsubscribe();
-    });
-
     // Wait for the completion of the selected stream
     await this[internals].awaitCompletion();
+
+    subscription.unsubscribe();
   });
 
   // Handle emissions from the selected stream

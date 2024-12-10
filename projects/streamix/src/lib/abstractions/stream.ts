@@ -61,6 +61,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
