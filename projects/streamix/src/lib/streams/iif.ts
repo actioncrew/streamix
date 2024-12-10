@@ -30,11 +30,9 @@ export function iif<T>(
 
   // Handle emissions from the selected stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    if (stream[internals].shouldComplete()) {
-      return;
+    if (!stream[internals].shouldComplete()) {
+      eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
     }
-
-    eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
   };
 
   stream.name = "iif";

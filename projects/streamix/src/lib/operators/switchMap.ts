@@ -1,4 +1,4 @@
-import { eventBus, flags, hooks } from '../abstractions';
+import { eventBus, flags, hooks, internals } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
@@ -79,7 +79,9 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
   };
 
   const handleInnerEmission = (emission: Emission, value: any) => {
-    emission.link(output.next(value));
+    if (!output[internals].shouldComplete()) {
+      emission.link(output.next(value));
+    }
   };
 
   const handleStreamError = (emission: Emission, error: any) => {
