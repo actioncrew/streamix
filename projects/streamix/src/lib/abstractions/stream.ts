@@ -1,6 +1,6 @@
 import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperator, isReceiver, Receiver, createReceiver, hooks, SubscribableHooks, SubscribableInternals, internals, flags } from "../abstractions";
 import { eventBus } from "../abstractions";
-import { hook, Hook, awaitable } from "../utils";
+import { hook, awaitable } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   name?: string;
@@ -32,24 +32,27 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let head: Operator | undefined;
   let tail: Operator | undefined;
 
-  const completion = awaitable<void>();
   const commencement = awaitable<void>();
+  const completion = awaitable<void>();
 
+  let running = false;
+  let pending = false;
   let autoComplete = false;
   let unsubscribed = false;
   let stopped = false;
-  let running = false;
-  let pending = false;
 
   let currentValue: T | undefined;
 
   let emissionCounter = 0;
 
+  let startTimestamp: number;
+  let stopTimestamp: number;
+
   const onStart = hook();
-  const onComplete = hook();
-  const finalize = hook();
-  const onError = hook();
   const onEmission = hook();
+  const onComplete = hook();
+  const onError = hook();
+  const finalize = hook();
   const subscribers = hook();
 
   const run = async () => {
@@ -58,23 +61,28 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
+      eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
       finalize.once(() => {
         running = false; stopped = true;
         operators.forEach(operator => operator.cleanup());
       });
-      eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
     }
   };
 
   const complete = async (): Promise<void> => {
-    if(!running && !stopped) {
+    if(!running && !stopped && !unsubscribed) {
       await onStart.waitForCompletion();
     }
 
-    stream[flags].isUnsubscribed = true;
+    if(running && !stopped) {
+      stream[flags].isUnsubscribed = true;
+      await finalize.waitForCompletion();
+      stopTimestamp = performance.now();
+    }
   };
 
   const awaitStart = () => commencement.promise();
@@ -116,7 +124,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       }
 
       if (!emission.phantom && !emission.pending) {
-        emission = await (next?.process(emission, stream) ?? Promise.resolve(emission));
+        emission = next?.process(emission, stream) ?? emission;
       }
 
       if (emission.failed) throw emission.error;
@@ -147,6 +155,16 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       onError.chain(receiver, errorCallback);
     }
 
+    // Start the stream if it isn't running and stopping hasn't been requested
+    if (!running && !unsubscribed) {
+      running = true;
+      startTimestamp = performance.now();
+      queueMicrotask(stream.run);
+    }
+
+    // Create the subscription object
+    const subscription: Subscription = () => currentValue;
+
     // Define the bound callback for handling emissions
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
@@ -154,7 +172,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       try {
         if (emission.failed && receiver.error) {
           receiver.error(emission.error); // Call `error` if emission failed
-        } else if (receiver.next) {
+        } else if (receiver.next && ((subscription.unsubscribed && subscription.unsubscribed >= emission.root().timestamp) || (stopTimestamp || performance.now()) >= emission.root().timestamp)) {
           receiver.next(emission.value); // Call `next` for successful emissions
         }
       } catch (err) {
@@ -164,43 +182,30 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       return Promise.resolve();
     };
 
-    unsubscribed = false;
-    // Add the bound callback to the subscribers
-    subscribers.chain(boundCallback);
-
-    // Start the stream if it isn't running and stopping hasn't been requested
-    if (!running && !unsubscribed) {
-      running = true;
-      queueMicrotask(stream.run);
-    }
-
-    // Create the subscription object
-    const subscription: Subscription = () => currentValue;
-    subscription.unsubscribed = false;
-
     subscription.unsubscribe = () => {
       if (!subscription.unsubscribed) {
-        subscription.unsubscribed = true;
-        if (subscribers.length === 1) {
-          unsubscribed = true;
-          stream.complete().then(async () => {
-            await finalize.waitForCompletion();
 
-            if (receiver.complete) {
-              finalize.remove(receiver, receiver.complete);
-            }
+        subscription.unsubscribed = performance.now();
 
-            if (receiver.error) {
-              onError.remove(receiver, errorCallback);
-            }
-            subscribers.remove(boundCallback);
-          });
+        const cleanup = () => {
+          if (receiver.complete) finalize.remove(receiver, receiver.complete);
+          if (receiver.error) onError.remove(receiver, errorCallback);
+          subscribers.remove(boundCallback);
+        };
+
+        if (!stopped) {
+          stream.complete().then(cleanup);
+        } else {
+          cleanup();
         }
       }
     };
 
-    subscription.started = commencement.promise();
-    subscription.completed = completion.promise();
+    subscription.started = commencement.promise() as unknown as Promise<void>;
+    subscription.completed = completion.promise() as unknown as Promise<void>;
+
+    // Add the bound callback to the subscribers
+    subscribers.chain(boundCallback);
 
     return subscription as Subscription;
   };

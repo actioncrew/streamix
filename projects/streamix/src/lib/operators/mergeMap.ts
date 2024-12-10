@@ -28,17 +28,17 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     output[hooks].finalize.once(finalize);
   };
 
-  const handle = async (emission: Emission): Promise<Emission> => {
+  const handle = (emission: Emission): Emission => {
 
     // Process the emission asynchronously
-    queueMicrotask(() => processEmission(emission, output));
+    queueMicrotask(() => processEmission(emission));
 
     // Mark the emission as phantom and return immediately
     emission.pending = true;
     return emission;
   };
 
-  const processEmission = async (emission: Emission, stream: Subject): Promise<void> => {
+  const processEmission = async (emission: Emission): Promise<void> => {
     const [error, innerStream] = await catchAny(() => project(emission.value));
 
     if (error) {

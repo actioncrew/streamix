@@ -1,4 +1,4 @@
-import { createEmission, flags, hooks, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, flags, internals, Stream, Subscription } from '../abstractions';
 import { createStream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
@@ -6,17 +6,10 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
   let listener!: (event: Event) => void;
 
   const run = async function(this: Stream<T>): Promise<void> {
-    // Clean up the event listener on completion
-    this[hooks].finalize.once(() => {
-      target.removeEventListener(eventName, listener);
-    });
-
-    this[hooks].onComplete.once(() => {
-      this[flags].isAutoComplete = true;
-    });
-
     // Wait for completion
     await this[internals].awaitCompletion();
+
+    target.removeEventListener(eventName, listener);
   };
 
   // Create the stream using createStream

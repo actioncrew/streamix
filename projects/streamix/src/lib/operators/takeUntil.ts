@@ -33,7 +33,7 @@ export const takeUntil = (notifier: Subscribable): Operator => {
     });
   };
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     if (stopRequested) {
       stream[flags].isAutoComplete = true;
       emission.phantom = true; // Mark emission as phantom to indicate it's ignored

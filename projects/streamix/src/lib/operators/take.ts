@@ -4,7 +4,7 @@ import { Emission } from '../abstractions';
 export const take = <T>(count: number): Operator => {
   let emittedCount = 0;
 
-  const handle = async (emission: Emission, stream: Subscribable): Promise<Emission> => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     if (emittedCount < count) {
       emittedCount++;
 

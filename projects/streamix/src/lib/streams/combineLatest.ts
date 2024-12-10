@@ -13,12 +13,9 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T> {
       Promise.all(sources.map(source => source[internals].awaitCompletion()))
     ]));
 
-    if (!this[internals].shouldComplete()) {
-      this[flags].isAutoComplete = true;
-    }
-
     if (error) {
       eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
+      return;
     }
   });
 

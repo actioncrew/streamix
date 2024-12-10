@@ -13,7 +13,7 @@ export function isReceiver<T>(obj: any): obj is Receiver<T> {
   );
 };
 
-export function createReceiver<T>(callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Receiver<T> {
+export function createReceiver<T = any>(callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Receiver<T> {
   const receiver = (typeof callbackOrReceiver === 'function') ?
     { next: callbackOrReceiver } :
     callbackOrReceiver || {};

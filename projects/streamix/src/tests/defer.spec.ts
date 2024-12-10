@@ -1,4 +1,4 @@
-import { createEmission, createStream, defer, Emission, eventBus, flags, Stream } from '../lib';
+import { createEmission, createStream, defer, Emission, eventBus, flags, internals, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(emissions: Emission[], completed = false, failed = false, error?: Error): Stream {
@@ -10,7 +10,7 @@ export function mockStream(emissions: Emission[], completed = false, failed = fa
     }
 
     for (const emission of emissions) {
-      if (stream[flags].isUnsubscribed) return; // Exit if stop is requested
+      if (stream[internals].shouldComplete()) return; // Exit if stop is requested
       eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
     }
 

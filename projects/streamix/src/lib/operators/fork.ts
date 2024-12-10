@@ -1,4 +1,4 @@
-import { eventBus, flags, hooks } from '../abstractions';
+import { eventBus, flags, hooks, internals } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
@@ -30,7 +30,7 @@ export const fork = <T = any, R = T>(
     output[hooks].finalize.once(finalize);
   };
 
-  const handle = async (emission: Emission, stream: Subscribable) => {
+  const handle = (emission: Emission) => {
     emissionQueue.push(emission);
 
     if(!innerStream) {
@@ -74,7 +74,7 @@ export const fork = <T = any, R = T>(
       return new Promise<void>((resolve) => {
         subscription = innerStream!.subscribe({
           next: (value) => {
-            emission.link(handleInnerEmission(value));
+            handleInnerEmission(emission, value);
           },
           error: (err) => {
             handleStreamError(emission, err);
@@ -95,8 +95,10 @@ export const fork = <T = any, R = T>(
     }
   };
 
-  const handleInnerEmission = (value: any) => {
-    return output.next(value); // Emit the inner emission
+  const handleInnerEmission = (emission: Emission, value: any) => {
+    if (!output[internals].shouldComplete()) {
+      emission.link(output.next(value));
+    }
   };
 
   const completeInnerStream = async (emission: Emission, subscription: Subscription) => {

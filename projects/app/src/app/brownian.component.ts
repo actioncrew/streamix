@@ -3,13 +3,13 @@ import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
-  selector: 'app-root',
+  selector: 'app-motion',
   standalone: true,
   imports: [RouterOutlet],
   template: '<canvas #canvas></canvas>',
   styles: ['canvas { display: block; }'],
 })
-export class AppComponent implements AfterViewInit {
+export class AppMotionComponent implements AfterViewInit {
   @ViewChild('canvas', { static: false })
   canvasRef!: ElementRef<HTMLCanvasElement>;
   private ctx!: CanvasRenderingContext2D;

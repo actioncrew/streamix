@@ -29,10 +29,7 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
 
     try {
       // Wait for all sources to complete or for the stream to stop
-      await Promise.race([
-        Promise.all(sourcePromises),
-        stream[internals].awaitCompletion(),
-      ]);
+      await Promise.race([ Promise.all(sourcePromises), this[internals].awaitCompletion() ]);
     } finally {
       finalize(); // Ensure cleanup
     }

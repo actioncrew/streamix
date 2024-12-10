@@ -2,7 +2,10 @@ import { emitDistinctChangesOnlyDefaultValue } from '@angular/compiler';
 import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, Stream, flags, hooks } from '../abstractions';
 
 export const delay = (delayTime: number): Operator => {
-  let queue = Promise.resolve();
+  let queue = new Promise<void>((resolve) => {
+    setTimeout(() => resolve(), 0); // No-op for the first promise
+  });
+
   const registry = new Map<Emission, { timer: any; resolve: () => void }>();
 
   const finalize = () => {
@@ -22,35 +25,41 @@ export const delay = (delayTime: number): Operator => {
     stream[hooks].onComplete.once(finalize);
   }
 
-  const handle = async function (this: Operator, emission: Emission, stream: Subscribable): Promise<Emission> {
+  const handle = function (this: Operator, emission: Emission, stream: Subscribable): Emission {
+    // Mark the emission as pending
     emission.pending = true;
 
+    // Create a new emission that will be processed after the delay
     const delayedEmission = createEmission({ value: emission.value });
     emission.link(delayedEmission);
 
-    queue = queue.then(
-      () =>
-        new Promise<void>((resolve) => {
-          const timer = setTimeout(() => {
-            if (stream[flags].isUnsubscribed) {
-              delayedEmission.phantom = true;
-            } else {
-              eventBus.enqueue({
-                target: stream,
-                payload: { emission: delayedEmission, source: this },
-                type: 'emission',
-              });
-            }
+    // Chain the emission processing in the queue
+    queue = queue.then(() => {
+      return new Promise<void>((resolve) => {
+        // Schedule the delayed emission
+        const timer = setTimeout(() => {
+          if (stream[flags].isUnsubscribed) {
+            delayedEmission.phantom = true;
+          } else {
+            eventBus.enqueue({
+              target: stream,
+              payload: { emission: delayedEmission, source: this },
+              type: 'emission',
+            });
+          }
 
-            emission.finalize();
-            registry.delete(emission);
-            resolve();
-          }, delayTime);
+          // Finalize the current emission
+          emission.finalize();
+          registry.delete(emission);
+          resolve();
+        }, delayTime);
 
-          registry.set(emission, { timer, resolve });
-        })
-    );
+        // Register the timer and resolve function
+        registry.set(emission, { timer, resolve });
+      });
+    });
 
+    // Return the original emission to indicate it is pending
     return emission;
   };
 
