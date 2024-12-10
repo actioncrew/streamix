@@ -7,6 +7,7 @@ export * from './EMPTY';
 export * from './from';
 export * from './fromAnimationFrame';
 export * from './fromEvent';
+export * from './fromIntersection';
 export * from './fromPromise';
 export * from './iif';
 export * from './interval';
