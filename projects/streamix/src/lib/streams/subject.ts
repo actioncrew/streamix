@@ -41,7 +41,7 @@ export function createSubject<T = any>(): Subject<T> {
         type: 'finalize'
       });
 
-      return stream[hooks].finalize.waitForCompletion();
+      return this[hooks].finalize.waitForCompletion();
     }
   };
 
@@ -52,13 +52,6 @@ export function createSubject<T = any>(): Subject<T> {
     if (this[flags].isUnsubscribed || this[flags].isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
       return emission;
-    }
-
-    if (!this[flags].isRunning) {
-      stream[flags].isRunning = true;
-      stream.startTimestamp = performance.now();
-      if (commencement.state() === 'pending') { commencement.resolve(); }
-      eventBus.enqueue({ target: stream, type: 'start' });
     }
 
     eventBus.enqueue({
@@ -136,14 +129,6 @@ export function createSubject<T = any>(): Subject<T> {
       stream[hooks].onError.chain(receiver, errorCallback);
     }
 
-    // Start the stream if it isn't running and stopping hasn't been requested
-    if (!stream[flags].isRunning && !stream[flags].isUnsubscribed) {
-      stream[flags].isRunning = true;
-      stream.startTimestamp = performance.now();
-      if (commencement.state() === 'pending') { commencement.resolve(); }
-      eventBus.enqueue({ target: stream, type: 'start' });
-    }
-
     // Create the subscription object
     const subscription: Subscription = () => currentValue;
 
@@ -197,6 +182,11 @@ export function createSubject<T = any>(): Subject<T> {
     stream[flags].isRunning = false;
     stream.operators.forEach(operator => operator.cleanup());
   });
+
+  stream[flags].isRunning = true;
+  stream.startTimestamp = performance.now();
+  if (commencement.state() === 'pending') { commencement.resolve(); }
+  eventBus.enqueue({ target: stream, type: 'start' });
 
   stream.name = "subject";
   stream.type = "subject";
