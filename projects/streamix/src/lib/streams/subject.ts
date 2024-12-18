@@ -16,7 +16,7 @@ export function createSubject<T = any>(): Subject<T> {
   let currentValue: T | undefined;
 
   let autoComplete = false;
-  let stopRequested = false;
+  let unsubscribed = false;
 
   const commencement = awaitable<void>();
   const completion = awaitable<void>();
@@ -25,7 +25,7 @@ export function createSubject<T = any>(): Subject<T> {
 
   stream[internals].awaitStart = () => commencement.promise();
   stream[internals].awaitCompletion = () => completion.promise();
-  stream[internals].shouldComplete = () => autoComplete || stopRequested;
+  stream[internals].shouldComplete = () => unsubscribed;
 
   stream.complete = async function (this: Subject): Promise<void> {
     if (this[flags].isRunning) {
@@ -40,6 +40,8 @@ export function createSubject<T = any>(): Subject<T> {
         target: this,
         type: 'finalize'
       });
+
+      return stream[hooks].finalize.waitForCompletion();
     }
   };
 
@@ -76,7 +78,7 @@ export function createSubject<T = any>(): Subject<T> {
     configurable: true
   });
 
-  Object.defineProperty(stream, "isAutoComplete", {
+  Object.defineProperty(stream[flags], "isAutoComplete", {
     get() {
       return autoComplete;
     },
@@ -86,6 +88,11 @@ export function createSubject<T = any>(): Subject<T> {
           autoComplete = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
           eventBus.enqueue({ target: stream, type: 'finalize' });
+
+          stream[hooks].finalize.once(() => {
+            stream[flags].isStopped = true;
+            stream[flags].isRunning = false;
+          });
         }
       }
 
@@ -93,16 +100,21 @@ export function createSubject<T = any>(): Subject<T> {
     configurable: true
   });
 
-  Object.defineProperty(stream, "isUnsubscribed", {
+  Object.defineProperty(stream[flags], "isUnsubscribed", {
     get() {
-      return stopRequested;
+      return unsubscribed;
     },
     set(value: boolean) {
       if (value) {
         if(stream[flags].isRunning && !stream[flags].isUnsubscribed) {
-          stopRequested = value; completion.resolve();
+          unsubscribed = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
           eventBus.enqueue({ target: stream, type: 'finalize' });
+
+          stream[hooks].finalize.once(() => {
+            stream[flags].isStopped = true;
+            stream[flags].isRunning = false;
+          });
         }
       }
 
@@ -179,6 +191,12 @@ export function createSubject<T = any>(): Subject<T> {
 
     return subscription as Subscription;
   };
+
+  stream[hooks].finalize.once(() => {
+    stream[flags].isStopped = true;
+    stream[flags].isRunning = false;
+    stream.operators.forEach(operator => operator.cleanup());
+  });
 
   stream.name = "subject";
   stream.type = "subject";
