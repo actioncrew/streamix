@@ -119,7 +119,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         const cleanup = () => {
           if (receiver.complete) onComplete.remove(receiver, receiver.complete);
           if (receiver.error) onError.remove(receiver, errorCallback);
-          subscribers.remove(boundCallback);
+          subscribers.remove(receiver, boundCallback);
         };
 
         if (!stopped) {
@@ -134,7 +134,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     subscription.completed = completion.promise() as unknown as Promise<void>;
 
     // Add the bound callback to the subscribers
-    subscribers.chain(boundCallback);
+    subscribers.chain(receiver, boundCallback);
 
     return subscription as Subscription;
   };

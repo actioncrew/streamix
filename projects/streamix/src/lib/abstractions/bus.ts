@@ -1,3 +1,4 @@
+import { Chunk, isChunk } from './chunk';
 import { createLock, createSemaphore } from '../utils';
 import { createEmission, Emission } from './emission';
 import { flags, hooks } from './subscribable';
@@ -83,15 +84,6 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         yield* await triggerHooks(event.target, 'onStart', event);
         break;
       }
-      case 'finalize': {
-        if (!pendingEmissions.has(event.target)) {
-          yield* await triggerHooks(event.target, 'finalize', event);
-        } else {
-          event.target[flags].isPending = true;
-          stopMarkers.set(event.target, event.payload);
-        }
-        break;
-      }
       case 'emission': {
         yield* await triggerHooks(event.target, 'subscribers', event);
         if (event.payload?.emission?.pending) {
@@ -101,6 +93,12 @@ export function createBus(config?: { bufferSize?: number }): Bus {
       }
       case 'complete': {
         yield* await triggerHooks(event.target, 'onComplete', event);
+        if (isChunk(event.target) && !pendingEmissions.has(event.target)) {
+          yield* await triggerHooks(event.target, 'finalize', event);
+        } else {
+          event.target[flags].isPending = true;
+          stopMarkers.set(event.target, event.payload);
+        }
         break;
       }
       case 'error': {
