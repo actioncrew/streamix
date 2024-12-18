@@ -1,0 +1,283 @@
+import { createPipeline, createReceiver, eventBus, Pipeline, Receiver, Subscription } from '../abstractions';
+import { awaitable, hook, Hook } from "../utils";
+import { Emission } from "./emission";
+import { isOperator, Operator } from "./operator";
+import { isStream, Stream } from "./stream";
+import { flags, hooks, internals, Subscribable, SubscribableFlags, SubscribableHooks, SubscribableInternals } from "./subscribable";
+
+export type Chunk<T = any> = Subscribable & {
+  name?: string;
+  stream: Stream<T>
+  operators: Operator[];
+
+  [flags]: SubscribableFlags & {
+    isPending: boolean;
+  }
+
+  [hooks]: SubscribableHooks & {
+    finalize: Hook;
+  };
+
+  [internals]: SubscribableInternals & {
+    bindOperators(...newOperators: Operator[]): void;
+  }
+
+  subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
+};
+
+// Creating a Chunk that handles operators
+export function createChunk<T = any>(stream: Stream<T>): Chunk {
+  let operators: Operator[] = [];
+
+  const finalized = awaitable<void>();
+
+  let running = false;
+  let autoComplete = false;
+  let unsubscribed = false;
+  let stopped = false;
+  let pending = false;
+
+  const onStart = hook();
+  const onComplete = hook();
+  const onError = hook();
+  const subscribers = hook();
+  const finalize = hook();
+
+  let currentValue: T | undefined;
+  let emissionCounter = 0;
+
+  let startTimestamp: number;
+  let stopTimestamp: number;
+
+  const bindOperators = (...newOperators: Operator[]): void => {
+    operators.length = 0;
+    let head: Operator | undefined = undefined;
+    let tail: Operator | undefined = undefined;
+
+    newOperators.forEach((operator, index) => {
+      operators.push(operator.clone());
+      if (!head) {
+        head = operator;
+      } else {
+        tail!.next = operator;
+      }
+      tail = operator;
+    });
+  };
+
+  const run = async () => {
+    finalize.once(() => {
+      running = false; stopped = true;
+    });
+
+    try {
+      eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
+      await stream.run.call(stream); // Pass the stream instance to the run function
+      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      !stream[flags].isUnsubscribed && (stream[flags].isAutoComplete = true);
+    } catch (error) {
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
+    }
+  };
+
+  const complete = async (): Promise<void> => {
+    if(!running && !stopped && !unsubscribed) {
+      await onStart.waitForCompletion();
+    }
+
+    if(running && !stopped) {
+      stream[flags].isUnsubscribed = true;
+      stopTimestamp = performance.now();
+    }
+  };
+
+  const process = async function(this: Chunk, { emission, source }: { emission: Emission; source: any }): Promise<void> {
+    try {
+
+      let next = isStream(source) ? operators[0] : undefined;
+      next = isOperator(source) ? source.next : next;
+
+      if (emission.failed) throw emission.error;
+
+      if (next === undefined && !emission.phantom && !emission.pending) {
+        emissionCounter++;
+      }
+
+      if (!emission.phantom && !emission.pending) {
+        emission = next?.process(emission, this) ?? emission;
+      }
+
+      if (emission.failed) throw emission.error;
+
+      if (!emission.phantom && !emission.pending) {
+        await subscribers.parallel({ emission, source });
+      }
+
+      if (!emission.pending) {
+        emission.resolve()
+      }
+    } catch (error) {
+      emission.reject(error);
+    }
+  };
+
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    // Convert a callback into a Receiver if needed
+    const receiver = createReceiver(callbackOrReceiver);
+    const errorCallback = ({ error }: any) => receiver.error!(error);
+
+    // Chain the `complete` method to the `onStop` hook if present
+    if (receiver.complete) {
+      finalize.chain(receiver, receiver.complete);
+    }
+
+    if (receiver.error) {
+      onError.chain(receiver, errorCallback);
+    }
+
+    // Start the stream if it isn't running and stopping hasn't been requested
+    if (!running && !unsubscribed) {
+      running = true;
+      startTimestamp = performance.now();
+      queueMicrotask(run);
+    }
+
+    // Create the subscription object
+    const subscription: Subscription = () => currentValue;
+
+    // Define the bound callback for handling emissions
+    const boundCallback = ({ emission, source }: any) => {
+      currentValue = emission.value;
+
+      try {
+        if (emission.failed && receiver.error) {
+          receiver.error(emission.error); // Call `error` if emission failed
+        } else if (receiver.next && ((subscription.unsubscribed && subscription.unsubscribed >= emission.root().timestamp) || (stopTimestamp || performance.now()) >= emission.root().timestamp)) {
+          receiver.next(emission.value); // Call `next` for successful emissions
+        }
+      } catch (err) {
+        console.error('Error in Receiver callback:', err);
+      }
+
+      return Promise.resolve();
+    };
+
+    subscription.unsubscribe = () => {
+      if (!subscription.unsubscribed) {
+
+        subscription.unsubscribed = performance.now();
+
+        const cleanup = () => {
+          if (receiver.complete) finalize.remove(receiver, receiver.complete);
+          if (receiver.error) onError.remove(receiver, errorCallback);
+          subscribers.remove(boundCallback);
+        };
+
+        if (!stopped) {
+          stream.complete().then(cleanup);
+        } else {
+          cleanup();
+        }
+      }
+    };
+
+    subscription.started = awaitStart();
+    subscription.completed = awaitCompletion();
+
+    // Add the bound callback to the subscribers
+    subscribers.chain(boundCallback);
+
+    return subscription as Subscription;
+  };
+
+  bindOperators(...operators);
+  stream[hooks].subscribers.chain(stream, process);
+
+  finalize.once(() => {
+    stream[hooks].subscribers.remove(stream, process);
+    stopTimestamp = performance.now();
+    operators.forEach(operator => operator.cleanup());
+  });
+
+  const awaitStart = () => stream[internals].awaitStart();
+  const awaitCompletion = () => Promise.all([stream[internals].awaitCompletion(), finalized.promise()]).then(() => Promise.resolve());
+  const shouldComplete = () => unsubscribed;
+
+  const pipe = function(this: Chunk, ...operators: Operator[]): Pipeline<T> {
+    return createPipeline<T>(this)[internals].bindOperators(...operators);
+  };
+
+  return {
+    type: "chunk" as "chunk",
+    name: stream.name,
+    stream,
+    operators,
+    subscribe,
+    pipe,
+    complete,
+    emissionCounter,
+    get value() {
+      return currentValue;
+    },
+
+    [internals]: {
+      awaitStart,
+      awaitCompletion,
+      shouldComplete,
+      bindOperators
+    },
+
+    [flags]: {
+      get isAutoComplete() {
+        autoComplete = stream[flags].isAutoComplete && stopped;
+        return autoComplete;
+      },
+      set isAutoComplete(value: boolean) {
+        autoComplete = value;
+      },
+      get isUnsubscribed() {
+        return unsubscribed;
+      },
+      set isUnsubscribed(value: boolean) {
+        unsubscribed = value;
+      },
+      get isRunning() {
+        return running;
+      },
+      set isRunning(value: boolean) {
+        running = value;
+      },
+      get isStopped() {
+        return stopped;
+      },
+      set isStopped(value: boolean) {
+        value && finalized.resolve();
+        stopped = value;
+      },
+      get isPending() {
+        return pending;
+      },
+      set isPending(value: boolean) {
+        pending = value;
+      }
+    },
+
+    [hooks]: {
+      get onStart() {
+        return onStart;
+      },
+      get onComplete() {
+        return onComplete;
+      },
+      get onError() {
+        return onError;
+      },
+      get subscribers() {
+        return subscribers;
+      },
+      get finalize() {
+        return finalize;
+      }
+    },
+  };
+}

@@ -1,5 +1,5 @@
 import { internals } from './subscribable';
-import { Stream, Subscribable, Emission } from '../abstractions';
+import { Stream, Subscribable, Emission, Chunk } from '../abstractions';
 
 export type HookOperator = {
   callback: (params?: any) => void | Promise<void>;
@@ -10,10 +10,10 @@ export type StreamOperator = {
 }
 
 export type Operator = {
-  init: (stream: Stream) => void;
+  init: (stream: Chunk) => void;
   cleanup: () => void;
-  process: (emission: Emission, chunk: Stream) => Emission;
-  handle: (emission: Emission, chunk: Stream) => Emission;
+  process: (emission: Emission, chunk: Chunk) => Emission;
+  handle: (emission: Emission, chunk: Chunk) => Emission;
   clone: () => Operator;
   next?: Operator; // Optional chaining for next operators
   type: string;
@@ -29,7 +29,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
   let operator: Operator = {
     next: undefined,
 
-    init: function(stream: Stream) {
+    init: function(chunk: Chunk) {
       // Initialization logic can be added here
     },
 
@@ -37,7 +37,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
       // Cleanup logic can be added here
     },
 
-    process: function (emission: Emission, chunk: Stream): Emission {
+    process: function (emission: Emission, chunk: Chunk): Emission {
       try {
         if ('stream' in this) {
           chunk.emissionCounter++;
@@ -46,7 +46,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
         // Handle the emission with the provided handle function
         emission = handleFn.call(this, emission, chunk);
 
-        if (this === chunk[internals].tail && !emission.phantom && !emission.failed && !emission.pending && !('stream' in this)) {
+        if (this === chunk.operators[-1] && !emission.phantom && !emission.failed && !emission.pending && !('stream' in this)) {
           chunk.emissionCounter++;
         }
 

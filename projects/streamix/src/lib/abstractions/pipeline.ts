@@ -1,17 +1,25 @@
 import { eventBus } from './bus';
-import { Receiver, Stream } from '../abstractions';
+import { Chunk, createChunk, Receiver, Stream } from '../abstractions';
 import { createSubject } from '../streams';
-import { hook } from '../utils';
+import { Hook, hook } from '../utils';
 import { Operator } from '../abstractions';
-import { flags, hooks, internals, Subscribable, SubscribableInternals } from './subscribable';
+import { flags, hooks, internals, Subscribable, SubscribableFlags, SubscribableHooks, SubscribableInternals } from './subscribable';
 import { Subscription } from './subscription';
 import { createEmission } from '../abstractions';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
   name: string;
-  chunks: Stream<T>[];
+  chunks: Chunk<T>[];
   operators: Operator[];
+
+  [hooks]: SubscribableHooks & {
+    finalize: Hook;
+  };
+
+  [flags]: SubscribableFlags & {
+    isPending: boolean;
+  };
 
   [internals]: SubscribableInternals & {
     bindOperators: (...operators: Operator[]) => Pipeline<T>;
@@ -19,7 +27,7 @@ export type Pipeline<T> = Subscribable<T> & {
 };
 
 export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline<T> {
-  let chunks: Stream<T>[] = [];
+  let chunks: Chunk<T>[] = [];
   let operators: Operator[] = [];
   let currentValue: T | undefined;
 
@@ -28,7 +36,10 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const onErrorCallback = (params: any) => onError.parallel(params);
 
   if (subscribable.type === 'stream' || subscribable.type === 'subject') {
-    const chunk = subscribable as unknown as Stream<T>;
+    const stream = subscribable as unknown as Stream<T>;
+    chunks = [createChunk(stream)];
+  } else if (subscribable.type === 'chunk') {
+    const chunk = subscribable as unknown as Chunk<T>;
     chunks = [chunk];
     operators = [...chunk.operators];
   } else if (subscribable.type === 'pipeline') {
@@ -44,13 +55,13 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
     chunks.forEach((c) => c[hooks].onError.remove(pipeline, onErrorCallback));
 
-    let chunk: Stream<T>;
+    let chunk: Chunk<T>;
 
     if (subscribable.type === 'pipeline' && ops.length > 0) {
       const lastChunk = getLastChunk();
       const operator = lastChunk.operators[lastChunk.operators.length - 1];
       if (operator && 'stream' in operator) {
-        chunk = (lastChunk.operators[lastChunk.operators.length - 1] as any).stream;
+        chunk = (lastChunk.operators[lastChunk.operators.length - 1] as any);
       } else {
         // If there are existing chunks, use a Subject to replicate the last chunk's result
         const sourceSubject = createSubject<T>();
@@ -70,7 +81,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
           subscription.unsubscribe();
         });
         // Create a new chunk using the source subject
-        chunk = sourceSubject;
+        chunk = createChunk(sourceSubject);
       }
       chunks.push(chunk);
     } else {
@@ -90,7 +101,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       if ('stream' in clonedOperator) {
         chunk[internals].bindOperators(...chunkOperators);
         chunkOperators = [];
-        chunk = clonedOperator.stream as any;
+        chunk = createChunk(clonedOperator.stream as Stream<any>);
         chunks.push(chunk);  // Push new chunk to `this.chunks`
       }
     });
@@ -140,7 +151,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
         // Chain the execution of this chunk to the previous one
         pipelineStarted = pipelineStarted
-          .then(() => queueMicrotask(chunk.run))
+          .then(() => queueMicrotask(chunk.stream.run))
           .then(() => chunk[internals].awaitStart());
       }
     }
@@ -236,9 +247,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       },
       get onError() {
         return onError;
-      },
-      get onEmission() {
-        return getLastChunk()[hooks].subscribers;
       },
       get subscribers() {
         return getLastChunk()[hooks].subscribers;

@@ -1,11 +1,11 @@
-import { BusEvent, createEmission, eventBus, hooks } from '../abstractions';
+import { BusEvent, Chunk, createEmission, eventBus, hooks } from '../abstractions';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Operator => {
-  let boundStream: Stream;
+  let boundStream: Chunk;
   let accumulatedValue = seed;
 
-  const init = (stream: Stream) => {
+  const init = (stream: Chunk) => {
     boundStream = stream;
     boundStream[hooks].onComplete.chain(callback); // Trigger the callback when the stream completes
   };

@@ -25,7 +25,7 @@ describe('multicast', () => {
     multicastPipeline.subscribe((value) => values.push(value as number));
     multicastPipeline.subscribe(value => values.push(value as number));
 
-    multicastPipeline[hooks].finalize.once(() => {
+    multicastPipeline[hooks].onComplete.once(() => {
       expect(source).toHaveBeenCalledTimes(1); // The source should be called only once
       expect(values).toEqual([2, 2, 3, 3, 4, 4]);
       done();
@@ -46,7 +46,7 @@ describe('multicast', () => {
     sub2.unsubscribe();
 
     // Emit again to check if no more values are emitted
-    multicastPipeline[hooks].finalize.once(() => {
+    multicastPipeline[hooks].onComplete.once(() => {
       expect(values).toEqual([]); // Should not add any new values
       done();
     });

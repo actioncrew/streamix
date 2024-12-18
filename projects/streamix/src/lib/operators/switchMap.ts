@@ -1,4 +1,4 @@
-import { eventBus, flags, hooks, internals } from '../abstractions';
+import { Chunk, eventBus, flags, hooks, internals } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
@@ -13,7 +13,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
   let input!: Subscribable | undefined;
   const output = createSubject();
 
-  const init = (stream: Subscribable) => {
+  const init = (stream: Chunk) => {
     input = stream;
 
     if (input === EMPTY) {
@@ -23,8 +23,8 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     }
 
     // Finalize when the input or output stream stops
-    input[hooks].finalize.once(() => queueMicrotask(async () => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].finalize.once(finalize);
+    input[hooks].onComplete.once(() => queueMicrotask(async () => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onComplete.once(finalize);
   };
 
   const handle = (emission: Emission) => {

@@ -1,5 +1,5 @@
 import { emitDistinctChangesOnlyDefaultValue } from '@angular/compiler';
-import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, Stream, flags, hooks } from '../abstractions';
+import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, Stream, flags, hooks, Chunk } from '../abstractions';
 
 export const delay = (delayTime: number): Operator => {
   let queue = new Promise<void>((resolve) => {
@@ -21,7 +21,7 @@ export const delay = (delayTime: number): Operator => {
     registry.clear();
   };
 
-  const init = (stream: Subscribable) => {
+  const init = (stream: Chunk) => {
     stream[hooks].onComplete.once(finalize);
   }
 

@@ -1,4 +1,4 @@
-import { createOperator, flags, hooks, Operator, Stream, Subscription } from '../abstractions';
+import { Chunk, createOperator, flags, hooks, Operator, Subscription } from '../abstractions';
 import { Emission } from '../abstractions';
 import { Subscribable } from '../abstractions';
 
@@ -6,11 +6,11 @@ export const takeUntil = (notifier: Subscribable): Operator => {
   let stopRequested = false;
   let subscription: Subscription | null = null;
 
-  const init = (stream: Stream) => {
+  const init = (stream: Chunk) => {
     // Override the run method to manage subscription to the notifier
-    const originalRun = stream.run;
+    const originalRun = stream.stream.run;
 
-    stream.run = async () => {
+    stream.stream.run = async () => {
       stopRequested = false;
 
       // Subscribe to the notifier and set stopRequested on emission

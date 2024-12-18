@@ -93,7 +93,7 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         break;
       }
       case 'emission': {
-        yield* await triggerHooks(event.target, 'onEmission', event);
+        yield* await triggerHooks(event.target, 'subscribers', event);
         if (event.payload?.emission?.pending) {
           trackPendingEmission(event.target, event.payload?.emission);
         }

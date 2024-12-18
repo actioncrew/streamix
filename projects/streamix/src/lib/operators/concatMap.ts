@@ -1,4 +1,5 @@
-import { eventBus, flags, hooks, internals } from '../abstractions';
+import { finalize } from '@actioncrew/streamix';
+import { Chunk, eventBus, flags, hooks, internals } from '../abstractions';
 import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
 import { catchAny, Counter, counter } from '../utils';
 import { createSubject, EMPTY } from '../streams';
@@ -15,7 +16,7 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
   let subscription: Subscription | undefined;
   const output = createSubject();
 
-  const init = (stream: Subscribable) => {
+  const init = (stream: Chunk) => {
     input = stream;
 
     if (input === EMPTY) {
@@ -24,8 +25,8 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
       return;
     }
 
-    input[hooks].finalize.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].finalize.once(finalize);
+    input[hooks].onComplete.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onComplete.once(finalize);
   };
 
   const handle = (emission: Emission) => {

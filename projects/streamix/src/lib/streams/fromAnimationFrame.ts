@@ -23,7 +23,7 @@ export function fromAnimationFrame<T>(): Stream<T> {
       lastFrameTime = currentTime;
 
       // Emit the current value
-      stream[hooks].onEmission.parallel({ emission: createEmission({ value: elapsedTime }), source: this });
+      stream[hooks].subscribers.parallel({ emission: createEmission({ value: elapsedTime }), source: this });
 
       // Schedule the next frame
       requestId = requestAnimationFrame(runFrame);

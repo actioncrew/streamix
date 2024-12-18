@@ -1,4 +1,5 @@
 export * from './bus';
+export * from './chunk';
 export * from './emission';
 export * from './operator';
 export * from './receiver';

@@ -1,10 +1,10 @@
-import { BusEvent, createEmission, eventBus, hooks } from '../abstractions';
-import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
+import { BusEvent, Chunk, createEmission, hooks } from '../abstractions';
+import { Emission, Subscribable, createOperator, Operator } from '../abstractions';
 
 export const endWith = (value: any): Operator => {
-  let boundStream: Stream;
+  let boundStream: Chunk;
 
-  const init = function(this: Operator, stream: Stream) {
+  const init = function(this: Operator, stream: Chunk) {
     boundStream = stream;
     boundStream[hooks].onComplete.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
   };

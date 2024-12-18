@@ -1,5 +1,5 @@
 import { flags } from './../abstractions/subscribable';
-import { createEmission, createOperator, Emission, eventBus, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
+import { Chunk, createEmission, createOperator, Emission, eventBus, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export const withLatestFrom = (...streams: Subscribable[]): Operator => {
@@ -7,11 +7,11 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
   let subscriptions: Subscription[] = [];
 
   // Initialize the operator and set up the subscription-based handling
-  const init = (stream: Stream) => {
+  const init = (stream: Chunk) => {
     // Override the `run` method to start other streams
-    const originalRun = stream.run;
+    const originalRun = stream.stream.run;
 
-    stream.run = async () => {
+    stream.stream.run = async () => {
       // Subscribe to other streams and collect their latest values
       streams.forEach((source, index) => {
         const latestValue = latestValues[index];

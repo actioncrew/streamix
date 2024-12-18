@@ -1,5 +1,5 @@
 import { createSubject, EMPTY, Subject } from '../streams';
-import { Emission, createOperator, Operator, Subscribable, Subscription, hooks, flags } from '../abstractions';
+import { Emission, createOperator, Operator, Subscribable, Subscription, hooks, flags, Chunk } from '../abstractions';
 import { Counter, catchAny, counter } from '../utils';
 import { eventBus } from '../abstractions';
 
@@ -14,7 +14,7 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   // Array to track active subscriptions for inner streams
   const subscriptions: Subscription[] = [];
 
-  const init = (stream: Subscribable) => {
+  const init = (stream: Chunk) => {
     input = stream;
 
     if (input === EMPTY) {
@@ -24,8 +24,8 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     }
 
     // Finalize when the input or output stream stops
-    input[hooks].finalize.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].finalize.once(finalize);
+    input[hooks].onComplete.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output[hooks].onComplete.once(finalize);
   };
 
   const handle = (emission: Emission): Emission => {

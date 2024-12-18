@@ -5,7 +5,7 @@ export const hooks = Symbol('subscribable');
 export const flags = Symbol('subscribable');
 export const internals = Symbol('subscribable');
 export interface Subscribable<T = any> {
-  type: "stream" | "pipeline" | "subject";
+  type: "stream" | "chunk" | "pipeline" | "subject";
   emissionCounter: number;
 
   subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
@@ -25,8 +25,6 @@ export interface SubscribableHooks {
   onStart: Hook;
   onComplete: Hook;
   onError: Hook;
-  onEmission: Hook;
-  finalize: Hook;
   subscribers: Hook;
 }
 
@@ -37,8 +35,6 @@ export interface SubscribableFlags {
 
   isStopped: boolean;
   isRunning: boolean;
-
-  isPending: boolean;
 }
 
 export interface SubscribableInternals {

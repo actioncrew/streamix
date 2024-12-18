@@ -1,4 +1,4 @@
-import { Emission, Operator, Subscribable, createEmission, createOperator, eventBus } from '../abstractions';
+import { Chunk, Emission, Operator, Subscribable, createChunk, createEmission, createOperator, eventBus } from '../abstractions';
 import { EMPTY } from '../streams';
 
 export type Coroutine = Operator & {
@@ -79,7 +79,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  const init = (input: Subscribable) => {
+  const init = (input: Chunk) => {
     initWorkers();
   };
 
@@ -153,6 +153,6 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   operator.getIdleWorker = getIdleWorker;
   operator.returnWorker = returnWorker;
 
-  operator.init(EMPTY);
+  operator.init(createChunk(EMPTY));
   return operator;
 };

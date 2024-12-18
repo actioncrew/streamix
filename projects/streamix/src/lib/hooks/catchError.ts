@@ -1,10 +1,10 @@
-import { Emission, Subscribable, Stream, createOperator, Operator, hooks } from '../abstractions';
+import { Emission, Subscribable, Stream, createOperator, Operator, hooks, Chunk } from '../abstractions';
 
 export const catchError = (handler: (error?: any) => void | Promise<void>): Operator => {
-  let boundStream: Stream;
+  let boundStream: Chunk;
 
-  const init = (stream: Stream) => {
-    boundStream = stream;
+  const init = (chunk: Chunk) => {
+    boundStream = chunk;
     boundStream[hooks].onError.chain(callback); // Chain the error handling callback to the stream
   };
 

@@ -4,18 +4,10 @@ import { hook, awaitable } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   name?: string;
-  operators: Operator[];
   emissionCounter: number;
   run: () => Promise<void>;
 
-  [internals]: SubscribableInternals & {
-    head: Operator | undefined;
-    tail: Operator | undefined;
-    bindOperators: (...operators: Operator[]) => Stream<T>;
-    emit: (args: { emission: Emission; source: any }) => Promise<void>;
-    awaitStart: () => Promise<void>;
-  },
-
+  [internals]: SubscribableInternals;
   [hooks]: SubscribableHooks;
 };
 
@@ -28,15 +20,11 @@ export function isStream<T>(obj: any): obj is Stream<T> {
 }
 
 export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => Promise<void>): Stream<T> {
-  const operators: Operator[] = [];
-  let head: Operator | undefined;
-  let tail: Operator | undefined;
 
   const commencement = awaitable<void>();
   const completion = awaitable<void>();
 
   let running = false;
-  let pending = false;
   let autoComplete = false;
   let unsubscribed = false;
   let stopped = false;
@@ -49,10 +37,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   let stopTimestamp: number;
 
   const onStart = hook();
-  const onEmission = hook();
   const onComplete = hook();
   const onError = hook();
-  const finalize = hook();
   const subscribers = hook();
 
   const run = async () => {
@@ -61,15 +47,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
-      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
+      !stream[flags].isUnsubscribed && (stream[flags].isAutoComplete = true);
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
-      finalize.once(() => {
-        running = false; stopped = true;
-        operators.forEach(operator => operator.cleanup());
-      });
+      running = false; stopped = true;
     }
   };
 
@@ -80,66 +62,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     if(running && !stopped) {
       stream[flags].isUnsubscribed = true;
-      await finalize.waitForCompletion();
       stopTimestamp = performance.now();
     }
   };
 
   const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
-
-  const bindOperators = function(...newOperators: Operator[]): Stream<T> {
-    operators.length = 0;
-    head = undefined; tail = undefined;
-
-    newOperators.forEach((operator, index) => {
-      operators.push(operator);
-
-      if (!head) {
-        head = operator;
-      } else {
-        tail!.next = operator;
-      }
-      tail = operator;
-
-      if ('stream' in operator && index !== newOperators.length - 1) {
-        throw new Error('Only the last operator in a stream can contain an outerStream property.');
-      }
-    });
-
-    stream[internals].head = head; stream[internals].tail = tail;
-    return stream;
-  };
-
-  const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
-    try {
-
-      let next = isStream(source) ? source[internals].head : undefined;
-      next = isOperator(source) ? source.next : next;
-
-      if (emission.failed) throw emission.error;
-
-      if (next === undefined && !emission.phantom && !emission.pending) {
-        emissionCounter++;
-      }
-
-      if (!emission.phantom && !emission.pending) {
-        emission = next?.process(emission, stream) ?? emission;
-      }
-
-      if (emission.failed) throw emission.error;
-
-      if (!emission.phantom && !emission.pending) {
-        await subscribers.parallel({ emission, source });
-      }
-
-      if (!emission.pending) {
-        emission.resolve()
-      }
-    } catch (error) {
-      emission.reject(error);
-    }
-  };
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     // Convert a callback into a Receiver if needed
@@ -148,7 +76,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
-      finalize.chain(receiver, receiver.complete);
+      onComplete.chain(receiver, receiver.complete);
     }
 
     if (receiver.error) {
@@ -168,6 +96,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     // Define the bound callback for handling emissions
     const boundCallback = ({ emission, source }: any) => {
       currentValue = emission.value;
+      emissionCounter++;
 
       try {
         if (emission.failed && receiver.error) {
@@ -188,7 +117,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         subscription.unsubscribed = performance.now();
 
         const cleanup = () => {
-          if (receiver.complete) finalize.remove(receiver, receiver.complete);
+          if (receiver.complete) onComplete.remove(receiver, receiver.complete);
           if (receiver.error) onError.remove(receiver, errorCallback);
           subscribers.remove(boundCallback);
         };
@@ -214,11 +143,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return createPipeline<T>(stream)[internals].bindOperators(...operators);
   };
 
-  const shouldComplete = () => autoComplete || unsubscribed;
+  const shouldComplete = () => unsubscribed;
 
   const stream = {
     type: "stream" as "stream",
-    operators,
     subscribe,
     pipe,
     run,
@@ -229,10 +157,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     },
 
     [internals]: {
-      head,
-      tail,
-      bindOperators,
-      emit,
       awaitStart,
       awaitCompletion,
       shouldComplete,
@@ -247,12 +171,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       },
       get onError() {
         return onError;
-      },
-      get onEmission() {
-        return onEmission;
-      },
-      get finalize() {
-        return finalize;
       },
       get subscribers() {
         return subscribers;
@@ -285,16 +203,9 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       },
       set isStopped(value: boolean) {
         stopped = value;
-      },
-      get isPending() {
-        return pending;
-      },
-      set isPending(value: boolean) {
-        pending = value;
       }
     }
   };
 
-  onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
 }
