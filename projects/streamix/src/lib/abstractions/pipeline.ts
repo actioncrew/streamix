@@ -287,7 +287,6 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
 
     // Original subscription for the new observer
     const originalSubscription = originalSubscribe(observer);
-    subscribers++;
 
     // Create a custom unsubscribe logic
     const customSubscription: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
@@ -296,12 +295,6 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
       if (!customSubscription.unsubscribed) {
         customSubscription.unsubscribed = performance.now();
         originalSubscription.unsubscribe();
-        subscribers--;
-
-        // If there are no more subscribers, stop the subject
-        if (subscribers === 0) {
-          subject.complete(); // Complete the subject if there are no active subscribers
-        }
       }
     };
 
