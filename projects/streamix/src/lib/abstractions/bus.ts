@@ -53,7 +53,6 @@ export function createBus(config?: { bufferSize?: number }): Bus {
 
         await itemsAvailable.acquire();
         const event = buffer[head];
-        buffer[head] = null;
         head = (head + 1) % bufferSize;
         spaceAvailable.release();
 
