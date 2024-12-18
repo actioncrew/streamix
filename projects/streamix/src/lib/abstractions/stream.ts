@@ -42,28 +42,35 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const subscribers = hook();
 
   const run = async () => {
+    onComplete.once(() => {
+      !stream[flags].isUnsubscribed && (stream[flags].isAutoComplete = true);
+      running = false; stopped = true;
+    });
+
     try {
       eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
       commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
-      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
-      !stream[flags].isUnsubscribed && (stream[flags].isAutoComplete = true);
     } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      running = false; stopped = true;
+      if (stream.type as any !== 'subject') {
+        eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      }
     }
   };
 
   const complete = async (): Promise<void> => {
-    if(!running && !stopped && !unsubscribed) {
-      await onStart.waitForCompletion();
-    }
+    return Promise.resolve().then(async () => {
+      if(!stream[flags].isRunning && !stopped && !unsubscribed) {
+        await onStart.waitForCompletion();
+      }
 
-    if(running && !stopped) {
-      stream[flags].isUnsubscribed = true;
-      stopTimestamp = performance.now();
-    }
+      if(running && !stopped) {
+        stream[flags].isUnsubscribed = true;
+        stopTimestamp = performance.now();
+      }
+    })
   };
 
   const awaitStart = () => commencement.promise();
@@ -85,7 +92,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     // Start the stream if it isn't running and stopping hasn't been requested
     if (!running && !unsubscribed) {
-      running = true;
       startTimestamp = performance.now();
       queueMicrotask(stream.run);
     }

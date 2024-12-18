@@ -71,37 +71,46 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
 
   const run = async function(this: Chunk<T>) {
     finalize.once(() => {
-      stream[hooks].subscribers.remove(stream, process);
+      stream[hooks].subscribers.remove(this, process);
       stopTimestamp = performance.now();
       operators.forEach(operator => operator.cleanup());
     });
 
     try {
-      eventBus.enqueue({ target: this, type: 'start' }); // Trigger start hook
+      eventBus.enqueue({ target: this, type: 'start' });
       if(!stream[flags].isRunning) {
-        await stream.run.call(stream); // Pass the stream instance to the run function
+        stream[flags].isRunning = true;
+        await stream.run.call(stream);
       }
-      eventBus.enqueue({ target: this, type: 'complete' }); // Trigger complete hook
-      !this[flags].isUnsubscribed && (this[flags].isAutoComplete = true);
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { error }, type: 'error' }); // Handle any errors
+      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
+    } finally {
+      eventBus.enqueue({ target: this, type: 'complete' });
+      !this[flags].isUnsubscribed && (this[flags].isAutoComplete = true);
     }
   };
 
-  const complete = async (): Promise<void> => {
-    if(!running && !stopped && !unsubscribed) {
-      await onStart.waitForCompletion();
-    }
+  const complete = async function(this: Chunk<T>): Promise<void> {
+    return Promise.resolve().then(async () => {
+      if(!running && !stopped && !unsubscribed) {
+        await onStart.waitForCompletion();
+      }
 
-    if(running && !stopped) {
-      unsubscribed = true;
-      stopTimestamp = performance.now();
-    }
+      if (this.stream.type === 'subject') {
+        this.stream.complete();
+      }
+
+      if(running && !stopped) {
+        unsubscribed = true;
+        stopTimestamp = performance.now();
+      }
+
+      await awaitCompletion();
+    });
   };
 
   const process = async function(this: Chunk, { emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
-
       let next = isStream(source) ? operators[0] : undefined;
       next = isOperator(source) ? source.next : next;
 
@@ -121,6 +130,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
         emission.resolve()
       }
     } catch (error) {
+      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
       emission.reject(error);
     }
   };
@@ -147,9 +157,9 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
       currentValue = emission.value;
 
       try {
-        if (emission.failed && receiver.error) {
-          receiver.error(emission.error); // Call `error` if emission failed
-        } else if (receiver.next && ((subscription.unsubscribed && subscription.unsubscribed >= emission.root().timestamp) || (stopTimestamp || performance.now()) >= emission.root().timestamp)) {
+        if (emission.failed && !onError.length) {
+          receiver.error!(emission.error); // Call `error` if emission failed
+        } else if (receiver.next && !emission.failed && ((subscription.unsubscribed && subscription.unsubscribed >= emission.root().timestamp) || (stopTimestamp || performance.now()) >= emission.root().timestamp)) {
           receiver.next(emission.value); // Call `next` for successful emissions
         }
       } catch (err) {
@@ -175,7 +185,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
         };
 
         if (!stopped) {
-          complete().then(() => awaitCompletion()).then(cleanup);
+          this.complete().then(() => awaitCompletion()).then(cleanup);
         } else {
           cleanup();
         }
@@ -210,10 +220,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
     return createPipeline<T>(this)[internals].bindOperators(...operators);
   };
 
-  bindOperators(...operators);
-  stream[hooks].subscribers.chain(stream, process);
-
-  return {
+  let chunk = {
     type: "chunk" as "chunk",
     name: stream.name,
     stream,
@@ -286,4 +293,9 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
       }
     },
   };
+
+  bindOperators(...operators);
+  stream[hooks].subscribers.chain(chunk, process);
+
+  return chunk;
 }

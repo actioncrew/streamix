@@ -8,5 +8,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
   subject.next(initialValue);
 
   subject.name = "behaviorSubject";
+  subject.type = "subject";
   return subject;
 }

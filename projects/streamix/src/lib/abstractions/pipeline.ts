@@ -176,7 +176,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     });
 
     // Mark the first chunk as requested to stop
-    await getFirstChunk().complete();
+    queueMicrotask(() => getFirstChunk().complete());
 
     // Wait for all chunks to finish processing
     await Promise.all(chunkPromises);

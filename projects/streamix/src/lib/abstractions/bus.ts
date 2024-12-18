@@ -2,6 +2,7 @@ import { Chunk, isChunk } from './chunk';
 import { createLock, createSemaphore } from '../utils';
 import { createEmission, Emission } from './emission';
 import { flags, hooks } from './subscribable';
+import { isStream, Stream } from './stream';
 
 export const eventBus = createBus();
 
@@ -31,12 +32,18 @@ export function isBusEvent(obj: any): obj is BusEvent {
 export type Bus = {
   run(): AsyncGenerator<BusEvent>;
   enqueue(event: BusEvent): void;
+  dequeue(): Promise<BusEvent>;
+  hasFutureEvents(target: any): boolean;
+  canCleanSource(source: any): boolean;
   name?: string;
 };
 
 export function createBus(config?: { bufferSize?: number }): Bus {
-  const bufferSize = config?.bufferSize || 64;
-  const buffer: Array<BusEvent | null> = new Array(bufferSize).fill(null);
+  const bufferCapacity = config?.bufferSize || 64;
+  const buffer: Array<BusEvent | null> = new Array(bufferCapacity).fill(null);
+
+  const activeSources = new Set<Stream<any> | Chunk<any>>();
+  const completedSources = new Set<Stream<any> | Chunk<any>>();
 
   const pendingEmissions = new Map<any, Set<Emission>>();
   const stopMarkers = new Map<any, any>();
@@ -46,41 +53,70 @@ export function createBus(config?: { bufferSize?: number }): Bus {
 
   const lock = createLock();
   const itemsAvailable = createSemaphore(0);
-  const spaceAvailable = createSemaphore(bufferSize);
+  const spaceAvailable = createSemaphore(bufferCapacity);
 
   const bus: Bus = {
-    async *run(): AsyncGenerator<BusEvent> {
+    async *run(this: Bus): AsyncGenerator<BusEvent> {
       while (true) {
-
-        await itemsAvailable.acquire();
-        const event = buffer[head];
-        buffer[head] = null;
-        head = (head + 1) % bufferSize;
-        spaceAvailable.release();
-
+        let event = await this.dequeue();
         if (event) {
-          yield* await processEvent(event);
+          yield* await processEvent(this, event);
         }
       }
     },
 
     enqueue(event: BusEvent): void {
       lock.acquire().then((releaseLock) => {
-        return spaceAvailable.acquire() // Wait for space availability
+        return spaceAvailable.acquire()
           .then(() => {
             event.timeStamp = new Date();
             buffer[tail] = event;
-            tail = (tail + 1) % bufferSize;
-            itemsAvailable.release(); // Signal that an item is available
+            tail = (tail + 1) % bufferCapacity;
+            itemsAvailable.release();
           })
           .finally(() => releaseLock());
       });
     },
+
+    async dequeue(): Promise<BusEvent> {
+      await itemsAvailable.acquire();
+      const event = buffer[head] as BusEvent;
+      head = (head + 1) % bufferCapacity;
+      spaceAvailable.release();
+      return event;
+    },
+
+    // Check if a target has future events
+    hasFutureEvents(source: any): boolean {
+      const bufferSize = (tail - head + bufferCapacity) % bufferCapacity;
+
+      // Iterate through the buffer to check for the source
+      for (let i = 0; i < bufferSize; i++) {
+        const index = (head + i) % bufferSize;
+        const event = buffer[index] as BusEvent;
+        if (event.payload?.source === source) {
+          return true;  // Found an event for the source
+        }
+      }
+
+      return false;
+    },
+
+    canCleanSource(this: Bus, source: any): boolean {
+      // Check if the source has no pending emissions
+      const noPendingEmissions = !pendingEmissions.has(source);
+      // Check if the source has no future events in the event bus
+      const noFutureEvents = !this.hasFutureEvents(source);
+      // Check if the source is completed
+      const isCompleted = completedSources.has(source);
+      return noPendingEmissions && noFutureEvents && isCompleted;
+    }
   };
 
-  async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
+  async function* processEvent(bus: Bus, event: BusEvent): AsyncGenerator<BusEvent> {
     switch (event.type) {
       case 'start': {
+        activeSources.add(event.target);
         yield* await triggerHooks(event.target, 'onStart', event);
         break;
       }
@@ -89,10 +125,30 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         if (event.payload?.emission?.pending) {
           trackPendingEmission(event.target, event.payload?.emission);
         }
+
+        const source = event.payload?.source;
+        if (source && bus.canCleanSource(source)) {
+          activeSources.delete(source);
+          completedSources.delete(source);
+
+          if (isStream(source)) {
+            // Additional check for chunks: ensure the parent stream is also cleanable
+            for (const activeSource of activeSources.values()) {
+              const chunk = activeSource as unknown as Chunk;
+              if (isChunk(chunk) && chunk.stream === source && !pendingEmissions.has(chunk) && !bus.hasFutureEvents(chunk)) {
+                activeSources.delete(chunk);
+                yield* await processEvent(bus, { target: chunk, payload: {}, type: 'complete' });
+              }
+            }
+          }
+        }
+
         break;
       }
       case 'complete': {
         yield* await triggerHooks(event.target, 'onComplete', event);
+        completedSources.add(event.target);
+
         if (isChunk(event.target) && !pendingEmissions.has(event.target)) {
           yield* await triggerHooks(event.target, 'finalize', event);
         } else {
@@ -116,16 +172,10 @@ export function createBus(config?: { bufferSize?: number }): Bus {
     }
 
     yield event;
-    let emission = event.payload?.emission ?? createEmission({});
 
     const results = (await hook.parallel(event.payload)).filter((fn: any) => typeof fn === 'function');
-    if (emission.failed) {
-      yield* await processEvent({ target: event.target, payload: { error: emission.error }, type: 'error' });
-    }
-    else {
-      for (const result of results) {
-        yield* await processEvent(result());
-      }
+    for (const result of results) {
+      yield* await processEvent(bus, result());
     }
   }
 

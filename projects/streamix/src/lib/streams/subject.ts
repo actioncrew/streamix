@@ -35,8 +35,25 @@ export function createSubject<T = any>(): Subject<T> {
     return emission;
   };
 
+  let originalComplete = stream.complete;
+
+  stream.complete = function () {
+    return Promise.resolve().then(async () => {
+      //if(!stream[flags].isRunning && !stream[flags].isStopped && !stream[flags].isUnsubscribed) {
+        //await started.then(() => {
+          if(stream[flags].isRunning && !stream[flags].isStopped) {
+            eventBus.enqueue({ target: stream, type: 'complete' });
+            stream[flags].isUnsubscribed = true;
+            stream.stopTimestamp = performance.now();
+          }
+        //});
+      //}
+    })
+  };
+
   let started = stream[hooks].onStart.waitForCompletion();
 
   stream.name = "subject";
+  stream.type = "subject";
   return stream;
 }
