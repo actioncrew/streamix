@@ -28,8 +28,8 @@ export function createSubject<T = any>(): Subject<T> {
   stream[internals].shouldComplete = () => unsubscribed;
 
   stream.complete = async function (this: Subject): Promise<void> {
-    if (this[flags].isRunning) {
-      this[flags].isUnsubscribed = true;
+    if (this[flags].isRunning && !this[internals].shouldComplete()) {
+      autoComplete = true; completion.resolve();
 
       eventBus.enqueue({
         target: this,
@@ -77,7 +77,7 @@ export function createSubject<T = any>(): Subject<T> {
     },
     set(value: boolean) {
       if (value) {
-        if(stream[flags].isRunning && !stream[flags].isUnsubscribed) {
+        if(stream[flags].isRunning && !stream[internals].shouldComplete()) {
           autoComplete = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
           eventBus.enqueue({ target: stream, type: 'finalize' });
@@ -99,7 +99,7 @@ export function createSubject<T = any>(): Subject<T> {
     },
     set(value: boolean) {
       if (value) {
-        if(stream[flags].isRunning && !stream[flags].isUnsubscribed) {
+        if(stream[flags].isRunning && !stream[internals].shouldComplete()) {
           unsubscribed = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
           eventBus.enqueue({ target: stream, type: 'finalize' });
