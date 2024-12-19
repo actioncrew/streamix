@@ -64,16 +64,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
       commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
-      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
-      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
-    } catch (error) {
+      } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      eventBus.enqueue({ target: stream, type: 'finalize' }); // Finalize the stop hook
-      finalize.once(() => {
-        running = false; stopped = true;
-        operators.forEach(operator => operator.cleanup());
-      });
+      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
     }
   };
 
@@ -307,6 +302,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       }
     }
   };
+
+  finalize.once(() => {
+    running = false; stopped = true;
+    operators.forEach(operator => operator.cleanup());
+  });
 
   onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
