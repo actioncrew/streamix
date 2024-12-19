@@ -68,9 +68,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
-      onComplete.once(() => {
-        !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
-      })
+      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
     }
   };
 
