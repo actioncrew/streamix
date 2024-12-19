@@ -2,7 +2,7 @@ import { createOperator, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const filter = <T = any>(
-  predicateOrValue: ((value: T) => boolean) | T | T[]
+  predicateOrValue: ((value: any) => boolean) | T | T[]
 ): Operator => {
   const handle = (emission: Emission): Emission => {
     if (predicateOrValue instanceof Function) {
