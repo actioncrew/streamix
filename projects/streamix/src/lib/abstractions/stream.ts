@@ -5,6 +5,10 @@ import { hook, awaitable } from "../utils";
 export type Stream<T = any> = Subscribable<T> & {
   name?: string;
   emissionCounter: number;
+
+  startTimestamp: number | undefined;
+  stopTimestamp: number | undefined;
+
   run: () => Promise<void>;
 
   [internals]: SubscribableInternals;
@@ -33,8 +37,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   let emissionCounter = 0;
 
-  let startTimestamp: number;
-  let stopTimestamp: number;
+  let startTimestamp: number | undefined;
+  let stopTimestamp: number | undefined;
 
   const onStart = hook();
   const onComplete = hook();
@@ -98,6 +102,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     // Create the subscription object
     const subscription: Subscription = () => currentValue;
+    subscription.subscribed = performance.now();
+    subscription.unsubscribed = undefined;
 
     // Define the bound callback for handling emissions
     const boundCallback = ({ emission, source }: any) => {
@@ -107,8 +113,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       try {
         if (emission.failed && receiver.error) {
           receiver.error(emission.error); // Call `error` if emission failed
-        } else if (receiver.next && ((subscription.unsubscribed && subscription.unsubscribed >= emission.root().timestamp) || (stopTimestamp || performance.now()) >= emission.root().timestamp)) {
-          receiver.next(emission.value); // Call `next` for successful emissions
+        } else {
+          const rootEmissionTimestamp = emission.root().timestamp;
+          if (receiver.next && subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
+            receiver.next(emission.value); // Call `next` for successful emissions
+          }
         }
       } catch (err) {
         console.error('Error in Receiver callback:', err);
@@ -158,6 +167,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     run,
     complete,
     emissionCounter,
+    stopTimestamp,
+    startTimestamp,
     get value() {
       return currentValue;
     },

@@ -111,6 +111,8 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
 
   const process = async function(this: Chunk, { emission, source }: { emission: Emission; source: any }): Promise<void> {
     try {
+      emission.timestamp = performance.now();
+
       let next = isStream(source) ? operators[0] : undefined;
       next = isOperator(source) ? source.next : next;
 
@@ -151,6 +153,8 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
 
     // Create the subscription object
     const subscription: Subscription = () => currentValue;
+    subscription.subscribed = performance.now();
+    subscription.unsubscribed = undefined;
 
     // Define the bound callback for handling emissions
     const boundCallback = ({ emission, source }: any) => {
