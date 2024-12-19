@@ -290,6 +290,8 @@ export function multicast<T = any>(source: Subscribable<T>, bufferSize: number =
 
     // Create a custom unsubscribe logic
     const customSubscription: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
+    customSubscription.subscribed = performance.now();
+    customSubscription.unsubscribed = undefined;
 
     customSubscription.unsubscribe = async () => {
       if (!customSubscription.unsubscribed) {

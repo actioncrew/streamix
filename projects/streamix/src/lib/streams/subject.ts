@@ -5,8 +5,6 @@ import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
   next(value?: T): Emission;
-  startTimestamp: number;
-  stopTimestamp: number;
 };
 
 // Create the functional version of the Subject
@@ -121,6 +119,8 @@ export function createSubject<T = any>(): Subject<T> {
 
     // Create the subscription object
     const subscription: Subscription = () => currentValue;
+    subscription.subscribed = performance.now();
+    subscription.unsubscribed = undefined;
 
     // Define the bound callback for handling emissions
     const boundCallback = ({ emission, source }: any) => {
@@ -129,8 +129,11 @@ export function createSubject<T = any>(): Subject<T> {
       try {
         if (emission.failed && receiver.error) {
           receiver.error(emission.error); // Call `error` if emission failed
-        } else if (receiver.next && ((subscription.unsubscribed && subscription.unsubscribed >= emission.root().timestamp) || (stream.stopTimestamp || performance.now()) >= emission.root().timestamp)) {
-          receiver.next(emission.value); // Call `next` for successful emissions
+        } else {
+          const rootEmissionTimestamp = emission.root().timestamp;
+          if (receiver.next && subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stream.stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
+            receiver.next(emission.value); // Call `next` for successful emissions
+          }
         }
       } catch (err) {
         console.error('Error in Receiver callback:', err);
