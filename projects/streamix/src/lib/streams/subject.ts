@@ -34,11 +34,6 @@ export function createSubject<T = any>(): Subject<T> {
         type: 'complete'
       });
 
-      eventBus.enqueue({
-        target: this,
-        type: 'finalize'
-      });
-
       return this[hooks].finalize.waitForCompletion();
     }
   };
@@ -78,7 +73,6 @@ export function createSubject<T = any>(): Subject<T> {
         if(stream[flags].isRunning && !stream[internals].shouldComplete()) {
           autoComplete = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
-          eventBus.enqueue({ target: stream, type: 'finalize' });
         }
       }
 
@@ -95,7 +89,6 @@ export function createSubject<T = any>(): Subject<T> {
         if(stream[flags].isRunning && !stream[internals].shouldComplete()) {
           unsubscribed = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
-          eventBus.enqueue({ target: stream, type: 'finalize' });
         }
       }
 
