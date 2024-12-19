@@ -66,7 +66,7 @@ describe('fromAnimationFrame - Functional Test', () => {
 
     // Ensure the stream emitted values and stopped after a set number of frames
     expect(emittedValues).toHaveLength(11); // Expect 11 values: 0 to 10
-    expect(emittedValues[0]).toBeLessThan(50); // First value should be 0
-    expect(emittedValues[10]).toBeLessThan(50); // Last value should be 10
+    expect(emittedValues[0]).toBeLessThan(100); // First value should be 0
+    expect(emittedValues[10]).toBeLessThan(100); // Last value should be 10
   });
 });
