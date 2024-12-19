@@ -109,7 +109,7 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
     });
   };
 
-  const process = async function(this: Chunk, { emission, source }: { emission: Emission; source: any }): Promise<void> {
+  const process = async function(this: Chunk, { emission, source }: { emission: Emission; source: any }): Promise<any> {
     try {
       emission.timestamp = performance.now();
 
@@ -132,8 +132,8 @@ export function createChunk<T = any>(stream: Stream<T>): Chunk {
         emission.resolve()
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
       emission.reject(error);
+      return () => ({ target: this, payload: { error }, type: 'error' });
     }
   };
 
