@@ -16,7 +16,7 @@ export type Stream<T = any> = Subscribable<T> & {
     head: Operator | undefined;
     tail: Operator | undefined;
     bindOperators: (...operators: Operator[]) => Stream<T>;
-    emit: (args: { emission: Emission; source: any }) => Promise<void>;
+    emit: (args: { emission: Emission; source: any }) => Promise<any>;
     awaitStart: () => Promise<void>;
   },
 
@@ -115,7 +115,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return stream;
   };
 
-  const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<void> {
+  const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<any> {
     try {
       emission.timestamp = performance.now();
 
@@ -143,6 +143,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       }
     } catch (error) {
       emission.reject(error);
+      return () => ({ target: stream, payload: { error }, type: 'error' });
     }
   };
 

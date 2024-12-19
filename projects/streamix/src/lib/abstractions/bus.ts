@@ -117,16 +117,10 @@ export function createBus(config?: { bufferSize?: number }): Bus {
     }
 
     yield event;
-    let emission = event.payload?.emission ?? createEmission({});
 
     const results = (await hook.parallel(event.payload)).filter((fn: any) => typeof fn === 'function');
-    if (emission.failed) {
-      yield* await processEvent({ target: event.target, payload: { error: emission.error }, type: 'error' });
-    }
-    else {
-      for (const result of results) {
-        yield* await processEvent(result());
-      }
+    for (const result of results) {
+      yield* await processEvent(result());
     }
   }
 
