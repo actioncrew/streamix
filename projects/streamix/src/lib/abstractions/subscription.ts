@@ -1,6 +1,7 @@
 export interface Subscription {
   (): any;
-  unsubscribed?: number;
+  subscribed: number;
+  unsubscribed: number | undefined;
   started?: Promise<void>;
   completed?: Promise<void>;
   unsubscribe(): void;
