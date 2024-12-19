@@ -82,6 +82,10 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         yield* await triggerHooks(event.target, 'onStart', event);
         break;
       }
+      case 'finalize': {
+        yield* await triggerHooks(event.target, 'finalize', event);
+        break;
+      }
       case 'emission': {
         yield* await triggerHooks(event.target, 'onEmission', event);
         if (event.payload?.emission?.pending) {
@@ -90,8 +94,8 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         break;
       }
       case 'complete': {
+        yield* await triggerHooks(event.target, 'onComplete', event);
         if (!pendingEmissions.has(event.target)) {
-          yield* await triggerHooks(event.target, 'onComplete', event);
           yield* await triggerHooks(event.target, 'finalize', event);
         } else {
           event.target[flags].isPending = true;
@@ -135,7 +139,6 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         if (stopMarkers.has(target)) {
           const payload = stopMarkers.get(target)!;
           stopMarkers.delete(target);
-          eventBus.enqueue({ target, type: 'complete', payload });
           eventBus.enqueue({ target, type: 'finalize', payload });
         }
         target[flags].isPending = false;
