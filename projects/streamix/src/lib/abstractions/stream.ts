@@ -69,6 +69,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     } finally {
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
       !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
+
+      await finalize.waitForCompletion();
+      running = false; stopped = true;
+      stopTimestamp = performance.now();
+      operators.forEach(operator => operator.cleanup());
     }
   };
 
@@ -192,16 +197,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
         subscription.unsubscribed = performance.now();
 
-        const cleanup = () => {
-          if (receiver.complete) finalize.remove(receiver, receiver.complete);
-          if (receiver.error) onError.remove(receiver, errorCallback);
-          subscribers.remove(boundCallback);
-        };
-
         if (!stopped) {
-          stream.complete().then(cleanup);
-        } else {
-          cleanup();
+          stream.complete();
         }
       }
     };
@@ -301,12 +298,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       }
     }
   };
-
-  finalize.once(() => {
-    running = false; stopped = true;
-    stopTimestamp = performance.now();
-    operators.forEach(operator => operator.cleanup());
-  });
 
   onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
