@@ -10,10 +10,10 @@ import { eventBus } from '../abstractions';
  *
  * @example
  * // Example usage:
- * import { fromResizeObserver } from './your-path';
+ * import { observeResize } from './your-path';
  *
  * const elementToObserve = document.getElementById('resizeMe');
- * const resizeStream = fromResize(elementToObserve);
+ * const resizeStream = observeResize(elementToObserve);
  *
  * const subscription = resizeStream.subscribe({
  *   next: (resizeEntry) => {
@@ -21,7 +21,7 @@ import { eventBus } from '../abstractions';
  *   },
  * });
  */
-export function fromResize(
+export function observeResize(
   element: Element
 ): Stream<{ width: number; height: number }> {
   const stream = createStream<{ width: number; height: number }>(async function (this: Stream<{ width: number; height: number }>) {
@@ -49,6 +49,6 @@ export function fromResize(
     resizeObserver.disconnect();
   });
 
-  stream.name = 'fromResizeObserver';
+  stream.name = 'observeResize';
   return stream;
 }
