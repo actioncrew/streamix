@@ -72,7 +72,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       await finalize.waitForCompletion();
       running = false; stopped = true;
-      stopTimestamp = performance.now();
+      stream.stopTimestamp = performance.now();
       operators.forEach(operator => operator.cleanup());
     }
   };
@@ -163,7 +163,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     // Start the stream if it isn't running and stopping hasn't been requested
     if (!running && !unsubscribed) {
       running = true;
-      startTimestamp = performance.now();
+      stream.startTimestamp = performance.now();
       queueMicrotask(stream.run);
     }
 

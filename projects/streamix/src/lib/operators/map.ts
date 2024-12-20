@@ -1,4 +1,3 @@
-import { Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 import { createOperator, Operator } from '../abstractions';
 

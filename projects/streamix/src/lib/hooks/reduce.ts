@@ -5,14 +5,14 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): O
   let boundStream: Stream;
   let accumulatedValue = seed;
 
-  const init = (stream: Stream) => {
+  const init = function (this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream[hooks].onComplete.chain(callback); // Trigger the callback when the stream completes
+    boundStream[hooks].onComplete.once(() => callback(this)); // Trigger the callback when the stream completes
   };
 
-  const callback = (): (() => BusEvent) | void => {
+  const callback = (instance: Operator): (() => BusEvent) | void => {
     // Emit the accumulated value once the stream completes
-    return () => ({ target: boundStream,  payload: { emission: createEmission({ value: accumulatedValue }), source: boundStream }, type: 'emission' });
+    return () => ({ target: boundStream,  payload: { emission: createEmission({ value: accumulatedValue }), source: instance }, type: 'emission' });
   };
 
   const handle = (emission: Emission, stream: Subscribable): Emission => {
