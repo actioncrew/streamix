@@ -1,43 +1,39 @@
-import { createOperator, Operator, Subscribable, Emission } from '../abstractions';
-import { createSubject } from '../streams';
+import { createOperator, Operator, Emission, eventBus } from '../abstractions';
+import { createSubject, from } from '../streams';
 
 export const splitMap = <T = any, R = T>(
   paths: { [key: string]: Array<Operator> }
 ): Operator => {
   const output = createSubject<R>(); // The final output stream
-  let emissionQueue: Emission[] = []; // Queue to handle emissions
+  let subscriptions: Array<any> = []; // Track subscriptions
 
   const handle = (emission: Emission) => {
-    const partitionMap = emission.value as Map<string, Subscribable>; // Partitioned streams
+    const partitionMap = emission.value as Map<string, any[]>; // Partitioned streams
+
+    let remainingSubscriptions = 0;
 
     // Process each key in the partition map
     partitionMap.forEach((stream, key) => {
       const caseOperators = paths[key]; // Get the operators for the current key
 
       if (caseOperators) {
-        // Apply the operators for the current partition
-        caseOperators.forEach((operator) => {
-          const clonedOperator = operator.clone();
-          output.pipe(clonedOperator); // Connect the operator to the output stream
-        });
-
-        // Subscribe to the partition stream and handle emissions
-        stream.subscribe({
+        // For each partition stream, subscribe and apply the operators
+        const subscription = from(stream).pipe(...caseOperators).subscribe({
           next: (value) => {
-            emissionQueue.push(emission); // Add emission to queue
             output.next(value); // Pass the value downstream
           },
           complete: () => {
-            // Optionally handle the completion of the partition
-            emission.finalize(); // Ensure emission finalization
-          },
-          error: (err) => {
-            // Handle any errors that occur in the partition stream
-            console.error(`Error in partition ${key}:`, err);
+            remainingSubscriptions--;
+            if (remainingSubscriptions === 0) {
+              output.complete(); // Complete the output stream when all subscriptions are done
+            }
           },
         });
+
+        // Increase the count of remaining subscriptions
+        remainingSubscriptions++;
+        subscriptions.push(subscription);
       } else {
-        // If no operators exist for this partition key, log a warning
         console.warn(`No handlers found for partition key: ${key}`);
       }
     });
@@ -46,7 +42,8 @@ export const splitMap = <T = any, R = T>(
   };
 
   // Create the operator and initialize its properties
-  const operator = createOperator(handle);
+  const operator = createOperator(handle) as any;
+  operator.stream = output;
   operator.name = 'splitMap';
 
   return operator;
