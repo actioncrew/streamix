@@ -5,7 +5,7 @@ export * from './concat';
 export * from './defer';
 export * from './EMPTY';
 export * from './from';
-export * from './fromAnimationFrame';
+export * from './onAnimationFrame';
 export * from './fromEvent';
 export * from './observeIntersection';
 export * from './fromMediaQuery';
