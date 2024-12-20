@@ -1,4 +1,4 @@
-import { fromMutation } from '../lib';
+import { observeMutation } from '../lib';
 import { createStream } from '../lib';
 import { eventBus } from '../lib';
 
@@ -18,7 +18,7 @@ describe('fromMutation Stream Tests', () => {
   });
 
   test('should emit mutations when child is added', (done) => {
-    const mutationStream = fromMutation(observedElement, {
+    const mutationStream = observeMutation(observedElement, {
       childList: true,
     });
 
@@ -45,7 +45,7 @@ describe('fromMutation Stream Tests', () => {
     child.innerText = 'Child div to remove';
     observedElement.appendChild(child);
 
-    const mutationStream = fromMutation(observedElement, {
+    const mutationStream = observeMutation(observedElement, {
       childList: true,
     });
 
@@ -73,7 +73,7 @@ describe('fromMutation Stream Tests', () => {
     nestedChild.innerText = 'Nested change';
     nestedParent.appendChild(nestedChild);
 
-    const mutationStream = fromMutation(observedElement, {
+    const mutationStream = observeMutation(observedElement, {
       subtree: true,
       childList: true,
     });

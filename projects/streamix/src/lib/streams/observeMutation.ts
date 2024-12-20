@@ -12,9 +12,9 @@ import { eventBus } from '../abstractions';
  *
  * @example
  * // Example usage:
- * import { fromMutation } from './your-path';
+ * import { observeMutation } from './your-path';
  *
- * const mutationStream = fromMutation(document.body, { childList: true });
+ * const mutationStream = observeMutation(document.body, { childList: true });
  *
  * const subscription = mutationStream.subscribe({
  *   next: (mutations) => {
@@ -22,7 +22,7 @@ import { eventBus } from '../abstractions';
  *   },
  * });
  */
-export function fromMutation(
+export function observeMutation(
   element: Element,
   options?: MutationObserverInit
 ): Stream<MutationRecord[]> {
@@ -44,6 +44,6 @@ export function fromMutation(
     observer.disconnect();
   });
 
-  stream.name = 'fromMutation';
+  stream.name = 'observeMutation';
   return stream;
 }

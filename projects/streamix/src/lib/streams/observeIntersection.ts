@@ -12,10 +12,10 @@ import { eventBus } from '../abstractions';
  *
  * @example
  * // Example usage:
- * import { fromIntersection } from './your-path';
+ * import { observeIntersection } from './your-path';
  *
  * const elementToObserve = document.getElementById('observeMe');
- * const intersectionStream = fromIntersection(elementToObserve, {
+ * const intersectionStream = observeIntersection(elementToObserve, {
  *   threshold: 0.5,
  * });
  *
@@ -25,7 +25,7 @@ import { eventBus } from '../abstractions';
  *   },
  * });
  */
-export function fromIntersection(
+export function observeIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
@@ -55,6 +55,6 @@ export function fromIntersection(
     observer.disconnect();
   });
 
-  stream.name = 'fromIntersection';
+  stream.name = 'observeIntersection';
   return stream;
 }
