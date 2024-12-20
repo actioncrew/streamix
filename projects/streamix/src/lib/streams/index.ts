@@ -17,7 +17,6 @@ export * from './interval';
 export * from './loop';
 export * from './merge';
 export * from './of';
-export * from './online';
 export * from './range';
 export * from './subject';
 export * from './timer';

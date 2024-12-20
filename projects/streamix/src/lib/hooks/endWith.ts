@@ -6,7 +6,7 @@ export const endWith = (value: any): Operator => {
 
   const init = function(this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream[hooks].onComplete.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
+    boundStream[hooks].onComplete.once((params: any) => callback(this, params)); // Trigger the callback when the stream starts
   };
 
   const callback = (instance: Operator, params?: any): (() => BusEvent) | void => {
