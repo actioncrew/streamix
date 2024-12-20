@@ -1,8 +1,7 @@
-import { createEmission, Emission, flags, hooks, internals } from '../abstractions';
+import { createEmission, hooks, internals } from '../abstractions';
 import { createStream, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
 
-export function fromAnimationFrame<T>(): Stream<T> {
+export function onAnimationFrame<T>(): Stream<T> {
   let requestId: number | null = null;
 
   const stream = createStream<T>(async function (this: Stream<T>) {
@@ -34,7 +33,7 @@ export function fromAnimationFrame<T>(): Stream<T> {
     await stream[internals].awaitCompletion();
   });
 
-  stream.name = "fromAnimationFrame";
+  stream.name = "onAnimationFrame";
 
   return stream;
 }
