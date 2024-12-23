@@ -20,3 +20,4 @@ export * from './of';
 export * from './range';
 export * from './subject';
 export * from './timer';
+export * from './zip';
