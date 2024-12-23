@@ -195,9 +195,14 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       if (!subscription.unsubscribed) {
 
         subscription.unsubscribed = performance.now();
+        const cleanup = () => {
+          if (receiver.complete) finalize.remove(receiver, receiver.complete);
+          if (receiver.error) onError.remove(receiver, errorCallback);
+          subscribers.remove(boundCallback);
+        };
 
         if (!stopped) {
-          stream.complete();
+          stream.complete().then(cleanup);
         }
       }
     };
