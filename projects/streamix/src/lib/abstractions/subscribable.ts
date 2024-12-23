@@ -37,8 +37,6 @@ export interface SubscribableFlags {
 
   isStopped: boolean;
   isRunning: boolean;
-
-  isPending: boolean;
 }
 
 export interface SubscribableInternals {
