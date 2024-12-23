@@ -12,7 +12,7 @@ import { eventBus } from '../abstractions';
  * // Example usage:
  * import { fromMediaQuery } from './your-path';
  *
- * const mediaQueryStream = fromMediaQuery('(min-width: 768px)');
+ * const mediaQueryStream = onMediaQueryMatch('(min-width: 768px)');
  *
  * const subscription = mediaQueryStream.subscribe({
  *   next: (matchStatus) => {
@@ -20,7 +20,7 @@ import { eventBus } from '../abstractions';
  *   },
  * });
  */
-export function fromMediaQuery(mediaQueryString: string): Stream<boolean> {
+export function onMediaQueryMatch(mediaQueryString: string): Stream<boolean> {
   const stream = createStream<boolean>(async function (this: Stream<boolean>) {
     if (!window.matchMedia) {
       console.warn('matchMedia is not supported in this environment');
