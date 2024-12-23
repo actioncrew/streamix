@@ -1,18 +1,18 @@
-import { createEmission, createOperator, from, map, merge } from '../lib';
-import { partitionBy, splitMap } from '../lib';
+import { from, map, merge } from '../lib';
+import { groupBy, splitMap } from '../lib';
 
-describe('partitionBy and splitMap operators', () => {
+describe('groupBy and splitMap operators', () => {
   let source$: any;
 
   beforeEach(() => {
     // Setup streams for testing
   });
 
-  it('should partition values using partitionBy', (done) => {
+  it('should partition values using groupBy', (done) => {
     let result: any[] = [];
 
     // Create a stream that partitions numbers into "even" and "odd" groups
-    const partitionOperator = partitionBy((value: number) => (value % 2 === 0 ? 'even' : 'odd'));
+    const partitionOperator = groupBy((value: number) => (value % 2 === 0 ? 'even' : 'odd'));
 
     source$ = from([1, 2, 3, 4, 5, 6]).pipe(partitionOperator);
 
@@ -43,7 +43,7 @@ describe('partitionBy and splitMap operators', () => {
 
     // Use merge to combine all partitioned streams into one observable
     const source$ = merge(...partitionedStreams).pipe(
-      partitionBy((value: string) => value.startsWith('Low') ? 'low' : 'high'),
+      groupBy((value: string) => value.startsWith('Low') ? 'low' : 'high'),
       splitMap(paths)  // Apply splitMap with custom operators
     );
 
@@ -71,7 +71,7 @@ describe('partitionBy and splitMap operators', () => {
 
     // Create partitioned stream and apply operators
     source$ = from([1, 3, 5, 7, 10]).pipe(
-      partitionBy((value: number) => (value <= 5 ? 'low' : 'high')),
+      groupBy((value: number) => (value <= 5 ? 'low' : 'high')),
       splitMap(paths)
     );
 
