@@ -1,4 +1,4 @@
-import { Stream, Subscribable, Emission } from '../abstractions';
+import { Emission } from '../abstractions';
 import { Operator, createOperator } from '../abstractions';
 
 export const bufferCount = (bufferSize: number): Operator => {
