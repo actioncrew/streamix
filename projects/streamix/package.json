@@ -1,7 +1,7 @@
 {
   "name": "@actioncrew/streamix",
-  "version": "0.1.12",
-  "description": "Lightweight RxJS alternative",
+  "version": "0.1.13",
+  "description": "Reactive TypeScript library",
   "license": "MIT",
   "keywords": [
     "RxJS",
