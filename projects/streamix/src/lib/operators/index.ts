@@ -4,10 +4,10 @@ export * from './coroutine';
 export * from './delay';
 export * from './distinctUntilChanged';
 export * from './filter';
-export * from './fork';
+export * from './fork';;
+export * from './groupBy';
 export * from './map';
-export * from './mergeMap';
-export * from './partitionBy';
+export * from './mergeMap'
 export * from './scan';
 export * from './slidingPair';
 export * from './skip';

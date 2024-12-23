@@ -1,7 +1,7 @@
 import { createOperator, Operator, Emission, BusEvent, createEmission, Stream } from '../abstractions';
 import { hooks } from '../abstractions';
 
-export const partitionBy = <T = any>(keyFn: (value: T) => string | number): Operator => {
+export const groupBy = <T = any>(keyFn: (value: T) => string | number): Operator => {
   const partitions = new Map<string | number, T[]>(); // Track partitioned values
   let boundStream: Stream;
 
