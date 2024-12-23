@@ -40,7 +40,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const completion = awaitable<void>();
 
   let running = false;
-  let pending = false;
   let autoComplete = false;
   let unsubscribed = false;
   let stopped = false;
@@ -181,7 +180,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
           receiver.error(emission.error); // Call `error` if emission failed
         } else {
           const rootEmissionTimestamp = emission.root().timestamp;
-          if (receiver.next && subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
+          if (receiver.next && subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stream.stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
             receiver.next(emission.value); // Call `next` for successful emissions
           }
         }
@@ -289,12 +288,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       },
       set isStopped(value: boolean) {
         stopped = value;
-      },
-      get isPending() {
-        return pending;
-      },
-      set isPending(value: boolean) {
-        pending = value;
       }
     }
   };

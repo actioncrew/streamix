@@ -215,12 +215,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       },
       set isRunning(value: boolean) {
         getLastChunk()[flags].isRunning = value;
-      },
-      get isPending() {
-        return getLastChunk()[flags].isPending;
-      },
-      set isPending(value: boolean) {
-        getLastChunk()[flags].isPending = value;
       }
     },
 

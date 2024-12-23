@@ -98,7 +98,6 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         if (!pendingEmissions.has(event.target)) {
           yield* await triggerHooks(event.target, 'finalize', event);
         } else {
-          event.target[flags].isPending = true;
           stopMarkers.set(event.target, event.payload);
         }
         break;
@@ -141,7 +140,6 @@ export function createBus(config?: { bufferSize?: number }): Bus {
           stopMarkers.delete(target);
           eventBus.enqueue({ target, type: 'finalize', payload });
         }
-        target[flags].isPending = false;
       }
     });
   }
