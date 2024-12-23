@@ -1,7 +1,10 @@
 # Streamix
 
 ```javascript
-  import { ..., Stream as Observable } from '@actioncrew/streamix;'
+    const resize$ = fromEvent(window, 'resize').pipe(
+      startWith(this.getCanvasSize()),
+      map(() => this.getCanvasSize())
+    );
 ```
 
   [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
@@ -9,29 +12,27 @@
   [![npm downloads](https://img.shields.io/npm/dm/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
   [![min+zipped](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)
 
-Streamix is a lightweight and alternative implementation of reactive programming concept. It provides similar interface of RxJS operators, but uses slightly changed concept of streams and emissions. If you're already familiar with RxJS, you'll find Streamix easy to master.
+Streamix is a library for reactive programming designed to handle asynchronous data flows with clarity and performance.
 
-Streamix supports many of the most commonly used RxJS operators while also offering unique operators designed specifically for heavy computational tasks, leveraging the Web Workers API. In brief, we’re continually enhancing it with new operators to expand its capabilities.
+Streamix is built for developers who want a simple, efficient way to manage asynchronous data streams, with minimal overhead and maximum flexibility. It supports a wide range of operators and powerful features for dealing with complex computational tasks, such as Web Workers, all while maintaining a lightweight footprint.
 
-Today's developer is a hardened warrior, battling the asynchronous dragons of user interactions, network requests, and the ever-present threat of a lagging UI. Synchronous programming? That quaint notion is about as useful as a dial-up modem in the age of gigabit internet. 
+Streamix offers a simple, effective way to handle asynchronous data streams without the overhead of more advanced libraries like RxJS, while still maintaining robust features for dealing with async patterns.
 
-We all know the mantra: "Async/await is the new king!" But let's be honest, sometimes you just need a simple, reliable solution for your own quirky project. You reach for your trusty synchronous code, a comforting blanket in a world of unpredictable promises and callback hell. But alas! It just doesn't quite fit the asynchronous puzzle.
+## Key Concepts
+- Stream: A sequence of values that can be observed. Streams can emit values either synchronously or asynchronously.
+- Emission: The individual values emitted by a stream, along with metadata like whether the emission was canceled or if it encountered an error.
+- Operator: Functions that transform, filter, or combine streams of data.
+- Pipeline: A pipeline is a series of stream operators chained together to process data.
+- Bus: An event bus to manage and coordinate stream emissions, simplifying complex interactions between multiple streams.
 
-The trend towards asynchronous programming is accepted as Streamix foundation. Let's describe its building blocks shortly:
+## Why Streamix?
+Streamix is designed for those who need a straightforward way to manage asynchronous data without the complexity of larger frameworks. It's a great alternative to RxJS for simpler use cases, offering all the core functionality you need in a more lightweight, efficient package.
 
-A Stream is a sequence of values that can be observed. Streams can emit values either synchronously or asynchronously.
+## Explore More
+To see Streamix in action, check out these sample projects:
+[Sample projects](https://github.com/actioncrew/streamix/)
 
-An Emission represents a value emitted by a Stream. Emissions can carry additional metadata, such as whether the emission is cancelled or if there was an error.
-
-Operators are components that can be applied to the stream data. They can be used to transform, filter, and combine streams of data.
-
-A Subject is a special type of Stream that allows manually dispatch emissions. Subjects can be used to share a single execution path among multiple subscribers.
-
-Streamix is ideal for those who need a straightforward way to handle asynchronous data without the complexity of more advanced libraries. It is intended as a lightweight alternative to RxJS for simpler use cases.
-
-To discover more, explore a few sample projects that showcase Streamix’s capabilities: [Sample projects](https://github.com/actioncrew/streamix/)
-
-If you’re interested in extending a project or have a brilliant idea or innovative project in mind, we’d love to hear from you! Reach out to us to discuss how Streamix can be leveraged to bring your vision to fruition. We’re eager to collaborate and help bring your ideas to life!
+Feel free to join the conversation on [GitHub](https://github.com/actioncrew/streamix/discussions)! We’re excited to collaborate and help bring your ideas to life.
 
 [More information](https://medium.com/p/00d5467f0c01)
 
