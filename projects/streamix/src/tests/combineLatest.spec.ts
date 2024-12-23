@@ -1,4 +1,4 @@
-import { combineLatest, timer } from '../lib';
+import { combineLatest, from, timer } from '../lib';
 
 describe('CombineLatestStream with TimerStreams', () => {
   it('should combine timer streams correctly', (done) => {
@@ -101,6 +101,22 @@ describe('CombineLatestStream with TimerStreams', () => {
       } catch (error) {
         subscription.unsubscribe();
         done(error);
+      }
+    });
+  });
+
+  it('should combine from streams and complete after the third emission', (done) => {
+    const firstStream = from([0, 1, 2]); // Emits 0, 1, 2
+    const secondStream = from([0, 1, 2]); // Emits 0, 1, 2
+    const combinedStream = combineLatest([firstStream, secondStream]);
+    let nextCalled = false;
+
+    const subscription = combinedStream.subscribe({
+      next: (value) => nextCalled = true,
+      complete: () => {
+        subscription.unsubscribe();
+        expect(nextCalled).toBe(true);
+        done();
       }
     });
   });
