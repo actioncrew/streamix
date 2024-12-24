@@ -1,4 +1,3 @@
-import { timestamp } from 'rxjs';
 export type Emission = {
   value?: any;                 // The payload
   phantom?: boolean;           // Premature completion
