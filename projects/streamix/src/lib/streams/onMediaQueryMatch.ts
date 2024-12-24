@@ -1,4 +1,4 @@
-import { createStream, hooks, internals, Stream } from '../abstractions';
+import { createStream, internals, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 /**

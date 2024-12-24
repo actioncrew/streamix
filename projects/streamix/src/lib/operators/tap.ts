@@ -1,4 +1,4 @@
-import { createOperator, Operator, Subscribable } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const tap = (tapFunction: (value: any) => void): Operator => {

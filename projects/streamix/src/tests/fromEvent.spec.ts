@@ -1,4 +1,4 @@
-import { fromEvent, internals } from '../lib';
+import { fromEvent } from '../lib';
 
 describe('fromEvent function', () => {
   it('should emit events from the element', (done) => {

@@ -1,8 +1,6 @@
 import { Component } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AppRainComponent } from "./rain.component";
-import { AppSunComponent } from './sun.component';
 
 @Component({
   selector: 'app-container',

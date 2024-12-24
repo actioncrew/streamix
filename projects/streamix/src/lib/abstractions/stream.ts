@@ -1,4 +1,4 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperator, isReceiver, Receiver, createReceiver, hooks, SubscribableHooks, SubscribableInternals, internals, flags } from "../abstractions";
+import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperator, Receiver, createReceiver, hooks, SubscribableHooks, SubscribableInternals, internals, flags } from "../abstractions";
 import { eventBus } from "../abstractions";
 import { hook, awaitable } from "../utils";
 

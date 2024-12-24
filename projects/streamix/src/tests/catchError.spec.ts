@@ -1,4 +1,4 @@
-import { catchError, createSubject, internals, map, Stream, Subject } from '../lib';
+import { catchError, createSubject, map, Stream, Subject } from '../lib';
 
 describe('CatchErrorOperator Functional Test', () => {
   let subject: Subject;

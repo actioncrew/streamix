@@ -1,4 +1,4 @@
-import { internals, interval } from '../lib';
+import { interval } from '../lib';
 
 describe('IntervalStream', () => {
   it('should emit values at specified interval', async () => {

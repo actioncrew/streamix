@@ -1,5 +1,4 @@
 import { Emission, Subscribable, Stream, createOperator, Operator, createEmission, hooks, BusEvent } from '../abstractions';
-import { eventBus } from '../abstractions';
 
 export const defaultIfEmpty = (defaultValue: any): Operator => {
   let boundStream: Stream;

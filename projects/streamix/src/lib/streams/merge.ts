@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, hooks, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function merge<T = any>(...sources: Subscribable[]): Stream<T> {

@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, hooks, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, hooks, internals, Stream, Subscribable, Subscription } from '../abstractions';
 import { catchAny, counter, Counter } from '../utils';
 import { eventBus } from '../abstractions';
 

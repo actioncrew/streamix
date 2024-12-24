@@ -1,4 +1,4 @@
-import { createStream, Subscribable, Stream, Subscription, createEmission, hooks, flags, internals } from '../abstractions';
+import { createStream, Subscribable, Stream, Subscription, createEmission, flags, internals } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function iif<T>(

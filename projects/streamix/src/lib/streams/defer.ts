@@ -1,4 +1,4 @@
-import { createStream, Subscribable, Stream, createEmission, Subscription, hooks, flags, internals } from '../abstractions';
+import { createStream, Subscribable, Stream, createEmission, Subscription, flags, internals } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {

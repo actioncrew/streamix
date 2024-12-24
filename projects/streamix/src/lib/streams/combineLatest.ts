@@ -1,4 +1,4 @@
-import { createEmission, createStream, hooks, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
 import { catchAny } from '../utils'; // Ensure catchAny is imported from the correct location
 import { eventBus } from '../abstractions';
 

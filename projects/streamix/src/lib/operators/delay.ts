@@ -1,5 +1,4 @@
-import { emitDistinctChangesOnlyDefaultValue } from '@angular/compiler';
-import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, Stream, flags, hooks } from '../abstractions';
+import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, flags, hooks } from '../abstractions';
 
 export const delay = (delayTime: number): Operator => {
   let queue = new Promise<void>((resolve) => {

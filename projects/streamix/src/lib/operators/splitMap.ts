@@ -1,4 +1,4 @@
-import { createOperator, Operator, Emission, eventBus } from '../abstractions';
+import { createOperator, Operator, Emission } from '../abstractions';
 import { createSubject, from } from '../streams';
 
 export const splitMap = <T = any, R = T>(

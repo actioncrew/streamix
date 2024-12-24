@@ -1,6 +1,6 @@
 import { createLock, createSemaphore } from '../utils';
-import { createEmission, Emission } from './emission';
-import { flags, hooks } from './subscribable';
+import { Emission } from './emission';
+import { hooks } from './subscribable';
 
 export const eventBus = createBus();
 

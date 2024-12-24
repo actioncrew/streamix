@@ -1,4 +1,4 @@
-import { BusEvent, createEmission, eventBus, hooks } from '../abstractions';
+import { BusEvent, createEmission, hooks } from '../abstractions';
 import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Operator => {

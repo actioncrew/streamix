@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, hooks, internals, Stream } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {

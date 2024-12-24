@@ -1,4 +1,4 @@
-import { onAnimationFrame, eventBus, takeWhile, map } from '../lib';
+import { onAnimationFrame, takeWhile, map } from '../lib';
 
 describe('fromAnimationFrame - Functional Test', () => {
 

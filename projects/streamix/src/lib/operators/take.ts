@@ -1,4 +1,4 @@
-import { createOperator, flags, Operator, Stream, Subscribable } from '../abstractions';
+import { createOperator, flags, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const take = <T>(count: number): Operator => {

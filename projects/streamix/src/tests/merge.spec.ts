@@ -1,4 +1,4 @@
-import { from, merge, Stream } from '../lib';
+import { from, merge } from '../lib';
 
 describe('MergeStream', () => {
   it('should merge values from multiple sources', (done) => {
