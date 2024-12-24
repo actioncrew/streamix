@@ -6,9 +6,9 @@ import {
   startWith,
   Subscribable,
   switchMap,
+  takeUntil,
   tap,
   timer,
-  takeUntil,
   withLatestFrom,
 } from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
@@ -133,7 +133,6 @@ export class AppSunComponent implements AfterViewInit, OnDestroy {
       }))
     );
 
-    let value = 0;
     const draw$ = interval(33).pipe(
       withLatestFrom(rays$),
       tap(([_, { width, height, rays, sun }]) => {

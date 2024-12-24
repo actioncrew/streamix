@@ -1,6 +1,4 @@
-import { createOperator, flags, hooks, Operator, Stream, Subscription } from '../abstractions';
-import { Emission } from '../abstractions';
-import { Subscribable } from '../abstractions';
+import { createOperator, Emission, flags, hooks, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 
 export const takeUntil = (notifier: Subscribable): Operator => {
   let stopRequested = false;
@@ -14,7 +12,7 @@ export const takeUntil = (notifier: Subscribable): Operator => {
       stopRequested = false;
 
       // Subscribe to the notifier and set stopRequested on emission
-      subscription = notifier.subscribe((value) => {
+      subscription = notifier.subscribe(() => {
         stopRequested = true;
         subscription?.unsubscribe(); // Unsubscribe from the notifier on first emission
       });

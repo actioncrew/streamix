@@ -1,8 +1,6 @@
-import { eventBus, flags, hooks, internals } from '../abstractions';
-import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
-import { catchAny, Counter, counter } from '../utils';
+import { createOperator, Emission, eventBus, flags, hooks, internals, Operator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
-import { Subscription } from '../abstractions';
+import { catchAny, Counter, counter } from '../utils';
 
 export const switchMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
@@ -50,7 +48,7 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
 
     // If there's an existing inner stream and it's different from the new one, stop it
     if (previousInnerStream && previousInnerStream !== innerStream) {
-      stopPreviousInnerStream(emission);
+      stopPreviousInnerStream();
     }
 
     // Subscribe to the new inner stream
@@ -84,12 +82,12 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     }
   };
 
-  const handleStreamError = (emission: Emission, error: any) => {
+  const handleStreamError = (_: Emission, error: any) => {
     eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
     finalize();
   };
 
-  const stopPreviousInnerStream = (emission: Emission) => {
+  const stopPreviousInnerStream = () => {
     currentSubscription?.unsubscribe();
     currentSubscription = undefined;
     currentInnerStream = null;

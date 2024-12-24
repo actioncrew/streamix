@@ -1,7 +1,6 @@
-import { createOperator, flags, Operator, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions';
+import { createOperator, Emission, flags, Operator, Subscribable } from '../abstractions';
 
-export const take = <T>(count: number): Operator => {
+export const take = (count: number): Operator => {
   let emittedCount = 0;
 
   const handle = (emission: Emission, stream: Subscribable): Emission => {

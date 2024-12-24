@@ -93,12 +93,12 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
       instance.finalized = true;
       processDescendants(instance);
     },
-    notifyOnCompletion: (child: Emission): void => {
+    notifyOnCompletion: (): void => {
       if(instance.finalized) {
         processDescendants(instance);
       }
     },
-    notifyOnError: (child: Emission, reason: any): void => {
+    notifyOnError: (): void => {
       if(instance.finalized) {
         processDescendants(instance);
       }

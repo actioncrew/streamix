@@ -1,5 +1,4 @@
-import { BusEvent, createEmission, hooks } from '../abstractions';
-import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
+import { BusEvent, createEmission, createOperator, Emission, hooks, Operator, Stream } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Operator => {
   let boundStream: Stream;
@@ -15,7 +14,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): O
     return () => ({ target: boundStream,  payload: { emission: createEmission({ value: accumulatedValue }), source: instance }, type: 'emission' });
   };
 
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
+  const handle = (emission: Emission): Emission => {
     // Accumulate the value using the provided accumulator function
     accumulatedValue = accumulator(accumulatedValue, emission.value!);
     emission.phantom = true; // Mark the emission as phantom

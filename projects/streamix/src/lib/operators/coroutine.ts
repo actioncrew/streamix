@@ -79,7 +79,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  const init = (input: Subscribable) => {
+  const init = () => {
     initWorkers();
   };
 

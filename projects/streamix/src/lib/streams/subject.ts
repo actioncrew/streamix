@@ -1,5 +1,4 @@
-import { createEmission, createReceiver, createStream, Emission, flags, hooks, internals, Receiver, Stream, Subscription } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createReceiver, createStream, Emission, eventBus, flags, hooks, internals, Receiver, Stream, Subscription } from '../abstractions';
 import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
@@ -115,7 +114,7 @@ export function createSubject<T = any>(): Subject<T> {
     subscription.unsubscribed = undefined;
 
     // Define the bound callback for handling emissions
-    const boundCallback = ({ emission, source }: any) => {
+    const boundCallback = ({ emission }: any) => {
       currentValue = emission.value;
 
       try {

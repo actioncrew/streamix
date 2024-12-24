@@ -1,4 +1,4 @@
-import { Emission, Subscribable, Stream, createOperator, Operator, hooks } from '../abstractions';
+import { Emission, Operator, Stream, createOperator, hooks } from '../abstractions';
 
 export const catchError = (handler: (error?: any) => void | Promise<void>): Operator => {
   let boundStream: Stream;
@@ -12,7 +12,7 @@ export const catchError = (handler: (error?: any) => void | Promise<void>): Oper
     return handler(error); // Call the provided handler when an error occurs
   };
 
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
+  const handle = (emission: Emission): Emission => {
     return emission; // Pass the emission as is
   };
 

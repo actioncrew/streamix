@@ -1,11 +1,9 @@
 import { interval, scan, startWith, tap } from '@actioncrew/streamix';
 import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-motion',
   standalone: true,
-  imports: [RouterOutlet],
   template: '<canvas #canvas></canvas>',
   styles: ['canvas { display: block; }'],
 })
@@ -16,8 +14,6 @@ export class AppMotionComponent implements AfterViewInit {
   private rectangles: any[] = [];
   private text = 'Streamix';
   private animationStopped = false;
-  private frameCount = 0;
-  private delayFrames = 60;
 
   ngAfterViewInit() {
     const canvas = this.canvasRef.nativeElement;

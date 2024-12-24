@@ -5,7 +5,7 @@ import { hooks } from './subscribable';
 export const eventBus = createBus();
 
 (async function startEventBus() {
-  for await (const event of eventBus.run()) {
+  for await (const _ of eventBus.run()) {
     // Event consumption logic here (if needed)
   }
 })();

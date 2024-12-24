@@ -1,5 +1,4 @@
-import { BusEvent, createEmission, hooks } from '../abstractions';
-import { Emission, Subscribable, Stream, createOperator, Operator } from '../abstractions';
+import { BusEvent, createEmission, createOperator, Emission, hooks, Operator, Stream } from '../abstractions';
 
 export const toArray = (): Operator => {
   let boundStream: Stream;
@@ -22,7 +21,7 @@ export const toArray = (): Operator => {
     });
   };
 
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
+  const handle = (emission: Emission): Emission => {
     // Collect each emission value into the array
     accumulatedArray.push(emission.value!);
     emission.phantom = true; // Mark the emission as phantom

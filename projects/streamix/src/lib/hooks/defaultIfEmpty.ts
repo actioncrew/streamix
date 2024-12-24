@@ -1,4 +1,4 @@
-import { Emission, Subscribable, Stream, createOperator, Operator, createEmission, hooks, BusEvent } from '../abstractions';
+import { BusEvent, Emission, Operator, Stream, createEmission, createOperator, hooks } from '../abstractions';
 
 export const defaultIfEmpty = (defaultValue: any): Operator => {
   let boundStream: Stream;
@@ -18,7 +18,7 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
     }
   };
 
-  const handle = function (this: Operator, emission: Emission, stream: Subscribable): Emission {
+  const handle = function (this: Operator, emission: Emission): Emission {
     // Mark the emission if it's not a phantom or failed
     if (!emission.phantom && !emission.failed) {
       hasEmitted = true;
