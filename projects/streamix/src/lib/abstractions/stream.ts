@@ -15,7 +15,7 @@ export type Stream<T = any> = Subscribable<T> & {
   [internals]: SubscribableInternals & {
     head: Operator | undefined;
     tail: Operator | undefined;
-    bindOperators: (...operators: Operator[]) => Stream<T>;
+    chain: (...operators: Operator[]) => Stream<T>;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
     awaitStart: () => Promise<void>;
   },
@@ -90,7 +90,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
 
-  const bindOperators = function(...newOperators: Operator[]): Stream<T> {
+  const chain = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
     head = undefined; tail = undefined;
 
@@ -217,7 +217,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const pipe = function(...operators: Operator[]): Pipeline<T> {
-    return createPipeline<T>(stream)[internals].bindOperators(...operators);
+    return createPipeline<T>(stream)[internals].chain(...operators);
   };
 
   const shouldComplete = () => autoComplete || unsubscribed;
@@ -239,7 +239,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     [internals]: {
       head,
       tail,
-      bindOperators,
+      chain,
       emit,
       awaitStart,
       awaitCompletion,
