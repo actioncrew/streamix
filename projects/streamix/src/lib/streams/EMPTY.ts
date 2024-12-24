@@ -1,4 +1,4 @@
-import { createReceiver, createStream, flags, hooks, Receiver, Stream, Subscription } from '../abstractions';
+import { createReceiver, createStream, flags, Receiver, Stream, Subscription } from '../abstractions';
 
 // Function to create an EmptyStream
 export const empty = <T = any>(): Stream<T> => {

@@ -1,4 +1,4 @@
-import { mergeMap, from, filter, EMPTY, timer, of, delay, map, take } from '../lib';
+import { mergeMap, from, filter, EMPTY, timer, delay, map, take } from '../lib';
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {

@@ -1,5 +1,5 @@
 import { internals } from './../abstractions/subscribable';
-import { Stream, createEmission, createStream, flags, hooks } from '../abstractions';
+import { Stream, createEmission, createStream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 // Function to create a FromPromiseStream

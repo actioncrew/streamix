@@ -1,4 +1,4 @@
-import { createOperator, Operator, Stream, Subscribable } from '../abstractions';
+import { createOperator, Operator, Stream } from '../abstractions';
 import { Emission } from '../abstractions';
 
 export const skip = (count: number): Operator => {

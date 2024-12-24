@@ -1,3 +1,16 @@
 {
-    "CodeGPT.apiKey": "Nvidia"
+  "eslint.enable": true,
+  "eslint.nodePath": "./node_modules",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always",
+    "source.organizeImports": true
+  },
+  "eslint.validate": [
+    "javascript",
+    "typescript"
+  ],
+  "eslint.alwaysShowStatus": true,  // Show ESLint status in the status bar
+  "eslint.workingDirectories": [
+    "../projects/streamix/src",                         // Ensure ESLint works for your source directory
+  ]
 }

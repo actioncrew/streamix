@@ -1,4 +1,4 @@
-import { createSubject, EMPTY, Subject } from '../streams';
+import { createSubject, EMPTY } from '../streams';
 import { Emission, createOperator, Operator, Subscribable, Subscription, hooks, flags } from '../abstractions';
 import { Counter, catchAny, counter } from '../utils';
 import { eventBus } from '../abstractions';

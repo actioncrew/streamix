@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, hooks, internals, Stream } from '../abstractions';
+import { createEmission, createStream, flags, internals, Stream } from '../abstractions';
 import { eventBus } from '../abstractions';
 
 export function of<T = any>(value: T): Stream<T> {

@@ -1,6 +1,5 @@
 import { createOperator, Operator } from '../abstractions';
 import { Emission } from '../abstractions';
-import { Subscribable } from '../abstractions';
 
 export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) => boolean): Operator => {
   let lastEmittedValue: T | undefined = undefined;

@@ -1,4 +1,4 @@
-import { compute, concatMap, coroutine, finalize, map, mergeMap, range, scan, Subscribable, tap } from '@actioncrew/streamix';
+import { compute, coroutine, finalize, map, mergeMap, range, scan, Subscribable, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 const BATCH_SIZE = 1000;

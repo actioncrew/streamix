@@ -1,4 +1,4 @@
-import { fromPromise, internals } from '../lib';
+import { fromPromise } from '../lib';
 
 describe('FromPromiseStream', () => {
   it('should emit value from resolved promise', (done) => {

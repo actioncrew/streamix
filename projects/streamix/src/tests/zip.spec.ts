@@ -1,4 +1,4 @@
-import { createSubject, from, Subject } from '../lib';
+import { createSubject, from } from '../lib';
 import { zip } from '../lib';
 
 describe('zip operator', () => {

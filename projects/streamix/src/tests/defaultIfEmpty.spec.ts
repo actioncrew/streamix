@@ -1,4 +1,4 @@
-import { concatMap, createSubject, defaultIfEmpty, EMPTY, internals, of } from '../lib';
+import { concatMap, createSubject, defaultIfEmpty, EMPTY, of } from '../lib';
 
 describe('DefaultIfEmptyOperator', () => {
   test('should emit the default value if no values are emitted', (done) => {

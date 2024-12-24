@@ -18,6 +18,8 @@
     "target": "ES2022",
     "module": "ES2022",
     "useDefineForClassFields": false,
+    "noUnusedLocals": true,     // Warns about unused local variables
+    "noUnusedParameters": true,  // Warns about unused function parameters
     "lib": [
       "ES2022",
       "dom"

@@ -1,4 +1,4 @@
-import { filter, from, Stream } from '../lib';
+import { filter, from } from '../lib';
 
 describe('FilterOperator', () => {
   it('should allow values that pass the predicate', (done) => {

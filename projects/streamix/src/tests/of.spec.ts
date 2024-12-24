@@ -1,4 +1,4 @@
-import { internals, of } from '../lib';
+import { of } from '../lib';
 
 describe('OfStream', () => {
   it('should emit the given value', async () => {

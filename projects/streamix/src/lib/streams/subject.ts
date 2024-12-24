@@ -1,5 +1,4 @@
-import { finalize } from 'rxjs';
-import { createEmission, createReceiver, createStream, Emission, flags, hooks, internals, isReceiver, Receiver, Stream, Subscription } from '../abstractions';
+import { createEmission, createReceiver, createStream, Emission, flags, hooks, internals, Receiver, Stream, Subscription } from '../abstractions';
 import { eventBus } from '../abstractions';
 import { awaitable } from '../utils';
 

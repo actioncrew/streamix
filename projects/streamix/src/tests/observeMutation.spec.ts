@@ -1,6 +1,4 @@
 import { observeMutation } from '../lib';
-import { createStream } from '../lib';
-import { eventBus } from '../lib';
 
 // Mock DOM element for testing purposes
 let observedElement: HTMLDivElement;
