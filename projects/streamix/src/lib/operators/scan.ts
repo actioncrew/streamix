@@ -1,11 +1,10 @@
-import { Operator, Stream, createOperator } from '../abstractions';
-import { Emission } from '../abstractions';
+import { Emission, Operator, createOperator } from '../abstractions';
 
 export const scan = (accumulator: (acc: any, value: any, index?: number) => any, seed: any): Operator => {
   let accumulatedValue = seed; // Initialize the accumulated value
   let index = 0; // Initialize the index
 
-  const init = (stream: Stream) => {
+  const init = () => {
     accumulatedValue = seed; // Reset accumulated value on initialization
     index = 0; // Reset index on initialization
   };

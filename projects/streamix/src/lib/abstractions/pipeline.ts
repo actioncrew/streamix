@@ -1,11 +1,9 @@
-import { eventBus } from './bus';
-import { Receiver, Stream } from '../abstractions';
+import { createEmission, Operator, Receiver, Stream } from '../abstractions';
 import { createSubject } from '../streams';
 import { hook } from '../utils';
-import { Operator } from '../abstractions';
+import { eventBus } from './bus';
 import { flags, hooks, internals, Subscribable, SubscribableInternals } from './subscribable';
 import { Subscription } from './subscription';
-import { createEmission } from '../abstractions';
 
 // This represents the internal structure of a pipeline
 export type Pipeline<T> = Subscribable<T> & {
@@ -247,7 +245,6 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 export function multicast<T = any>(source: Subscribable<T>, bufferSize: number = Infinity): Subscribable<T> {
   const subject = createSubject<T>();
   const cache: T[] = [];
-  let subscribers = 0;
 
   const subscription = source.subscribe({
     next: (value) => {

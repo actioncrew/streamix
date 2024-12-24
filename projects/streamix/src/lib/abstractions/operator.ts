@@ -1,5 +1,5 @@
+import { Emission, Stream, Subscribable } from '../abstractions';
 import { internals } from './subscribable';
-import { Stream, Subscribable, Emission } from '../abstractions';
 
 export type HookOperator = {
   callback: (params?: any) => void | Promise<void>;
@@ -29,7 +29,7 @@ export const createOperator = (handleFn: (emission: Emission, stream: Subscribab
   let operator: Operator = {
     next: undefined,
 
-    init: function(stream: Stream) {
+    init: function(_: Stream) {
       // Initialization logic can be added here
     },
 

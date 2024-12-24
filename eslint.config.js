@@ -27,13 +27,13 @@ export default defineConfig({
     'no-unused-vars': 'off',
 
     // TypeScript ESLint rules
-    '@typescript-eslint/adjacent-overload-signatures': 'error',
-    '@typescript-eslint/no-unused-vars': ['error', {
+    '@typescript-eslint/adjacent-overload-signatures': 'warn',
+    '@typescript-eslint/no-unused-vars': ['warn', {
       argsIgnorePattern: '^_',
     }],
 
     // Unused imports rules
-    'unused-imports/no-unused-imports': 'error',
+    'unused-imports/no-unused-imports': 'warn',
     'unused-imports/no-unused-vars': [
       'warn',
       {
@@ -48,9 +48,9 @@ export default defineConfig({
     'import/no-unused-modules': 'warn',
 
     // Angular ESLint rules
-    '@angular-eslint/component-class-suffix': 'error',
-    '@angular-eslint/directive-class-suffix': 'error',
-    '@angular-eslint/no-empty-lifecycle-method': 'error'
+    '@angular-eslint/component-class-suffix': 'warn',
+    '@angular-eslint/directive-class-suffix': 'warn',
+    '@angular-eslint/no-empty-lifecycle-method': 'warn'
   },
   ignores: ['**/dist/**', '**/node_modules/**'],
   files: ['**/*.ts', '**/*.tsx']

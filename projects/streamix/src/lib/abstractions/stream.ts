@@ -1,6 +1,5 @@
-import { Operator, createPipeline, Pipeline, Subscription, Emission, Subscribable, isOperator, Receiver, createReceiver, hooks, SubscribableHooks, SubscribableInternals, internals, flags } from "../abstractions";
-import { eventBus } from "../abstractions";
-import { hook, awaitable } from "../utils";
+import { Emission, Operator, Pipeline, Receiver, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createPipeline, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
+import { awaitable, hook } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   name?: string;
@@ -172,7 +171,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     subscription.unsubscribed = undefined;
 
     // Define the bound callback for handling emissions
-    const boundCallback = ({ emission, source }: any) => {
+    const boundCallback = ({ emission }: any) => {
       currentValue = emission.value;
 
       try {
