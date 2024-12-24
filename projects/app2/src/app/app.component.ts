@@ -1,9 +1,6 @@
 import { compute, coroutine, finalize, map, mergeMap, range, scan, Subscribable, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
-const BATCH_SIZE = 1000;
-const DELAY_MS = 100; // Increase delay to make progress visible
-
 // Main Mandelbrot computation function
 function computeMandelbrot(data: { px: number, py: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
   const { px, py, maxIterations, zoom, centerX, centerY, panX, panY } = data;
