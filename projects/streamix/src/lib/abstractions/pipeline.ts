@@ -14,7 +14,7 @@ export type Pipeline<T> = Subscribable<T> & {
   operators: Operator[];
 
   [internals]: SubscribableInternals & {
-    bindOperators: (...operators: Operator[]) => Pipeline<T>;
+    chain: (...operators: Operator[]) => Pipeline<T>;
   };
 };
 
@@ -40,7 +40,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   const getFirstChunk = () => chunks[0];
   const getLastChunk = () => chunks[chunks.length - 1];
 
-  const bindOperators = function (...ops: Operator[]): Pipeline<T> {
+  const chain = function (...ops: Operator[]): Pipeline<T> {
 
     chunks.forEach((c) => c[hooks].onError.remove(pipeline, onErrorCallback));
 
@@ -88,7 +88,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
       // If operator has a stream, finalize current chunk and start a new one
       if ('stream' in clonedOperator) {
-        chunk[internals].bindOperators(...chunkOperators);
+        chunk[internals].chain(...chunkOperators);
         chunkOperators = [];
         chunk = clonedOperator.stream as any;
         chunks.push(chunk);  // Push new chunk to `this.chunks`
@@ -96,7 +96,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     });
 
     // Finalize the last chunk with remaining operators
-    chunk[internals].bindOperators(...chunkOperators);
+    chunk[internals].chain(...chunkOperators);
 
     // Re-bind hooks across chunks
     chunks.forEach((c) => c[hooks].onError.chain(pipeline, onErrorCallback));
@@ -105,7 +105,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   };
 
   const pipe = function(...ops: Operator[]): Pipeline<T> {
-    return createPipeline<T>(pipeline)[internals].bindOperators(...ops);
+    return createPipeline<T>(pipeline)[internals].chain(...ops);
   };
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
@@ -185,7 +185,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     },
 
     [internals]: {
-      bindOperators,
+      chain,
       awaitStart: () => getFirstChunk()[internals].awaitStart(),
       shouldComplete: () => getLastChunk()[internals].shouldComplete(),
       awaitCompletion: () => getLastChunk()[internals].awaitCompletion(),
