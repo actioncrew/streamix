@@ -3,7 +3,7 @@
   "eslint.nodePath": "./node_modules",
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "always",
-    "source.organizeImports": true
+    "source.organizeImports": "explicit"
   },
   "eslint.validate": [
     "javascript",
