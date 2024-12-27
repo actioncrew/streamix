@@ -4,7 +4,6 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
   let boundStream: Stream;
   let hasEmitted = false;
 
-
   const init = function (this: Operator, stream: Stream) {
     boundStream = stream;
     boundStream[hooks].onComplete.once(this, callback); // Chain the callback to be triggered on stream completion
