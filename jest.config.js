@@ -1,5 +1,5 @@
 // jest.config.js
-module.exports = {
+export default {
   preset: 'jest-preset-angular',
   setupFilesAfterEnv: ['./setup-jest.ts'],
   testTimeout: 30000,
