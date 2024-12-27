@@ -1,6 +1,5 @@
-import { createEmission, createStream, hooks, internals, Stream, Subscribable, Subscription } from '../abstractions';
-import { catchAny, counter, Counter } from '../utils';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, eventBus, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { counter, Counter } from '../utils';
 
 export function zip(sources: Subscribable[]): Stream<any[]> {
   const queues = sources.map(() => [] as any[]); // Queues for values from each source
@@ -9,27 +8,6 @@ export function zip(sources: Subscribable[]): Stream<any[]> {
   let emittedValues: Counter = counter(0);
 
   const stream = createStream<any[]>(async function (this: Stream<any[]>): Promise<void> {
-    // Wait until all sources are completed or the main stream is completed
-    const [error] = await catchAny(
-      Promise.race([
-        this[internals].awaitCompletion(),
-        Promise.race(sources.map((source) => source[internals].awaitCompletion())),
-      ])
-    );
-
-    if (error) {
-      // Emit error if any source stream fails
-      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
-    }
-
-    await this[internals].awaitCompletion();
-    await emittedValues.waitFor(Math.min(...sources.map(source => source.emissionCounter)));
-  });
-
-  // Override the `run` method to start the source streams only after the main stream starts
-  const originalRun = stream.run;
-  stream.run = async function (): Promise<void> {
-    // Subscribe to source streams when the `zip` stream is started
     sources.forEach((source, index) => {
       const subscription = source.subscribe({
         next: (value) => {
@@ -67,10 +45,9 @@ export function zip(sources: Subscribable[]): Stream<any[]> {
       subscriptions.push(subscription); // Store subscriptions for cleanup
     });
 
-    // Run the main `zip` stream logic
-    originalRun.call(stream);
-    await stream[hooks].onComplete.waitForCompletion();
-  };
+    await this[internals].awaitCompletion();
+    await emittedValues.waitFor(Math.min(...sources.map(source => source.emissionCounter)));
+  });
 
   // Cleanup subscriptions when the `zip` stream terminates
   const originalComplete = stream.complete.bind(stream);

@@ -1,6 +1,6 @@
-import { flags } from './../abstractions/subscribable';
 import { createEmission, createOperator, Emission, eventBus, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 import { asyncValue } from '../utils';
+import { flags } from './../abstractions/subscribable';
 
 export const withLatestFrom = (...streams: Subscribable[]): Operator => {
   let latestValues = streams.map(() => asyncValue());
