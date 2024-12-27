@@ -1,9 +1,7 @@
-import { catchError, createSubject, map, Stream, Subject } from '../lib';
+import { catchError, createSubject, map, Subject } from '../lib';
 
 describe('CatchErrorOperator Functional Test', () => {
   let subject: Subject;
-  let errorStream: Stream;
-  let successfulStream: Stream;
   let handlerMock: jest.Mock;
 
   beforeEach(() => {

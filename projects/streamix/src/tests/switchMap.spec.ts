@@ -37,6 +37,7 @@ describe('switchMap operator', () => {
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([30, 300]);
+        subscription.unsubscribe();
         done();
       }
     });

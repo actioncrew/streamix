@@ -20,7 +20,7 @@ describe('takeWhile operator', () => {
 
   it('should handle empty stream', (done) => {
     const testStream = from([]);
-    const predicate = (value: any) => true; // Should never be called in an empty stream
+    const predicate = (_: any) => true; // Should never be called in an empty stream
 
     const takenWhileStream = testStream.pipe(takeWhile(predicate));
 

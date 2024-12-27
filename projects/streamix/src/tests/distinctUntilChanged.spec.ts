@@ -25,7 +25,7 @@ describe('distinctUntilChanged', () => {
     let count = 0;
 
     distinctStream.subscribe({
-      next: (value) => count++,
+      next: () => count++,
       complete: () => {
         expect(count).toBe(3); // Only three distinct values should be emitted
         done();

@@ -38,7 +38,7 @@ describe('FromPromiseStream', () => {
 
     let receivedError: Error | undefined;
     const subscription = stream.subscribe({
-      error: (err: any) => receivedError = error,
+      error: (error: any) => receivedError = error,
       complete: () => {
         expect(receivedError).toBe(error);
         subscription.unsubscribe();

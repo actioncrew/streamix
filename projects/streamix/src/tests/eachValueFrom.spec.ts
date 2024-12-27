@@ -1,4 +1,4 @@
-import { firstValueFrom, lastValueFrom, eachValueFrom, from, EMPTY } from '../lib';
+import { eachValueFrom, EMPTY, firstValueFrom, from, lastValueFrom } from '../lib';
 
 describe('eachValueFrom', () => {
   it('should get first value from the stream', async () => {
@@ -27,14 +27,14 @@ describe('eachValueFrom', () => {
 
     try {
       // Using firstValueFrom
-      const first = await firstValueFrom(EMPTY);
+      await firstValueFrom(EMPTY);
     } catch (error: any) {
       expect(error.message).toBe("Subscribable has not emitted any value.");  // No value should be emitted
     }
 
     try {
       // Using firstValueFrom
-      const last = await lastValueFrom(EMPTY);
+      await lastValueFrom(EMPTY);
     } catch (error: any) {
       expect(error.message).toBe("Subscribable has not emitted any value.");  // No value should be emitted
     }

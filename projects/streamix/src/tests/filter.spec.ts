@@ -33,7 +33,7 @@ describe('FilterOperator', () => {
     let didEmit = false;
 
     filteredStream.subscribe({
-      next: (value) => {
+      next: () => {
         didEmit = true;
         done(new Error('Unexpected value emitted'));
       },
@@ -56,7 +56,7 @@ describe('FilterOperator', () => {
     const filteredStream = testStream.pipe(filter(predicate));
 
     filteredStream.subscribe({
-      next: (value) => count++,
+      next: () => count++,
       complete: () => {
         if (count === 3) {
           done();
