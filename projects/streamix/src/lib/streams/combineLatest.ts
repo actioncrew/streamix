@@ -1,5 +1,5 @@
 import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
-import { catchAny } from '../utils'; // Ensure catchAny is imported from the correct location
+// Ensure catchAny is imported from the correct location
 import { eventBus } from '../abstractions';
 
 export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> {
@@ -7,24 +7,6 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> 
   const subscriptions: Subscription[] = []; // List of source subscriptions
 
   const stream = createStream<T[]>(async function (this: Stream<T[]>): Promise<void> {
-    const [error] = await catchAny(
-      Promise.race([
-        this[internals].awaitCompletion(),
-        Promise.all(sources.map((source) => source[internals].awaitCompletion())),
-      ])
-    );
-
-    if (error) {
-      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
-      return;
-    }
-
-    await this[internals].awaitCompletion();
-  });
-
-  // Override the `run` method to start the source streams only after the main stream starts
-  const originalRun = stream.run;
-  stream.run = async function (): Promise<void> {
     sources.forEach((source, index) => {
       const subscription = source.subscribe({
         next: (value: T) => {
@@ -61,8 +43,8 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> 
       subscriptions.push(subscription); // Store the subscription for cleanup
     });
 
-    await originalRun.call(stream); // Start the main stream
-  };
+    await this[internals].awaitCompletion();
+  });
 
   // Cleanup subscriptions when the main stream terminates
   const originalComplete = stream.complete.bind(stream);
