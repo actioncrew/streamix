@@ -1,4 +1,4 @@
-import { onAnimationFrame, takeWhile, map } from '../lib';
+import { map, onAnimationFrame, takeWhile } from '../lib';
 
 describe('fromAnimationFrame - Functional Test', () => {
 
@@ -6,7 +6,7 @@ describe('fromAnimationFrame - Functional Test', () => {
     let emittedValues: any[] = [];
     let count = 0;
     // Subscribe to the stream to collect emitted values
-    const stream = onAnimationFrame<number>().pipe(map((value, index) => index), takeWhile(() => count < 5));
+    const stream = onAnimationFrame<number>().pipe(map((_, index) => index), takeWhile(() => count < 5));
 
     stream.subscribe({
       next: (value) => {

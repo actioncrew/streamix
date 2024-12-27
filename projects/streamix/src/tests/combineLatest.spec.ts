@@ -39,7 +39,7 @@ describe('CombineLatestStream with TimerStreams', () => {
     const combinedTimers = combineLatest([firstTimer, secondTimer]);
 
     const subscription = combinedTimers.subscribe({
-      next: value => subscription.unsubscribe(),
+      next: () => subscription.unsubscribe(),
       complete: () => done()
     });
   });
@@ -112,7 +112,7 @@ describe('CombineLatestStream with TimerStreams', () => {
     let nextCalled = false;
 
     const subscription = combinedStream.subscribe({
-      next: (value) => nextCalled = true,
+      next: () => nextCalled = true,
       complete: () => {
         subscription.unsubscribe();
         expect(nextCalled).toBe(true);

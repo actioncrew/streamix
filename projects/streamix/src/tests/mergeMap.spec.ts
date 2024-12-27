@@ -1,4 +1,4 @@
-import { mergeMap, from, filter, EMPTY, timer, delay, map, take } from '../lib';
+import { delay, EMPTY, filter, from, map, mergeMap, take, timer } from '../lib';
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {
@@ -62,7 +62,7 @@ describe('mergeMap operator', () => {
   it('should handle inner Observable that emits nothing', (done) => {
     const testStream = from([1, 2, 3]);
 
-    const project = (value: number) => EMPTY; // Inner observable emits nothing
+    const project = () => EMPTY; // Inner observable emits nothing
 
     const mergedStream = testStream.pipe(mergeMap(project));
 

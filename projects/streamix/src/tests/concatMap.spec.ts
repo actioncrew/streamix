@@ -1,5 +1,4 @@
-import { createEmission, eventBus } from '../lib';
-import { concatMap, createStream, from, of, Stream } from '../lib';
+import { concatMap, createEmission, createStream, eventBus, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
 
@@ -50,9 +49,8 @@ describe('ConcatMapOperator', () => {
   });
 
   it('should handle errors in inner stream without affecting other emissions', (done) => {
-    const errorProject = (value: any) => errorInnerStream(value);
     const values = ['1', '2'];
-    const mockStream$ = from(values).pipe(concatMap(value => (value === '2' ? errorInnerStream(value) : project(value))));
+    const mockStream$ = from(values).pipe(concatMap(value => (value === '2' ? errorInnerStream() : project(value))));
 
     const emittedValues: any[] = [];
     const errors: any[] = [];
@@ -104,7 +102,7 @@ export function myRealStream(): Stream {
   });
 }
 
-export function errorInnerStream(value: any): Stream {
+export function errorInnerStream(): Stream {
   return createStream(async function (this: Stream) {
     throw new Error('Inner Stream Error');
   });
