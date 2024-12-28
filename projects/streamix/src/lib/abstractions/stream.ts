@@ -89,6 +89,35 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
 
+  const reduce = function<T, R>(
+    array: T[],
+    reducer: (accumulator: R, currentValue: T, index: number, array: T[]) => R,
+    breakCondition: (accumulator: R, currentValue: T, index: number, array: T[]) => boolean,
+    initialValue: R
+  ): R {
+    let accumulator: R = initialValue;
+    let startIndex = 0;
+
+    // If no initial value is provided, use the first element of the array
+    if (accumulator === undefined) {
+      if (array.length === 0) {
+        throw new TypeError('Reduce of empty array with no initial value');
+      }
+      accumulator = array[0] as unknown as R;
+      startIndex = 1;
+    }
+
+    // Apply the reducer function to each element
+    for (let i = startIndex; i < array.length; i++) {
+      // Check the break condition
+      if (breakCondition && breakCondition(accumulator, array[i], i, array)) {
+        break;
+      }
+      accumulator = reducer(accumulator, array[i], i, array);
+    }
+    return accumulator;
+  };
+  
   const chain = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
     head = undefined; tail = undefined;
