@@ -14,7 +14,7 @@ export type Stream<T = any> = Subscribable<T> & {
   [internals]: SubscribableInternals & {
     head: Operator | undefined;
     tail: Operator | undefined;
-    reduce: <U = Operator, R = Emission>(array: U[], reducer: (accumulator: R, currentValue: T, index: number, array: T[]) => R, breakCondition: (accumulator: R, currentValue: T, index: number, array: T[]) => boolean, initialValue: R) => R;
+    reduce: <U = Operator, R = Emission>(array: U[], reducer: (accumulator: R, currentValue: U, index: number, array: U[]) => R, breakCondition: (accumulator: R, currentValue: U, index: number, array: U[]) => boolean, initialValue: R) => R;
     chain: (...operators: Operator[]) => Stream<T>;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
     awaitStart: () => Promise<void>;
@@ -90,7 +90,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
 
-  const reduce = function<T, R>(
+  const reduce = function<T = Operator, R = Emission>(
     array: T[],
     reducer: (accumulator: R, currentValue: T, index: number, array: T[]) => R,
     breakCondition: (accumulator: R, currentValue: T, index: number, array: T[]) => boolean,
