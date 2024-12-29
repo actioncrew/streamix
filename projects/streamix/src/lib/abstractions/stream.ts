@@ -365,3 +365,34 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
 }
+
+export function pipe(...operators: Operator[]) {
+  return (source: Stream) => {
+    const pipeFn = (index: number, emission: Emission): Emission => {
+      if (index >= operators.length) {
+        return emission; // If no more operators, return the final emission
+      }
+
+      const operator = operators[index];
+
+      // Define the `next` function for this operator
+      const next = (updatedEmission: Emission): Emission => 
+        pipeFn(index + 1, updatedEmission);
+
+      try {
+        // Call the current operator
+        operator(emission, source, next);
+      } catch (error) {
+        // Handle errors gracefully
+        throw error;
+      }
+
+      return emission;
+    };
+
+    // Return a function to start the pipeline with the initial emission
+    return (initialEmission: Emission): Emission => 
+      pipeFn(0, initialEmission);
+  };
+}
+      
