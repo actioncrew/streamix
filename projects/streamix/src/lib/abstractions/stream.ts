@@ -102,8 +102,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       const operator = operators[i];
 
       try {
-        // Apply the operator's handle function to the accumulator emission
-        if (!emission.failed && !emission.pending && !emission.phantom) {
+        // Skip if emission is in a terminal state (failed, pending, phantom)
+        if (emission.failed || emission.pending || emission.phantom) {
           break;
         }
         
