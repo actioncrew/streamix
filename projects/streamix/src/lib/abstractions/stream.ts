@@ -1,4 +1,4 @@
-import { Emission, Operator, Pipeline, Receiver, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createPipeline, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
+import { Emission, Operator, Pipeline, Receiver, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createEmission, createPipeline, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
 import { awaitable, hook } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
