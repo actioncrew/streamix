@@ -95,49 +95,47 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     initialEmission: Emission,
     source: Stream
   ): Emission {
-    let accumulator: Emission = initialEmission;
-    let errorHandled = false;
+    let emission = createEmission({ ...initialEmission });
 
     // Loop through all operators
     for (let i = 0; i < operators.length; i++) {
       const operator = operators[i];
 
       try {
-
+        // Apply the operator's handle function to the accumulator emission
+        if (!emission.failed && !emission.pending && !emission.phantom) {
+          break;
+        }
+        
         if ('stream' in operator) {
           source.emissionCounter++;
         }
-        // Apply the operator's handle function to the accumulator emission
-        let emission = accumulator;
-
+        
         // If the operator has a handle function, use it to process the emission
-        if (operator.handle && !emission.failed && !emission.pending) {
+        if (operator.handle) {
           emission = operator.handle(emission, source);
         }
 
         // If the emission is not phantom, failed, or pending, increment the emission counter
-        if (i === operators.length - 1 && !emission.phantom && !emission.failed && !emission.pending) {
+        if (i === operators.length - 1 && !emission.phantom && !emission.failed && !emission.pending && !('stream' in operator)) {
           source.emissionCounter++; // or use appropriate emission counter logic
         }
 
         if (emission.failed) {
           throw emission.error;
         }
-
-        // Handle the emission with the provided handle function
-        accumulator = emission;
-
       } catch (error) {
         // In case of any exception during emission processing, mark emission as failed
-        accumulator.failed = true;
-        accumulator.error = error;
-
+        emission.failed = true;
+        emission.error = error;
+        let errorHandled = false;
+        
         // Look for catchError operator to handle the error
         for (let j = i + 1; j < operators.length; j++) {
           const nextOperator = operators[j];
           if (nextOperator.name === 'catchError') {
             // Handle the error and stop iteration
-            accumulator = nextOperator.handle(accumulator, source);
+            emission = nextOperator.handle(emission, source);
             errorHandled = true;
             break; // Stop processing further operators
           }
@@ -153,7 +151,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       }
     }
 
-    return accumulator;
+    return emission;
   };
 
   const chain = function(...newOperators: Operator[]): Stream<T> {
