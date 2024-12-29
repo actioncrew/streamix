@@ -14,7 +14,7 @@ export type Stream<T = any> = Subscribable<T> & {
   [internals]: SubscribableInternals & {
     head: Operator | undefined;
     tail: Operator | undefined;
-    reduce: <U = Operator, R = Emission>(array: U[], reducer: (accumulator: R, currentValue: U, index: number, array: U[]) => R, breakCondition: (accumulator: R, currentValue: U, index: number, array: U[]) => boolean, initialValue: R) => R;
+    reduce: (operators: Operator[], initialEmission: Emission, source: Stream) => Emission;
     chain: (...operators: Operator[]) => Stream<T>;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
     awaitStart: () => Promise<void>;
@@ -90,35 +90,72 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
 
-  const reduce = function<T = Operator, R = Emission>(
-    array: T[],
-    reducer: (accumulator: R, currentValue: T, index: number, array: T[]) => R,
-    breakCondition: (accumulator: R, currentValue: T, index: number, array: T[]) => boolean,
-    initialValue: R
-  ): R {
-    let accumulator: R = initialValue;
-    let startIndex = 0;
+  const reduce = function (
+    operators: Operator[],
+    initialEmission: Emission,
+    source: Stream
+  ): Emission {
+    let accumulator: Emission = initialEmission;
+    let errorHandled = false;
 
-    // If no initial value is provided, use the first element of the array
-    if (accumulator === undefined) {
-      if (array.length === 0) {
-        throw new TypeError('Reduce of empty array with no initial value');
-      }
-      accumulator = array[0] as unknown as R;
-      startIndex = 1;
-    }
+    // Loop through all operators
+    for (let i = 0; i < operators.length; i++) {
+      const operator = operators[i];
 
-    // Apply the reducer function to each element
-    for (let i = startIndex; i < array.length; i++) {
-      // Check the break condition
-      if (breakCondition && breakCondition(accumulator, array[i], i, array)) {
+      try {
+
+        if ('stream' in operator) {
+          source.emissionCounter++;
+        }
+        // Apply the operator's handle function to the accumulator emission
+        let emission = accumulator;
+
+        // If the operator has a handle function, use it to process the emission
+        if (operator.handle && !emission.failed && !emission.pending) {
+          emission = operator.handle(emission, source);
+        }
+
+        // If the emission is not phantom, failed, or pending, increment the emission counter
+        if (i === operators.length - 1 && !emission.phantom && !emission.failed && !emission.pending) {
+          source.emissionCounter++; // or use appropriate emission counter logic
+        }
+
+        if (emission.failed) {
+          throw emission.error;
+        }
+
+        // Handle the emission with the provided handle function
+        accumulator = emission;
+
+      } catch (error) {
+        // In case of any exception during emission processing, mark emission as failed
+        accumulator.failed = true;
+        accumulator.error = error;
+
+        // Look for catchError operator to handle the error
+        for (let j = i + 1; j < operators.length; j++) {
+          const nextOperator = operators[j];
+          if (nextOperator.name === 'catchError') {
+            // Handle the error and stop iteration
+            accumulator = nextOperator.handle(accumulator, source);
+            errorHandled = true;
+            break; // Stop processing further operators
+          }
+        }
+
+        // If no catchError operator is found, rethrow the error
+        if (!errorHandled) {
+          throw error;
+        }
+
+        // If error was handled, break out of the loop (no further operators processed)
         break;
       }
-      accumulator = reducer(accumulator, array[i], i, array);
     }
+
     return accumulator;
   };
-  
+
   const chain = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
     head = undefined; tail = undefined;
