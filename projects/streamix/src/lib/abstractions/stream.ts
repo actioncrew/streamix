@@ -1,4 +1,4 @@
-import { Emission, Operator, Pipeline, Receiver, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createEmission, createPipeline, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
+import { Emission, Operator, Pipeline, Receiver, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createPipeline, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
 import { awaitable, hook } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
@@ -14,7 +14,6 @@ export type Stream<T = any> = Subscribable<T> & {
   [internals]: SubscribableInternals & {
     head: Operator | undefined;
     tail: Operator | undefined;
-    reduce: (operators: Operator[], initialEmission: Emission, source: Stream) => Emission;
     chain: (...operators: Operator[]) => Stream<T>;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
     awaitStart: () => Promise<void>;
@@ -89,70 +88,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
-
-  const reduce = function (
-    operators: Operator[],
-    initialEmission: Emission,
-    source: Stream
-  ): Emission {
-    let emission = createEmission({ ...initialEmission });
-
-    // Loop through all operators
-    for (let i = 0; i < operators.length; i++) {
-      const operator = operators[i];
-
-      try {
-        // Skip if emission is in a terminal state (failed, pending, phantom)
-        if (emission.failed || emission.pending || emission.phantom) {
-          break;
-        }
-        
-        if ('stream' in operator) {
-          source.emissionCounter++;
-        }
-        
-        // If the operator has a handle function, use it to process the emission
-        if (operator.handle) {
-          emission = operator.handle(emission, source);
-        }
-
-        // If the emission is not phantom, failed, or pending, increment the emission counter
-        if (i === operators.length - 1 && !emission.phantom && !emission.failed && !emission.pending && !('stream' in operator)) {
-          source.emissionCounter++; // or use appropriate emission counter logic
-        }
-
-        if (emission.failed) {
-          throw emission.error;
-        }
-      } catch (error) {
-        // In case of any exception during emission processing, mark emission as failed
-        emission.failed = true;
-        emission.error = error;
-        let errorHandled = false;
-        
-        // Look for catchError operator to handle the error
-        for (let j = i + 1; j < operators.length; j++) {
-          const nextOperator = operators[j];
-          if (nextOperator.name === 'catchError') {
-            // Handle the error and stop iteration
-            emission = nextOperator.handle(emission, source);
-            errorHandled = true;
-            break; // Stop processing further operators
-          }
-        }
-
-        // If no catchError operator is found, rethrow the error
-        if (!errorHandled) {
-          throw error;
-        }
-
-        // If error was handled, break out of the loop (no further operators processed)
-        break;
-      }
-    }
-
-    return emission;
-  };
 
   const chain = function(...newOperators: Operator[]): Stream<T> {
     operators.length = 0;
@@ -303,7 +238,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     [internals]: {
       head,
       tail,
-      reduce,
       chain,
       emit,
       awaitStart,
@@ -365,34 +299,3 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   onEmission.chain(stream, stream[internals].emit);
   return stream; // Return the stream instance
 }
-
-export function pipe(...operators: Operator[]) {
-  return (source: Stream) => {
-    const pipeFn = (index: number, emission: Emission): Emission => {
-      if (index >= operators.length) {
-        return emission; // If no more operators, return the final emission
-      }
-
-      const operator = operators[index];
-
-      // Define the `next` function for this operator
-      const next = (updatedEmission: Emission): Emission => 
-        pipeFn(index + 1, updatedEmission);
-
-      try {
-        // Call the current operator
-        operator(emission, source, next);
-      } catch (error) {
-        // Handle errors gracefully
-        throw error;
-      }
-
-      return emission;
-    };
-
-    // Return a function to start the pipeline with the initial emission
-    return (initialEmission: Emission): Emission => 
-      pipeFn(0, initialEmission);
-  };
-}
-      
