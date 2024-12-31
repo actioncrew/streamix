@@ -6,18 +6,18 @@ type Operator<T, U> = (stream: Stream<T>) => Stream<U>;
 
 interface SimpleOperator<T, U> {
   handle: (emission: Emission<T>) => Emission<U>;
-  type: string;
+  name: string;
 }
 
 const map = <T, U>(fn: (value: T) => U): SimpleOperator<T, U> => ({
-  type: 'map',
+  name: 'map',
   handle: (emission: Emission<T>) => ({
     value: fn(emission.value),
   }),
 });
 
 const filter = <T>(predicate: (value: T) => boolean): SimpleOperator<T, T> => ({
-  type: 'filter',
+  name: 'filter',
   handle: (emission: Emission<T>) => {
     return predicate(emission.value) ? emission : { ...emission, phantom: true };
   },
@@ -38,7 +38,7 @@ const mergeMap = <T, U>(fn: (value: T) => Stream<U>): Operator<T, U> => {
 };
 
 const catchError = <T>(handler: (error: any) => Emission<T>): SimpleOperator<T, T> => ({
-  type: 'catchError',
+  name: 'catchError',
   handle: (emission: Emission<T>) => {
     if (emission.failed) {
       return handler(emission.error);
