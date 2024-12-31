@@ -2,21 +2,21 @@
 type Stream<T> = (next: (emission: Emission<T>) => void) => () => void;
 type Emission<T> = { value: T; failed?: boolean; phantom?: boolean; pending?: boolean; error?: any };
 
-type Operator<T, U> = (stream: Stream<T>) => Stream<U>;
+type FlatteningOperator<T, U> = (stream: Stream<T>) => Stream<U>;
 
-interface SimpleOperator<T, U> {
+interface Operator<T, U> {
   handle: (emission: Emission<T>) => Emission<U>;
   name: string;
 }
 
-const map = <T, U>(fn: (value: T) => U): SimpleOperator<T, U> => ({
+const map = <T, U>(fn: (value: T) => U): Operator<T, U> => ({
   name: 'map',
   handle: (emission: Emission<T>) => ({
     value: fn(emission.value),
   }),
 });
 
-const filter = <T>(predicate: (value: T) => boolean): SimpleOperator<T, T> => ({
+const filter = <T>(predicate: (value: T) => boolean): Operator<T, T> => ({
   name: 'filter',
   handle: (emission: Emission<T>) => {
     return predicate(emission.value) ? emission : { ...emission, phantom: true };
@@ -24,7 +24,7 @@ const filter = <T>(predicate: (value: T) => boolean): SimpleOperator<T, T> => ({
 });
 
 // Higher-order operator for switching streams
-const mergeMap = <T, U>(fn: (value: T) => Stream<U>): Operator<T, U> => {
+const mergeMap = <T, U>(fn: (value: T) => Stream<U>): FlatteningOperator<T, U> => {
   return (stream: Stream<T>) => {
     return (next: (emission: Emission<U>) => void) => {
       return stream((emission: Emission<T>) => {
@@ -37,7 +37,7 @@ const mergeMap = <T, U>(fn: (value: T) => Stream<U>): Operator<T, U> => {
   };
 };
 
-const catchError = <T>(handler: (error: any) => Emission<T>): SimpleOperator<T, T> => ({
+const catchError = <T>(handler: (error: any) => Emission<T>): Operator<T, T> => ({
   name: 'catchError',
   handle: (emission: Emission<T>) => {
     if (emission.failed) {
@@ -65,7 +65,7 @@ function fromArray<T>(arr: T[]): Stream<T> {
   };
 }
 
-const pipe = <T, U>(...operators: SimpleOperator<any, any>[]): Operator<T, U> => {
+const pipe = <T, U>(...operators: Operator<any, any>[]): FlatteningOperator<T, U> => {
   return (stream: Stream<T>) => {
     return (next: (emission: Emission<U>) => void) => {
       return stream((emission: Emission<any>) => {
@@ -132,17 +132,17 @@ const pipe = <T, U>(...operators: SimpleOperator<any, any>[]): Operator<T, U> =>
 // }
 
 // The 'compose' function to combine multiple Operators into one
-const compose = <T, U>(...operators: Operator<any, any>[]): Operator<T, U> => {
+const compose = <T, U>(...operators: FlatteningOperator<any, any>[]): FlatteningOperator<T, U> => {
   return (stream: Stream<T>) => {
     return operators.reduce((acc, currentOperator) => currentOperator(acc), stream) as unknown as Stream<U>;
   };
 };
 
 // The chain function combining SimpleOperator groups and Operators
-const chain = <T, U>(...steps: (SimpleOperator<any, any> | Operator<any, any>)[]): Operator<T, U> => {
+const chain = <T, U>(...steps: (Operator<any, any> | FlatteningOperator<any, any>)[]): FlatteningOperator<T, U> => {
   return (stream: Stream<T>) => {
     let combinedStream: Stream<any> = stream;
-    let currentSimpleOperators: SimpleOperator<any, any>[] = [];
+    let currentSimpleOperators: Operator<any, any>[] = [];
 
     // Loop through all steps and group SimpleOperators together
     for (const step of steps) {
