@@ -85,6 +85,30 @@ const catchError = <T>(handler: (error: any) => Emission<T>): Operator<T, T> => 
   },
 });
 
+const delay = <T>(ms: number): StreamOperator<T, T> => {
+  return (stream: Stream<T>) => {
+    let timerId: NodeJS.Timeout | null = null;
+
+    return (next: (emission: Emission<T>) => void) => {
+      const clearTimer = () => {
+        if (timerId) {
+          clearTimeout(timerId);
+          timerId = null;
+        }
+      };
+
+      return stream((emission: Emission<T>) => {
+        if (!emission.failed && !emission.phantom) {
+          clearTimer();
+          timerId = setTimeout(() => {
+            next(emission); 
+          }, ms);
+        }
+      });
+    };
+  };
+};
+
 function fromArray<T>(arr: T[]): Stream<T> {
   return (next: (value: Emission<T>) => void): (() => void) => {
     let index = 0;
