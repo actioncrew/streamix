@@ -1,5 +1,5 @@
-export type Emission = {
-  value?: any;                 // The payload
+export type Emission<T = any> = {
+  value?: T;                 // The payload
   phantom?: boolean;           // Premature completion
   failed?: boolean;            // Indicates failure
   pending?: boolean;           // Indicates pending processing
