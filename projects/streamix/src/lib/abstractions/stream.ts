@@ -11,6 +11,9 @@ export type Stream<T = any> = Subscribable<T> & {
   stopTimestamp: number | undefined;
 
   run: () => Promise<void>;
+  next: (emission: Emission) => Emission;
+  error: (error: Error) => void;
+
   compose: (...operators: StreamOperator[]) => Stream;
   chain: (...operators: Operator[]) => Stream;
   pipe: (...operators: (Operator | StreamOperator)[]) => Stream;
@@ -76,6 +79,15 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       stream.stopTimestamp = performance.now();
       operators.forEach(operator => operator.cleanup());
     }
+  };
+
+  const next = (emission: Emission): Emission => {
+    eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' })
+    return emission;
+  };
+
+  const error = (error: Error): void => {
+    eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
   };
 
   const complete = async (): Promise<void> => {
@@ -275,6 +287,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     chain,
     compose,
     run,
+    next,
+    error,
     complete,
     emissionCounter,
     stopTimestamp,
