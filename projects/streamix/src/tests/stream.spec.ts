@@ -23,6 +23,19 @@ const filter = <T>(predicate: (value: T) => boolean): Operator<T, T> => ({
   },
 });
 
+const defer = <T>(factory: () => Stream<T>): StreamOperator<T, T> => {
+  return (stream: Stream<T>) => {
+    return (next: (value: T) => void) => {
+      return stream((emission: Emission<T>) => {
+        if (!emission.failed && !emission.phantom && !emission.pending) {
+          const deferredStream = factory();
+          deferredStream(next);
+        }
+      });
+    };
+  };
+};
+
 // Higher-order operator for switching streams
 const mergeMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
   return (stream: Stream<T>) => {
