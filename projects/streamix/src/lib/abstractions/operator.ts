@@ -6,7 +6,7 @@ export type HookOperator = {
 }
 
 export type StreamOperator = {
-  get stream(): Subscribable;
+  (stream: Stream): Stream;
 }
 
 export type Operator = {

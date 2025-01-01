@@ -1,4 +1,5 @@
-import { Emission, Operator, Pipeline, Receiver, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createPipeline, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
+import { createSubject } from "../../lib";
+import { Emission, Operator, Receiver, StreamOperator, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
 import { awaitable, hook } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
@@ -10,11 +11,13 @@ export type Stream<T = any> = Subscribable<T> & {
   stopTimestamp: number | undefined;
 
   run: () => Promise<void>;
+  compose: (...operators: StreamOperator[]) => Stream;
+  chain: (...operators: Operator[]) => Stream;
+  pipe: (...operators: (Operator | StreamOperator)[]) => Stream;
 
   [internals]: SubscribableInternals & {
     head: Operator | undefined;
     tail: Operator | undefined;
-    chain: (...operators: Operator[]) => Stream<T>;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
     awaitStart: () => Promise<void>;
   },
@@ -89,27 +92,74 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
 
-  const chain = function(...newOperators: Operator[]): Stream<T> {
-    operators.length = 0;
-    head = undefined; tail = undefined;
+  const chain = function(this: Stream, ...operators: Operator[]): Stream {
+    const output = createSubject();
 
-    newOperators.forEach((operator, index) => {
-      operators.push(operator);
+    const subscription = this.subscribe({
+      next: (emission: Emission) => {
+        let currentEmission = emission;
 
-      if (!head) {
-        head = operator;
-      } else {
-        tail!.next = operator;
-      }
-      tail = operator;
+        // Apply each operator in sequence
+        for (const operator of operators) {
+          currentEmission = operator.handle(currentEmission, this);
 
-      if ('stream' in operator && index !== newOperators.length - 1) {
-        throw new Error('Only the last operator in a stream can contain an outerStream property.');
-      }
+          // Stop processing if the emission failed
+          if (currentEmission.failed) {
+            break;
+          }
+        }
+
+        // Pass the processed emission to the output
+        if (!currentEmission.failed) {
+          output.next(currentEmission);
+        }
+      },
+      complete: () => {
+        output.complete();
+      },
     });
 
-    stream[internals].head = head; stream[internals].tail = tail;
-    return stream;
+    // Ensure proper cleanup
+    output[hooks].finalize.once(() => subscription.unsubscribe());
+
+    return output as unknown as Stream; // Returning the output stream as the next chained instance
+  };
+
+  // Instance method for `compose`
+  const compose = function(this: Stream, ...operators: StreamOperator[]): Stream {
+    return operators.reduce((acc: Stream, operator: StreamOperator) => operator(acc), this) as Stream;
+  };
+
+  // Instance method for `pipe`
+  const pipe = function(this: Stream, ...steps: (Operator | StreamOperator)[]): Stream {
+    let combinedStream: Stream = this;
+    let currentSimpleOperators: Operator[] = [];
+
+    // Process each step in the pipeline
+    for (const step of steps) {
+      if ('handle' in step) {
+        // If it's a SimpleOperator, add it to the current group
+        currentSimpleOperators.push(step);
+      } else if (typeof step === 'function') {
+        // Apply any pending SimpleOperators first
+        if (currentSimpleOperators.length > 0) {
+          combinedStream = combinedStream.chain(...currentSimpleOperators);
+          currentSimpleOperators = [];
+        }
+
+        // Apply the StreamOperator
+        combinedStream = step(combinedStream);
+      } else {
+        throw new Error("Invalid step provided to pipe.");
+      }
+    }
+
+    // Apply remaining SimpleOperators, if any
+    if (currentSimpleOperators.length > 0) {
+      combinedStream = combinedStream.chain(...currentSimpleOperators);
+    }
+
+    return combinedStream as Stream;
   };
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<any> {
@@ -215,10 +265,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     return subscription as Subscription;
   };
 
-  const pipe = function(...operators: Operator[]): Pipeline<T> {
-    return createPipeline<T>(stream)[internals].chain(...operators);
-  };
-
   const shouldComplete = () => autoComplete || unsubscribed;
 
   const stream = {
@@ -226,6 +272,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     operators,
     subscribe,
     pipe,
+    chain,
+    compose,
     run,
     complete,
     emissionCounter,
@@ -238,7 +286,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     [internals]: {
       head,
       tail,
-      chain,
       emit,
       awaitStart,
       awaitCompletion,

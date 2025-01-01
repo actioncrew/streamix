@@ -1,4 +1,4 @@
-import { Operator, Pipeline, Receiver, Subscription } from '../abstractions';
+import { Operator, Receiver, Stream, StreamOperator, Subscription } from '../abstractions';
 import { Hook } from '../utils';
 
 export const hooks = Symbol('subscribable');
@@ -9,7 +9,7 @@ export interface Subscribable<T = any> {
   emissionCounter: number;
 
   subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
-  pipe(...operators: Operator[]): Pipeline<T>;
+  pipe(...steps: (Operator | StreamOperator)[]): Stream;
 
   complete(): Promise<void>;
 
