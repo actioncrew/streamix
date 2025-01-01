@@ -50,6 +50,31 @@ const mergeMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
   };
 };
 
+const switchMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
+  return (stream: Stream<T>) => {
+    let currentInnerStream: Stream<U> | null = null;
+
+    return (next: (emission: Emission<U>) => void) => {
+      const unsubscribeFromInner = () => {
+        if (currentInnerStream) {
+          currentInnerStream(noop); // Unsubscribe from previous inner stream
+          currentInnerStream = null;
+        }
+      };
+
+      return stream((emission: Emission<T>) => {
+        if (!emission.failed && !emission.phantom) {
+          unsubscribeFromInner(); // Unsubscribe from previous inner stream
+          currentInnerStream = fn(emission.value); // Create new inner stream
+          currentInnerStream(next); // Subscribe to the new inner stream
+        }
+      });
+    };
+  };
+};
+
+const noop = () => {};
+
 const catchError = <T>(handler: (error: any) => Emission<T>): Operator<T, T> => ({
   name: 'catchError',
   handle: (emission: Emission<T>) => {
