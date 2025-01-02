@@ -36,7 +36,7 @@ export function createSubject<T = any>(): Subject<T> {
     }
   };
 
-  stream.next = function(this: Subject, value?: T): Emission {
+  stream.next = function(this: Subject, value?: any): Emission {
     // If the stream is stopped, further emissions are not allowed
     const emission = createEmission({ value });
 
