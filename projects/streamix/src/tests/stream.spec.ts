@@ -179,7 +179,7 @@ const pipe = <T, U>(...operators: Operator<any, any>[]): StreamOperator<T, U> =>
 //   return (stream: Stream<T>) => {
 //     return (next: (value: Emission<U>) => void) => {
 //       let isActive = true;
-//       const outputStream: Stream<any> = (innerNext) => {
+//       const output: Stream<any> = (innerNext) => {
 //         return stream((emission: Emission<any>) => {
 //           if (!emission.failed && !emission.phantom && !emission.pending && isActive) {
 //             try {
@@ -215,7 +215,7 @@ const pipe = <T, U>(...operators: Operator<any, any>[]): StreamOperator<T, U> =>
 
 //       return () => {
 //         isActive = false;
-//         return outputStream(next);
+//         return output(next);
 //       };
 //     };
 //   };

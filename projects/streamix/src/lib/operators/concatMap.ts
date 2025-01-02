@@ -10,23 +10,23 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
     const executionCounter: Counter = counter(0);
     let isFinalizing = false;
     let subscription: Subscription | undefined;
-    const outputStream = createSubject();
+    const output = createSubject();
 
     const init = () => {
       if (inputStream === EMPTY) {
-        outputStream[flags].isAutoComplete = true;
+        output[flags].isAutoComplete = true;
         return;
       }
 
       // Subscribe to the inputStream
       subscription = inputStream.subscribe({
         next: (value) => {
-          if (!outputStream[internals].shouldComplete()) {
+          if (!output[internals].shouldComplete()) {
             handleEmission(createEmission({ value }));
           }
         },
         error: (err) => {
-          eventBus.enqueue({ target: outputStream, payload: { error: err }, type: 'error' });
+          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
         },
         complete: () => {
           queueMicrotask(() =>
@@ -35,7 +35,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
         },
       });
 
-      outputStream[hooks].finalize.once(finalize);
+      output[hooks].finalize.once(finalize);
     };
 
     const handleEmission = (emission: Emission) => {
@@ -65,7 +65,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
       const [error, innerStream] = await catchAny(() => project(emission.value));
 
       if (error) {
-        eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error' });
+        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
         emission.phantom = true;
         finalize();
         return;
@@ -77,12 +77,12 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
         return new Promise<void>((resolve) => {
           subscription = currentInnerStream!.subscribe({
             next: (value) => {
-              if (!outputStream[internals].shouldComplete()) {
-                emission.link(outputStream.next(value));
+              if (!output[internals].shouldComplete()) {
+                emission.link(output.next(value));
               }
             },
             error: (err) => {
-              eventBus.enqueue({ target: outputStream, payload: { error: err }, type: 'error' });
+              eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
               resolve();
             },
             complete: () => {
@@ -108,7 +108,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
       if (isFinalizing) return;
       isFinalizing = true;
 
-      [currentInnerStream, inputStream, outputStream].forEach((stream) => {
+      [currentInnerStream, inputStream, output].forEach((stream) => {
         if (stream && stream[flags]?.isRunning) {
           stream[flags].isAutoComplete = true;
         }
@@ -122,6 +122,6 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
     operator.name = 'concatMap';
 
     init();
-    return outputStream;
+    return output;
   };
 };

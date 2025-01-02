@@ -4,7 +4,7 @@ import { catchAny, Counter, counter } from '../utils';
 
 export const mergeMap = (project: (value: any) => Subscribable): StreamOperator => {
   return (inputStream) => {
-    const outputStream = createSubject();
+    const output = createSubject();
     let activeInnerStreams: Subscribable[] = [];
     const subscriptions: Subscription[] = [];
     const processingPromises: Promise<void>[] = [];
@@ -14,19 +14,19 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
 
     const init = () => {
       if (inputStream === EMPTY) {
-        outputStream[flags].isAutoComplete = true;
+        output[flags].isAutoComplete = true;
         return;
       }
 
       // Subscribe to the inputStream
       const subscription = inputStream.subscribe({
         next: (value) => {
-          if (!outputStream[internals].shouldComplete()) {
+          if (!output[internals].shouldComplete()) {
             handleEmission(createEmission({ value }));
           }
         },
         error: (err) => {
-          eventBus.enqueue({ target: outputStream, payload: { error: err }, type: 'error' });
+          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
         },
         complete: () => {
           queueMicrotask(() =>
@@ -35,7 +35,7 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
         },
       });
 
-      outputStream[hooks].finalize.once(finalize);
+      output[hooks].finalize.once(finalize);
       subscriptions.push(subscription);
     };
 
@@ -49,7 +49,7 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
       const [error, innerStream] = await catchAny(() => project(emission.value));
 
       if (error) {
-        eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error' });
+        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
         executionCounter.increment();
         emission.phantom = true;
         delete emission.pending;
@@ -60,9 +60,9 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
 
       const processingPromise = new Promise<void>((resolve) => {
         const subscription = innerStream.subscribe({
-          next: (value) => emission.link(outputStream.next(value)),
+          next: (value) => emission.link(output.next(value)),
           error: (err) => {
-            eventBus.enqueue({ target: outputStream, payload: { error: err }, type: 'error' });
+            eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
             resolve();
           },
           complete: () => {
@@ -100,7 +100,7 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
 
     const stopStreams = () => {
       inputStream[flags].isAutoComplete = true;
-      outputStream[flags].isAutoComplete = true;
+      output[flags].isAutoComplete = true;
     };
 
     const operator = createOperator(handleEmission);
@@ -108,6 +108,6 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
     operator.init = init;
 
     init();
-    return outputStream;
+    return output;
   };
 };

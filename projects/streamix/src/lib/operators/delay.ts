@@ -3,7 +3,7 @@ import { hooks, Stream, StreamOperator } from '../abstractions';
 
 export const delay = (ms: number): StreamOperator => {
   return (stream: Stream) => {
-    const outputStream = createSubject<any>(); // Create a subject for the delayed stream
+    const output = createSubject<any>(); // Create a subject for the delayed stream
     let pendingPromises: Promise<void>[] = []; // Array to store pending promises
     let isCompleteCalled = false; // Flag to handle the first complete call
 
@@ -12,12 +12,12 @@ export const delay = (ms: number): StreamOperator => {
       next: (value) => {
         const promise = new Promise<void>((resolve) => {
           const timerId = setTimeout(() => {
-            outputStream.next(value); // Emit to the delayed stream after delay
+            output.next(value); // Emit to the delayed stream after delay
             resolve(); // Resolve the promise when timeout completes
           }, ms);
 
           // Track the timeout for cleanup
-          outputStream[hooks].finalize.once(() => {
+          output[hooks].finalize.once(() => {
             clearTimeout(timerId);
           });
         });
@@ -32,11 +32,11 @@ export const delay = (ms: number): StreamOperator => {
 
           // Complete immediately if no pending promises
           if (pendingPromises.length === 0) {
-            outputStream.complete();
+            output.complete();
           } else {
             // Wait for all pending promises to resolve before completing
             Promise.all(pendingPromises).then(() => {
-              outputStream.complete(); // Complete after all promises resolve
+              output.complete(); // Complete after all promises resolve
             });
           }
         }
@@ -44,6 +44,6 @@ export const delay = (ms: number): StreamOperator => {
     });
 
     // Return the delayed stream
-    return outputStream;
+    return output;
   };
 };

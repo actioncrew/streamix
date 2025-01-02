@@ -105,7 +105,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const awaitCompletion = () => completion.promise();
 
   const chain = function(this: Stream, ...operators: Operator[]): Stream {
-    const outputStream = createSubject();
+    const output = createSubject();
     let pendingPromises: Promise<void>[] = []; // Array to store pending promises
     let isCompleteCalled = false; // Flag to handle the first complete call
 
@@ -146,7 +146,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         }
 
         if (!currentEmission.failed && !currentEmission.phantom) {
-          const task = outputStream.next(currentEmission.value).wait();
+          const task = output.next(currentEmission.value).wait();
 
           // Add the task to the Set of tasks
           pendingPromises.push(task);
@@ -165,18 +165,18 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
           // Complete immediately if no pending promises
           if (pendingPromises.length === 0) {
-            outputStream.complete();
+            output.complete();
           } else {
             // Wait for all pending promises to resolve before completing
             Promise.all(pendingPromises).then(() => {
-              outputStream.complete(); // Complete after all promises resolve
+              output.complete(); // Complete after all promises resolve
             });
           }
         }
       }
     });
 
-    return outputStream;
+    return output;
   };
 
   // Instance method for `compose`
