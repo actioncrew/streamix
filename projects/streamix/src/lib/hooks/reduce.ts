@@ -1,7 +1,9 @@
-import { createEmission, hooks, Stream, StreamOperator } from '../abstractions';
+import { createSubject } from '../../lib';
+import { createEmission, Stream, StreamOperator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): StreamOperator => {
   let accumulatedValue = seed;
+  let output = createSubject();
 
   return (stream: Stream): Stream => {
     // Subscribe to the inputStream to start processing emissions
@@ -13,16 +15,12 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): S
       complete: () => {
         // Emit the accumulated value once the stream completes
         const emission = createEmission({ value: accumulatedValue });
-        // Emit the result as a final emission
-        stream.next(emission);
+        output.next(emission);
+        output.complete();
+        subscription.unsubscribe();
       }
     });
 
-    // Store the subscription and clean up on finalize
-    stream[hooks].finalize.once(() => {
-      subscription.unsubscribe();
-    });
-
-    return stream;
+    return output;
   };
 };
