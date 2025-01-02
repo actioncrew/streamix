@@ -1,5 +1,5 @@
 import { createSubject } from "../../lib";
-import { Emission, Operator, Receiver, StreamOperator, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
+import { Emission, Operator, Receiver, StreamOperator, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createEmission, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
 import { awaitable, hook } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
@@ -105,37 +105,44 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const awaitCompletion = () => completion.promise();
 
   const chain = function(this: Stream, ...operators: Operator[]): Stream {
-    const output = createSubject();
+    const outputStream = createSubject();
 
     const subscription = this.subscribe({
-      next: (emission: Emission) => {
-        let currentEmission = emission;
-
-        // Apply each operator in sequence
-        for (const operator of operators) {
-          currentEmission = operator.handle(currentEmission, this);
-
-          // Stop processing if the emission failed
+      next: (value: any) => {
+        let currentEmission = createEmission({ value });
+        for (let i = 0; i < operators.length; i++) {
+          const operator = operators[i];
+          if (operators[i]?.name === "catchError") {
+            continue;
+          }
+          try {
+            currentEmission = operator.handle(currentEmission, this);
+          } catch(error) {
+            currentEmission.failed = true;
+            currentEmission.error = error;
+            // eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error' }); // Handle any errors
+          }
           if (currentEmission.failed) {
-            break;
+            let foundCatchError = false;
+            for (let j = i + 1; j < operators.length; j++) {
+              if (operators[j]?.name === "catchError") {
+                foundCatchError = true;
+                currentEmission = operators[j].handle(currentEmission, this);
+                break;
+              }
+            }
+            if (!foundCatchError) {
+              throw currentEmission.error;
+            }
           }
         }
-
-        // Pass the processed emission to the output
-        if (!currentEmission.failed) {
-          output.next(currentEmission);
-        }
-      },
-      complete: () => {
-        output.complete();
-      },
+      }, complete: () => {
+        subscription.unsubscribe();
+      }
     });
 
-    // Ensure proper cleanup
-    output[hooks].finalize.once(() => subscription.unsubscribe());
-
-    return output as unknown as Stream; // Returning the output stream as the next chained instance
-  };
+    return outputStream;
+  }
 
   // Instance method for `compose`
   const compose = function(this: Stream, ...operators: StreamOperator[]): Stream {
