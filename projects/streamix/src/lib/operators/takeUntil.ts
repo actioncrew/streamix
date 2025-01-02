@@ -1,47 +1,45 @@
-import { createOperator, Emission, flags, hooks, Operator, Stream, Subscribable, Subscription } from '../abstractions';
+import { hooks, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createSubject } from '../streams';
 
-export const takeUntil = (notifier: Subscribable): Operator => {
-  let stopRequested = false;
-  let subscription: Subscription | null = null;
+export const takeUntil = (notifier: Subscribable): StreamOperator => {
+  return (input: Stream): Stream => {
+    const output = createSubject(); // The resulting stream
+    let notifierSubscription: Subscription | null = null;
+    let sourceSubscription: Subscription | null = null;
+    let finalized = false;
 
-  const init = (stream: Stream) => {
-    // Override the run method to manage subscription to the notifier
-    const originalRun = stream.run;
-
-    stream.run = async () => {
-      stopRequested = false;
-
-      // Subscribe to the notifier and set stopRequested on emission
-      subscription = notifier.subscribe(() => {
-        stopRequested = true;
-        subscription?.unsubscribe(); // Unsubscribe from the notifier on first emission
-      });
-
-      // Ensure the notifier has started
-      await subscription.started;
-
-      // Start the main stream after the notifier has been confirmed to run
-      await originalRun.call(stream);
+    const finalize = async () => {
+      if(!finalized) {
+        finalized = true;
+        await notifierSubscription?.unsubscribe();
+        await sourceSubscription?.unsubscribe();
+        output.complete();
+      }
     };
 
-    // Clean up the notifier subscription on stream stop
-    stream[hooks].finalize.once(async () => {
-      await subscription?.unsubscribe();
-      subscription = null;
+    // Subscribe to the notifier
+    notifierSubscription = notifier.subscribe({
+      next: () => {
+        // Trigger stream completion when the notifier emits
+        finalize();
+      },
+      complete: finalize, // Clean up when the notifier completes
     });
-  };
 
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
-    if (stopRequested) {
-      stream[flags].isAutoComplete = true;
-      emission.phantom = true; // Mark emission as phantom to indicate it's ignored
-      return emission;
-    }
-    return emission; // Pass through emission if not stopped
-  };
+    // Subscribe to the source stream
+    sourceSubscription = input.subscribe({
+      next: (value) => {
+        // Forward values to the output stream
+        output.next(value);
+      },
+      complete: finalize, // Complete the output stream when the source completes
+    });
 
-  const operator = createOperator(handle);
-  operator.name = 'takeUntil';
-  operator.init = init;
-  return operator;
+    // Clean up subscriptions when the output stream finalizes
+    output[hooks].finalize.once(() => {
+      finalize();
+    });
+
+    return output; // Return the new stream
+  };
 };
