@@ -25,17 +25,11 @@ export const defaultIfEmpty = (defaultValue: any): StreamOperator => {
     output.complete = async () => {
       if(!completed) {
         completed = true;
-        return new Promise((resolve) => {
-          const timerId = setTimeout(() => {
-            clearTimeout(timerId);
-            if (!hasEmitted) {
-              output.next(defaultValue);
-            }
-            subscription.unsubscribe();
-            originalComplete();
-            resolve();
-          }, 0);
-        });
+        if (!hasEmitted) {
+          output.next(defaultValue);
+        }
+        subscription.unsubscribe();
+        originalComplete();
       }
     };
 
