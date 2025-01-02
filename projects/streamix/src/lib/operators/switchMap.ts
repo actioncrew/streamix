@@ -1,4 +1,4 @@
-import { createOperator, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createOperator, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -16,9 +16,23 @@ export const switchMap = (project: (value: any) => Subscribable): StreamOperator
         return;
       }
 
-      inputStream[hooks].finalize.once(() =>
-        queueMicrotask(() => executionCounter.waitFor(inputStream.emissionCounter).then(finalize))
-      );
+      // Subscribe to the inputStream
+      const subscription = inputStream.subscribe({
+        next: (value) => {
+          if (!output[internals].shouldComplete()) {
+            handleEmission(createEmission({ value }));
+          }
+        },
+        error: (err) => {
+          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+        },
+        complete: () => {
+          subscription.unsubscribe();
+          queueMicrotask(() =>
+            executionCounter.waitFor(inputStream.emissionCounter).then(finalize)
+          );
+        },
+      });
 
       output[hooks].finalize.once(finalize);
     };
