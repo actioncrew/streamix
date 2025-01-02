@@ -12,13 +12,9 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): S
       },
       complete: () => {
         // Emit the accumulated value once the stream completes
-        stream[hooks].onComplete.once(() => {
-          return () => {
-            const emission = createEmission({ value: accumulatedValue });
-            // Emit the result as a final emission
-            stream.next(emission);
-          };
-        });
+        const emission = createEmission({ value: accumulatedValue });
+        // Emit the result as a final emission
+        stream.next(emission);
       }
     });
 
