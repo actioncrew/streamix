@@ -1,5 +1,4 @@
-import { from, map, merge } from '../lib';
-import { groupBy, splitMap } from '../lib';
+import { from, groupBy, map, merge, splitMap } from '../lib';
 
 describe('groupBy and splitMap operators', () => {
   let source$: any;
