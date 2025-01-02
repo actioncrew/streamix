@@ -115,7 +115,7 @@ const catchError = <T>(handler: (error: any) => Emission<T>): Operator<T, T> => 
 
 const delay = <T>(ms: number): StreamOperator<T, T> => {
   return (stream: Stream<T>) => {
-    let timerId: NodeJS.Timeout | null = null;
+    let timerId: any = null;
 
     return (next: (emission: Emission<T>) => void) => {
       const clearTimer = () => {
