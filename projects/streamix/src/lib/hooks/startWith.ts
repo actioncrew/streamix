@@ -1,24 +1,30 @@
-import { BusEvent, createEmission, createOperator, Emission, hooks, Operator, Stream } from '../abstractions';
+import { Stream, StreamOperator } from '../abstractions';
+import { createSubject } from '../streams';
 
-export const startWith = (value: any): Operator => {
-  let boundStream: Stream;
+export const startWith = (value: any): StreamOperator => {
+  return (stream: Stream): Stream => {
+    const outputStream = createSubject<any>(); // Create the output stream
+    let isStarted = false;
 
-  const init = function(this: Operator, stream: Stream) {
-    boundStream = stream;
-    boundStream[hooks].onStart.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
+    // Emit the value at the start of the stream
+    outputStream.next(value);
+
+    // Subscribe to the original stream
+    stream.subscribe({
+      next: (emission) => {
+        if (!isStarted) {
+          isStarted = true; // Flag to mark the start after the first value is emitted
+        }
+        outputStream.next(emission);
+      },
+      complete: () => {
+        outputStream.complete(); // Complete the stream when the original completes
+      },
+      error: (err) => {
+        outputStream.error(err); // Forward errors if any
+      }
+    });
+
+    return outputStream;
   };
-
-  const callback = (instance: Operator, _: any): (() => BusEvent) | void => {
-    // Emit the provided initial value when the stream starts
-    return () => ({ target: boundStream, payload: { emission: createEmission({ value }), source: instance }, type: 'emission' });
-  };
-
-  const handle = (emission: Emission): Emission => {
-    return emission; // Simply pass the emission without modification
-  };
-
-  const operator = createOperator(handle);
-  operator.name = 'startWith';
-  operator.init = init;
-  return operator;
 };

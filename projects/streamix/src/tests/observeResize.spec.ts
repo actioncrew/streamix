@@ -1,4 +1,4 @@
-import { observeResize } from "../lib/streams/observeResize";
+import { observeResize } from "../lib";
 
 xdescribe('Functional tests for fromResizeObserver', () => {
   test('should detect element resize changes', (done) => {
