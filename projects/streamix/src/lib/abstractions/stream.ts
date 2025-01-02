@@ -106,7 +106,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const chain = function(this: Stream, ...operators: Operator[]): Stream {
     const outputStream = createSubject();
-
     const subscription = this.subscribe({
       next: (value: any) => {
         let currentEmission = createEmission({ value });
@@ -117,6 +116,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
           }
           try {
             currentEmission = operator.handle(currentEmission, this);
+
           } catch(error) {
             currentEmission.failed = true;
             currentEmission.error = error;
@@ -136,7 +136,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
             }
           }
         }
+        if (!currentEmission.pending && !currentEmission.failed && !currentEmission.phantom) {
+          outputStream.next(currentEmission.value);
+        }
+
       }, complete: () => {
+        outputStream[flags].isAutoComplete = true;
         subscription.unsubscribe();
       }
     });

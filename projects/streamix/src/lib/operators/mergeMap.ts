@@ -1,4 +1,4 @@
-import { createOperator, Emission, eventBus, flags, hooks, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createOperator, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -11,17 +11,32 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
     const executionCounter: Counter = counter(0);
     let isFinalizing = false;
 
+
     const init = () => {
       if (inputStream === EMPTY) {
         outputStream[flags].isAutoComplete = true;
         return;
       }
 
-      inputStream[hooks].finalize.once(() =>
-        queueMicrotask(() => executionCounter.waitFor(inputStream.emissionCounter).then(finalize))
-      );
+      // Subscribe to the inputStream
+      const subscription = inputStream.subscribe({
+        next: (value) => {
+          if (!outputStream[internals].shouldComplete()) {
+            handleEmission(createEmission({ value }));
+          }
+        },
+        error: (err) => {
+          eventBus.enqueue({ target: outputStream, payload: { error: err }, type: 'error' });
+        },
+        complete: () => {
+          queueMicrotask(() =>
+            executionCounter.waitFor(inputStream.emissionCounter).then(finalize)
+          );
+        },
+      });
 
       outputStream[hooks].finalize.once(finalize);
+      subscriptions.push(subscription);
     };
 
     const handleEmission = (emission: Emission): Emission => {
