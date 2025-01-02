@@ -15,7 +15,7 @@ describe('DefaultIfEmptyOperator', () => {
       }
     });
 
-    processedStream.complete();
+    stream.complete();
   });
 
   test('should not emit the default value if values are emitted', (done) => {
@@ -34,7 +34,7 @@ describe('DefaultIfEmptyOperator', () => {
 
     stream.next('Value 1');
     stream.next('Value 2');
-    processedStream.complete();
+    stream.complete();
   });
 
   test('should emit default value when one operator returns EMPTY', (done) => {
@@ -57,7 +57,7 @@ describe('DefaultIfEmptyOperator', () => {
 
     stream.next('Value 1');
 
-    processedStream.complete();
+    stream.complete();
   });
 
   test('should not emit default value if values are emitted before', (done) => {
@@ -81,6 +81,6 @@ describe('DefaultIfEmptyOperator', () => {
     stream.next('Value 1');
     stream.next('Value 2');
 
-    processedStream.complete();
+    stream.complete();
   });
 });
