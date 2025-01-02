@@ -48,7 +48,7 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
   }
 
   const instance: Emission = Object.assign(emission, {
-    timestamp: undefined,
+    timestamp: performance.now(),
     root () {
       let current = emission as Emission;
       while (current.ancestor) {

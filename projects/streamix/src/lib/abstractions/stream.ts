@@ -1,5 +1,5 @@
 import { createSubject } from "../../lib";
-import { Emission, Operator, Receiver, StreamOperator, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createEmission, createReceiver, eventBus, flags, hooks, internals, isOperator } from "../abstractions";
+import { Emission, Operator, Receiver, StreamOperator, Subscribable, SubscribableHooks, SubscribableInternals, Subscription, createEmission, createReceiver, eventBus, flags, hooks, internals } from "../abstractions";
 import { awaitable, hook } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
@@ -185,22 +185,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     try {
       emission.timestamp = performance.now();
 
-      let next = isStream(source) ? source[internals].head : undefined;
-      next = isOperator(source) ? source.next : next;
-
-      if (emission.failed) throw emission.error;
-
-      if (next === undefined && !emission.phantom && !emission.pending) {
-        stream.emissionCounter++;
-      }
-
-      if (!emission.phantom && !emission.pending) {
-        emission = next?.process(emission, stream) ?? emission;
-      }
-
-      if (emission.failed) throw emission.error;
-
-      if (!emission.phantom && !emission.pending) {
+      if (!emission.failed && !emission.phantom && !emission.pending) {
+        source.emissionCounter++;
         await subscribers.parallel({ emission, source });
       }
 
