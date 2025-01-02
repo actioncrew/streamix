@@ -25,7 +25,7 @@ const filter = <T>(predicate: (value: T) => boolean): Operator<T, T> => ({
 
 const defer = <T>(factory: () => Stream<T>): StreamOperator<T, T> => {
   return (stream: Stream<T>) => {
-    return (next: (value: T) => void) => {
+    return (next: (value: Emission<T>) => void) => {
       return stream((emission: Emission<T>) => {
         if (!emission.failed && !emission.phantom && !emission.pending) {
           const deferredStream = factory();
@@ -44,6 +44,34 @@ const mergeMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
         if (!emission.failed && !emission.phantom) {
           const innerStream = fn(emission.value); // Generate inner stream
           innerStream(next); // Flatten inner stream emissions into the main stream
+        }
+      });
+    };
+  };
+};
+
+const concatMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
+  return (stream: Stream<T>) => {
+    let activeInnerStream: any = null;
+
+    return (next: (emission: Emission<U>) => void) => {
+      return stream((emission: Emission<T>) => {
+        if (!emission.failed && !emission.phantom && !emission.pending) {
+          const innerStream = fn(emission.value);
+
+          const subscribeInner = () => {
+            activeInnerStream = innerStream((innerEmission) => {
+              if (!innerEmission.failed && !innerEmission.phantom && !emission.pending) {
+                next(innerEmission);
+              }
+            });
+          };
+
+          if (activeInnerStream) {
+            activeInnerStream.add(subscribeInner);
+          } else {
+            subscribeInner();
+          }
         }
       });
     };
@@ -101,7 +129,7 @@ const delay = <T>(ms: number): StreamOperator<T, T> => {
         if (!emission.failed && !emission.phantom) {
           clearTimer();
           timerId = setTimeout(() => {
-            next(emission); 
+            next(emission);
           }, ms);
         }
       });
