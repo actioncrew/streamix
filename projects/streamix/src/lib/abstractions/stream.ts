@@ -106,22 +106,26 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const chain = function(this: Stream, ...operators: Operator[]): Stream {
     const outputStream = createSubject();
+    let pendingPromises: Promise<void>[] = []; // Array to store pending promises
+    let isCompleteCalled = false; // Flag to handle the first complete call
+
     const subscription = this.subscribe({
       next: (value: any) => {
         let currentEmission = createEmission({ value });
+
         for (let i = 0; i < operators.length; i++) {
           const operator = operators[i];
-          if (operators[i]?.name === "catchError") {
+          if (operator?.name === "catchError") {
             continue;
           }
+
           try {
             currentEmission = operator.handle(currentEmission, this);
-
-          } catch(error) {
+          } catch (error) {
             currentEmission.failed = true;
             currentEmission.error = error;
-            // eventBus.enqueue({ target: outputStream, payload: { error }, type: 'error' }); // Handle any errors
           }
+
           if (currentEmission.failed) {
             let foundCatchError = false;
             for (let j = i + 1; j < operators.length; j++) {
@@ -135,19 +139,45 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
               throw currentEmission.error;
             }
           }
-        }
-        if (!currentEmission.pending && !currentEmission.failed && !currentEmission.phantom) {
-          outputStream.next(currentEmission.value);
+
+          if (currentEmission.failed || currentEmission.phantom) {
+            break;
+          }
         }
 
-      }, complete: () => {
-        outputStream[flags].isAutoComplete = true;
+        if (!currentEmission.failed && !currentEmission.phantom) {
+          const task = outputStream.next(currentEmission.value).wait();
+
+          // Add the task to the Set of tasks
+          pendingPromises.push(task);
+
+          // Clean up task once it's completed
+          task.finally(() => {
+            pendingPromises.splice(pendingPromises.indexOf(task), 1);  // Remove completed task from the set
+          });
+        }
+      },
+      complete: () => {
         subscription.unsubscribe();
+
+        if (!isCompleteCalled) {
+          isCompleteCalled = true;
+
+          // Complete immediately if no pending promises
+          if (pendingPromises.length === 0) {
+            outputStream.complete();
+          } else {
+            // Wait for all pending promises to resolve before completing
+            Promise.all(pendingPromises).then(() => {
+              outputStream.complete(); // Complete after all promises resolve
+            });
+          }
+        }
       }
     });
 
     return outputStream;
-  }
+  };
 
   // Instance method for `compose`
   const compose = function(this: Stream, ...operators: StreamOperator[]): Stream {
