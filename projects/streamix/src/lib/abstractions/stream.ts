@@ -112,10 +112,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     const subscription = this.subscribe({
       next: (value: any) => {
         let currentEmission = createEmission({ value });
-
-        for (let i = 0; i < operators.length; i++) {
+        let i = 0;
+        while (i < operators.length) {
           const operator = operators[i];
           if (operator?.name === "catchError") {
+            i++;
             continue;
           }
 
@@ -132,6 +133,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
               if (operators[j]?.name === "catchError") {
                 foundCatchError = true;
                 currentEmission = operators[j].handle(currentEmission, this);
+                i = j;
                 break;
               }
             }
@@ -140,9 +142,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
             }
           }
 
-          if (currentEmission.failed || currentEmission.phantom) {
+          if (currentEmission.failed || currentEmission.phantom && currentEmission.pending) {
             break;
           }
+
+          i++;
         }
 
         if (!currentEmission.failed && !currentEmission.phantom) {
