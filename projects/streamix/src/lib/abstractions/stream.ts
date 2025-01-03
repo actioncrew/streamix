@@ -214,7 +214,9 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       if (!emission.failed && !emission.phantom) {
         source.emissionCounter++;
-        await subscribers.parallel({ emission, source });
+        if(!emission.pending) {
+          await subscribers.parallel({ emission, source });
+        }
       }
 
       if (!emission.pending) {
