@@ -6,10 +6,11 @@ export type HookOperator = {
 
 export type StreamOperator = {
   (stream: Stream): Stream;
+  type: string;
+  name?: string;
 }
 
 export type Operator = {
-  cleanup: () => void;
   handle: (emission: Emission, stream: Stream) => Emission;
   type: string;
   name?: string;
@@ -20,16 +21,18 @@ export function isOperator(obj: any): obj is Operator {
   return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.run === 'undefined';
 }
 
-export const createOperator = (handleFn: (emission: Emission, stream: Stream) => Emission): Operator => {
-  let operator: Operator = {
-    cleanup: function() {
-      // Cleanup logic can be added here
-    },
-
+export const createOperator = (name: string, handleFn: (emission: Emission, stream: Stream) => Emission): Operator => {
+  return {
+    name,
     handle: handleFn,
-
     type: 'operator'
   };
+};
 
+export const createStreamOperator = (name: string, handleFn: (stream: Stream) => Stream): StreamOperator => {
+  const operator = handleFn as StreamOperator;
+  Object.defineProperty(operator, 'name', { writable: true, enumerable: true, configurable: true });
+  operator.name = name;
+  operator.type = 'operator';
   return operator;
 };

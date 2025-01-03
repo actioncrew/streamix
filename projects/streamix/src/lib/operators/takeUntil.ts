@@ -1,8 +1,8 @@
-import { hooks, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createStreamOperator, hooks, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 
 export const takeUntil = (notifier: Subscribable): StreamOperator => {
-  return (input: Stream): Stream => {
+  const operator = (input: Stream) => {
     const output = createSubject(); // The resulting stream
     let notifierSubscription: Subscription | null = null;
     let sourceSubscription: Subscription | null = null;
@@ -40,6 +40,8 @@ export const takeUntil = (notifier: Subscribable): StreamOperator => {
       finalize();
     });
 
-    return output; // Return the new stream
+    return output;
   };
+
+  return createStreamOperator('takeUntil', operator);
 };

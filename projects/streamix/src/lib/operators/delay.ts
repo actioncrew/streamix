@@ -1,14 +1,14 @@
 import { createSubject } from '../../lib';
-import { hooks, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, hooks, Stream, StreamOperator } from '../abstractions';
 
 export const delay = (ms: number): StreamOperator => {
-  return (stream: Stream) => {
+  const operator = (input: Stream) => {
     const output = createSubject<any>(); // Create a subject for the delayed stream
     let pendingPromises: Promise<void>[] = []; // Array to store pending promises
     let isCompleteCalled = false; // Flag to handle the first complete call
 
     // Subscribe to the original stream
-    const subscription = stream.subscribe({
+    const subscription = input.subscribe({
       next: (value) => {
         const promise = new Promise<void>((resolve) => {
           const timerId = setTimeout(() => {
@@ -46,4 +46,6 @@ export const delay = (ms: number): StreamOperator => {
     // Return the delayed stream
     return output;
   };
+
+  return createStreamOperator('delay', operator);
 };

@@ -1,9 +1,9 @@
 import { createSubject } from '../../lib';
-import { hooks, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator, hooks, Stream, StreamOperator, Subscription } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
-  return (input: Stream) => {
+  const operator = (input: Stream) => {
     const output = createSubject<any>(); // Output stream for combined values
     let latestValues = streams.map(() => asyncValue());
     let subscriptions: Subscription[] = [];
@@ -44,4 +44,6 @@ export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
 
     return output; // Return the resulting stream
   };
+
+  return  createStreamOperator('withLatestFrom', operator);
 };

@@ -8,7 +8,5 @@ export const catchError = (handler: (error?: any) => void | Promise<void>): Oper
     return emission;
   };
 
-  const operator = createOperator(handle);
-  operator.name = 'catchError';
-  return operator;
+  return createOperator('catchError', handle);
 };

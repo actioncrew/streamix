@@ -1,8 +1,8 @@
 import { createSubject } from '../../lib';
-import { createEmission, Stream, StreamOperator } from '../abstractions';
+import { createEmission, createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const toArray = (): StreamOperator => {
-  return (stream: Stream): Stream => {
+  const operator = (stream: Stream): Stream => {
     let accumulatedArray: any[] = []; // Array to store emission values
     const output = createSubject(); // Create an output stream
 
@@ -21,4 +21,7 @@ export const toArray = (): StreamOperator => {
 
     return output;
   };
+
+  return createStreamOperator('toArray', operator);
 };
+

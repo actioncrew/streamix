@@ -77,7 +77,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       await finalize.waitForCompletion();
       running = false; stopped = true;
       stream.stopTimestamp = performance.now();
-      operators.forEach(operator => operator.cleanup());
     }
   };
 

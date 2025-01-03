@@ -1,6 +1,4 @@
-import { createOperator, Operator, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createOperator, Emission, eventBus, Operator, Subscribable } from '../abstractions';
 
 export const debounce = (time: number): Operator => {
   let timeoutId: any;
@@ -18,7 +16,5 @@ export const debounce = (time: number): Operator => {
     return emission;
   };
 
-  const operator = createOperator(handle);
-  operator.name = 'debounce';
-  return operator;
+  return createOperator('debounce', handle);
 };

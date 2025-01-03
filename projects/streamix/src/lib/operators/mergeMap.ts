@@ -1,9 +1,9 @@
-import { createEmission, createOperator, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, hooks, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
 export const mergeMap = (project: (value: any) => Subscribable): StreamOperator => {
-  return (inputStream) => {
+  const operator = (input: Stream) => {
     const output = createSubject();
     let activeInnerStreams: Subscribable[] = [];
     const subscriptions: Subscription[] = [];
@@ -13,13 +13,13 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
 
 
     const init = () => {
-      if (inputStream === EMPTY) {
+      if (input === EMPTY) {
         output[flags].isAutoComplete = true;
         return;
       }
 
       // Subscribe to the inputStream
-      const subscription = inputStream.subscribe({
+      const subscription = input.subscribe({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             handleEmission(createEmission({ value }));
@@ -30,7 +30,7 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
         },
         complete: () => {
           queueMicrotask(() =>
-            executionCounter.waitFor(inputStream.emissionCounter).then(finalize)
+            executionCounter.waitFor(input.emissionCounter).then(finalize)
           );
         },
       });
@@ -99,14 +99,13 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
     };
 
     const stopStreams = () => {
-      inputStream[flags].isAutoComplete = true;
+      input[flags].isAutoComplete = true;
       output[flags].isAutoComplete = true;
     };
-
-    const operator = createOperator(handleEmission);
-    operator.name = 'mergeMap';
 
     init();
     return output;
   };
+
+  return createStreamOperator('mergeMap', operator);
 };

@@ -16,7 +16,5 @@ export const filter = <T = any>(
     return emission;
   };
 
-  const operator = createOperator(handle);
-  operator.name = 'filter';
-  return operator;
+  return createOperator('filter', handle);
 };

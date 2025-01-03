@@ -164,7 +164,6 @@ export function createSubject<T = any>(): Subject<T> {
   stream[hooks].finalize.once(() => {
     stream[flags].isStopped = true;
     stream[flags].isRunning = false;
-    stream.operators.forEach(operator => operator.cleanup());
   });
 
   stream[flags].isRunning = true;

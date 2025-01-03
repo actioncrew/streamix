@@ -1,9 +1,9 @@
-import { createEmission, createOperator, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, hooks, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
 export const concatMap = (project: (value: any) => Subscribable): StreamOperator => {
-  return (inputStream) => {
+  const operator = (input: Stream) => {
     let currentInnerStream: Subscribable | null = null;
     let emissionQueue: Emission[] = [];
     let processingChain = Promise.resolve();
@@ -13,13 +13,13 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
     const output = createSubject();
 
     const init = () => {
-      if (inputStream === EMPTY) {
+      if (input === EMPTY) {
         output[flags].isAutoComplete = true;
         return;
       }
 
       // Subscribe to the inputStream
-      subscription = inputStream.subscribe({
+      subscription = input.subscribe({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             handle(createEmission({ value }));
@@ -30,7 +30,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
         },
         complete: () => {
           queueMicrotask(() =>
-            executionCounter.waitFor(inputStream.emissionCounter).then(finalize)
+            executionCounter.waitFor(input.emissionCounter).then(finalize)
           );
         },
       });
@@ -108,7 +108,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
       if (isFinalizing) return;
       isFinalizing = true;
 
-      [currentInnerStream, inputStream, output].forEach((stream) => {
+      [currentInnerStream, input, output].forEach((stream) => {
         if (stream && stream[flags]?.isRunning) {
           stream[flags].isAutoComplete = true;
         }
@@ -117,10 +117,9 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
       currentInnerStream = null;
     };
 
-    const operator = createOperator(handle);
-    operator.name = 'concatMap';
-
     init();
     return output;
   };
+
+  return createStreamOperator('concatMap', operator);
 };

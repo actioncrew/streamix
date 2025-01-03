@@ -18,7 +18,5 @@ export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) =
     }
   };
 
-  const operator = createOperator(handle);
-  operator.name = 'distinctUntilChanged';
-  return operator;
+  return createOperator('distinctUntilChanged', handle);
 };

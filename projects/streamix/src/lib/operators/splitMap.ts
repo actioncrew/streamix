@@ -1,14 +1,15 @@
 import { hooks, Operator, Stream, StreamOperator } from '../abstractions';
 import { createSubject, from } from '../streams';
+import { createStreamOperator } from './../abstractions/operator';
 
 export const splitMap = <T = any, R = T>(
   paths: { [key: string]: Array<Operator> }
 ): StreamOperator => {
-  return (stream: Stream) => {
-    const outputStream = createSubject<R>(); // The output stream
+  const operator = (input: Stream) => {
+    const output = createSubject<R>(); // The output stream
     let subscriptions: Array<any> = []; // Track all subscriptions
 
-    const subscription = stream.subscribe({
+    const subscription = input.subscribe({
       next: (partitionMap: Map<string, any[]>) => {
         let remainingSubscriptions = 0;
 
@@ -22,11 +23,11 @@ export const splitMap = <T = any, R = T>(
 
             // Subscribe to the processed partition stream
             const partitionSubscription = partitionStream.subscribe({
-              next: (value) => outputStream.next(value),
+              next: (value) => output.next(value),
               complete: () => {
                 remainingSubscriptions--;
                 if (remainingSubscriptions === 0) {
-                  outputStream.complete(); // Complete when all partitions finish
+                  output.complete(); // Complete when all partitions finish
                 }
               },
             });
@@ -41,21 +42,23 @@ export const splitMap = <T = any, R = T>(
       complete: () => {
         // Complete the output stream if the main stream completes with no partitions
         if (subscriptions.length === 0) {
-          outputStream.complete();
+          output.complete();
         }
       },
       error: (err) => {
         // Propagate errors to the output stream
-        outputStream.error(err);
+        output.error(err);
       },
     });
 
     // Clean up all subscriptions when the output stream finalizes
-    outputStream[hooks].finalize.once(() => {
+    output[hooks].finalize.once(() => {
       subscriptions.forEach((sub) => sub.unsubscribe());
       subscription.unsubscribe();
     });
 
-    return outputStream; // Return the resulting stream
+    return output; // Return the resulting stream
   };
+
+  return createStreamOperator('splitMap', operator);
 };

@@ -17,7 +17,5 @@ export const take = (count: number): Operator => {
     }
   };
 
-  const operator = createOperator(handle);
-  operator.name = 'take';
-  return operator;
+  return createOperator('take', handle);
 };

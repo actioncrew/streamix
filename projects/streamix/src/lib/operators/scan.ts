@@ -11,7 +11,5 @@ export const scan = (accumulator: (acc: any, value: any, index?: number) => any,
   };
 
   // Create the operator with the handle function
-  const operator = createOperator(handle);
-  operator.name = 'scan';
-  return operator; // Return the operator
+  return createOperator('scan', handle);
 };

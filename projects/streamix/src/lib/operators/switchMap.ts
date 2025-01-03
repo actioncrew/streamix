@@ -1,9 +1,9 @@
-import { createEmission, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, hooks, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
 export const switchMap = (project: (value: any) => Subscribable): StreamOperator => {
-  return (inputStream) => {
+  const operator = (input: Stream) => {
     const output = createSubject();
     let currentInnerStream: Subscribable | null = null;
     let currentSubscription: Subscription | undefined;
@@ -11,13 +11,13 @@ export const switchMap = (project: (value: any) => Subscribable): StreamOperator
     let isFinalizing = false;
 
     const init = () => {
-      if (inputStream === EMPTY) {
+      if (input === EMPTY) {
         output[flags].isAutoComplete = true;
         return;
       }
 
       // Subscribe to the inputStream
-      const subscription = inputStream.subscribe({
+      const subscription = input.subscribe({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             handleEmission(createEmission({ value }));
@@ -29,7 +29,7 @@ export const switchMap = (project: (value: any) => Subscribable): StreamOperator
         complete: () => {
           subscription.unsubscribe();
           queueMicrotask(() =>
-            executionCounter.waitFor(inputStream.emissionCounter).then(finalize)
+            executionCounter.waitFor(input.emissionCounter).then(finalize)
           );
         },
       });
@@ -87,7 +87,7 @@ export const switchMap = (project: (value: any) => Subscribable): StreamOperator
       if (isFinalizing) return;
       isFinalizing = true;
 
-      stopStreams(inputStream, currentInnerStream, output);
+      stopStreams(input, currentInnerStream, output);
       currentInnerStream = null;
     };
 
@@ -102,4 +102,6 @@ export const switchMap = (project: (value: any) => Subscribable): StreamOperator
     init();
     return output;
   };
+
+  return createStreamOperator('switchMap', operator);
 };

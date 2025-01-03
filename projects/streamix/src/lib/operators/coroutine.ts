@@ -140,8 +140,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     workerQueue.length = 0; // Clear the queue
   };
 
-  const operator = createOperator(handle) as Coroutine;
-  operator.name = 'coroutine';
+  const operator = createOperator('coroutine',handle) as Coroutine;
   operator.finalize = finalize;
   operator.processTask = processTask;
   operator.getIdleWorker = getIdleWorker;

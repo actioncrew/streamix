@@ -1,8 +1,8 @@
-import { Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 import { createSubject } from '../streams';
 
 export const defaultIfEmpty = (defaultValue: any): StreamOperator => {
-  return (stream: Stream) => {
+  const operator = (stream: Stream) => {
     let hasEmitted = false;  // Flag to track if the stream has emitted any values
     let completed = false;
     const output = createSubject<any>(); // The stream that will emit values, including the default value
@@ -35,4 +35,6 @@ export const defaultIfEmpty = (defaultValue: any): StreamOperator => {
 
     return output;
   };
+
+  return createStreamOperator('defaultIfEmpty', operator);
 };

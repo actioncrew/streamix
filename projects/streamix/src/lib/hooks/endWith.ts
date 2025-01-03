@@ -1,8 +1,8 @@
-import { Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 import { createSubject } from '../streams';
 
 export const endWith = (value: any): StreamOperator => {
-  return (stream: Stream): Stream => {
+  const operator = (stream: Stream): Stream => {
     const outputStream = createSubject<any>(); // Create the output stream
 
     // Subscribe to the original stream
@@ -21,4 +21,6 @@ export const endWith = (value: any): StreamOperator => {
 
     return outputStream;
   };
+
+  return createStreamOperator('endWith', operator);
 };

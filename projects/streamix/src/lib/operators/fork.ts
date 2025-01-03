@@ -1,11 +1,11 @@
-import { createEmission, createOperator, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, hooks, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T) => boolean; handler: () => Subscribable<R> }>
 ): StreamOperator => {
-  return (inputStream) => {
+  const operator = (input: Stream) => {
     let currentInnerStream: Subscribable | null = null;
     let emissionQueue: Emission[] = [];
     let processingChain = Promise.resolve();
@@ -15,13 +15,13 @@ export const fork = <T = any, R = T>(
     const output = createSubject();
 
     const init = () => {
-      if (inputStream === EMPTY) {
+      if (input === EMPTY) {
         output[flags].isAutoComplete = true;
         return;
       }
 
       // Subscribe to the inputStream
-      subscription = inputStream.subscribe({
+      subscription = input.subscribe({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             handleEmission(createEmission({ value }));
@@ -32,7 +32,7 @@ export const fork = <T = any, R = T>(
         },
         complete: () => {
           queueMicrotask(() =>
-            executionCounter.waitFor(inputStream.emissionCounter).then(finalize)
+            executionCounter.waitFor(input.emissionCounter).then(finalize)
           );
         },
       });
@@ -124,7 +124,7 @@ export const fork = <T = any, R = T>(
       if (isFinalizing) return;
       isFinalizing = true;
 
-      [currentInnerStream, inputStream, output].forEach((stream) => {
+      [currentInnerStream, input, output].forEach((stream) => {
         if (stream && stream[flags]?.isRunning) {
           stream[flags].isAutoComplete = true;
         }
@@ -133,10 +133,9 @@ export const fork = <T = any, R = T>(
       currentInnerStream = null;
     };
 
-    const operator = createOperator(handleEmission);
-    operator.name = 'fork';
-
     init();
     return output;
   };
+
+  return createStreamOperator('fork', operator);
 };
