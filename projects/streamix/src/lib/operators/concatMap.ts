@@ -22,7 +22,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
       subscription = inputStream.subscribe({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
-            handleEmission(createEmission({ value }));
+            handle(createEmission({ value }));
           }
         },
         error: (err) => {
@@ -38,7 +38,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
       output[hooks].finalize.once(finalize);
     };
 
-    const handleEmission = (emission: Emission) => {
+    const handle = (emission: Emission) => {
       emissionQueue.push(emission);
 
       if (!currentInnerStream) {
@@ -117,8 +117,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
       currentInnerStream = null;
     };
 
-    const operator = createOperator(handleEmission);
-    operator.init = init;
+    const operator = createOperator(handle);
     operator.name = 'concatMap';
 
     init();

@@ -105,7 +105,6 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
 
     const operator = createOperator(handleEmission);
     operator.name = 'mergeMap';
-    operator.init = init;
 
     init();
     return output;

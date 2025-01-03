@@ -134,7 +134,6 @@ export const fork = <T = any, R = T>(
     };
 
     const operator = createOperator(handleEmission);
-    operator.init = init;
     operator.name = 'fork';
 
     init();

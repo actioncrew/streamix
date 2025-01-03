@@ -111,46 +111,42 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     const subscription = this.subscribe({
       next: (value: any) => {
-        let currentEmission = createEmission({ value });
-        let i = 0;
-        while (i < operators.length) {
+        let emission = createEmission({ value });
+        for (let i = 0; i < operators.length; i++) {
           const operator = operators[i];
           if (operator?.name === "catchError") {
-            i++;
             continue;
           }
 
           try {
-            currentEmission = operator.handle(currentEmission, this);
+            emission = operator.handle(emission, this);
           } catch (error) {
-            currentEmission.failed = true;
-            currentEmission.error = error;
+            emission.failed = true;
+            emission.error = error;
           }
 
-          if (currentEmission.failed) {
+          if (emission.failed) {
             let foundCatchError = false;
             for (let j = i + 1; j < operators.length; j++) {
               if (operators[j]?.name === "catchError") {
                 foundCatchError = true;
-                currentEmission = operators[j].handle(currentEmission, this);
+                emission = operators[j].handle(emission, this);
                 i = j;
                 break;
               }
             }
             if (!foundCatchError) {
-              throw currentEmission.error;
+              throw emission.error;
             }
           }
 
-          if (currentEmission.failed || currentEmission.phantom && currentEmission.pending) {
+          if (emission.failed || emission.phantom && emission.pending) {
             break;
           }
-
-          i++;
         }
 
-        if (!currentEmission.failed && !currentEmission.phantom) {
-          const task = output.next(currentEmission.value).wait();
+        if (!emission.failed && !emission.phantom) {
+          const task = output.next(emission.value).wait();
 
           // Add the task to the Set of tasks
           pendingPromises.push(task);
@@ -191,18 +187,18 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   // Instance method for `pipe`
   const pipe = function(this: Stream, ...steps: (Operator | StreamOperator)[]): Stream {
     let combinedStream: Stream = this;
-    let currentSimpleOperators: Operator[] = [];
+    let operatorsGroup: Operator[] = [];
 
     // Process each step in the pipeline
     for (const step of steps) {
       if ('handle' in step) {
         // If it's a SimpleOperator, add it to the current group
-        currentSimpleOperators.push(step);
+        operatorsGroup.push(step);
       } else if (typeof step === 'function') {
         // Apply any pending SimpleOperators first
-        if (currentSimpleOperators.length > 0) {
-          combinedStream = combinedStream.chain(...currentSimpleOperators);
-          currentSimpleOperators = [];
+        if (operatorsGroup.length > 0) {
+          combinedStream = combinedStream.chain(...operatorsGroup);
+          operatorsGroup = [];
         }
 
         // Apply the StreamOperator
@@ -213,8 +209,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     }
 
     // Apply remaining SimpleOperators, if any
-    if (currentSimpleOperators.length > 0) {
-      combinedStream = combinedStream.chain(...currentSimpleOperators);
+    if (operatorsGroup.length > 0) {
+      combinedStream = combinedStream.chain(...operatorsGroup);
     }
 
     return combinedStream as Stream;

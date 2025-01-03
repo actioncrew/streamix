@@ -1,35 +1,24 @@
-import { BusEvent, createEmission, createOperator, Emission, hooks, Operator, Stream } from '../abstractions';
+import { createSubject } from '../../lib';
+import { createEmission, Stream, StreamOperator } from '../abstractions';
 
-export const toArray = (): Operator => {
-  let boundStream: Stream;
-  let accumulatedArray: any[] = []; // Array to store all emissions
+export const toArray = (): StreamOperator => {
+  return (stream: Stream): Stream => {
+    let accumulatedArray: any[] = []; // Array to store emission values
+    const output = createSubject(); // Create an output stream
 
-  const init = function (this: Operator, stream: Stream) {
-    boundStream = stream;
-    boundStream[hooks].onComplete.once(() => callback(this)); // Trigger the callback when the stream completes
-  };
-
-  const callback = (instance: Operator): (() => BusEvent) | void => {
-    // Emit the accumulated array once the stream completes
-    return () => ({
-      target: boundStream,
-      payload: {
-        emission: createEmission({ value: accumulatedArray }),
-        source: instance,
+    const subscription = stream.subscribe({
+      next: (emission) => {
+        // Accumulate values from each emission
+        accumulatedArray.push(emission.value);
       },
-      type: 'emission',
+      complete: () => {
+        // Emit the accumulated array as a single emission when the stream completes
+        output.next(createEmission({ value: accumulatedArray }));
+        output.complete();
+        subscription.unsubscribe();
+      },
     });
-  };
 
-  const handle = (emission: Emission): Emission => {
-    // Collect each emission value into the array
-    accumulatedArray.push(emission.value!);
-    emission.phantom = true; // Mark the emission as phantom
-    return emission; // Return the emission
+    return output;
   };
-
-  const operator = createOperator(handle);
-  operator.name = 'toArray';
-  operator.init = init;
-  return operator;
 };

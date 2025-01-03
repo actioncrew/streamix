@@ -1,4 +1,4 @@
-import { createEmission, createOperator, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, Emission, eventBus, flags, hooks, internals, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -98,10 +98,6 @@ export const switchMap = (project: (value: any) => Subscribable): StreamOperator
           stream![flags].isAutoComplete = true;
         });
     };
-
-    const operator = createOperator(handleEmission);
-    operator.name = 'switchMap';
-    operator.init = init;
 
     init();
     return output;
