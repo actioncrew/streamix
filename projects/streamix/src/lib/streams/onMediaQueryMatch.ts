@@ -1,5 +1,4 @@
-import { createStream, internals, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
 
 /**
  * Creates a Stream from `window.matchMedia` for reactive media query handling.
@@ -30,19 +29,11 @@ export function onMediaQueryMatch(mediaQueryString: string): Stream<boolean> {
     const mediaQueryList = window.matchMedia(mediaQueryString);
 
     // Emit the initial state
-    eventBus.enqueue({
-      target: this,
-      payload: { value: mediaQueryList.matches },
-      type: 'emission',
-    });
+    this.next(createEmission({ value: mediaQueryList.matches }));
 
     // Define the event listener to monitor changes
     const listener = (event: MediaQueryListEvent) => {
-      eventBus.enqueue({
-        target: this,
-        payload: { value: event.matches },
-        type: 'emission',
-      });
+      this.next(createEmission({ value: event.matches }));
     };
 
     mediaQueryList.addEventListener('change', listener);

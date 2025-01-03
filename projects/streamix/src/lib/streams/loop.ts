@@ -1,6 +1,4 @@
-import { createEmission, Emission, flags, internals } from '../abstractions';
-import { createStream, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, Emission, flags, internals, Stream } from '../abstractions';
 
 export function loop<T>(
   initialValue: T,
@@ -16,7 +14,7 @@ export function loop<T>(
       const emission = createEmission({ value: currentValue }) as Emission;
 
       // Emit the current value
-      eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
+      this.next(emission);
 
       // Apply the iterateFn to get the next value
       currentValue = iterateFn(currentValue);

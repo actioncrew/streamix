@@ -1,6 +1,4 @@
-import { createEmission, flags, internals, Stream, Subscription } from '../abstractions';
-import { createStream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
 
 export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
   let listener!: (event: Event) => void;
@@ -24,7 +22,7 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
       listener = async (event: Event) => {
         if (this[flags].isRunning) {
           // Emit the event to the stream
-          eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event }), source: this }, type: 'emission' });
+          this.next(createEmission({ value: event }));
         }
       };
 

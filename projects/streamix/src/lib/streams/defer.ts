@@ -1,5 +1,4 @@
-import { createStream, Subscribable, Stream, createEmission, Subscription, flags, internals } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, flags, internals, Stream, Subscribable, Subscription } from '../abstractions';
 
 export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
   let innerStream: Subscribable<T> | undefined;
@@ -26,13 +25,13 @@ export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
       await cleanupInnerStream();
 
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
+      this.error(error);
     }
   });
 
   // Handle emissions from the inner stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
+    stream.next(createEmission({ value }));
   };
 
   // Clean up the inner stream when complete

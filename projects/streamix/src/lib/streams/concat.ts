@@ -1,5 +1,4 @@
 import { createEmission, createStream, Stream, Subscribable, Subscription } from '../abstractions';
-import { eventBus } from '../abstractions';
 
 export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   let activeSubscription: Subscription | undefined;
@@ -27,12 +26,11 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   };
 
   const emitValue = (stream: Stream<T>, value: T) => {
-    const emission = createEmission({ value });
-    eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
+    stream.next(createEmission({ value }));
   };
 
   const emitError = (stream: Stream<T>, error: any) => {
-    eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
+    stream.error(error);
   };
 
   stream.name = "concat";

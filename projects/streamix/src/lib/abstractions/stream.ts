@@ -12,7 +12,7 @@ export type Stream<T = any> = Subscribable<T> & {
 
   run: () => Promise<void>;
   next: (emission: Emission) => Emission;
-  error: (error: Error) => void;
+  error: (error: any) => void;
 
   compose: (...operators: StreamOperator[]) => Stream;
   chain: (...operators: Operator[]) => Stream;

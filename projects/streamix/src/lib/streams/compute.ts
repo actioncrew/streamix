@@ -1,7 +1,6 @@
 import { createEmission, createStream, internals, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 import { catchAny } from '../utils';
-import { eventBus } from '../abstractions';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
@@ -17,7 +16,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
           task.returnWorker(worker);
           reject(event.data.error);
         } else {
-          eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event.data }), source: this }, type: 'emission' });
+          this.next(createEmission({ value: event.data }));
           task.returnWorker(worker);
           resolve();
         }
@@ -31,8 +30,8 @@ export function compute(task: Coroutine, params: any): Stream<any> {
     });
 
     const [error] = await catchAny(Promise.race([this[internals].awaitCompletion(), promise]));
-    if(error) {
-      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
+    if (error) {
+      this.error(error);
       return;
     }
 

@@ -1,4 +1,4 @@
-import { createEmission, createStream, eventBus, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
 import { counter, Counter } from '../utils';
 
 export function zip(sources: Subscribable[]): Stream<any[]> {
@@ -19,14 +19,7 @@ export function zip(sources: Subscribable[]): Stream<any[]> {
           if (queues.every((queue) => queue.length > 0)) {
             const combined = queues.map((queue) => queue.shift()!); // Extract one value from each queue
              // Increment the emission count
-            eventBus.enqueue({
-              target: stream,
-              payload: {
-                emission: createEmission({ value: combined }),
-                source: stream,
-              },
-              type: 'emission',
-            });
+            stream.next(createEmission({ value: combined }));
             emittedValues.increment();
           }
         },
@@ -36,9 +29,9 @@ export function zip(sources: Subscribable[]): Stream<any[]> {
             stream.complete(); // Complete the stream only when all emissions are emitted
           }
         },
-        error: (err: any) => {
+        error: (err) => {
           // Emit an error if any source stream fails
-          eventBus.enqueue({ target: stream, payload: { error: err }, type: 'error' });
+          stream.error(err);
         },
       });
 

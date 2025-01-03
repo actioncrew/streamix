@@ -1,5 +1,4 @@
-import { createStream, Subscribable, Stream, Subscription, createEmission, flags, internals } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, flags, internals, Stream, Subscribable, Subscription } from '../abstractions';
 
 export function iif<T>(
   condition: () => boolean, // Evaluate condition once at initialization
@@ -29,7 +28,7 @@ export function iif<T>(
   // Handle emissions from the selected stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
     if (!stream[internals].shouldComplete()) {
-      eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
+      stream.next(createEmission({ value }));
     }
   };
 

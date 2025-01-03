@@ -1,6 +1,5 @@
-import { internals } from './../abstractions/subscribable';
 import { Stream, createEmission, createStream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { internals } from './../abstractions/subscribable';
 
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
@@ -17,10 +16,10 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
 
       // If the stream is not complete, emit the value
       if (!this[internals].shouldComplete()) {
-        eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: resolvedValue }), source: this }, type: 'emission' });
+        this.next(createEmission({ value: resolvedValue }));
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { error, source: this }, type: 'error' });
+      this.error(error);
     }
   });
 

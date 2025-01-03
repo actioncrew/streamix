@@ -1,6 +1,5 @@
 import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
 // Ensure catchAny is imported from the correct location
-import { eventBus } from '../abstractions';
 
 export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined })); // Track the latest value from each source
@@ -17,14 +16,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> 
 
           // Emit combined values only when all sources have emitted at least once
           if (values.every((v) => v.hasValue)) {
-            eventBus.enqueue({
-              target: stream,
-              payload: {
-                emission: createEmission({ value: values.map((v) => v.value!) }),
-                source: stream,
-              },
-              type: 'emission',
-            });
+            this.next(createEmission({ value: values.map((v) => v.value!) }));
           }
         },
         complete: () => {
@@ -36,7 +28,7 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> 
         },
         error: (err: any) => {
           // Propagate errors from the source streams
-          eventBus.enqueue({ target: stream, payload: { error: err }, type: 'error' });
+          this.error(err);
         },
       });
 

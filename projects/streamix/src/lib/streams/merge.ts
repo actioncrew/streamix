@@ -1,5 +1,4 @@
 import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
-import { eventBus } from '../abstractions';
 
 export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
   const subscriptions: Subscription[] = [];
@@ -10,10 +9,10 @@ export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
         const subscription = source.subscribe({
           next: (value) => {
             const emission = createEmission({ value });
-            eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
+            this.next(emission);
           },
           error: (err) => {
-            eventBus.enqueue({ target: this, payload: { error: err }, type: 'error' });
+            this.error(err);
             reject(err); // Reject the promise on error
             finalize(); // Stop all processing on error
           },
