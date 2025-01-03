@@ -4,7 +4,6 @@ import { awaitable, hook } from "../utils";
 
 export type Stream<T = any> = Subscribable<T> & {
   name?: string;
-  operators: Operator[];
   emissionCounter: number;
 
   startTimestamp: number | undefined;
@@ -19,10 +18,7 @@ export type Stream<T = any> = Subscribable<T> & {
   pipe: (...operators: (Operator | StreamOperator)[]) => Stream;
 
   [internals]: SubscribableInternals & {
-    head: Operator | undefined;
-    tail: Operator | undefined;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
-    awaitStart: () => Promise<void>;
   },
 
   [hooks]: SubscribableHooks;
@@ -37,9 +33,6 @@ export function isStream<T>(obj: any): obj is Stream<T> {
 }
 
 export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => Promise<void>): Stream<T> {
-  const operators: Operator[] = [];
-  let head: Operator | undefined;
-  let tail: Operator | undefined;
 
   const commencement = awaitable<void>();
   const completion = awaitable<void>();
@@ -219,7 +212,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     try {
       emission.timestamp = performance.now();
 
-      if (!emission.failed && !emission.phantom && !emission.pending) {
+      if (!emission.failed && !emission.phantom) {
         source.emissionCounter++;
         await subscribers.parallel({ emission, source });
       }
@@ -308,7 +301,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const stream = {
     type: "stream" as "stream",
-    operators,
     subscribe,
     pipe,
     chain,
@@ -325,8 +317,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     },
 
     [internals]: {
-      head,
-      tail,
       emit,
       awaitStart,
       awaitCompletion,
