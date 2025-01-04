@@ -1,4 +1,4 @@
-import { createOperator, Operator, Subscribable } from '../abstractions';
+import { createEmission, createOperator, Operator, Subscribable } from '../abstractions';
 import { Emission } from '../abstractions';
 import { eventBus } from '../abstractions';
 
