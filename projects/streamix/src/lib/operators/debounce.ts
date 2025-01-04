@@ -4,13 +4,14 @@ import { eventBus } from '../abstractions';
 
 export const debounce = (time: number): Operator => {
   let timeoutId: any;
-
-  const handle = (emission: Emission, source: Subscribable): Emission => {
+  
+  const handle = function (this: Operator, emission: Emission, source: Subscribable): Emission {
     clearTimeout(timeoutId); // Clear any previous debounce timer
     timeoutId = setTimeout(() => {
+      const debounced = createEmission({ value: emission.value });
       eventBus.enqueue({
         target: source,
-        payload: { emission, source },
+        payload: { emission: debounced, source: this },
         type: 'emission',
       }); // Emit the debounced value
     }, time);
