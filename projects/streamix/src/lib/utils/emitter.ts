@@ -8,10 +8,10 @@ export interface EventEmitter {
   waitForCompletion(event: string): Promise<void>;
   clear(): this;
   contains(event: string, callback: Callback): boolean;
-  readonly length: number;
+  getCallbackNumber(event: string): number;
 }
 
-export const EventEmitter = (): EventEmitter => {
+export const createEventEmitter = (): EventEmitter => {
   const callbacks = new Map<string, Set<Callback>>();
   const pendingEventPromises = new Map<string, Set<Promise<any>>>();
 
@@ -79,8 +79,8 @@ export const EventEmitter = (): EventEmitter => {
   const contains = (event: string, callback: Callback) =>
     callbacks.has(event) && callbacks.get(event)!.has(callback);
 
-  const length = () =>
-    Array.from(callbacks.values()).reduce((total, cbSet) => total + cbSet.size, 0);
+  const getCallbackNumber = (event: string) =>
+    Array.from(callbacks.get(event)!).reduce((total, cbSet) => total + cbSet.length, 0);
 
   const api: EventEmitter = {
     on,
@@ -90,9 +90,7 @@ export const EventEmitter = (): EventEmitter => {
     waitForCompletion,
     clear,
     contains,
-    get length() {
-      return length();
-    },
+    getCallbackNumber,
   };
 
   return api;
