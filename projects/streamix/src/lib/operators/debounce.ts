@@ -1,4 +1,4 @@
-import { createOperator, Emission, eventBus, Operator, Subscribable } from '../abstractions';
+import { createEmission, createOperator, Emission, eventBus, Operator, Subscribable } from '../abstractions';
 
 export const debounce = (time: number): Operator => {
   let timeoutId: any;
@@ -8,7 +8,7 @@ export const debounce = (time: number): Operator => {
     timeoutId = setTimeout(() => {
       eventBus.enqueue({
         target: source,
-        payload: { emission, source },
+        payload: { emission: createEmission({ value: emission.value }), source },
         type: 'emission',
       }); // Emit the debounced value
     }, time);
