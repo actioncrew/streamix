@@ -58,19 +58,36 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const run = async () => {
     try {
-      eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
+      // Trigger start hook
+      eventBus.enqueue({ target: stream, type: 'start' });
       commencement.resolve();
-      await runFn.call(stream); // Pass the stream instance to the run function
-      } catch (error) {
-      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
-    } finally {
-      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
-      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
 
-      await finalize.waitForCompletion();
-      running = false; stopped = true;
-      stream.stopTimestamp = performance.now();
+      const result = runFn.call(stream); // Execute the run function with the stream instance
+
+      if (result && typeof result.then === 'function') {
+        await result;
+      }
+    } catch (error: any) {
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
+    } finally {
+      await complete();
     }
+  };
+
+  const complete = async (): Promise<void> => {
+    // Trigger complete hook
+    eventBus.enqueue({ target: stream, type: 'complete' });
+
+    // Automatically complete if required
+    if (!stream[internals].shouldComplete()) {
+      stream[flags].isAutoComplete = true;
+    }
+
+    // Wait for finalization and clean up
+    await finalize.waitForCompletion();
+    running = false;
+    stopped = true;
+    stream.stopTimestamp = performance.now();
   };
 
   const next = (emission: Emission): Emission => {
@@ -80,17 +97,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const error = (error: Error): void => {
     eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
-  };
-
-  const complete = async (): Promise<void> => {
-    if(!running && !stopped && !unsubscribed) {
-      await onStart.waitForCompletion();
-    }
-
-    if(running && !stopped) {
-      stream[flags].isUnsubscribed = true;
-      await finalize.waitForCompletion();
-    }
   };
 
   const awaitStart = () => commencement.promise();
@@ -285,6 +291,9 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         };
 
         if (!stopped) {
+          if(subscribers.length === 1) {
+            stream[flags].isUnsubscribed = true;
+          }
           stream.complete().then(cleanup);
         }
       }
