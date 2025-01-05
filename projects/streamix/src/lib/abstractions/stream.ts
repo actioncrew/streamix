@@ -77,7 +77,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const complete = async (): Promise<void> => {
     if(!running && !stopped && !unsubscribed) {
-      await onStart.waitForCompletion();
+      await awaitStart();
     }
 
     if(running && !stopped) {
