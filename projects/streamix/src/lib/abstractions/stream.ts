@@ -216,8 +216,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<any> {
     try {
-      emission.timestamp = performance.now();
-
       if (!emission.failed && !emission.phantom) {
         source.emissionCounter++;
         if(!emission.pending) {
@@ -237,11 +235,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     // Convert a callback into a Receiver if needed
     const receiver = createReceiver(callbackOrReceiver);
+    const completeCallback = () => receiver.complete!();
     const errorCallback = ({ error }: any) => receiver.error!(error);
 
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
-      finalize.chain(receiver, receiver.complete);
+      finalize.chain(receiver, completeCallback);
     }
 
     if (receiver.error) {
@@ -285,7 +284,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
         subscription.unsubscribed = performance.now();
         const cleanup = () => {
-          if (receiver.complete) finalize.remove(receiver, receiver.complete);
+          if (receiver.complete) finalize.remove(receiver, completeCallback);
           if (receiver.error) onError.remove(receiver, errorCallback);
           subscribers.remove(boundCallback);
         };
