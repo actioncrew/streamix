@@ -1,12 +1,12 @@
 import { createSubject } from '../../lib';
-import { createStreamOperator, hooks, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOperator => {
-  const operator = (stream: Stream) => {
-    const outputStream = createSubject<Map<string | number, T[]>>(); // The output stream to emit grouped results
+  const operator = (input: Stream) => {
+    const output = createSubject<Map<string | number, T[]>>(); // The output stream to emit grouped results
     const partitions = new Map<string | number, T[]>(); // Store grouped partitions
 
-    const subscription = stream.subscribe({
+    const subscription = input.subscribe({
       next: (value: T) => {
         const key = keyFn(value); // Compute the partition key
 
@@ -18,21 +18,21 @@ export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOp
       },
       complete: () => {
         // Emit all partitions as a single Map when the stream completes
-        outputStream.next(partitions);
-        outputStream.complete();
+        output.next(partitions);
+        output.complete();
       },
       error: (err) => {
         // Forward errors to the output stream
-        outputStream.error(err);
+        output.error(err);
       },
     });
 
     // Ensure the new stream cleans up the subscription when it completes
-    outputStream[hooks].finalize.once(() => {
+    output[hooks].finalize.once(() => {
       subscription.unsubscribe();
     });
 
-    return outputStream; // Return the output stream
+    return output; // Return the output stream
   };
 
   return createStreamOperator('groupBy', operator);
