@@ -30,7 +30,7 @@ export function isStream<T>(obj: any): obj is Stream<T> {
   );
 }
 
-export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => Promise<void>): Stream<T> {
+export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => Promise<void> | void): Stream<T> {
   const operators: Operator[] = [];
   let head: Operator | undefined;
   let tail: Operator | undefined;
@@ -63,9 +63,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       eventBus.enqueue({ target: stream, type: 'start' });
       commencement.resolve();
 
-      await runFn.call(stream); // Execute the run function with the stream instance
-      await complete();
+      const result = runFn.call(stream); // Execute the run function with the stream instance
 
+      if (result && typeof result.then === 'function') {
+        await result;
+        await complete();
+      }
     } catch (error: any) {
       eventBus.enqueue({
         target: stream,
