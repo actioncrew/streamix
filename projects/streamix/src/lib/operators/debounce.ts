@@ -1,21 +1,22 @@
-import { createEmission, createOperator, Operator, Subscribable } from '../abstractions';
-import { Emission } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createOperator, Emission, eventBus, Operator, Subscribable } from '../abstractions';
 
 export const debounce = (time: number): Operator => {
   let timeoutId: any;
-  
+
   const handle = function (this: Operator, emission: Emission, source: Subscribable): Emission {
     clearTimeout(timeoutId); // Clear any previous debounce timer
+    const debounced = createEmission({ value: emission.value });
+
     timeoutId = setTimeout(() => {
-      const debounced = createEmission({ value: emission.value });
+      emission.link(debounced);
       eventBus.enqueue({
         target: source,
         payload: { emission: debounced, source: this },
         type: 'emission',
       }); // Emit the debounced value
+      emission.finalize();
     }, time);
-    emission.phantom = true; // Mark as delayed
+    emission.pending = true; // Mark as delayed
     return emission;
   };
 
