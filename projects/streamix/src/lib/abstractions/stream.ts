@@ -67,14 +67,11 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
       if (result && typeof result.then === 'function') {
         await result;
-        await complete();
       }
     } catch (error: any) {
-      eventBus.enqueue({
-        target: stream,
-        payload: { error },
-        type: 'error',
-      });
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
+    } finally {
+      await complete();
     }
   };
 
@@ -92,7 +89,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
     running = false;
     stopped = true;
     stream.stopTimestamp = performance.now();
-    operators.forEach(operator => operator.cleanup());
   };
 
   const awaitStart = () => commencement.promise();
