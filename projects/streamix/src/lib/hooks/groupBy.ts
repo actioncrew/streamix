@@ -1,5 +1,5 @@
 import { createSubject } from '../../lib';
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, hooks, Stream, StreamOperator } from '../abstractions';
 
 export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOperator => {
   const operator = (input: Stream) => {
