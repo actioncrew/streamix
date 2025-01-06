@@ -1,6 +1,6 @@
 
 type Stream<T> = (next: (emission: Emission<T>) => void) => () => void;
-type Emission<T> = { value: T; failed?: boolean; phantom?: boolean; pending?: boolean; error?: any };
+type Emission<T> = { value: T; phantom?: boolean; pending?: boolean; error?: any };
 
 type StreamOperator<T, U> = (stream: Stream<T>) => Stream<U>;
 
@@ -27,7 +27,7 @@ const defer = <T>(factory: () => Stream<T>): StreamOperator<T, T> => {
   return (stream: Stream<T>) => {
     return (next: (value: Emission<T>) => void) => {
       return stream((emission: Emission<T>) => {
-        if (!emission.failed && !emission.phantom && !emission.pending) {
+        if (!emission.error && !emission.phantom && !emission.pending) {
           const deferredStream = factory();
           deferredStream(next);
         }
@@ -41,7 +41,7 @@ const mergeMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
   return (stream: Stream<T>) => {
     return (next: (emission: Emission<U>) => void) => {
       return stream((emission: Emission<T>) => {
-        if (!emission.failed && !emission.phantom) {
+        if (!emission.error && !emission.phantom) {
           const innerStream = fn(emission.value); // Generate inner stream
           innerStream(next); // Flatten inner stream emissions into the main stream
         }
@@ -56,12 +56,12 @@ const concatMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
 
     return (next: (emission: Emission<U>) => void) => {
       return stream((emission: Emission<T>) => {
-        if (!emission.failed && !emission.phantom && !emission.pending) {
+        if (!emission.error && !emission.phantom && !emission.pending) {
           const innerStream = fn(emission.value);
 
           const subscribeInner = () => {
             activeInnerStream = innerStream((innerEmission) => {
-              if (!innerEmission.failed && !innerEmission.phantom && !emission.pending) {
+              if (!innerEmission.error && !innerEmission.phantom && !emission.pending) {
                 next(innerEmission);
               }
             });
@@ -91,7 +91,7 @@ const switchMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
       };
 
       return stream((emission: Emission<T>) => {
-        if (!emission.failed && !emission.phantom) {
+        if (!emission.error && !emission.phantom) {
           unsubscribeFromInner(); // Unsubscribe from previous inner stream
           currentInnerStream = fn(emission.value); // Create new inner stream
           currentInnerStream(next); // Subscribe to the new inner stream
@@ -106,7 +106,7 @@ const noop = () => {};
 const catchError = <T>(handler: (error: any) => Emission<T>): Operator<T, T> => ({
   name: 'catchError',
   handle: (emission: Emission<T>) => {
-    if (emission.failed) {
+    if (emission.error) {
       return handler(emission.error);
     }
     return emission;
@@ -126,7 +126,7 @@ const delay = <T>(ms: number): StreamOperator<T, T> => {
       };
 
       return stream((emission: Emission<T>) => {
-        if (!emission.failed && !emission.phantom) {
+        if (!emission.error && !emission.phantom) {
           clearTimer();
           timerId = setTimeout(() => {
             next(emission);
@@ -164,7 +164,7 @@ const pipe = <T, U>(...operators: Operator<any, any>[]): StreamOperator<T, U> =>
         // Apply each operator in sequence
         for (const operator of operators) {
           currentEmission = operator.handle(currentEmission);
-          if (currentEmission.failed) {
+          if (currentEmission.error) {
             break;
           }
         }
@@ -181,7 +181,7 @@ const pipe = <T, U>(...operators: Operator<any, any>[]): StreamOperator<T, U> =>
 //       let isActive = true;
 //       const output: Stream<any> = (innerNext) => {
 //         return stream((emission: Emission<any>) => {
-//           if (!emission.failed && !emission.phantom && !emission.pending && isActive) {
+//           if (!emission.error && !emission.phantom && !emission.pending && isActive) {
 //             try {
 //               let currentEmission = emission;
 //               for (let i = 0; i < operators.length; i++) {
@@ -190,7 +190,7 @@ const pipe = <T, U>(...operators: Operator<any, any>[]): StreamOperator<T, U> =>
 //                   continue;
 //                 }
 //                 currentEmission = operator.handle(currentEmission);
-//                 if (currentEmission.failed) {
+//                 if (currentEmission.error) {
 //                   let foundCatchError = false;
 //                   for (let j = i + 1; j < operators.length; j++) {
 //                     if ('type' in operators[j] && operators[j].type === "catchError") {
@@ -200,14 +200,14 @@ const pipe = <T, U>(...operators: Operator<any, any>[]): StreamOperator<T, U> =>
 //                     }
 //                   }
 //                   if (!foundCatchError) {
-//                     innerNext({ ...currentEmission, failed: true });
+//                     innerNext({ ...currentEmission });
 //                     return;
 //                   }
 //                 }
 //               }
 //               innerNext(currentEmission);
 //             } catch (error) {
-//               innerNext({ ...emission, failed: true, error });
+//               innerNext({ ...emission, error });
 //             }
 //           }
 //         });
@@ -306,7 +306,7 @@ describe("adsasjdkasjdlas", () => {
     let results = [];
     // Consume the stream
     combinedStream((emission) => {
-      if (!emission.failed) {
+      if (!emission.error) {
         results.push(emission.value);
         console.log(emission.value); // Logs the final transformed values
         if (results.length === 6) {
@@ -332,7 +332,7 @@ describe("adsasjdkasjdlas", () => {
     const results: any[] = [];
 
     combinedStream1((emission) => {
-      if (!emission.failed) {
+      if (!emission.error) {
         results.push(emission.value);
         console.log(emission.value); // Outputs processed values
         if (results.length === expectedResults.length) {

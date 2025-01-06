@@ -15,7 +15,7 @@ export const createSubscription = function (getValue: () => Emission, unsubscrib
   const subscription = () => {
     const emission = getValue();
 
-    if (!(emission.failed || emission.pending || emission.phantom)) {
+    if (!(emission.error || emission.pending || emission.phantom)) {
       currentValue = emission;
     }
 

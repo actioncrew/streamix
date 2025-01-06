@@ -114,11 +114,10 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
           try {
             emission = operator.handle(emission, this);
           } catch (error) {
-            emission.failed = true;
             emission.error = error;
           }
 
-          if (emission.failed) {
+          if (emission.error) {
             let foundCatchError = false;
             for (let j = i + 1; j < operators.length; j++) {
               if (operators[j]?.name === "catchError") {
@@ -133,12 +132,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
             }
           }
 
-          if (emission.failed || emission.phantom && emission.pending) {
+          if (emission.error || emission.phantom && emission.pending) {
             break;
           }
         }
 
-        if (!emission.failed && !emission.phantom) {
+        if (!emission.error && !emission.phantom) {
           const task = output.next(emission.value).wait();
 
           // Add the task to the Set of tasks
@@ -211,7 +210,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<any> {
     try {
-      if (!emission.failed && !emission.phantom) {
+      if (!emission.error && !emission.phantom) {
         source.emissionCounter++;
         if(!emission.pending) {
           await emitter.emit('subscribers', { emission, source });
@@ -259,7 +258,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       currentValue = emission.value;
 
       try {
-        if (emission.failed && receiver.error) {
+        if (emission.error && receiver.error) {
           receiver.error(emission.error); // Call `error` if emission failed
         } else {
           const rootEmissionTimestamp = emission.root().timestamp;
