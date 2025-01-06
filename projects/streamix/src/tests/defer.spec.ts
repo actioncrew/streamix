@@ -59,7 +59,7 @@ describe('DeferStream', () => {
 
   it('should handle stream errors', async () => {
     const error = new Error('Test Error');
-    const factory = jest.fn(() => mockStream([], false, true, error));
+    const factory = jest.fn(() => mockStream([], false, error));
 
     const deferStream = defer(factory);
 
