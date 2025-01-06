@@ -1,10 +1,10 @@
 import { createEmission, createStream, defer, Emission, eventBus, flags, internals, Stream } from '../lib';
 
 // Mocking Stream class
-export function mockStream(values: any[], completed = false, failed = false, error?: Error): Stream {
+export function mockStream(values: any[], completed = false, error?: Error): Stream {
   // Create the custom run function for the MockStream
   const stream = createStream(async (): Promise<void> => {
-    if (failed && error) {
+    if (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
       return;
     }
@@ -59,7 +59,7 @@ describe('DeferStream', () => {
 
   it('should handle stream errors', async () => {
     const error = new Error('Test Error');
-    const factory = jest.fn(() => mockStream([], false, true, error));
+    const factory = jest.fn(() => mockStream([], false, error));
 
     const deferStream = defer(factory);
 
