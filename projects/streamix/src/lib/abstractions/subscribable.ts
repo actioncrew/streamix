@@ -1,5 +1,5 @@
 import { Operator, Pipeline, Receiver, Subscription } from '../abstractions';
-import { Hook } from '../utils';
+import { EventEmitter, Hook } from '../utils';
 
 export const hooks = Symbol('subscribable');
 export const flags = Symbol('subscribable');
@@ -7,6 +7,7 @@ export const internals = Symbol('subscribable');
 export interface Subscribable<T = any> {
   type: "stream" | "pipeline" | "subject";
   emissionCounter: number;
+  emitter: EventEmitter;
 
   subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
   pipe(...operators: Operator[]): Pipeline<T>;
@@ -16,7 +17,6 @@ export interface Subscribable<T = any> {
   value: T | undefined;
 
   [flags]: SubscribableFlags;
-  [hooks]: SubscribableHooks;
   [internals]: SubscribableInternals;
 }
 

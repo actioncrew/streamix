@@ -1,4 +1,4 @@
-import { createOperator, Emission, eventBus, flags, hooks, internals, Operator, Subscribable, Subscription } from '../abstractions';
+import { createOperator, Emission, eventBus, flags, internals, Operator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -21,8 +21,8 @@ export const switchMap = (project: (value: any) => Subscribable): Operator => {
     }
 
     // Finalize when the input or output stream stops
-    input[hooks].finalize.once(() => queueMicrotask(async () => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].finalize.once(finalize);
+    input.emitter.once('finalize', () => queueMicrotask(async () => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output.emitter.once('finalize', finalize);
   };
 
   const handle = (emission: Emission) => {

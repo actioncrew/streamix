@@ -1,4 +1,4 @@
-import { createEmission, createReceiver, createStream, Emission, eventBus, flags, hooks, internals, Receiver, Stream, Subscription } from '../abstractions';
+import { createEmission, createReceiver, createStream, Emission, eventBus, flags, internals, Receiver, Stream, Subscription } from '../abstractions';
 import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
@@ -32,7 +32,7 @@ export function createSubject<T = any>(): Subject<T> {
         type: 'complete'
       });
 
-      return this[hooks].finalize.waitForCompletion();
+      return this.emitter.waitForCompletion('finalize');
     }
   };
 
@@ -97,15 +97,16 @@ export function createSubject<T = any>(): Subject<T> {
   stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     // Convert a callback into a Receiver if needed
     const receiver = createReceiver(callbackOrReceiver);
+    const completeCallback = () => receiver.complete!();
     const errorCallback = ({ error }: any) => receiver.error!(error);
 
     // Chain the `complete` method to the `onStop` hook if present
     if (receiver.complete) {
-      stream[hooks].finalize.chain(receiver, receiver.complete);
+      stream.emitter.on('finalize', completeCallback);
     }
 
     if (receiver.error) {
-      stream[hooks].onError.chain(receiver, errorCallback);
+      stream.emitter.on('error', errorCallback);
     }
 
     // Create the subscription object
@@ -139,13 +140,13 @@ export function createSubject<T = any>(): Subject<T> {
         subscription.unsubscribed = performance.now();
 
         const cleanup = () => {
-          if (receiver.complete) stream[hooks].finalize.remove(receiver, receiver.complete);
-          if (receiver.error) stream[hooks].onError.remove(receiver, errorCallback);
-          stream[hooks].subscribers.remove(boundCallback);
+          if (receiver.complete) stream.emitter.off('finalize', completeCallback);
+          if (receiver.error) stream.emitter.off('error', errorCallback);
+          stream.emitter.off('subscribers', boundCallback);
         };
 
         if (!stream[flags].isStopped) {
-          stream.complete().then(() => stream[hooks].finalize.waitForCompletion()).then(cleanup);
+          stream.complete().then(() => stream.emitter.waitForCompletion('finalize')).then(cleanup);
         } else {
           cleanup();
         }
@@ -156,12 +157,12 @@ export function createSubject<T = any>(): Subject<T> {
     subscription.completed = completion.promise() as unknown as Promise<void>;
 
     // Add the bound callback to the subscribers
-    stream[hooks].subscribers.chain(boundCallback);
+    stream.emitter.on('subscribers', boundCallback);
 
     return subscription as Subscription;
   };
 
-  stream[hooks].finalize.once(() => {
+  stream.emitter.once('finalize', () => {
     stream[flags].isStopped = true;
     stream[flags].isRunning = false;
     stream.operators.forEach(operator => operator.cleanup());

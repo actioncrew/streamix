@@ -1,4 +1,4 @@
-import { BusEvent, Emission, Operator, Stream, createEmission, createOperator, hooks } from '../abstractions';
+import { BusEvent, Emission, Operator, Stream, createEmission, createOperator } from '../abstractions';
 
 export const defaultIfEmpty = (defaultValue: any): Operator => {
   let boundStream: Stream;
@@ -6,7 +6,7 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
 
   const init = function (this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream[hooks].onComplete.once(this, callback); // Chain the callback to be triggered on stream completion
+    boundStream.emitter.once('complete', callback); // Chain the callback to be triggered on stream completion
   };
 
   const callback = function (this: Operator): (() => BusEvent) | void {

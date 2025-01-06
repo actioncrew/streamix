@@ -1,5 +1,4 @@
-import { createEmission, hooks, internals } from '../abstractions';
-import { createStream, Stream } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
 
 export function onAnimationFrame<T>(): Stream<T> {
   let requestId: number | null = null;
@@ -22,7 +21,7 @@ export function onAnimationFrame<T>(): Stream<T> {
       lastFrameTime = currentTime;
 
       // Emit the current value
-      stream[hooks].onEmission.parallel({ emission: createEmission({ value: elapsedTime }), source: this });
+      stream.emitter.emit('emission', { emission: createEmission({ value: elapsedTime }), source: this });
 
       // Schedule the next frame
       requestId = requestAnimationFrame(runFrame);

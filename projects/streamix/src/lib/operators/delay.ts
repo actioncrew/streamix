@@ -1,4 +1,4 @@
-import { Emission, Subscribable, createOperator, Operator, createEmission, eventBus, flags, hooks } from '../abstractions';
+import { Emission, Operator, Subscribable, createEmission, createOperator, eventBus, flags } from '../abstractions';
 
 export const delay = (delayTime: number): Operator => {
   let queue = new Promise<void>((resolve) => {
@@ -21,7 +21,7 @@ export const delay = (delayTime: number): Operator => {
   };
 
   const init = (stream: Subscribable) => {
-    stream[hooks].onComplete.once(finalize);
+    stream.emitter.once('complete', finalize);
   }
 
   const handle = function (this: Operator, emission: Emission, stream: Subscribable): Emission {
