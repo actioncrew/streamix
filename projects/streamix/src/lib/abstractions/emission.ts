@@ -54,22 +54,20 @@ export function createEmission(emission: { value?: any, phantom?: boolean, pendi
     },
     resolve: function (this: Emission & { notifyOnCompletion: () => void; }) {
       if (resolveFn) {
-        delete this.pending;
-        this.complete = true;
-
         resolveFn(emission.value);
       }
+      delete this.pending;
+      this.complete = true;
       this.notifyOnCompletion();
       return completion;
     },
     reject: function (this: Emission & { notifyOnError: () => void; }, reason: any) {
       if (rejectFn) {
-        delete this.pending;
-        this.complete = true;
-        this.error = reason;
-
         rejectFn(reason);
       }
+      delete this.pending;
+      this.complete = true;
+      this.error = reason;
       this.notifyOnError();
       return completion;
     },
