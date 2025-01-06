@@ -1,5 +1,5 @@
 import { Operator, Pipeline, Receiver, Subscription } from '../abstractions';
-import { EventEmitter, Hook } from '../utils';
+import { EventEmitter } from '../utils';
 
 export const hooks = Symbol('subscribable');
 export const flags = Symbol('subscribable');
@@ -18,16 +18,6 @@ export interface Subscribable<T = any> {
 
   [flags]: SubscribableFlags;
   [internals]: SubscribableInternals;
-}
-
-
-export interface SubscribableHooks {
-  onStart: Hook;
-  onComplete: Hook;
-  onError: Hook;
-  onEmission: Hook;
-  finalize: Hook;
-  subscribers: Hook;
 }
 
 export interface SubscribableFlags {
