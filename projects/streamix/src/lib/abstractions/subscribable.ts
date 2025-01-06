@@ -1,5 +1,4 @@
 import { Operator, Receiver, Stream, StreamOperator, Subscription } from '../abstractions';
-import { Hook } from '../utils';
 
 export const hooks = Symbol('subscribable');
 export const flags = Symbol('subscribable');
@@ -17,16 +16,6 @@ export interface Subscribable<T = any> {
 
   [flags]: SubscribableFlags;
   [internals]: SubscribableInternals;
-}
-
-
-export interface SubscribableHooks {
-  onStart: Hook;
-  onComplete: Hook;
-  onError: Hook;
-  onEmission: Hook;
-  finalize: Hook;
-  subscribers: Hook;
 }
 
 export interface SubscribableFlags {
