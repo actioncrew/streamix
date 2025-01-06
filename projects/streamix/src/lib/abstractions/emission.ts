@@ -13,8 +13,6 @@ export type Emission = {
   wait: () => Promise<void>;
   link: (child: Emission) => void;
   finalize(): void;
-  notifyOnCompletion(child: Emission): void;
-  notifyOnError(child: Emission, error: any): void;
   root(): Emission;
 }
 
@@ -40,7 +38,6 @@ export function createEmission(emission: { value?: any, phantom?: boolean, pendi
     if (shouldFail) {
       const error = new Error("One or more child emissions failed");
       emission.reject(error);
-      emission.ancestor?.notifyOnError(emission, error);
     } else if (allResolved) {
       emission.resolve();
     }
@@ -55,29 +52,24 @@ export function createEmission(emission: { value?: any, phantom?: boolean, pendi
       }
       return current;
     },
-    resolve: () => {
+    resolve: function (this: Emission & { notifyOnCompletion: () => void; }) {
       if (resolveFn) {
-        delete instance.pending;
-        instance.complete = true;
+        delete this.pending;
+        this.complete = true;
 
         resolveFn(emission.value);
-
-        if(instance.ancestor) {
-          instance.ancestor.notifyOnCompletion(instance);
-        }
+        this.notifyOnCompletion();
       }
       return completion;
     },
-    reject: (reason: any) => {
+    reject: function (this: Emission & { notifyOnError: () => void; }, reason: any) {
       if (rejectFn) {
-        delete instance.pending;
-        instance.error = reason;
-
-        if(instance.ancestor) {
-          instance.ancestor.notifyOnError(instance, reason);
-        }
+        delete this.pending;
+        this.complete = true;
+        this.error = reason;
 
         rejectFn(reason);
+        this.notifyOnError();
       }
       return completion;
     },
@@ -92,13 +84,13 @@ export function createEmission(emission: { value?: any, phantom?: boolean, pendi
       processDescendants(instance);
     },
     notifyOnCompletion: (): void => {
-      if(instance.finalized) {
-        processDescendants(instance);
+      if(instance.ancestor?.finalized) {
+        processDescendants(instance.ancestor);
       }
     },
     notifyOnError: (): void => {
-      if(instance.finalized) {
-        processDescendants(instance);
+      if(instance.ancestor?.finalized) {
+        processDescendants(instance.ancestor);
       }
     }
   });
