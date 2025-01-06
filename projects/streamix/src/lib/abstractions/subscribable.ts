@@ -16,7 +16,6 @@ export interface Subscribable<T = any> {
   value: T | undefined;
 
   [flags]: SubscribableFlags;
-  [hooks]: SubscribableHooks;
   [internals]: SubscribableInternals;
 }
 

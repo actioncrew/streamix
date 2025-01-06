@@ -1,5 +1,5 @@
 import { createSubject } from '../../lib';
-import { createStreamOperator, hooks, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const delay = (ms: number): StreamOperator => {
   const operator = (input: Stream) => {
@@ -17,7 +17,7 @@ export const delay = (ms: number): StreamOperator => {
           }, ms);
 
           // Track the timeout for cleanup
-          output[hooks].finalize.once(() => {
+          output.emitter.once('finalize', () => {
             clearTimeout(timerId);
           });
         });

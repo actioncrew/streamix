@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, hooks, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -37,7 +37,7 @@ export const fork = <T = any, R = T>(
         },
       });
 
-      output[hooks].finalize.once(finalize);
+      output.emitter.once('finalize', finalize);
     };
 
     const handleEmission = (emission: Emission) => {

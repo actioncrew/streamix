@@ -1,6 +1,5 @@
 import { createLock, createSemaphore } from '../utils';
 import { Emission } from './emission';
-import { hooks } from './subscribable';
 
 export const eventBus = createBus();
 
@@ -79,7 +78,7 @@ export function createBus(config?: { bufferSize?: number }): Bus {
   async function* processEvent(event: BusEvent): AsyncGenerator<BusEvent> {
     switch (event.type) {
       case 'start': {
-        yield* await triggerHooks(event.target, 'onStart', event);
+        yield* await triggerHooks(event.target, 'start', event);
         break;
       }
       case 'finalize': {
@@ -87,14 +86,14 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         break;
       }
       case 'emission': {
-        yield* await triggerHooks(event.target, 'onEmission', event);
+        yield* await triggerHooks(event.target, 'emission', event);
         if (event.payload?.emission?.pending) {
           trackPendingEmission(event.target, event.payload?.emission);
         }
         break;
       }
       case 'complete': {
-        yield* await triggerHooks(event.target, 'onComplete', event);
+        yield* await triggerHooks(event.target, 'complete', event);
         if (!pendingEmissions.has(event.target)) {
           yield* await triggerHooks(event.target, 'finalize', event);
         } else {
@@ -103,22 +102,21 @@ export function createBus(config?: { bufferSize?: number }): Bus {
         break;
       }
       case 'error': {
-        yield* await triggerHooks(event.target, 'onError', event);
+        yield* await triggerHooks(event.target, 'error', event);
         break;
       }
     }
   }
 
   async function* triggerHooks(target: any, hookName: string, event: BusEvent): AsyncGenerator<BusEvent> {
-    const hook = target?.[hooks]?.[hookName];
-    if (!hook) {
+    if (!target) {
       console.warn(`Hook "${hookName}" not found on target.`);
       return;
     }
 
     yield event;
 
-    const results = (await hook.parallel(event.payload)).filter((fn: any) => typeof fn === 'function');
+    const results = (await target.emitter.emit(hookName, event.payload)).filter((fn: any) => typeof fn === 'function');
     for (const result of results) {
       yield* await processEvent(result());
     }

@@ -1,5 +1,5 @@
 import { createSubject } from '../../lib';
-import { createStreamOperator, hooks, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOperator => {
   const operator = (input: Stream) => {
@@ -28,7 +28,7 @@ export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOp
     });
 
     // Ensure the new stream cleans up the subscription when it completes
-    output[hooks].finalize.once(() => {
+    output.emitter.once('finalize', () => {
       subscription.unsubscribe();
     });
 
