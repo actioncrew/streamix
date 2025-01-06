@@ -1,8 +1,6 @@
-import { eventBus, flags, hooks, internals } from '../abstractions';
-import { Subscribable, Emission, createOperator, Operator } from '../abstractions';
-import { catchAny, Counter, counter } from '../utils';
+import { createOperator, Emission, eventBus, flags, internals, Operator, Subscribable, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
-import { Subscription } from '../abstractions';
+import { catchAny, Counter, counter } from '../utils';
 
 export const concatMap = (project: (value: any) => Subscribable): Operator => {
   let currentInnerStream: Subscribable | null = null;
@@ -23,8 +21,8 @@ export const concatMap = (project: (value: any) => Subscribable): Operator => {
       return;
     }
 
-    input[hooks].finalize.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].finalize.once(finalize);
+    input.emitter.once('finalize', () => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output.emitter.once('finalize', finalize);
   };
 
   const handle = (emission: Emission) => {

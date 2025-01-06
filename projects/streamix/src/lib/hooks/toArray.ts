@@ -1,4 +1,4 @@
-import { BusEvent, createEmission, createOperator, Emission, hooks, Operator, Stream } from '../abstractions';
+import { BusEvent, createEmission, createOperator, Emission, Operator, Stream } from '../abstractions';
 
 export const toArray = (): Operator => {
   let boundStream: Stream;
@@ -6,7 +6,7 @@ export const toArray = (): Operator => {
 
   const init = function (this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream[hooks].onComplete.once(() => callback(this)); // Trigger the callback when the stream completes
+    boundStream.emitter.once('complete', () => callback(this)); // Trigger the callback when the stream completes
   };
 
   const callback = (instance: Operator): (() => BusEvent) | void => {

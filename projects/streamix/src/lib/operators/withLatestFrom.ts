@@ -1,4 +1,4 @@
-import { createEmission, createOperator, Emission, eventBus, hooks, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createOperator, Emission, eventBus, internals, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 import { asyncValue } from '../utils';
 import { flags } from './../abstractions/subscribable';
 
@@ -29,7 +29,7 @@ export const withLatestFrom = (...streams: Subscribable[]): Operator => {
     };
 
     // Cleanup on stream termination
-    stream[hooks].finalize.once(finalize);
+    stream.emitter.once('finalize', finalize);
   };
 
   // Cleanup all subscriptions

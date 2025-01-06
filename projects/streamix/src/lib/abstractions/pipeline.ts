@@ -1,8 +1,8 @@
 import { createEmission, Operator, Receiver, Stream } from '../abstractions';
 import { createSubject } from '../streams';
-import { hook } from '../utils';
+import { createEventEmitter } from '../utils';
 import { eventBus } from './bus';
-import { flags, hooks, internals, Subscribable, SubscribableInternals } from './subscribable';
+import { flags, internals, Subscribable, SubscribableInternals } from './subscribable';
 import { Subscription } from './subscription';
 
 // This represents the internal structure of a pipeline
@@ -21,9 +21,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
   let operators: Operator[] = [];
   let currentValue: T | undefined;
 
-  const onError = hook();
+  const emitter = createEventEmitter();
 
-  const onErrorCallback = (params: any) => onError.parallel(params);
+  const onErrorCallback = (params: any) => emitter.emit('error', params);
 
   if (subscribable.type === 'stream' || subscribable.type === 'subject') {
     const chunk = subscribable as unknown as Stream<T>;
@@ -40,7 +40,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
   const chain = function (...ops: Operator[]): Pipeline<T> {
 
-    chunks.forEach((c) => c[hooks].onError.remove(pipeline, onErrorCallback));
+    chunks.forEach((c) => c.emitter.off('error', onErrorCallback));
 
     let chunk: Stream<T>;
 
@@ -60,7 +60,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
           }
         });
 
-        lastChunk[hooks].finalize.once(() => {
+        lastChunk.emitter.once('finalize', () => {
           if (!sourceSubject[internals].shouldComplete()) {
             sourceSubject[flags].isAutoComplete = true;
           }
@@ -97,7 +97,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     chunk[internals].chain(...chunkOperators);
 
     // Re-bind hooks across chunks
-    chunks.forEach((c) => c[hooks].onError.chain(pipeline, onErrorCallback));
+    chunks.forEach((c) => c.emitter.on('error', onErrorCallback));
 
     return pipeline;  // Return `this` to allow chaining
   };
@@ -158,7 +158,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
 
       // Otherwise, create a promise that resolves when `onStop` fires
       return new Promise<void>((resolve) => {
-        chunk[hooks].finalize.once(resolve);
+        chunk.emitter.once('finalize', resolve);
       });
     });
 
@@ -175,6 +175,7 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
     chunks,
     operators,
     emissionCounter: getLastChunk().emissionCounter,
+    emitter,
     pipe,
     complete,
     subscribe,
@@ -214,85 +215,9 @@ export function createPipeline<T = any>(subscribable: Subscribable<T>): Pipeline
       set isRunning(value: boolean) {
         getLastChunk()[flags].isRunning = value;
       }
-    },
-
-    [hooks]: {
-      get onStart() {
-        return getFirstChunk()[hooks].onStart;
-      },
-      get onComplete() {
-        return getLastChunk()[hooks].onComplete;
-      },
-      get finalize() {
-        return getLastChunk()[hooks].finalize;
-      },
-      get onError() {
-        return onError;
-      },
-      get onEmission() {
-        return getLastChunk()[hooks].subscribers;
-      },
-      get subscribers() {
-        return getLastChunk()[hooks].subscribers;
-      }
     }
   };
 
-  chunks.forEach((c) => c[hooks].onError.chain(pipeline, onErrorCallback));
-  return pipeline;
-};
-
-export function multicast<T = any>(source: Subscribable<T>, bufferSize: number = Infinity): Subscribable<T> {
-  const subject = createSubject<T>();
-  const cache: T[] = [];
-
-  const subscription = source.subscribe({
-    next: (value) => {
-      // Cache each new emission, respecting the buffer size
-      cache.push(value);
-      if (!isNaN(bufferSize) && cache.length > bufferSize) {
-        cache.shift(); // Keep the cache within the buffer limit
-      }
-      subject.next(value); // Emit to active subscribers
-    }, complete: () => {
-      subject.complete();
-      subscription.unsubscribe();
-    }
-  });
-
-  const pipeline = createPipeline<T>(subject);
-
-  const originalSubscribe = pipeline.subscribe.bind(pipeline);
-
-  // Override the subscribe method to handle cache replay and subscription counting
-  pipeline.subscribe = (observer: (value: T) => void): Subscription => {
-    // Replay cached values to the new subscriber
-    const replayCache = async () => {
-      for (const value of cache) {
-        await observer(value);
-      }
-    };
-
-    // Trigger replay of cached values for new subscriber
-    replayCache();
-
-    // Original subscription for the new observer
-    const originalSubscription = originalSubscribe(observer);
-
-    // Create a custom unsubscribe logic
-    const customSubscription: Subscription = () => cache.length ? cache[cache.length - 1] : undefined;
-    customSubscription.subscribed = performance.now();
-    customSubscription.unsubscribed = undefined;
-
-    customSubscription.unsubscribe = async () => {
-      if (!customSubscription.unsubscribed) {
-        customSubscription.unsubscribed = performance.now();
-        originalSubscription.unsubscribe();
-      }
-    };
-
-    return customSubscription;
-  };
-
+  chunks.forEach((c) => c.emitter.on('error', onErrorCallback));
   return pipeline;
 };

@@ -1,5 +1,4 @@
-import { createOperator, Operator, Emission, BusEvent, createEmission, Stream } from '../abstractions';
-import { hooks } from '../abstractions';
+import { BusEvent, createEmission, createOperator, Emission, Operator, Stream } from '../abstractions';
 
 export const groupBy = <T = any>(keyFn: (value: T) => string | number): Operator => {
   const partitions = new Map<string | number, T[]>(); // Track partitioned values
@@ -7,7 +6,7 @@ export const groupBy = <T = any>(keyFn: (value: T) => string | number): Operator
 
   const init = function (this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream[hooks].onComplete.once(() => callback(this)); // Register the callback on stream completion
+    boundStream.emitter.once('complete', () => callback(this)); // Register the callback on stream completion
   };
 
   const callback = (instance: Operator): (() => BusEvent) | void => {

@@ -1,4 +1,4 @@
-import { createOperator, Emission, flags, hooks, Operator, Stream, Subscribable, Subscription } from '../abstractions';
+import { createOperator, Emission, flags, Operator, Stream, Subscribable, Subscription } from '../abstractions';
 
 export const takeUntil = (notifier: Subscribable): Operator => {
   let stopRequested = false;
@@ -25,7 +25,7 @@ export const takeUntil = (notifier: Subscribable): Operator => {
     };
 
     // Clean up the notifier subscription on stream stop
-    stream[hooks].finalize.once(async () => {
+    stream.emitter.once('finalize', async () => {
       await subscription?.unsubscribe();
       subscription = null;
     });

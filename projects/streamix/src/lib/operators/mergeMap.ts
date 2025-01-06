@@ -1,7 +1,6 @@
-import { createSubject, EMPTY } from '../streams';
-import { Emission, createOperator, Operator, Subscribable, Subscription, hooks, flags } from '../abstractions';
+import { Emission, Operator, Subscribable, Subscription, createOperator, eventBus, flags } from '../abstractions';
+import { EMPTY, createSubject } from '../streams';
 import { Counter, catchAny, counter } from '../utils';
-import { eventBus } from '../abstractions';
 
 export const mergeMap = (project: (value: any) => Subscribable): Operator => {
   const output = createSubject();
@@ -24,8 +23,8 @@ export const mergeMap = (project: (value: any) => Subscribable): Operator => {
     }
 
     // Finalize when the input or output stream stops
-    input[hooks].finalize.once(() => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output[hooks].finalize.once(finalize);
+    input.emitter.once('finalize', () => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
+    output.emitter.once('finalize', finalize);
   };
 
   const handle = (emission: Emission): Emission => {

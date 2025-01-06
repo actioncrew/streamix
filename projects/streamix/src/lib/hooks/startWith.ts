@@ -1,11 +1,11 @@
-import { BusEvent, createEmission, createOperator, Emission, hooks, Operator, Stream } from '../abstractions';
+import { BusEvent, createEmission, createOperator, Emission, Operator, Stream } from '../abstractions';
 
 export const startWith = (value: any): Operator => {
   let boundStream: Stream;
 
   const init = function(this: Operator, stream: Stream) {
     boundStream = stream;
-    boundStream[hooks].onStart.chain((params: any) => callback(this, params)); // Trigger the callback when the stream starts
+    boundStream.emitter.once('start', (params: any) => callback(this, params)); // Trigger the callback when the stream starts
   };
 
   const callback = (instance: Operator, _: any): (() => BusEvent) | void => {

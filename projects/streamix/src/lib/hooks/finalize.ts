@@ -1,4 +1,4 @@
-import { createOperator, Emission, hooks, Operator, Stream } from '../abstractions';
+import { createOperator, Emission, Operator, Stream } from '../abstractions';
 
 export const finalize = (callback: () => void | Promise<void>): Operator => {
   let boundStream: Stream;
@@ -6,7 +6,7 @@ export const finalize = (callback: () => void | Promise<void>): Operator => {
   const init = (stream: Stream) => {
     boundStream = stream;
     // Chain the callback to the stream's onStop event
-    boundStream[hooks].finalize.chain(callback);
+    boundStream.emitter.once('finalize', callback);
   };
 
   const handle = (emission: Emission): Emission => {
