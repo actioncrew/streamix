@@ -6,7 +6,7 @@ export const flags = Symbol('Stream');
 export const internals = Symbol('Stream');
 
 export type Stream<T = any> = {
-  type: "stream" | "pipeline" | "subject";
+  type: "stream" | "subject";
   name?: string;
 
   value: T | undefined;
@@ -21,13 +21,13 @@ export type Stream<T = any> = {
   run: () => Promise<void>;
   next: (emission: Emission) => Emission;
   error: (error: any) => void;
-  complete(): Promise<void>;
+  complete: () => Promise<void>;
 
   compose: (...operators: StreamOperator[]) => Stream;
   chain: (...operators: Operator[]) => Stream;
-  pipe(...steps: (Operator | StreamOperator)[]): Stream;
+  pipe: (...steps: (Operator | StreamOperator)[]) => Stream;
 
-  subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
+  subscribe: (callback?: ((value: T) => any) | Receiver) => Subscription;
 
   [flags]: {
     isAutoComplete: boolean;
@@ -38,9 +38,9 @@ export type Stream<T = any> = {
   };
 
   [internals]: {
-    awaitStart(): Promise<void>;
-    shouldComplete(): boolean;
-    awaitCompletion(): Promise<void>;
+    awaitStart: () => Promise<void>;
+    shouldComplete: () => boolean;
+    awaitCompletion: () => Promise<void>;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
   };
 };
