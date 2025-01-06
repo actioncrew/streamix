@@ -112,8 +112,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const emit = async function({ emission, source }: { emission: Emission; source: any }): Promise<any> {
     try {
-      emission.timestamp = performance.now();
-
       let next = isStream(source) ? source[internals].head : undefined;
       next = isOperator(source) ? source.next : next;
 
