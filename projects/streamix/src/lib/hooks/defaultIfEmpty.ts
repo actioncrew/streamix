@@ -19,7 +19,7 @@ export const defaultIfEmpty = (defaultValue: any): Operator => {
 
   const handle = function (this: Operator, emission: Emission): Emission {
     // Mark the emission if it's not a phantom or failed
-    if (!emission.phantom && !emission.failed) {
+    if (!emission.phantom && !emission.error) {
       hasEmitted = true;
     }
     return emission; // Pass the emission forward

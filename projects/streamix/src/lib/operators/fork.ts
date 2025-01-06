@@ -108,7 +108,6 @@ export const fork = <T = any, R = T>(
 
   const handleStreamError = (emission: Emission, error: any) => {
     eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
-    emission.failed = true;
     emission.error = error;
     finalize();
   };
