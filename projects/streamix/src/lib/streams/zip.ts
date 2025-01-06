@@ -1,7 +1,7 @@
-import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
 import { counter, Counter } from '../utils';
 
-export function zip(sources: Subscribable[]): Stream<any[]> {
+export function zip(sources: Stream[]): Stream<any[]> {
   const queues = sources.map(() => [] as any[]); // Queues for values from each source
   const subscriptions: Subscription[] = []; // Track subscriptions for cleanup
   let activeSources = sources.length; // Number of active source streams

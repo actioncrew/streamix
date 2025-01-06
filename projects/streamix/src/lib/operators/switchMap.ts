@@ -1,11 +1,11 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
-export const switchMap = (project: (value: any) => Subscribable): StreamOperator => {
+export const switchMap = (project: (value: any) => Stream): StreamOperator => {
   const operator = (input: Stream) => {
     const output = createSubject();
-    let currentInnerStream: Subscribable | null = null;
+    let currentInnerStream: Stream | null = null;
     let currentSubscription: Subscription | undefined;
     const executionCounter: Counter = counter(0);
     let isFinalizing = false;
@@ -91,7 +91,7 @@ export const switchMap = (project: (value: any) => Subscribable): StreamOperator
       currentInnerStream = null;
     };
 
-    const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
+    const stopStreams = (...streams: (Stream | null | undefined)[]) => {
       streams
         .filter((stream) => stream && stream[flags].isRunning)
         .forEach((stream) => {

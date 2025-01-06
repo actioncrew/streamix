@@ -1,9 +1,16 @@
 import { createSubject } from "../../lib";
-import { createEmission, createReceiver, Emission, eventBus, flags, internals, Operator, Receiver, StreamOperator, Subscribable, SubscribableInternals, Subscription } from "../abstractions";
+import { createEmission, createReceiver, Emission, eventBus, Operator, Receiver, StreamOperator, Subscription } from "../abstractions";
 import { awaitable, createEventEmitter, EventEmitter } from "../utils";
 
-export type Stream<T = any> = Subscribable<T> & {
+export const flags = Symbol('Stream');
+export const internals = Symbol('Stream');
+
+export type Stream<T = any> = {
+  type: "stream" | "pipeline" | "subject";
   name?: string;
+
+  value: T | undefined;
+
   emissionCounter: number;
 
   startTimestamp: number | undefined;
@@ -14,14 +21,28 @@ export type Stream<T = any> = Subscribable<T> & {
   run: () => Promise<void>;
   next: (emission: Emission) => Emission;
   error: (error: any) => void;
+  complete(): Promise<void>;
 
   compose: (...operators: StreamOperator[]) => Stream;
   chain: (...operators: Operator[]) => Stream;
-  pipe: (...operators: (Operator | StreamOperator)[]) => Stream;
+  pipe(...steps: (Operator | StreamOperator)[]): Stream;
 
-  [internals]: SubscribableInternals & {
+  subscribe(callback?: ((value: T) => any) | Receiver): Subscription;
+
+  [flags]: {
+    isAutoComplete: boolean;
+    isUnsubscribed: boolean;
+
+    isStopped: boolean;
+    isRunning: boolean;
+  };
+
+  [internals]: {
+    awaitStart(): Promise<void>;
+    shouldComplete(): boolean;
+    awaitCompletion(): Promise<void>;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
-  },
+  };
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {

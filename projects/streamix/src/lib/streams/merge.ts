@@ -1,6 +1,6 @@
-import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
 
-export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
+export function merge<T = any>(...sources: Stream[]): Stream<T> {
   const subscriptions: Subscription[] = [];
 
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {

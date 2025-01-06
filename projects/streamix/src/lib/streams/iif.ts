@@ -1,11 +1,11 @@
-import { createEmission, createStream, flags, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
 
 export function iif<T>(
   condition: () => boolean, // Evaluate condition once at initialization
-  trueStream: Subscribable<T>, // Stream to choose when condition is true
-  falseStream: Subscribable<T> // Stream to choose when condition is false
+  trueStream: Stream<T>, // Stream to choose when condition is true
+  falseStream: Stream<T> // Stream to choose when condition is false
 ): Stream<T> {
-  let selectedStream: Subscribable<T> | undefined;
+  let selectedStream: Stream<T> | undefined;
   let subscription!: Subscription;
 
   // Create and return the stream with the defined run function

@@ -1,12 +1,12 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
 export const fork = <T = any, R = T>(
-  options: Array<{ on: (value: T) => boolean; handler: () => Subscribable<R> }>
+  options: Array<{ on: (value: T) => boolean; handler: () => Stream<R> }>
 ): StreamOperator => {
   const operator = (input: Stream) => {
-    let currentInnerStream: Subscribable | null = null;
+    let currentInnerStream: Stream | null = null;
     let emissionQueue: Emission[] = [];
     let processingChain = Promise.resolve();
     const executionCounter: Counter = counter(0);

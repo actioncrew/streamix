@@ -1,4 +1,4 @@
-import { Emission, Operator, Subscribable, createEmission, createOperator, eventBus } from '../abstractions';
+import { Emission, Operator, Stream, createEmission, createOperator, eventBus } from '../abstractions';
 
 export type Coroutine = Operator & {
   finalize: () => Promise<void>;
@@ -78,7 +78,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
+  const handle = (emission: Emission, stream: Stream): Emission => {
     const data = emission.value; // The data to be processed by the main task
     queueMicrotask(() => processTask(data).then((data) => {
       const child = createEmission({ value: data });
