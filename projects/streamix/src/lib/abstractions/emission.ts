@@ -58,8 +58,8 @@ export function createEmission(emission: { value?: any, phantom?: boolean, pendi
         this.complete = true;
 
         resolveFn(emission.value);
-        this.notifyOnCompletion();
       }
+      this.notifyOnCompletion();
       return completion;
     },
     reject: function (this: Emission & { notifyOnError: () => void; }, reason: any) {
@@ -69,8 +69,8 @@ export function createEmission(emission: { value?: any, phantom?: boolean, pendi
         this.error = reason;
 
         rejectFn(reason);
-        this.notifyOnError();
       }
+      this.notifyOnError();
       return completion;
     },
     wait: () => completion,
