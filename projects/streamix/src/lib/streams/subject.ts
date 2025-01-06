@@ -119,7 +119,7 @@ export function createSubject<T = any>(): Subject<T> {
       currentValue = emission.value;
 
       try {
-        if (emission.failed && receiver.error) {
+        if (emission.error && receiver.error) {
           receiver.error(emission.error); // Call `error` if emission failed
         } else {
           const rootEmissionTimestamp = emission.root().timestamp;

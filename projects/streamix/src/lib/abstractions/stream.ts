@@ -117,7 +117,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       let next = isStream(source) ? source[internals].head : undefined;
       next = isOperator(source) ? source.next : next;
 
-      if (emission.failed) throw emission.error;
+      if (emission.error) throw emission.error;
 
       if (next === undefined && !emission.phantom && !emission.pending) {
         stream.emissionCounter++;
@@ -127,7 +127,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         emission = next?.process(emission, stream) ?? emission;
       }
 
-      if (emission.failed) throw emission.error;
+      if (emission.error) throw emission.error;
 
       if (!emission.phantom && !emission.pending) {
         await emitter.emit('subscribers', { emission, source });
@@ -174,7 +174,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       currentValue = emission.value;
 
       try {
-        if (emission.failed && receiver.error) {
+        if (emission.error && receiver.error) {
           receiver.error(emission.error); // Call `error` if emission failed
         } else {
           const rootEmissionTimestamp = emission.root().timestamp;

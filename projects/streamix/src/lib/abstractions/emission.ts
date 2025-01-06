@@ -1,7 +1,6 @@
 export type Emission = {
   value?: any;                 // The payload
   phantom?: boolean;           // Premature completion
-  failed?: boolean;            // Indicates failure
   pending?: boolean;           // Indicates pending processing
   complete?: boolean;          // Completion state
   finalized?: boolean;         // No further child emissions
@@ -20,7 +19,7 @@ export type Emission = {
 }
 
 // Example function to create an Emission with Promise management
-export function createEmission(emission: { value?: any, phantom?: boolean, failed?: boolean, pending?: boolean, complete?: boolean, error?: any }) {
+export function createEmission(emission: { value?: any, phantom?: boolean, pending?: boolean, complete?: boolean, error?: any }) {
   let resolveFn: (value: any) => void;
   let rejectFn: (reason: any) => void;
   let completion = new Promise<void>((resolve, reject) => {
@@ -30,8 +29,8 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
 
   const processDescendants = function (emission: Emission) {
     const descendants = Array.from(emission.descendants || []);
-    const allResolved = descendants.every(descendant => descendant.complete || descendant.failed || descendant.phantom);
-    const shouldFail = descendants.some(descendant => descendant.failed);
+    const allResolved = descendants.every(descendant => descendant.complete || descendant.error || descendant.phantom);
+    const shouldFail = descendants.some(descendant => descendant.error);
 
     if (allResolved) {
       delete emission.pending;
@@ -72,7 +71,6 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
     reject: (reason: any) => {
       if (rejectFn) {
         delete instance.pending;
-        instance.failed = true;
         instance.error = reason;
 
         if(instance.ancestor) {
