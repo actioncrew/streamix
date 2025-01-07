@@ -74,36 +74,19 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const run = async () => {
     try {
-      // Trigger start hook
-      eventBus.enqueue({ target: stream, type: 'start' });
+      eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
       commencement.resolve();
-
-      const result = runFn.call(stream); // Execute the run function with the stream instance
-
-      if (result && typeof result.then === 'function') {
-        await result;
-      }
-    } catch (error: any) {
-      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
+      await runFn.call(stream); // Pass the stream instance to the run function
+      } catch (error) {
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      await complete();
+      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
+      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
+
+      await emitter.waitForCompletion('finalize');
+      running = false; stopped = true;
+      stream.stopTimestamp = performance.now();
     }
-  };
-
-  const complete = async (): Promise<void> => {
-    // Trigger complete hook
-    eventBus.enqueue({ target: stream, type: 'complete' });
-
-    // Automatically complete if required
-    if (!stream[internals].shouldComplete()) {
-      stream[flags].isAutoComplete = true;
-    }
-
-    // Wait for finalization and clean up
-    await emitter.waitForCompletion('finalize');
-    running = false;
-    stopped = true;
-    stream.stopTimestamp = performance.now();
   };
 
   const next = (emission: Emission): Emission => {
@@ -113,6 +96,17 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const error = (error: Error): void => {
     eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
+  };
+
+  const complete = async (): Promise<void> => {
+    if(!running && !stopped && !unsubscribed) {
+      await awaitStart();
+    }
+
+    if(running && !stopped) {
+      stream[flags].isUnsubscribed = true;
+      await emitter.waitForCompletion('finalize');
+    }
   };
 
   const awaitStart = () => commencement.promise();
