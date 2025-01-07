@@ -1,9 +1,9 @@
-import { internals, Subscribable } from '../../lib';
+import { internals, Stream } from '../../lib';
 import { EMPTY } from '../streams';
 
-export function firstValueFrom<T>(stream: Subscribable): Promise<T> {
+export function firstValueFrom<T>(stream: Stream): Promise<T> {
   if(stream === EMPTY || stream[internals].shouldComplete()) {
-    throw new Error("Subscribable has not emitted any value.");
+    throw new Error("Stream has not emitted any value.");
   }
 
   return new Promise<any>((resolve, reject) => {
@@ -20,7 +20,7 @@ export function firstValueFrom<T>(stream: Subscribable): Promise<T> {
       complete: () => {
         subscription.unsubscribe(); // Ensure cleanup
         if (!hasEmitted) {
-          reject(new Error("Subscribable has not emitted any value."));
+          reject(new Error("Stream has not emitted any value."));
         }
       },
       error: (err) => {

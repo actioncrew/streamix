@@ -1,7 +1,7 @@
-import { createEmission, createStream, flags, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
 
-export function defer<T = any>(factory: () => Subscribable<T>): Stream<T> {
-  let innerStream: Subscribable<T> | undefined;
+export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
+  let innerStream: Stream<T> | undefined;
   let subscription!: Subscription | undefined;
   // Define the run method
   // Create and return the stream with the defined run function

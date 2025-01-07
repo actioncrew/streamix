@@ -1,7 +1,7 @@
-import { createStreamOperator, hooks, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 
-export const takeUntil = (notifier: Subscribable): StreamOperator => {
+export const takeUntil = (notifier: Stream): StreamOperator => {
   const operator = (input: Stream) => {
     const output = createSubject(); // The resulting stream
     let notifierSubscription: Subscription | null = null;
@@ -36,7 +36,7 @@ export const takeUntil = (notifier: Subscribable): StreamOperator => {
     });
 
     // Clean up subscriptions when the output stream finalizes
-    output[hooks].finalize.once(() => {
+    output.emitter.once('finalize', () => {
       finalize();
     });
 

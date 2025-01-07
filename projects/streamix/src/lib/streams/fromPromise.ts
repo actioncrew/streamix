@@ -1,5 +1,4 @@
-import { Stream, createEmission, createStream } from '../abstractions';
-import { internals } from './../abstractions/subscribable';
+import { Stream, createEmission, createStream, internals } from '../abstractions';
 
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {

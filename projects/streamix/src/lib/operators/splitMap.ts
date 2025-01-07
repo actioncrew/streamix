@@ -1,4 +1,4 @@
-import { hooks, Operator, Stream, StreamOperator } from '../abstractions';
+import { Operator, Stream, StreamOperator } from '../abstractions';
 import { createSubject, from } from '../streams';
 import { createStreamOperator } from './../abstractions/operator';
 
@@ -52,7 +52,7 @@ export const splitMap = <T = any, R = T>(
     });
 
     // Clean up all subscriptions when the output stream finalizes
-    output[hooks].finalize.once(() => {
+    output.emitter.once('finalize', () => {
       subscriptions.forEach((sub) => sub.unsubscribe());
       subscription.unsubscribe();
     });

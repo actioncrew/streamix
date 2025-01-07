@@ -1,10 +1,10 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, hooks, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
-export const concatMap = (project: (value: any) => Subscribable): StreamOperator => {
+export const concatMap = (project: (value: any) => Stream): StreamOperator => {
   const operator = (input: Stream) => {
-    let currentInnerStream: Subscribable | null = null;
+    let currentInnerStream: Stream | null = null;
     let emissionQueue: Emission[] = [];
     let processingChain = Promise.resolve();
     const executionCounter: Counter = counter(0);
@@ -35,7 +35,7 @@ export const concatMap = (project: (value: any) => Subscribable): StreamOperator
         },
       });
 
-      output[hooks].finalize.once(finalize);
+      output.emitter.once('finalize', finalize);
     };
 
     const handle = (emission: Emission) => {

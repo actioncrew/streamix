@@ -1,5 +1,5 @@
 import { createSubject } from '../../lib';
-import { createStreamOperator, hooks, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator, Subscription } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
@@ -38,7 +38,7 @@ export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
     subscriptions.push(sourceSubscription);
 
     // Clean up all subscriptions when the output stream is finalized
-    output[hooks].finalize.once(() => {
+    output.emitter.once('finalize', () => {
       subscriptions.forEach((sub) => sub.unsubscribe());
     });
 

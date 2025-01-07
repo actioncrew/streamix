@@ -1,6 +1,6 @@
-import { createEmission, createStream, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream, Subscription } from '../abstractions';
 
-export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
+export function concat<T = any>(...sources: Stream[]): Stream<T> {
   let activeSubscription: Subscription | undefined;
 
   const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
@@ -9,7 +9,7 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
     }
   });
 
-  const processSource = async (stream: Stream<T>, source: Subscribable): Promise<void> => {
+  const processSource = async (stream: Stream<T>, source: Stream): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
       activeSubscription = source.subscribe({
         next: (value) => emitValue(stream, value),

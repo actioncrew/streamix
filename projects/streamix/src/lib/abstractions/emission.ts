@@ -1,7 +1,6 @@
-export type Emission<T = any> = {
-  value?: T;                 // The payload
+export type Emission = {
+  value?: any;                 // The payload
   phantom?: boolean;           // Premature completion
-  failed?: boolean;            // Indicates failure
   pending?: boolean;           // Indicates pending processing
   complete?: boolean;          // Completion state
   finalized?: boolean;         // No further child emissions
@@ -14,13 +13,11 @@ export type Emission<T = any> = {
   wait: () => Promise<void>;
   link: (child: Emission) => void;
   finalize(): void;
-  notifyOnCompletion(child: Emission): void;
-  notifyOnError(child: Emission, error: any): void;
   root(): Emission;
 }
 
 // Example function to create an Emission with Promise management
-export function createEmission(emission: { value?: any, phantom?: boolean, failed?: boolean, pending?: boolean, complete?: boolean, error?: any }) {
+export function createEmission(emission: { value?: any, phantom?: boolean, pending?: boolean, complete?: boolean, error?: any }) {
   let resolveFn: (value: any) => void;
   let rejectFn: (reason: any) => void;
   let completion = new Promise<void>((resolve, reject) => {
@@ -30,8 +27,8 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
 
   const processDescendants = function (emission: Emission) {
     const descendants = Array.from(emission.descendants || []);
-    const allResolved = descendants.every(descendant => descendant.complete || descendant.failed || descendant.phantom);
-    const shouldFail = descendants.some(descendant => descendant.failed);
+    const allResolved = descendants.every(descendant => descendant.complete || descendant.error || descendant.phantom);
+    const shouldFail = descendants.some(descendant => descendant.error);
 
     if (allResolved) {
       delete emission.pending;
@@ -41,7 +38,6 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
     if (shouldFail) {
       const error = new Error("One or more child emissions failed");
       emission.reject(error);
-      emission.ancestor?.notifyOnError(emission, error);
     } else if (allResolved) {
       emission.resolve();
     }
@@ -56,31 +52,23 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
       }
       return current;
     },
-    resolve: () => {
+    resolve: function (this: Emission & { notifyOnCompletion: () => void; }) {
       if (resolveFn) {
-        delete instance.pending;
-        instance.complete = true;
-
         resolveFn(emission.value);
-
-        if(instance.ancestor) {
-          instance.ancestor.notifyOnCompletion(instance);
-        }
       }
+      delete this.pending;
+      this.complete = true;
+      this.notifyOnCompletion();
       return completion;
     },
-    reject: (reason: any) => {
+    reject: function (this: Emission & { notifyOnError: () => void; }, reason: any) {
       if (rejectFn) {
-        delete instance.pending;
-        instance.failed = true;
-        instance.error = reason;
-
-        if(instance.ancestor) {
-          instance.ancestor.notifyOnError(instance, reason);
-        }
-
         rejectFn(reason);
       }
+      delete this.pending;
+      this.complete = true;
+      this.error = reason;
+      this.notifyOnError();
       return completion;
     },
     wait: () => completion,
@@ -94,13 +82,13 @@ export function createEmission(emission: { value?: any, phantom?: boolean, faile
       processDescendants(instance);
     },
     notifyOnCompletion: (): void => {
-      if(instance.finalized) {
-        processDescendants(instance);
+      if(instance.ancestor?.finalized) {
+        processDescendants(instance.ancestor);
       }
     },
     notifyOnError: (): void => {
-      if(instance.finalized) {
-        processDescendants(instance);
+      if(instance.ancestor?.finalized) {
+        processDescendants(instance.ancestor);
       }
     }
   });

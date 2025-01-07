@@ -1,8 +1,8 @@
-import { createStreamOperator, hooks, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const finalize = (callback: () => void | Promise<void>): StreamOperator => {
   const operator = (stream: Stream): Stream => {
-    stream[hooks].finalize.chain(callback);
+    stream.emitter.once('finalize', callback);
     return stream;
   };
 

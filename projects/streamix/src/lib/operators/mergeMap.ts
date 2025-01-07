@@ -1,11 +1,11 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, hooks, internals, Stream, StreamOperator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
-export const mergeMap = (project: (value: any) => Subscribable): StreamOperator => {
+export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
   const operator = (input: Stream) => {
     const output = createSubject();
-    let activeInnerStreams: Subscribable[] = [];
+    let activeInnerStreams: Stream[] = [];
     const subscriptions: Subscription[] = [];
     const processingPromises: Promise<void>[] = [];
     const executionCounter: Counter = counter(0);
@@ -35,7 +35,7 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
         },
       });
 
-      output[hooks].finalize.once(finalize);
+      output.emitter.once('finalize', finalize);
       subscriptions.push(subscription);
     };
 
@@ -77,7 +77,7 @@ export const mergeMap = (project: (value: any) => Subscribable): StreamOperator 
       processingPromises.push(processingPromise);
     };
 
-    const finalizeInnerStream = (innerStream: Subscribable) => {
+    const finalizeInnerStream = (innerStream: Stream) => {
       const index = activeInnerStreams.indexOf(innerStream);
       if (index !== -1) {
         subscriptions[index].unsubscribe();

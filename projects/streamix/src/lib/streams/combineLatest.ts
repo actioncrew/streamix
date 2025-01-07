@@ -1,7 +1,7 @@
-import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
 // Ensure catchAny is imported from the correct location
 
-export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> {
+export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined })); // Track the latest value from each source
   const subscriptions: Subscription[] = []; // List of source subscriptions
 

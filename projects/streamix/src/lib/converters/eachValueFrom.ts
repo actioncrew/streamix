@@ -1,6 +1,6 @@
-import { Subscribable } from "../abstractions";
+import { Stream } from "../abstractions";
 
-export async function* eachValueFrom<T>(stream: Subscribable<T>): AsyncGenerator<T> {
+export async function* eachValueFrom<T>(stream: Stream<T>): AsyncGenerator<T> {
   let isCompleted = false;
 
   // Create an observable iterator
