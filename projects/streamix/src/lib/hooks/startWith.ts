@@ -1,19 +1,13 @@
 import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
-import { createSubject } from '../streams';
+import { createBehaviorSubject } from '../streams';
 
 export const startWith = (value: any): StreamOperator => {
   const operator = (input: Stream): Stream => {
-    const output = createSubject<any>(); // Create the output stream
-    let isStarted = false;
+    const output = createBehaviorSubject<any>(value); // Create the output stream
 
     // Subscribe to the original stream
     input.subscribe({
       next: (emission) => {
-        if (!isStarted) {
-          isStarted = true; // Flag to mark the start after the first value is emitted
-          // Emit the value at the start of the stream
-          output.next(value);
-        }
         output.next(emission);
       },
       complete: () => {

@@ -146,7 +146,7 @@ export function createSubject<T = any>(): Subject<T> {
         };
 
         if (!stream[flags].isStopped) {
-          stream.complete().then(() => stream.emitter.waitForCompletion('finalize')).then(cleanup);
+          stream.complete().then(cleanup);
         } else {
           cleanup();
         }
@@ -169,8 +169,8 @@ export function createSubject<T = any>(): Subject<T> {
 
   stream[flags].isRunning = true;
   stream.startTimestamp = performance.now();
-  if (commencement.state() === 'pending') { commencement.resolve(); }
   eventBus.enqueue({ target: stream, type: 'start' });
+  if (commencement.state() === 'pending') { commencement.resolve(); }
 
   stream.name = "subject";
   stream.type = "subject";
