@@ -24,7 +24,7 @@ export function observeMutation(
   element: Element,
   options?: MutationObserverInit
 ): Stream<MutationRecord[]> {
-  const stream = createStream<MutationRecord[]>(async function (this: Stream<MutationRecord[]>) {
+  const stream = createStream<MutationRecord[]>('observeMutation', async function (this: Stream<MutationRecord[]>) {
     const observer = new MutationObserver((mutationsList) => {
       if (mutationsList.length) {
         const emission = createEmission({ value: mutationsList });
@@ -38,6 +38,5 @@ export function observeMutation(
     observer.disconnect();
   });
 
-  stream.name = 'observeMutation';
   return stream;
 }

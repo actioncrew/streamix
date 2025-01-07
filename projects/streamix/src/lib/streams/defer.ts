@@ -5,7 +5,7 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
   let subscription!: Subscription | undefined;
   // Define the run method
   // Create and return the stream with the defined run function
-  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('defer', async function(this: Stream<T>): Promise<void> {
     try {
       // Create a new inner stream from the factory
       innerStream = factory();
@@ -50,6 +50,5 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
     return originalComplete();
   };
 
-  stream.name = "defer";
   return stream;
 }

@@ -3,7 +3,7 @@ import { Stream, createEmission, createStream, internals } from '../abstractions
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
   // Create a custom run function for the FromPromiseStream
-  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('fromPromise', async function(this: Stream<T>): Promise<void> {
     let resolvedValue: Awaited<T> | void; // Renamed to avoid conflict
 
     try {
@@ -22,7 +22,5 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
     }
   });
 
-
-  stream.name = "fromPromise";
   return stream;
 }

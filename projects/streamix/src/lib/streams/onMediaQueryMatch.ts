@@ -20,7 +20,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  * });
  */
 export function onMediaQueryMatch(mediaQueryString: string): Stream<boolean> {
-  const stream = createStream<boolean>(async function (this: Stream<boolean>) {
+  const stream = createStream<boolean>('fromMediaQuery', async function (this: Stream<boolean>) {
     if (!window.matchMedia) {
       console.warn('matchMedia is not supported in this environment');
       return;
@@ -43,6 +43,5 @@ export function onMediaQueryMatch(mediaQueryString: string): Stream<boolean> {
     mediaQueryList.removeEventListener('change', listener);
   });
 
-  stream.name = 'fromMediaQuery';
   return stream;
 }

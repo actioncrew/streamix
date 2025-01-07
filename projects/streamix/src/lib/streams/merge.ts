@@ -3,7 +3,7 @@ import { createEmission, createStream, internals, Stream, Subscription } from '.
 export function merge<T = any>(...sources: Stream[]): Stream<T> {
   const subscriptions: Subscription[] = [];
 
-  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('merge', async function(this: Stream<T>): Promise<void> {
     const sourcePromises = sources.map((source) => {
       return new Promise<void>((resolve, reject) => {
         const subscription = source.subscribe({
@@ -39,6 +39,5 @@ export function merge<T = any>(...sources: Stream[]): Stream<T> {
     subscriptions.length = 0;
   };
 
-  stream.name = "merge";
   return stream;
 }

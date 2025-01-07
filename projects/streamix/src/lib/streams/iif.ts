@@ -9,7 +9,7 @@ export function iif<T>(
   let subscription!: Subscription;
 
   // Create and return the stream with the defined run function
-  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('iif', async function(this: Stream<T>): Promise<void> {
     // Choose the appropriate stream based on the condition
     selectedStream = condition() ? trueStream : falseStream;
 
@@ -32,6 +32,5 @@ export function iif<T>(
     }
   };
 
-  stream.name = "iif";
   return stream;
 }

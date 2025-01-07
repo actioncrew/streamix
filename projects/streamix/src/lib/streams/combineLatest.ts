@@ -5,7 +5,7 @@ export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined })); // Track the latest value from each source
   const subscriptions: Subscription[] = []; // List of source subscriptions
 
-  const stream = createStream<T[]>(async function (this: Stream<T[]>): Promise<void> {
+  const stream = createStream<T[]>('combineLatest', async function (this: Stream<T[]>): Promise<void> {
     sources.forEach((source, index) => {
       const subscription = source.subscribe({
         next: (value: T) => {
@@ -45,6 +45,5 @@ export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
     return originalComplete();
   };
 
-  stream.name = 'combineLatest';
   return stream;
 }

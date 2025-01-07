@@ -23,7 +23,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
 export function observeResize(
   element: Element
 ): Stream<{ width: number; height: number }> {
-  const stream = createStream<{ width: number; height: number }>(async function (this: Stream<{ width: number; height: number }>) {
+  const stream = createStream<{ width: number; height: number }>('observeResize', async function (this: Stream<{ width: number; height: number }>) {
     let resizeObserver: ResizeObserver;
 
     const callback = (entries: ResizeObserverEntry[]) => {

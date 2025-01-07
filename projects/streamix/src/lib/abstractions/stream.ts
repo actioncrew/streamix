@@ -52,7 +52,7 @@ export function isStream<T>(obj: any): obj is Stream<T> {
   );
 }
 
-export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => Promise<void>): Stream<T> {
+export function createStream<T = any>(name: string, runFn: (this: Stream<T>, params?: any) => Promise<void>): Stream<T> {
 
   const completion = awaitable<void>();
 
@@ -92,7 +92,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    if(emitter.getCallbackNumber('subscribers') === 1) {
+    if(emitter.getCallbackCount('subscribers') === 1) {
       stream[flags].isUnsubscribed = true;
     }
 
@@ -308,6 +308,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
   const stream = {
     type: "stream" as "stream",
+    name,
     subscribe,
     pipe,
     chain,

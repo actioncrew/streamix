@@ -3,7 +3,7 @@ import { createEmission, createStream, Stream, Subscription } from '../abstracti
 export function concat<T = any>(...sources: Stream[]): Stream<T> {
   let activeSubscription: Subscription | undefined;
 
-  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('concat', async function(this: Stream<T>): Promise<void> {
     for (const source of sources) {
       await processSource(this, source);
     }
@@ -33,6 +33,5 @@ export function concat<T = any>(...sources: Stream[]): Stream<T> {
     stream.error(error);
   };
 
-  stream.name = "concat";
   return stream;
 }

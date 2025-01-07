@@ -8,7 +8,7 @@ export type Subject<T = any> = Stream<T> & {
 // Create the functional version of the Subject
 export function createSubject<T = any>(): Subject<T> {
 
-  const stream = createStream<T>(async () => Promise.resolve()) as Subject;
+  const stream = createStream<T>('subject', async () => Promise.resolve()) as Subject;
   let currentValue: T | undefined;
 
   let autoComplete = false;
@@ -166,7 +166,6 @@ export function createSubject<T = any>(): Subject<T> {
   stream.startTimestamp = performance.now();
   eventBus.enqueue({ target: stream, type: 'start' });
 
-  stream.name = "subject";
-  stream.type = "subject";
+  stream.type = 'subject';
   return stream;
 }

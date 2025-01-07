@@ -7,7 +7,7 @@ export function zip(sources: Stream[]): Stream<any[]> {
   let activeSources = sources.length; // Number of active source streams
   let emittedValues: Counter = counter(0);
 
-  const stream = createStream<any[]>(async function (this: Stream<any[]>): Promise<void> {
+  const stream = createStream<any[]>('zip', async function (this: Stream<any[]>): Promise<void> {
     sources.forEach((source, index) => {
       const subscription = source.subscribe({
         next: (value) => {
@@ -49,6 +49,5 @@ export function zip(sources: Stream[]): Stream<any[]> {
     return originalComplete();
   };
 
-  stream.name = 'zip';
   return stream;
 }

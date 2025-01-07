@@ -4,7 +4,7 @@ import { catchAny } from '../utils';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
-  const stream = createStream<any>(async function(this: Stream<any>): Promise<void> {
+  const stream = createStream<any>('compute', async function(this: Stream<any>): Promise<void> {
     let promise = new Promise<void>(async (resolve, reject) => {
 
       const worker = await task.getIdleWorker();
@@ -38,6 +38,5 @@ export function compute(task: Coroutine, params: any): Stream<any> {
     return promise;
   });
 
-  stream.name = "compute";
   return stream;
 }

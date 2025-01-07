@@ -2,7 +2,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
 
 export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> {
   // Create the stream with a custom run function
-  const stream = createStream<T>(async function(this: Stream<T>) {
+  const stream = createStream<T>('from', async function(this: Stream<T>) {
     // Determine if the input is async or sync
     const isAsync = Symbol.asyncIterator in Object(input);
     const iterator = isAsync ? (input as AsyncIterable<T>)[Symbol.asyncIterator]() : (input as Iterable<T>)[Symbol.iterator]();
@@ -29,6 +29,5 @@ export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> 
     }
   });
 
-  stream.name = "from";
   return stream;
 }

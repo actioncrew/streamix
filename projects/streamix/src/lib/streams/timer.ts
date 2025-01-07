@@ -6,7 +6,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   let intervalId: any;
   const actualIntervalMs = intervalMs ?? delayMs;
 
-  const stream = createStream<number>(async function(this: Stream<number>): Promise<void> {
+  const stream = createStream<number>('timer', async function(this: Stream<number>): Promise<void> {
     try {
       if (delayMs === 0) {
         if (this[internals].shouldComplete()) return;
@@ -75,6 +75,5 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
     return originalComplete();
   };
 
-  stream.name = "timer";
   return stream;
 }

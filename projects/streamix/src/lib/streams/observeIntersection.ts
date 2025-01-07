@@ -27,7 +27,7 @@ export function observeIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  const stream = createStream<boolean>(async function (this: Stream<boolean>) {
+  const stream = createStream<boolean>('observeIntersection', async function (this: Stream<boolean>) {
     let observer: IntersectionObserver;
 
     // Define the callback for IntersectionObserver
@@ -49,6 +49,5 @@ export function observeIntersection(
     observer.disconnect();
   });
 
-  stream.name = 'observeIntersection';
   return stream;
 }
