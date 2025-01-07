@@ -90,20 +90,20 @@ describe('ConcatMapOperator', () => {
 
 // Inner Stream Implementations (Replace with your actual implementations)
 export function myInnerStream(value: any): Stream {
-  return createStream(async function (this: Stream) {
+  return createStream('myInnerStream', async function (this: Stream) {
     await new Promise((resolve) => setTimeout(resolve, 10)); // Simulated delay
     eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: 'innerValue' + value }), source: this }, type: 'emission' });
   });
 }
 
 export function myRealStream(): Stream {
-  return createStream(async function (this: Stream) {
+  return createStream('myRealStream', async function (this: Stream) {
     eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: 'streamValue1' }), source: this }, type: 'emission' });
   });
 }
 
 export function errorInnerStream(): Stream {
-  return createStream(async function (this: Stream) {
+  return createStream('errorInnerStream', async function (this: Stream) {
     throw new Error('Inner Stream Error');
   });
 }
