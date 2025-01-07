@@ -77,12 +77,8 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
       } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
     } finally {
-      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
       !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
-
-      await emitter.waitForCompletion('finalize');
-      running = false; stopped = true;
-      stream.stopTimestamp = performance.now();
+      eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
     }
   };
 
@@ -96,10 +92,17 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    if(running && !stopped) {
+    if(emitter.getCallbackNumber('subscribers') === 1) {
       stream[flags].isUnsubscribed = true;
-      await emitter.waitForCompletion('finalize');
     }
+
+    return Promise.resolve().then(async () => {
+      if(running && !stopped) {
+        await emitter.waitForCompletion('finalize');
+        running = false; stopped = true;
+        stream.stopTimestamp = performance.now();
+      }
+    })
   };
 
   const awaitCompletion = () => completion.promise();
@@ -292,9 +295,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         };
 
         if (!stopped) {
-          if(emitter.getCallbackNumber('subscribers') === 1) {
-            stream[flags].isUnsubscribed = true;
-          }
           stream.complete().then(cleanup);
         }
       }
