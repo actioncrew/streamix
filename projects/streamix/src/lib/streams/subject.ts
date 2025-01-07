@@ -17,7 +17,7 @@ export function createSubject<T = any>(): Subject<T> {
   const commencement = awaitable<void>();
   const completion = awaitable<void>();
 
-  stream.run = () => Promise.resolve();
+  stream.run = () => stream[internals].awaitCompletion();
 
   stream[internals].awaitStart = () => commencement.promise();
   stream[internals].awaitCompletion = () => completion.promise();
