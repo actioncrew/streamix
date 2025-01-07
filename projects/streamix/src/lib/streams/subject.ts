@@ -14,12 +14,10 @@ export function createSubject<T = any>(): Subject<T> {
   let autoComplete = false;
   let unsubscribed = false;
 
-  const commencement = awaitable<void>();
   const completion = awaitable<void>();
 
   stream.run = () => stream[internals].awaitCompletion();
 
-  stream[internals].awaitStart = () => commencement.promise();
   stream[internals].awaitCompletion = () => completion.promise();
   stream[internals].shouldComplete = () => unsubscribed;
 
@@ -153,9 +151,6 @@ export function createSubject<T = any>(): Subject<T> {
       }
     };
 
-    subscription.started = commencement.promise() as unknown as Promise<void>;
-    subscription.completed = completion.promise() as unknown as Promise<void>;
-
     // Add the bound callback to the subscribers
     stream.emitter.on('subscribers', boundCallback);
 
@@ -170,7 +165,6 @@ export function createSubject<T = any>(): Subject<T> {
   stream[flags].isRunning = true;
   stream.startTimestamp = performance.now();
   eventBus.enqueue({ target: stream, type: 'start' });
-  if (commencement.state() === 'pending') { commencement.resolve(); }
 
   stream.name = "subject";
   stream.type = "subject";

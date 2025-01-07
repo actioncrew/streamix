@@ -38,7 +38,6 @@ export type Stream<T = any> = {
   };
 
   [internals]: {
-    awaitStart: () => Promise<void>;
     shouldComplete: () => boolean;
     awaitCompletion: () => Promise<void>;
     emit: (args: { emission: Emission; source: any }) => Promise<any>;
@@ -306,9 +305,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
         }
       }
     };
-
-    subscription.started = commencement.promise() as unknown as Promise<void>;
-    subscription.completed = completion.promise() as unknown as Promise<void>;
 
     // Add the bound callback to the subscribers
     emitter.on('subscribers', boundCallback);

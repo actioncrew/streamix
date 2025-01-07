@@ -21,7 +21,7 @@ export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
         },
         complete: () => {
           // Complete the main stream only after all sources are complete
-          const allSourcesCompleted = subscriptions.every((sub) => sub.completed);
+          const allSourcesCompleted = sources.every((source) => source[internals].shouldComplete());
           if (allSourcesCompleted) {
             stream.complete();
           }
