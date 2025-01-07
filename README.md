@@ -22,7 +22,6 @@ Streamix offers a simple, effective way to handle asynchronous data streams with
 - Stream: A sequence of values that can be observed. Streams can emit values either synchronously or asynchronously.
 - Emission: The individual values emitted by a stream, along with metadata like whether the emission was canceled or if it encountered an error.
 - Operator: Functions that transform, filter, or combine streams of data.
-- Pipeline: A pipeline is a series of stream operators chained together to process data.
 - Bus: An event bus to manage and coordinate stream emissions, simplifying complex interactions between multiple streams.
 
 ## Why Streamix?
