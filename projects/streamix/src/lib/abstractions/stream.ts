@@ -54,7 +54,6 @@ export function isStream<T>(obj: any): obj is Stream<T> {
 
 export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => Promise<void>): Stream<T> {
 
-  const commencement = awaitable<void>();
   const completion = awaitable<void>();
 
   let running = false;
@@ -74,7 +73,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   const run = async () => {
     try {
       eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
-      commencement.resolve();
       await runFn.call(stream); // Pass the stream instance to the run function
       } catch (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
@@ -98,17 +96,12 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const complete = async (): Promise<void> => {
-    if(!running && !stopped && !unsubscribed) {
-      await awaitStart();
-    }
-
     if(running && !stopped) {
       stream[flags].isUnsubscribed = true;
       await emitter.waitForCompletion('finalize');
     }
   };
 
-  const awaitStart = () => commencement.promise();
   const awaitCompletion = () => completion.promise();
 
   const chain = function(this: Stream, ...operators: Operator[]): Stream {
@@ -334,7 +327,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     [internals]: {
       emit,
-      awaitStart,
       awaitCompletion,
       shouldComplete,
     },
