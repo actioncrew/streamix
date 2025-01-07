@@ -103,6 +103,7 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
   };
 
   const awaitCompletion = () => completion.promise();
+  const shouldComplete = () => autoComplete || unsubscribed;
 
   const chain = function(this: Stream, ...operators: Operator[]): Stream {
     const output = createSubject();
@@ -304,8 +305,6 @@ export function createStream<T = any>(runFn: (this: Stream<T>, params?: any) => 
 
     return subscription as Subscription;
   };
-
-  const shouldComplete = () => autoComplete || unsubscribed;
 
   const stream = {
     type: "stream" as "stream",
