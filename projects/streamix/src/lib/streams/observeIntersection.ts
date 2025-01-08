@@ -1,6 +1,4 @@
-import { createEmission, internals } from '../abstractions';
-import { createStream, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
 
 /**
  * Creates a Stream using `IntersectionObserver` for observing element visibility changes.
@@ -29,18 +27,14 @@ export function observeIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  const stream = createStream<boolean>(async function (this: Stream<boolean>) {
+  const stream = createStream<boolean>('observeIntersection', async function (this: Stream<boolean>) {
     let observer: IntersectionObserver;
 
     // Define the callback for IntersectionObserver
     const callback = (entries: IntersectionObserverEntry[]) => {
       const isVisible = entries[0]?.isIntersecting ?? false; // Extract visibility status
       const emission = createEmission({ value: isVisible });
-      eventBus.enqueue({
-        target: this,
-        payload: { emission, source: this },
-        type: 'emission',
-      });
+      this.next(emission);
     };
 
     // Initialize the IntersectionObserver
@@ -55,6 +49,5 @@ export function observeIntersection(
     observer.disconnect();
   });
 
-  stream.name = 'observeIntersection';
   return stream;
 }

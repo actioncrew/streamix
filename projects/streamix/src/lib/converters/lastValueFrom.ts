@@ -1,9 +1,9 @@
-import { internals, Subscribable } from '../abstractions';
+import { internals, Stream } from '../abstractions';
 import { EMPTY } from '../streams';
 
-export async function lastValueFrom<T>(stream: Subscribable<T>): Promise<T> {
+export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
   if(stream === EMPTY || stream[internals].shouldComplete()) {
-    throw new Error("Subscribable has not emitted any value.");
+    throw new Error("Stream has not emitted any value.");
   }
 
   return new Promise<T>((resolve, reject) => {
@@ -20,7 +20,7 @@ export async function lastValueFrom<T>(stream: Subscribable<T>): Promise<T> {
       complete: () => {
         subscription.unsubscribe();
         if (!hasEmitted) {
-          reject(new Error("Subscribable has not emitted any value."));
+          reject(new Error("Stream has not emitted any value."));
         }
         resolve(lastValue);
       },

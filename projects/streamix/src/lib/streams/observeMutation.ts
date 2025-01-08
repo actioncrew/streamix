@@ -1,6 +1,4 @@
-import { createEmission, internals } from '../abstractions';
-import { createStream, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
 
 /**
  * Creates a Stream from `MutationObserver` for observing DOM mutations.
@@ -26,15 +24,11 @@ export function observeMutation(
   element: Element,
   options?: MutationObserverInit
 ): Stream<MutationRecord[]> {
-  const stream = createStream<MutationRecord[]>(async function (this: Stream<MutationRecord[]>) {
+  const stream = createStream<MutationRecord[]>('observeMutation', async function (this: Stream<MutationRecord[]>) {
     const observer = new MutationObserver((mutationsList) => {
       if (mutationsList.length) {
         const emission = createEmission({ value: mutationsList });
-        eventBus.enqueue({
-          target: this,
-          payload: { emission, source: this },
-          type: 'emission',
-        });
+        this.next(emission);
       }
     });
 
@@ -44,6 +38,5 @@ export function observeMutation(
     observer.disconnect();
   });
 
-  stream.name = 'observeMutation';
   return stream;
 }

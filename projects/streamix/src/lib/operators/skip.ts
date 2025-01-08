@@ -13,12 +13,5 @@ export const skip = (count: number): Operator => {
     }
   };
 
-  const init = () => {
-    counter = count;
-  };
-
-  const operator = createOperator(handle);
-  operator.name = 'skip';
-  operator.init = init;
-  return operator;
+  return createOperator('skip', handle);
 };

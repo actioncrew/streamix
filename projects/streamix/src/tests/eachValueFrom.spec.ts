@@ -29,14 +29,14 @@ describe('eachValueFrom', () => {
       // Using firstValueFrom
       await firstValueFrom(EMPTY);
     } catch (error: any) {
-      expect(error.message).toBe("Subscribable has not emitted any value.");  // No value should be emitted
+      expect(error.message).toBe("Stream has not emitted any value.");  // No value should be emitted
     }
 
     try {
       // Using firstValueFrom
       await lastValueFrom(EMPTY);
     } catch (error: any) {
-      expect(error.message).toBe("Subscribable has not emitted any value.");  // No value should be emitted
+      expect(error.message).toBe("Stream has not emitted any value.");  // No value should be emitted
     }
 
     // Using eachValueFrom

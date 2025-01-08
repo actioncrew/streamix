@@ -1,5 +1,4 @@
-import { createSubject, from } from '../lib';
-import { zip } from '../lib';
+import { createSubject, from, zip } from '../lib';
 
 describe('zip operator', () => {
   it('should zip values from multiple streams', (done) => {

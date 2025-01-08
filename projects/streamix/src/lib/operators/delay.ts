@@ -1,70 +1,51 @@
-import { Emission, Operator, Subscribable, createEmission, createOperator, eventBus, flags } from '../abstractions';
+import { createSubject } from '../../lib';
+import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
-export const delay = (delayTime: number): Operator => {
-  let queue = new Promise<void>((resolve) => {
-    setTimeout(() => resolve(), 0); // No-op for the first promise
-  });
+export const delay = (ms: number): StreamOperator => {
+  const operator = (input: Stream) => {
+    const output = createSubject<any>(); // Create a subject for the delayed stream
+    let pendingPromises: Promise<void>[] = []; // Array to store pending promises
+    let isCompleteCalled = false; // Flag to handle the first complete call
 
-  const registry = new Map<Emission, { timer: any; resolve: () => void }>();
+    // Subscribe to the original stream
+    const subscription = input.subscribe({
+      next: (value) => {
+        const promise = new Promise<void>((resolve) => {
+          const timerId = setTimeout(() => {
+            output.next(value); // Emit to the delayed stream after delay
+            resolve(); // Resolve the promise when timeout completes
+          }, ms);
 
-  const finalize = () => {
-    for (const [emission, { timer, resolve }] of registry.entries()) {
-      if (!emission.complete) {
-        emission.reject(new Error('Emission was not resolved before stream finalized.'));
-      }
+          // Track the timeout for cleanup
+          output.emitter.once('finalize', () => {
+            clearTimeout(timerId);
+          });
+        });
 
-      emission.finalize();
-      clearTimeout(timer);
-      resolve();
-    }
-    registry.clear();
-  };
+        pendingPromises.push(promise); // Add promise to the pending array
+      },
+      complete: () => {
+        subscription.unsubscribe(); // Unsubscribe from the source stream
 
-  const init = (stream: Subscribable) => {
-    stream.emitter.once('complete', finalize);
-  }
+        if (!isCompleteCalled) {
+          isCompleteCalled = true;
 
-  const handle = function (this: Operator, emission: Emission, stream: Subscribable): Emission {
-    // Mark the emission as pending
-    emission.pending = true;
-
-    // Create a new emission that will be processed after the delay
-    const delayedEmission = createEmission({ value: emission.value });
-    emission.link(delayedEmission);
-
-    // Chain the emission processing in the queue
-    queue = queue.then(() => {
-      return new Promise<void>((resolve) => {
-        // Schedule the delayed emission
-        const timer = setTimeout(() => {
-          if (stream[flags].isUnsubscribed) {
-            delayedEmission.phantom = true;
+          // Complete immediately if no pending promises
+          if (pendingPromises.length === 0) {
+            output.complete();
           } else {
-            eventBus.enqueue({
-              target: stream,
-              payload: { emission: delayedEmission, source: this },
-              type: 'emission',
+            // Wait for all pending promises to resolve before completing
+            Promise.all(pendingPromises).then(() => {
+              output.complete(); // Complete after all promises resolve
             });
           }
-
-          // Finalize the current emission
-          emission.finalize();
-          registry.delete(emission);
-          resolve();
-        }, delayTime);
-
-        // Register the timer and resolve function
-        registry.set(emission, { timer, resolve });
-      });
+        }
+      },
     });
 
-    // Return the original emission to indicate it is pending
-    return emission;
+    // Return the delayed stream
+    return output;
   };
 
-  const operator = createOperator(handle);
-  operator.init = init;
-  operator.name = 'delay';
-
-  return operator;
+  return createStreamOperator('delay', operator);
 };

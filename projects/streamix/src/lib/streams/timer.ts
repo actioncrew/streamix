@@ -1,5 +1,4 @@
 import { createEmission, createStream, internals, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
@@ -7,7 +6,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   let intervalId: any;
   const actualIntervalMs = intervalMs ?? delayMs;
 
-  const stream = createStream<number>(async function(this: Stream<number>): Promise<void> {
+  const stream = createStream<number>('timer', async function(this: Stream<number>): Promise<void> {
     try {
       if (delayMs === 0) {
         if (this[internals].shouldComplete()) return;
@@ -23,7 +22,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       }
 
       // Initial emission
-      eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
+      this.next(createEmission({ value: timerValue }));
       timerValue++;
 
       if (actualIntervalMs > 0) {
@@ -37,20 +36,20 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
                 return;
               }
 
-              eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
+              this.next(createEmission({ value: timerValue }));
 
               timerValue++;
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
+              this.error(error);
               resolve();
             }
           }, actualIntervalMs);
         });
       }
     } catch (error) {
-      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
+      this.error(error);
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -76,6 +75,5 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
     return originalComplete();
   };
 
-  stream.name = "timer";
   return stream;
 }

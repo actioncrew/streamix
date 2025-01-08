@@ -1,6 +1,5 @@
 import { createLock, createSemaphore } from '../utils';
 import { Emission } from './emission';
-import { Subscribable } from './subscribable';
 
 export const eventBus = createBus();
 
@@ -109,7 +108,7 @@ export function createBus(config?: { bufferSize?: number }): Bus {
     }
   }
 
-  async function* triggerHooks(target: Subscribable, hookName: string, event: BusEvent): AsyncGenerator<BusEvent> {
+  async function* triggerHooks(target: any, hookName: string, event: BusEvent): AsyncGenerator<BusEvent> {
     if (!target) {
       console.warn(`Hook "${hookName}" not found on target.`);
       return;

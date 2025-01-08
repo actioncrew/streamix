@@ -1,6 +1,6 @@
 {
   "name": "@actioncrew/streamix",
-  "version": "0.1.13",
+  "version": "0.2.1",
   "description": "Reactive TypeScript library",
   "license": "MIT",
   "keywords": [

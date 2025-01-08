@@ -1,113 +1,96 @@
-import { Emission, Operator, Subscribable, Subscription, createOperator, eventBus, flags } from '../abstractions';
-import { EMPTY, createSubject } from '../streams';
-import { Counter, catchAny, counter } from '../utils';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createSubject, EMPTY } from '../streams';
+import { catchAny, Counter, counter } from '../utils';
 
-export const mergeMap = (project: (value: any) => Subscribable): Operator => {
-  const output = createSubject();
-  let activeInnerStreams: Subscribable[] = [];
-  let processingPromises: Promise<void>[] = [];
-  const executionCounter: Counter = counter(0);
-  let isFinalizing = false;
-  let input: Subscribable | undefined;
+export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
+  const operator = (input: Stream) => {
+    const output = createSubject();
+    const activeStreams: Map<Stream, Subscription> = new Map();
+    const executionCounter: Counter = counter(0);
+    let subscription: Subscription | undefined;
+    let isFinalizing = false;
 
-  // Array to track active subscriptions for inner streams
-  const subscriptions: Subscription[] = [];
+    const init = () => {
+      if (input === EMPTY) {
+        output[flags].isAutoComplete = true;
+        return;
+      }
 
-  const init = (stream: Subscribable) => {
-    input = stream;
-
-    if (input === EMPTY) {
-      // If the input stream is EMPTY, complete immediately
-      output[flags].isAutoComplete = true;
-      return;
-    }
-
-    // Finalize when the input or output stream stops
-    input.emitter.once('finalize', () => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output.emitter.once('finalize', finalize);
-  };
-
-  const handle = (emission: Emission): Emission => {
-
-    // Process the emission asynchronously
-    queueMicrotask(() => processEmission(emission));
-
-    // Mark the emission as phantom and return immediately
-    emission.pending = true;
-    return emission;
-  };
-
-  const processEmission = async (emission: Emission): Promise<void> => {
-    const [error, innerStream] = await catchAny(() => project(emission.value));
-
-    if (error) {
-      eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
-      executionCounter.increment();
-      delete emission.pending;
-      emission.phantom = true;
-      return;
-    }
-
-    activeInnerStreams.push(innerStream);
-
-    const processingPromise = new Promise<void>((resolve) => {
-
-      const subscription = innerStream.subscribe({
-        next: (value) => emission.link(output.next(value)), // Forward emissions from the inner stream
+      // Subscribe to the inputStream
+      subscription = input.subscribe({
+        next: (value) => {
+          if (!output[internals].shouldComplete()) {
+            handleEmission(createEmission({ value }));
+          }
+        },
         error: (err) => {
-          // Handle errors from the inner stream
           eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
-          resolve(); // Resolve the processing promise to continue
         },
         complete: () => {
-          // Clean up when the inner stream completes
-          removeInnerStream(innerStream);
-          executionCounter.increment();
-          emission.finalize();
-          resolve();
+          queueMicrotask(() =>
+            executionCounter.waitFor(input.emissionCounter).then(finalize)
+          );
         },
       });
 
-      // Add the unsubscribe function to the subscriptions array
-      subscriptions.push(subscription);
-    }) as any;
+      output.emitter.once('finalize', finalize);
+    };
 
-    processingPromises.push(processingPromise);
+    const handleEmission = (emission: Emission): Emission => {
+      queueMicrotask(() => processEmission(emission));
+      emission.pending = true;
+      return emission;
+    };
+
+    const processEmission = async (emission: Emission): Promise<void> => {
+      const [error, innerStream] = await catchAny(() => project(emission.value));
+
+      if (error) {
+        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+        executionCounter.increment();
+        emission.phantom = true;
+        delete emission.pending;
+        return;
+      }
+
+      if(!activeStreams.has(innerStream)) {
+        const subscription = innerStream.subscribe({
+          next: (value) => emission.link(output.next(value)),
+          error: (err) => {
+            eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+          },
+          complete: () => {
+            finalizeInnerStream(innerStream);
+          },
+        });
+
+        activeStreams.set(innerStream, subscription);
+      }
+    };
+
+    const finalizeInnerStream = (innerStream: Stream) => {
+      if(activeStreams.has(innerStream)) {
+        activeStreams.get(innerStream)!.unsubscribe();
+        activeStreams.delete(innerStream);
+      }
+
+      executionCounter.increment();
+    };
+
+    const finalize = () => {
+      if (isFinalizing) return;
+      isFinalizing = true;
+      stopStreams();
+    };
+
+    const stopStreams = () => {
+      subscription?.unsubscribe();
+      output[flags].isAutoComplete = true;
+    };
+
+    init();
+    return output;
   };
 
-  const removeInnerStream = (innerStream: Subscribable) => {
-    // Remove the unsubscribe function from the subscriptions array and unsubscribe
-    const index = activeInnerStreams.indexOf(innerStream);
-    if (index !== -1) {
-      subscriptions[index].unsubscribe(); // Call the unsubscribe function
-      activeInnerStreams.splice(index, 1);
-      subscriptions.splice(index, 1); // Remove the unsubscribe function from the array
-    }
-  };
-
-  const finalize = () => {
-    if (isFinalizing) return;
-    isFinalizing = true;
-
-    subscriptions.forEach(subscription => subscription.unsubscribe());
-    subscriptions.length = 0;
-
-    activeInnerStreams = [];
-    stopInputStream();
-    stopOutputStream();
-  };
-
-  const stopInputStream = () => {
-    input![flags].isAutoComplete = true;
-  };
-
-  const stopOutputStream = () => {
-    output[flags].isAutoComplete = true;
-  };
-
-  const operator = createOperator(handle) as any;
-  operator.name = 'mergeMap';
-  operator.init = init;
-  operator.stream = output;
-  return operator;
+  return createStreamOperator('mergeMap', operator);
 };

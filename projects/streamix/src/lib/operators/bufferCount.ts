@@ -1,5 +1,4 @@
-import { Emission } from '../abstractions';
-import { Operator, createOperator } from '../abstractions';
+import { Emission, Operator, createOperator } from '../abstractions';
 
 export const bufferCount = (bufferSize: number): Operator => {
   let buffer: any[] = [];
@@ -19,7 +18,5 @@ export const bufferCount = (bufferSize: number): Operator => {
     return emission;
   };
 
-  const operator = createOperator(handle); // Create the operator using createOperator
-  operator.name = 'bufferCount';
-  return operator;
+  return createOperator('bufferCount', handle); // Create the operator using createOperator
 };

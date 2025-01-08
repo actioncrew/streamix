@@ -8,20 +8,18 @@ export type Subject<T = any> = Stream<T> & {
 // Create the functional version of the Subject
 export function createSubject<T = any>(): Subject<T> {
 
-  const stream = createStream<T>(async () => Promise.resolve()) as Subject;
+  const stream = createStream<T>('subject', async () => Promise.resolve()) as Subject;
   let currentValue: T | undefined;
 
   let autoComplete = false;
   let unsubscribed = false;
 
-  const commencement = awaitable<void>();
   const completion = awaitable<void>();
 
-  stream.run = () => Promise.resolve();
+  stream.run = () => stream[internals].awaitCompletion();
 
-  stream[internals].awaitStart = () => commencement.promise();
   stream[internals].awaitCompletion = () => completion.promise();
-  stream[internals].shouldComplete = () => unsubscribed;
+  stream[internals].shouldComplete = () => unsubscribed || autoComplete;
 
   stream.complete = async function (this: Subject): Promise<void> {
     if (this[flags].isRunning && !this[internals].shouldComplete()) {
@@ -36,7 +34,7 @@ export function createSubject<T = any>(): Subject<T> {
     }
   };
 
-  stream.next = function(this: Subject, value?: T): Emission {
+  stream.next = function(this: Subject, value?: any): Emission {
     // If the stream is stopped, further emissions are not allowed
     const emission = createEmission({ value });
 
@@ -146,15 +144,12 @@ export function createSubject<T = any>(): Subject<T> {
         };
 
         if (!stream[flags].isStopped) {
-          stream.complete().then(() => stream.emitter.waitForCompletion('finalize')).then(cleanup);
+          stream.complete().then(cleanup);
         } else {
           cleanup();
         }
       }
     };
-
-    subscription.started = commencement.promise() as unknown as Promise<void>;
-    subscription.completed = completion.promise() as unknown as Promise<void>;
 
     // Add the bound callback to the subscribers
     stream.emitter.on('subscribers', boundCallback);
@@ -165,15 +160,12 @@ export function createSubject<T = any>(): Subject<T> {
   stream.emitter.once('finalize', () => {
     stream[flags].isStopped = true;
     stream[flags].isRunning = false;
-    stream.operators.forEach(operator => operator.cleanup());
   });
 
   stream[flags].isRunning = true;
   stream.startTimestamp = performance.now();
-  if (commencement.state() === 'pending') { commencement.resolve(); }
   eventBus.enqueue({ target: stream, type: 'start' });
 
-  stream.name = "subject";
-  stream.type = "subject";
+  stream.type = 'subject';
   return stream;
 }
