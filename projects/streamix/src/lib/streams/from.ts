@@ -1,36 +1,41 @@
-import { createEmission, internals } from '../abstractions';
-import { createStream, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
 
-export function from<T = any>(input: Iterable<T> | AsyncIterable<T>): Stream<T> {
+export function from<T = any>(input: Iterable<T>): Stream<T> {
   // Create the stream with a custom run function
-  const stream = createStream<T>(async function(this: Stream<T>) {
-    // Determine if the input is async or sync
-    const isAsync = Symbol.asyncIterator in Object(input);
-    const iterator = isAsync ? (input as AsyncIterable<T>)[Symbol.asyncIterator]() : (input as Iterable<T>)[Symbol.iterator]();
+  const stream = createStream<T>('from', async function(this: Stream<T>) {
+    const iterator = input[Symbol.iterator](); // Get the iterator for the input
 
     let done = false;
 
-    while (!done && !this[internals].shouldComplete()) {
-      let result;
+    // Helper function to process emissions sequentially
+    const processNext = async () => {
+      while (!done && !this[internals].shouldComplete()) {
+        const result = iterator.next(); // Get the next value from the iterator
 
-      // Handle async or sync iteration based on input type
-      if (isAsync) {
-        result = await (iterator as AsyncIterator<T>).next();
-      } else {
-        result = (iterator as Iterator<T>).next();
-      }
+        const { value, done: isDone } = result;
+        if (isDone) {
+          done = true;
+        } else {
+          const emission = createEmission({ value });
+          this.next(emission);
 
-      const { value, done: isDone } = result;
-      if (isDone) {
-        done = true;
-      } else {
-        const emission = createEmission({ value });
-        eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
+          // Wait for the emission to complete
+          // if (emission.wait && typeof emission.wait === 'function') {
+          //   await emission.wait(); // Await the emission's completion
+          // }
+        }
       }
-    }
+    };
+
+    // Start processing emissions
+    processNext().then(() => {
+      if (!this[internals].shouldComplete()) {
+        this.complete(); // Complete the stream when done
+      }
+    }).catch((error) => {
+      this.error(error); // Handle any errors
+    });
   });
 
-  stream.name = "from";
   return stream;
 }

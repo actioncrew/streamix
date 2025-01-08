@@ -1,16 +1,15 @@
-import { createStream, Subscribable, Stream, Subscription, createEmission, flags, internals } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
 
 export function iif<T>(
   condition: () => boolean, // Evaluate condition once at initialization
-  trueStream: Subscribable<T>, // Stream to choose when condition is true
-  falseStream: Subscribable<T> // Stream to choose when condition is false
+  trueStream: Stream<T>, // Stream to choose when condition is true
+  falseStream: Stream<T> // Stream to choose when condition is false
 ): Stream<T> {
-  let selectedStream: Subscribable<T> | undefined;
+  let selectedStream: Stream<T> | undefined;
   let subscription!: Subscription;
 
   // Create and return the stream with the defined run function
-  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('iif', async function(this: Stream<T>): Promise<void> {
     // Choose the appropriate stream based on the condition
     selectedStream = condition() ? trueStream : falseStream;
 
@@ -29,10 +28,9 @@ export function iif<T>(
   // Handle emissions from the selected stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
     if (!stream[internals].shouldComplete()) {
-      eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
+      stream.next(createEmission({ value }));
     }
   };
 
-  stream.name = "iif";
   return stream;
 }

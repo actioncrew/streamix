@@ -55,7 +55,8 @@ describe('DefaultIfEmptyOperator', () => {
       }
     });
 
-    stream.next('value 1');
+    stream.next('Value 1');
+
     stream.complete();
   });
 

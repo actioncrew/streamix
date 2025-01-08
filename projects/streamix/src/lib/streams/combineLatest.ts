@@ -1,12 +1,11 @@
-import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
-// Ensure catchAny is imported from the correct location
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
 
-export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> {
+export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined })); // Track the latest value from each source
   const subscriptions: Subscription[] = []; // List of source subscriptions
+  let completedSources = 0; // Track how many sources have completed
 
-  const stream = createStream<T[]>(async function (this: Stream<T[]>): Promise<void> {
+  const stream = createStream<T[]>('combineLatest', async function (this: Stream<T[]>): Promise<void> {
     sources.forEach((source, index) => {
       const subscription = source.subscribe({
         next: (value: T) => {
@@ -17,33 +16,31 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> 
 
           // Emit combined values only when all sources have emitted at least once
           if (values.every((v) => v.hasValue)) {
-            eventBus.enqueue({
-              target: stream,
-              payload: {
-                emission: createEmission({ value: values.map((v) => v.value!) }),
-                source: stream,
-              },
-              type: 'emission',
-            });
+            this.next(createEmission({ value: values.map((v) => v.value!) }));
           }
         },
         complete: () => {
+          completedSources++;
+
           // Complete the main stream only after all sources are complete
-          const allSourcesCompleted = subscriptions.every((sub) => sub.completed);
-          if (allSourcesCompleted) {
+          if (completedSources === sources.length) {
+            // Emit the final combined value before completing
+            if (values.every((v) => v.hasValue)) {
+              this.next(createEmission({ value: values.map((v) => v.value!) }));
+            }
             stream.complete();
           }
         },
         error: (err: any) => {
           // Propagate errors from the source streams
-          eventBus.enqueue({ target: stream, payload: { error: err }, type: 'error' });
+          this.error(err);
         },
       });
 
       subscriptions.push(subscription); // Store the subscription for cleanup
     });
 
-    await this[internals].awaitCompletion();
+    await stream[internals].awaitCompletion();
   });
 
   // Cleanup subscriptions when the main stream terminates
@@ -53,6 +50,5 @@ export function combineLatest<T = any>(sources: Subscribable<T>[]): Stream<T[]> 
     return originalComplete();
   };
 
-  stream.name = 'combineLatest';
   return stream;
 }

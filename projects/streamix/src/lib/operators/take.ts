@@ -1,9 +1,9 @@
-import { createOperator, Emission, flags, Operator, Subscribable } from '../abstractions';
+import { createOperator, Emission, flags, Operator, Stream } from '../abstractions';
 
 export const take = (count: number): Operator => {
   let emittedCount = 0;
 
-  const handle = (emission: Emission, stream: Subscribable): Emission => {
+  const handle = (emission: Emission, stream: Stream): Emission => {
     if (emittedCount < count) {
       emittedCount++;
 
@@ -17,7 +17,5 @@ export const take = (count: number): Operator => {
     }
   };
 
-  const operator = createOperator(handle);
-  operator.name = 'take';
-  return operator;
+  return createOperator('take', handle);
 };

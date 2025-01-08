@@ -3,7 +3,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
 export function onAnimationFrame<T>(): Stream<T> {
   let requestId: number | null = null;
 
-  const stream = createStream<T>(async function (this: Stream<T>) {
+  const stream = createStream<T>('onAnimationFrame', async function (this: Stream<T>) {
     let lastFrameTime = performance.now();
 
     const runFrame = (currentTime: number) => {
@@ -21,7 +21,7 @@ export function onAnimationFrame<T>(): Stream<T> {
       lastFrameTime = currentTime;
 
       // Emit the current value
-      stream.emitter.emit('emission', { emission: createEmission({ value: elapsedTime }), source: this });
+      stream.next(createEmission({ value: elapsedTime }));
 
       // Schedule the next frame
       requestId = requestAnimationFrame(runFrame);
@@ -31,8 +31,6 @@ export function onAnimationFrame<T>(): Stream<T> {
     requestId = requestAnimationFrame(runFrame);
     await stream[internals].awaitCompletion();
   });
-
-  stream.name = "onAnimationFrame";
 
   return stream;
 }

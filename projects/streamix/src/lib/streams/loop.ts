@@ -1,6 +1,4 @@
-import { createEmission, Emission, flags, internals } from '../abstractions';
-import { createStream, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, Emission, flags, internals, Stream } from '../abstractions';
 
 export function loop<T>(
   initialValue: T,
@@ -10,13 +8,13 @@ export function loop<T>(
   let currentValue = initialValue;
 
   // Create the stream with a custom run function
-  const stream = createStream<T>(async function(this: Stream<T>) {
+  const stream = createStream<T>('loop', async function(this: Stream<T>) {
 
     while (condition(currentValue) && !this[internals].shouldComplete()) {
       const emission = createEmission({ value: currentValue }) as Emission;
 
       // Emit the current value
-      eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
+      this.next(emission);
 
       // Apply the iterateFn to get the next value
       currentValue = iterateFn(currentValue);
@@ -28,6 +26,5 @@ export function loop<T>(
     }
   });
 
-  stream.name = "loop";
   return stream;
 }

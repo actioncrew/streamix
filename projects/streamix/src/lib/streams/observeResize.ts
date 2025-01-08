@@ -1,5 +1,4 @@
-import { createEmission, internals, createStream, Stream } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
 
 /**
  * Creates a Stream using `ResizeObserver` for observing element resizing.
@@ -24,17 +23,13 @@ import { eventBus } from '../abstractions';
 export function observeResize(
   element: Element
 ): Stream<{ width: number; height: number }> {
-  const stream = createStream<{ width: number; height: number }>(async function (this: Stream<{ width: number; height: number }>) {
+  const stream = createStream<{ width: number; height: number }>('observeResize', async function (this: Stream<{ width: number; height: number }>) {
     let resizeObserver: ResizeObserver;
 
     const callback = (entries: ResizeObserverEntry[]) => {
       const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
       const emission = createEmission({ value: { width, height } });
-      eventBus.enqueue({
-        target: this,
-        payload: { emission, source: this },
-        type: 'emission',
-      });
+      this.next(emission);
     };
 
     // Initialize ResizeObserver

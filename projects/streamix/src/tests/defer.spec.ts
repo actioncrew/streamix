@@ -3,7 +3,7 @@ import { createEmission, createStream, defer, Emission, eventBus, flags, interna
 // Mocking Stream class
 export function mockStream(values: any[], completed = false, error?: Error): Stream {
   // Create the custom run function for the MockStream
-  const stream = createStream(async (): Promise<void> => {
+  const stream = createStream('mockStream', async (): Promise<void> => {
     if (error) {
       eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
       return;

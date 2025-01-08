@@ -1,15 +1,15 @@
 import {
-  createSubject,
-  fromEvent,
-  interval,
-  map,
-  startWith,
-  Subscribable,
-  switchMap,
-  tap,
-  timer,
-  takeUntil,
-  withLatestFrom,
+    createSubject,
+    fromEvent,
+    interval,
+    map,
+    startWith,
+    Stream,
+    switchMap,
+    takeUntil,
+    tap,
+    timer,
+    withLatestFrom,
 } from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
@@ -98,7 +98,7 @@ export class AppRainComponent implements AfterViewInit, OnDestroy {
   private letterArray = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
   private destroy$ = createSubject<void>();
-  private scene$!: Subscribable;
+  private scene$!: Stream;
 
   ngAfterViewInit() {
     this.canvas = document.querySelector('canvas') as HTMLCanvasElement;

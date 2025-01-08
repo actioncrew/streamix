@@ -1,6 +1,6 @@
 
-import { createSubject, Subject } from './subject';
 import { Receiver, Subscription } from '../abstractions';
+import { createSubject, Subject } from './subject';
 
 // Create function for the BehaviorSubject
 export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
@@ -16,6 +16,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
     return subscription;
   };
 
-  subject.name = "behaviorSubject";
+  subject.name = 'behaviorSubject';
   return subject;
 }

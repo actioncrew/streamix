@@ -1,133 +1,140 @@
-import { createOperator, Emission, eventBus, flags, internals, Operator, Subscribable, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
-
 export const fork = <T = any, R = T>(
-  options: Array<{ on: (value: T) => boolean; handler: () => Subscribable<R> }>
-): Operator => {
-  let innerStream: Subscribable | null = null;
-  let emissionQueue: Emission[] = [];
-  let processingChain = Promise.resolve();
-  const executionCounter: Counter = counter(0);
-  let isFinalizing: boolean = false;
-  let input!: Subscribable | undefined;
-  let subscription: Subscription | undefined;
-  const output = createSubject();
+  options: Array<{ on: (value: T) => boolean; handler: () => Stream<R> }>
+): StreamOperator => {
+  const operator = (input: Stream) => {
+    let currentInnerStream: Stream | null = null;
+    let emissionQueue: Emission[] = [];
+    let processingChain = Promise.resolve();
+    const executionCounter: Counter = counter(0);
+    let isFinalizing = false;
+    let subscription: Subscription | undefined;
+    const output = createSubject();
 
-  const init = (stream: Subscribable) => {
-    input = stream;
-
-    if (input === EMPTY) {
-      // If the input stream is EMPTY, complete immediately
-      output[flags].isAutoComplete = true;
-      return;
-    }
-
-    input.emitter.once('finalize', () => queueMicrotask(() => executionCounter.waitFor(input!.emissionCounter).then(finalize)));
-    output.emitter.once('finalize', finalize);
-  };
-
-  const handle = (emission: Emission) => {
-    emissionQueue.push(emission);
-
-    if(!innerStream) {
-      queueMicrotask(processQueue);
-    }
-
-    emission.pending = true;
-    return emission;
-  };
-
-  const processQueue = (): Promise<void> => {
-    // Ensure the chain processes emissions sequentially
-    processingChain = processingChain.then(async () => {
-      while (emissionQueue.length > 0 && !isFinalizing) {
-        const nextEmission = emissionQueue.shift(); // Dequeue next emission
-        if (nextEmission) {
-          await processEmission(nextEmission); // Process it sequentially
-        }
-      }
-    });
-
-    return processingChain;
-  };
-
-  const processEmission = async (emission: Emission): Promise<void> => {
-    // Find the matching case based on the selector
-    const matchedCase = options.find(({ on }) => on(emission.value));
-
-    if (matchedCase) {
-      const [error, innerStream] = await catchAny(() => matchedCase.handler());
-
-      if (error) {
-        // Handle errors in the projection function
-        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
-        executionCounter.increment();
-        delete emission.pending;
-        emission.phantom = true;
+    const init = () => {
+      if (input === EMPTY) {
+        output[flags].isAutoComplete = true;
         return;
       }
 
-      return new Promise<void>((resolve) => {
-        subscription = innerStream!.subscribe({
-          next: (value) => {
-            handleInnerEmission(emission, value);
-          },
-          error: (err) => {
-            handleStreamError(emission, err);
-            resolve(); // Continue the chain even on error
-          },
-          complete: () => {
-            completeInnerStream(emission, subscription!);
-            resolve(); // Resolve when complete
-          },
-        });
+      // Subscribe to the inputStream
+      subscription = input.subscribe({
+        next: (value) => {
+          if (!output[internals].shouldComplete()) {
+            handleEmission(createEmission({ value }));
+          }
+        },
+        error: (err) => {
+          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+        },
+        complete: () => {
+          queueMicrotask(() =>
+            executionCounter.waitFor(input.emissionCounter).then(finalize)
+          );
+        },
       });
-    } else {
-      // If no case matches, emit an error
+
+      output.emitter.once('finalize', finalize);
+    };
+
+    const handleEmission = (emission: Emission) => {
+      emissionQueue.push(emission);
+
+      if (!currentInnerStream) {
+        queueMicrotask(processQueue);
+      }
+
+      emission.pending = true;
+      return emission;
+    };
+
+    const processQueue = (): Promise<void> => {
+      processingChain = processingChain.then(async () => {
+        while (emissionQueue.length > 0 && !isFinalizing) {
+          const nextEmission = emissionQueue.shift();
+          if (nextEmission) {
+            await processEmission(nextEmission);
+          }
+        }
+      });
+      return processingChain;
+    };
+
+    const processEmission = async (emission: Emission): Promise<void> => {
+      const matchedCase = options.find(({ on }) => on(emission.value));
+
+      if (matchedCase) {
+        const [error, innerStream] = await catchAny(() => matchedCase.handler());
+
+        if (error) {
+          eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+          emission.phantom = true;
+          finalize();
+          return;
+        }
+
+        currentInnerStream = innerStream;
+
+        return new Promise<void>((resolve) => {
+          subscription = currentInnerStream!.subscribe({
+            next: (value) => {
+              if (!output[internals].shouldComplete()) {
+                emission.link(output.next(value));
+              }
+            },
+            error: (err) => {
+              handleStreamError(emission, err);
+              resolve();
+            },
+            complete: () => {
+              finalizeInnerStream(emission);
+              resolve();
+            },
+          });
+        });
+      } else {
+        executionCounter.increment();
+        emission.finalize();
+        handleStreamError(emission, new Error(`No handler found for value: ${emission.value}`));
+        return Promise.resolve();
+      }
+    };
+
+    const finalizeInnerStream = (emission: Emission) => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+      currentInnerStream = null;
       executionCounter.increment();
       emission.finalize();
-      handleStreamError(emission, new Error(`No handler found for value: ${emission.value}`));
-      return Promise.resolve();
-    }
+      queueMicrotask(processQueue);
+    };
+
+    const handleStreamError = (emission: Emission, error: any) => {
+      eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+      emission.error = error;
+      finalize();
+    };
+
+    const finalize = () => {
+      if (isFinalizing) return;
+      isFinalizing = true;
+
+      [currentInnerStream, input, output].forEach((stream) => {
+        if (stream && stream[flags]?.isRunning) {
+          stream[flags].isAutoComplete = true;
+        }
+      });
+
+      currentInnerStream = null;
+    };
+
+    init();
+    return output;
   };
 
-  const handleInnerEmission = (emission: Emission, value: any) => {
-    if (!output[internals].shouldComplete()) {
-      emission.link(output.next(value));
-    }
-  };
-
-  const completeInnerStream = async (emission: Emission, subscription: Subscription) => {
-    subscription?.unsubscribe();
-    emission.finalize();
-    await processQueue();
-    executionCounter.increment();
-  };
-
-  const handleStreamError = (emission: Emission, error: any) => {
-    eventBus.enqueue({ target: output, payload: { error }, type: 'error'});
-    emission.error = error;
-    finalize();
-  };
-
-  const finalize = () => {
-    if (isFinalizing) return;
-    isFinalizing = true;
-
-    stopStreams(innerStream, input, output);
-    innerStream = null;
-  };
-
-  const stopStreams = (...streams: (Subscribable | null | undefined)[]) => {
-    streams.filter(stream => stream && stream[flags].isRunning).forEach(stream => { stream![flags].isAutoComplete = true; });
-  };
-
-  const operator = createOperator(handle) as any;
-  operator.name = 'concatMap';
-  operator.init = init;
-  operator.stream = output;
-
-  return operator;
+  return createStreamOperator('fork', operator);
 };

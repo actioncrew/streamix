@@ -1,16 +1,15 @@
-import { createEmission, createStream, Stream, Subscribable, Subscription } from '../abstractions';
-import { eventBus } from '../abstractions';
+import { createEmission, createStream, Stream, Subscription } from '../abstractions';
 
-export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
+export function concat<T = any>(...sources: Stream[]): Stream<T> {
   let activeSubscription: Subscription | undefined;
 
-  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('concat', async function(this: Stream<T>): Promise<void> {
     for (const source of sources) {
       await processSource(this, source);
     }
   });
 
-  const processSource = async (stream: Stream<T>, source: Subscribable): Promise<void> => {
+  const processSource = async (stream: Stream<T>, source: Stream): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
       activeSubscription = source.subscribe({
         next: (value) => emitValue(stream, value),
@@ -27,14 +26,12 @@ export function concat<T = any>(...sources: Subscribable[]): Stream<T> {
   };
 
   const emitValue = (stream: Stream<T>, value: T) => {
-    const emission = createEmission({ value });
-    eventBus.enqueue({ target: stream, payload: { emission, source: stream }, type: 'emission' });
+    stream.next(createEmission({ value }));
   };
 
   const emitError = (stream: Stream<T>, error: any) => {
-    eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
+    stream.error(error);
   };
 
-  stream.name = "concat";
   return stream;
 }
