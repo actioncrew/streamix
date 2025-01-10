@@ -6,6 +6,8 @@ export const flags = Symbol('Stream');
 export const internals = Symbol('Stream');
 
 export type Stream<T = any> = {
+  (): Subscription;
+
   type: "stream" | "subject";
   name?: string;
 
@@ -310,7 +312,10 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     return subscription as Subscription;
   };
 
-  const stream = {
+  const stream = subscribe as unknown as Stream;
+
+  Object.defineProperty(stream, 'name', { writable: true, enumerable: true, configurable: true });
+  Object.assign(stream, {
     type: "stream" as "stream",
     name,
     subscribe,
@@ -363,7 +368,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
         stopped = value;
       }
     }
-  };
+  });
 
   emitter.on('emission', (params) => stream[internals].emit(params));
   return stream; // Return the stream instance
