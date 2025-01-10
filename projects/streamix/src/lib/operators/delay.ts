@@ -8,7 +8,7 @@ export const delay = (ms: number): StreamOperator => {
     let isCompleteCalled = false; // Flag to handle the first complete call
 
     // Subscribe to the original stream
-    const subscription = input.subscribe({
+    const subscription = input({
       next: (value) => {
         const promise = new Promise<void>((resolve) => {
           const timerId = setTimeout(() => {

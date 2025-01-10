@@ -6,7 +6,7 @@ describe('from function', () => {
     const stream = from(values);
 
     let emittedValues: any[] = [];
-    const subscription = stream.subscribe({
+    const subscription = stream({
       next: (value) => emittedValues.push(value),
       complete:() => {
         expect(emittedValues).toEqual(values);
@@ -22,7 +22,7 @@ describe('from function', () => {
   //   const stream = from(values);
 
   //   let emittedValues: any[] = [];
-  //   const subscription = stream.subscribe((value) => {
+  //   const subscription = stream((value) => {
   //     emittedValues.push(value);
   //   });
 

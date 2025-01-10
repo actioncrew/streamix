@@ -1,4 +1,4 @@
-import { iif, from, switchMap } from '../lib';
+import { from, iif, switchMap } from '../lib';
 
 
 describe('iif operator', () => {
@@ -10,7 +10,7 @@ describe('iif operator', () => {
     const pipeline = from([6]).pipe(switchMap(value => iif(() => condition(value), trueStream, falseStream)));
     const result: any[] = [];
 
-    const subscription = pipeline.subscribe({
+    const subscription = pipeline({
       next: (value) => result.push(value),
       complete: () => {
         expect(result).toEqual([10, 20, 30]);
@@ -28,7 +28,7 @@ describe('iif operator', () => {
     const pipeline = from([2]).pipe(switchMap(value => iif(() => condition(value), trueStream, falseStream)));
     const result: any[] = [];
 
-    const subscription = pipeline.subscribe({
+    const subscription = pipeline({
       next: (value) => result.push(value),
       complete: () => {
         expect(result).toEqual([1, 2, 3]);

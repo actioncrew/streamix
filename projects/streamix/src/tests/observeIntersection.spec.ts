@@ -27,7 +27,7 @@ xdescribe('Functional tests for fromIntersectionObserver', () => {
     visibilityStream = observeIntersection(element);
 
     const emittedValues: boolean[] = [];
-    const subscription = visibilityStream.subscribe({
+    const subscription = visibilityStream({
       next: (isVisible: boolean) => {
         emittedValues.push(isVisible);
       },
@@ -57,7 +57,7 @@ xdescribe('Functional tests for fromIntersectionObserver', () => {
     visibilityStream = observeIntersection(element);
 
     const emittedValues: boolean[] = [];
-    const subscription = visibilityStream.subscribe({
+    const subscription = visibilityStream({
       next: (isVisible: boolean) => {
         emittedValues.push(isVisible);
       },
@@ -84,7 +84,7 @@ xdescribe('Functional tests for fromIntersectionObserver', () => {
 
     visibilityStream = observeIntersection(element);
 
-    const subscription = visibilityStream.subscribe();
+    const subscription = visibilityStream();
 
     // Wait for observer to initialize
     await new Promise((resolve) => setTimeout(resolve, 100));

@@ -9,7 +9,7 @@ export function firstValueFrom<T>(stream: Stream): Promise<T> {
   return new Promise<any>((resolve, reject) => {
     let hasEmitted = false;
 
-    const subscription = stream.subscribe({
+    const subscription = stream({
       next: (value: T) => {
         if (!hasEmitted) {
           hasEmitted = true;

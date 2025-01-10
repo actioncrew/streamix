@@ -1,15 +1,15 @@
 import {
-    createSubject,
-    fromEvent,
-    interval,
-    map,
-    startWith,
-    Stream,
-    switchMap,
-    takeUntil,
-    tap,
-    timer,
-    withLatestFrom,
+  createSubject,
+  fromEvent,
+  interval,
+  map,
+  startWith,
+  Stream,
+  switchMap,
+  takeUntil,
+  tap,
+  timer,
+  withLatestFrom,
 } from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
@@ -65,7 +65,7 @@ export class CaptionComponent implements OnInit {
     let currentIndex = 0;
     const typeInterval = 200;
 
-    timer(1800, typeInterval).subscribe(() => {
+    timer(1800, typeInterval)(() => {
       if (currentIndex < this.caption.length) {
         this.displayedCaption += this.caption[currentIndex];
         currentIndex++;
@@ -74,7 +74,7 @@ export class CaptionComponent implements OnInit {
   }
 
   startCursorBlinking() {
-    interval(500).subscribe(() => {
+    interval(500)(() => {
       this.showCursor = !this.showCursor;
     });
   }
@@ -153,7 +153,7 @@ export class AppRainComponent implements AfterViewInit, OnDestroy {
       takeUntil(this.destroy$)
     );
 
-    this.scene$.subscribe();
+    this.scene$();
   }
 
   private getCanvasSize() {

@@ -8,7 +8,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
 
   const originalSubscribe = subject.subscribe.bind(subject);
 
-  subject.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  const behaviorSubject = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const subscription = originalSubscribe(callbackOrReceiver);
 
     const value = subject.value ?? initialValue;
@@ -16,6 +16,9 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
     return subscription;
   };
 
-  subject.name = 'behaviorSubject';
-  return subject;
+  Object.defineProperty(behaviorSubject, 'name', { writable: true, enumerable: true, configurable: true });
+  Object.assign(behaviorSubject, subject);
+  behaviorSubject.name = 'behaviorSubject';
+  behaviorSubject.subscribe = behaviorSubject;
+  return behaviorSubject as unknown as Subject<T>;
 }

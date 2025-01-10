@@ -1,4 +1,4 @@
-import {catchError, endWith, finalize, from, startWith, tap } from '../lib';
+import { catchError, endWith, finalize, from, startWith, tap } from '../lib';
 
 
 describe('tap operator', () => {
@@ -10,7 +10,7 @@ describe('tap operator', () => {
 
     let results: any[] = [];
 
-    tappedStream.subscribe({
+    tappedStream({
       next: (value) => results.push(value),
       complete: () => {
         // Check if side effect function was called for each emission

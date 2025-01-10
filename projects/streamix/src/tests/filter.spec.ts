@@ -9,7 +9,7 @@ describe('FilterOperator', () => {
 
     let didEmit = false;
 
-    filteredStream.subscribe({
+    filteredStream({
       next: (value) => {
         didEmit = true;
         expect(value).toBeGreaterThanOrEqual(2); // Only even numbers should be emitted
@@ -32,7 +32,7 @@ describe('FilterOperator', () => {
 
     let didEmit = false;
 
-    filteredStream.subscribe({
+    filteredStream({
       next: () => {
         didEmit = true;
         done(new Error('Unexpected value emitted'));
@@ -55,7 +55,7 @@ describe('FilterOperator', () => {
 
     const filteredStream = testStream.pipe(filter(predicate));
 
-    filteredStream.subscribe({
+    filteredStream({
       next: () => count++,
       complete: () => {
         if (count === 3) {

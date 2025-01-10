@@ -6,7 +6,7 @@ describe('TimerStream', () => {
     const timerStream = timer(0, intervalMs);
 
     const emittedValues: number[] = [];
-    timerStream.subscribe({
+    timerStream({
       next: (value) => emittedValues.push(value),
       complete: () => {
         // Check that values are emitted at approximately the correct interval
@@ -25,7 +25,7 @@ describe('TimerStream', () => {
     const timerStream = timer(0, intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = timerStream.subscribe((value) => {
+    const subscription = timerStream((value) => {
       emittedValues.push(value);
     });
 

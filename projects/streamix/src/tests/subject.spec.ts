@@ -1,11 +1,11 @@
-import { createSubject } from '../lib';
+import { createSubject, Subscription } from '../lib';
 
 describe('Subject', () => {
   it('should emit values to subscribers', (done) => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe({
+    const subscription: Subscription = subject({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['value1', 'value2']);
@@ -23,7 +23,7 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe({
+    const subscription = subject({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['value1']);
@@ -41,7 +41,7 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription = subject.subscribe({
+    const subscription = subject({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['value1']);
@@ -59,7 +59,7 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     let counter = 0;
-    const subscription = subject.subscribe({
+    const subscription = subject({
       next: value => expect(value === counter++).toBeTruthy(),
       complete: () => {
         subscription.unsubscribe();
@@ -78,7 +78,7 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     let counter = 0;
-    const subscription = subject.subscribe({
+    const subscription: Subscription = subject({
       next: value => expect(value === counter++).toBeTruthy(),
       complete: () => subscription.unsubscribe()
     })

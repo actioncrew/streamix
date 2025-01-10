@@ -5,7 +5,7 @@ describe('EmptyStream', () => {
     const emptyStream = EMPTY;
 
     let emittedValues: any[] = [];
-    const subscription = emptyStream.subscribe({
+    const subscription = emptyStream({
       next: (value) => emittedValues.push(value),
       complete: () => {
         // Ensure no values were emitted
@@ -23,7 +23,7 @@ describe('EmptyStream', () => {
 describe('EMPTY constant', () => {
   it('should behave the same as an instance of EmptyStream', async () => {
     let emittedValues: any[] = [];
-    const subscription = EMPTY.subscribe({
+    const subscription = EMPTY({
       next:(value) => emittedValues.push(value),
       complete: () => {
         // Ensure no values were emitted

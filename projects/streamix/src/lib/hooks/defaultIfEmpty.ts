@@ -7,7 +7,7 @@ export const defaultIfEmpty = (defaultValue: any): StreamOperator => {
     let completed = false;
     const output = createSubject<any>(); // The stream that will emit values, including the default value
 
-    const subscription = stream.subscribe({
+    const subscription = stream({
       next: (value) => {
         hasEmitted = true; // Mark that the stream has emitted a value
         output.next(value); // Pass the value through to the output stream

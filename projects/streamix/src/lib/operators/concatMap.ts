@@ -19,7 +19,7 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
       }
 
       // Subscribe to the inputStream
-      subscription = input.subscribe({
+      subscription = input({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             handle(createEmission({ value }));
@@ -75,7 +75,7 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
 
       if (currentInnerStream) {
         return new Promise<void>((resolve) => {
-          subscription = currentInnerStream!.subscribe({
+          subscription = currentInnerStream!({
             next: (value) => {
               if (!output[internals].shouldComplete()) {
                 emission.link(output.next(value));

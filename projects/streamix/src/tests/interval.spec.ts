@@ -6,7 +6,7 @@ describe('IntervalStream', () => {
     const intervalStream = interval(intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = intervalStream.subscribe({
+    const subscription = intervalStream({
       next: (value) => emittedValues.push(value),
       complete: () => {
         // Check that values are emitted at approximately the correct interval
@@ -27,7 +27,7 @@ describe('IntervalStream', () => {
     const intervalStream = interval(intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = intervalStream.subscribe((value) => {
+    const subscription = intervalStream((value) => {
       emittedValues.push(value);
     });
 
@@ -44,7 +44,7 @@ describe('IntervalStream', () => {
     const intervalStream = interval(intervalMs);
 
     const emittedValues: number[] = [];
-    intervalStream.subscribe((value) => {
+    intervalStream((value) => {
       emittedValues.push(value);
     });
 

@@ -9,7 +9,7 @@ export function zip(sources: Stream[]): Stream<any[]> {
 
   const stream = createStream<any[]>('zip', async function (this: Stream<any[]>): Promise<void> {
     sources.forEach((source, index) => {
-      const subscription = source.subscribe({
+      const subscription = source({
         next: (value) => {
           if (stream[internals].shouldComplete()) return;
 

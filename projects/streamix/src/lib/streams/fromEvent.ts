@@ -14,17 +14,17 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
   const stream = createStream<T>('fromEvent', run);
   const originalSubscribe = stream.subscribe.bind(stream); // Store the original start method
 
-  stream.subscribe = function(this: Stream<T>, params?: any): Subscription {
+  const newStream: any = function(params?: any): Subscription {
     // Call the original start method
     let subscription = originalSubscribe(params);
 
     if (!listener) {
-      listener = async (event: Event) => {
-        if (this[flags].isRunning) {
+      listener = async function(event: Event) {
+        if (newStream[flags].isRunning) {
           // Emit the event to the stream
-          this.next(createEmission({ value: event }));
+          newStream.next(createEmission({ value: event }));
         }
-      };
+      }
 
       // Add the event listener to the target
       target.addEventListener(eventName, listener);
@@ -33,5 +33,8 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
     return subscription;
   };
 
-  return stream;
+  Object.defineProperty(newStream, 'name', { writable: true, enumerable: true, configurable: true });
+  Object.assign(newStream, stream);
+  newStream.subscribe = newStream;
+  return newStream as unknown as Stream<T>;
 }

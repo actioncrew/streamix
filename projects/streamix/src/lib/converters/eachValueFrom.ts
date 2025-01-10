@@ -6,7 +6,7 @@ export async function* eachValueFrom<T>(stream: Stream<T>): AsyncGenerator<T> {
   // Create an observable iterator
   const promiseQueue: Promise<T>[] = [];
 
-  const subscription = stream.subscribe({
+  const subscription = stream({
     next: (value: T) => {
       // Add each emitted value to the queue
       promiseQueue.push(Promise.resolve(value));

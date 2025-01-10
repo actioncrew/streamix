@@ -8,7 +8,7 @@ describe('fromAnimationFrame - Functional Test', () => {
     // Subscribe to the stream to collect emitted values
     const stream = onAnimationFrame<number>().pipe(map((_, index) => index), takeWhile(() => count < 5));
 
-    stream.subscribe({
+    stream({
       next: (value) => {
         count++;
         emittedValues.push(value);
@@ -31,7 +31,7 @@ describe('fromAnimationFrame - Functional Test', () => {
     // Subscribe to the stream to collect emitted values
     const stream = onAnimationFrame<number>().pipe(takeWhile(() => count < 50));
 
-    stream.subscribe({
+    stream({
       next: (value) => {
         count++;
         emittedValues.push(value);
@@ -50,7 +50,7 @@ describe('fromAnimationFrame - Functional Test', () => {
     // Set condition to always true (infinite loop)
     const infiniteStream = onAnimationFrame<number>().pipe(takeWhile(() => count <= 10));
 
-    let subscription = infiniteStream.subscribe({
+    let subscription = infiniteStream({
       next: (value) => {
         count++;
         emittedValues.push(value);

@@ -9,7 +9,7 @@ describe('take operator', () => {
 
     let results: any[] = [];
 
-    takenStream.subscribe({
+    takenStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([1, 2, 3]); // Should emit only the first three values
@@ -26,7 +26,7 @@ describe('take operator', () => {
 
     let results: any[] = [];
 
-    takenStream.subscribe({
+    takenStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([1, 2]); // Should emit all values because count is greater than number of emissions
@@ -43,7 +43,7 @@ describe('take operator', () => {
 
     let results: any[] = [];
 
-    takenStream.subscribe({
+    takenStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // Should emit no values because the stream is empty

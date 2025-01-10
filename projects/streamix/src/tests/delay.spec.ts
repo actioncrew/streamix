@@ -10,7 +10,7 @@ describe('DelayOperator', () => {
     const startTime = Date.now();
     let emitCount = 0;
 
-    delayedStream.subscribe({
+    delayedStream({
       next: () => {
         emitCount++;
         const elapsedTime = Date.now() - startTime;
@@ -31,7 +31,7 @@ describe('DelayOperator', () => {
 
     let emitCount = 0;
 
-    let subscription = delayedStream.subscribe({
+    let subscription = delayedStream({
       next: () => {
         emitCount++;
         if (emitCount === 2) {
@@ -53,7 +53,7 @@ describe('DelayOperator', () => {
 
     const delayedStream = testStream.pipe(delay(delayTime));
 
-    delayedStream.subscribe({
+    delayedStream({
       next: () => emitCount++,
       complete: () => {
         expect(emitCount).toBe(5);

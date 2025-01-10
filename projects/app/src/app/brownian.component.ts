@@ -33,7 +33,7 @@ export class AppMotionComponent implements AfterViewInit {
     );
 
     // Start the animation
-    animationFrames$.subscribe();
+    animationFrames$();
   }
 
   private setupCanvas() {

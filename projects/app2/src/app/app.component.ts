@@ -127,7 +127,7 @@ export class AppComponent implements OnInit {
 
     this.showProgressOverlay();
     this.fractal$ = this.drawFractal();
-    this.fractal$.subscribe();
+    this.fractal$();
   }
 
   showProgressOverlay() {

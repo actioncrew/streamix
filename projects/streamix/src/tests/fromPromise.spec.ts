@@ -7,7 +7,7 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    stream.subscribe({
+    stream({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([value]);
@@ -22,7 +22,7 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     let completed = false;
-    stream.subscribe({
+    stream({
       next: () => completed = true,
       complete: () => {
         expect(completed).toBe(true);
@@ -37,7 +37,7 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     let receivedError: Error | undefined;
-    const subscription = stream.subscribe({
+    const subscription = stream({
       error: (error: any) => receivedError = error,
       complete: () => {
         expect(receivedError).toBe(error);
@@ -53,7 +53,7 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    const subscription = stream.subscribe({
+    const subscription = stream({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([]);
@@ -69,7 +69,7 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    stream.subscribe((value) => {
+    stream((value) => {
       emittedValues.push(value);
     });
 

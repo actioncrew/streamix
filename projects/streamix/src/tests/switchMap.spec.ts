@@ -9,7 +9,7 @@ describe('switchMap operator', () => {
 
     let results: any[] = [];
 
-    switchedStream.subscribe({
+    switchedStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([10, 100, 20, 200, 30, 300]); // Should switch to new inner streams and emit all values
@@ -33,7 +33,7 @@ describe('switchMap operator', () => {
 
     let results: any[] = [];
 
-    const subscription = switchedStream.subscribe({
+    const subscription = switchedStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([30, 300]);
@@ -55,7 +55,7 @@ describe('switchMap operator', () => {
 
     const results: any[] = [];
 
-    switchedStream.subscribe({
+    switchedStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // No values should be emitted
@@ -77,7 +77,7 @@ describe('switchMap operator', () => {
 
     let results: any[] = [];
 
-    switchedStream.subscribe({
+    switchedStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([20]); // Should emit after delay and complete
@@ -104,7 +104,7 @@ describe('switchMap operator', () => {
     let results: any[] = [];
     let errorOccurred = false;
 
-    switchedStream.subscribe({
+    switchedStream({
       next: (value) => results.push(value),
       error: (err) => {
         errorOccurred = true;
@@ -132,7 +132,7 @@ describe('switchMap operator', () => {
 
     const results: any[] = [];
 
-    switchedStream.subscribe({
+    switchedStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // No values should be emitted

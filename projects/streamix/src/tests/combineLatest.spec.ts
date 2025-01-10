@@ -1,4 +1,4 @@
-import { combineLatest, from, timer } from '../lib';
+import { combineLatest, from, Subscription, timer } from '../lib';
 
 describe('CombineLatestStream with TimerStreams', () => {
   it('should combine timer streams correctly', (done) => {
@@ -16,7 +16,7 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     let index = 0;
 
-    let subscription = combinedTimers.subscribe((latestValues: any) => {
+    let subscription = combinedTimers((latestValues: any) => {
       try {
         expect(latestValues).toEqual(expectedValues[index]);
         index++;
@@ -38,7 +38,7 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     const combinedTimers = combineLatest([firstTimer, secondTimer]);
 
-    const subscription = combinedTimers.subscribe({
+    const subscription: Subscription = combinedTimers({
       next: () => subscription.unsubscribe(),
       complete: () => done()
     });
@@ -57,7 +57,7 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     let index = 0;
 
-    const subscription = combinedTimers.subscribe((latestValues: any) => {
+    const subscription = combinedTimers((latestValues: any) => {
       try {
         expect(latestValues).toEqual(expectedValues[index]);
         index++;
@@ -89,7 +89,7 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     let index = 0;
 
-    const subscription = combinedTimers.subscribe((latestValues: any) => {
+    const subscription = combinedTimers((latestValues: any) => {
       try {
         expect(latestValues).toEqual(expectedValues[index]);
         index++;
@@ -111,7 +111,7 @@ describe('CombineLatestStream with TimerStreams', () => {
     const combinedStream = combineLatest([firstStream, secondStream]);
     let nextCalled = false;
 
-    const subscription = combinedStream.subscribe({
+    const subscription = combinedStream({
       next: () => nextCalled = true,
       complete: () => {
         subscription.unsubscribe();

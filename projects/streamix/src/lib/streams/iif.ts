@@ -14,7 +14,7 @@ export function iif<T>(
     selectedStream = condition() ? trueStream : falseStream;
 
     // Start the selected stream
-    subscription = selectedStream.subscribe({
+    subscription = selectedStream({
       next: (value) => handleEmission(this, value),
       complete: () => this[flags].isAutoComplete = true
     });

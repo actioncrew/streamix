@@ -46,7 +46,7 @@ export class AppComponent implements OnInit {
     this.subSampling = 2;
 
     this.showProgressOverlay();
-    this.drawFractal().subscribe();
+    this.drawFractal()();
   }
 
   showProgressOverlay() {
