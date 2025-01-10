@@ -6,7 +6,7 @@ export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOp
     const output = createSubject<Map<string | number, T[]>>(); // The output stream to emit grouped results
     const partitions = new Map<string | number, T[]>(); // Store grouped partitions
 
-    const subscription = input.subscribe({
+    const subscription = input({
       next: (value: T) => {
         const key = keyFn(value); // Compute the partition key
 

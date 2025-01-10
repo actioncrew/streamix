@@ -17,7 +17,7 @@ export const switchMap = (project: (value: any) => Stream): StreamOperator => {
       }
 
       // Subscribe to the inputStream
-      const subscription = input.subscribe({
+      const subscription = input({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             handleEmission(createEmission({ value }));
@@ -60,7 +60,7 @@ export const switchMap = (project: (value: any) => Stream): StreamOperator => {
 
       currentInnerStream = innerStream;
 
-      currentSubscription = innerStream.subscribe({
+      currentSubscription = innerStream({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             emission.link(output.next(value));

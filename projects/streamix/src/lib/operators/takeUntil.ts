@@ -18,7 +18,7 @@ export const takeUntil = (notifier: Stream): StreamOperator => {
     };
 
     // Subscribe to the notifier
-    notifierSubscription = notifier.subscribe({
+    notifierSubscription = notifier({
       next: () => {
         // Trigger stream completion when the notifier emits
         finalize();
@@ -27,7 +27,7 @@ export const takeUntil = (notifier: Stream): StreamOperator => {
     });
 
     // Subscribe to the source stream
-    sourceSubscription = input.subscribe({
+    sourceSubscription = input({
       next: (value) => {
         // Forward values to the output stream
         output.next(value);

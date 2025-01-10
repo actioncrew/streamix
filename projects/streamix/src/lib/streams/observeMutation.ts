@@ -14,7 +14,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *
  * const mutationStream = observeMutation(document.body, { childList: true });
  *
- * const subscription = mutationStream.subscribe({
+ * const subscription = mutationStream({
  *   next: (mutations) => {
  *     console.log('Mutations observed:', mutations);
  *   },

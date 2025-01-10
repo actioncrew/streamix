@@ -6,7 +6,7 @@ export const flags = Symbol('Stream');
 export const internals = Symbol('Stream');
 
 export type Stream<T = any> = {
-  (): Subscription;
+  (callback?: ((value: T) => any) | Receiver): Subscription;
 
   type: "stream" | "subject";
   name?: string;
@@ -119,7 +119,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     const pendingTasks = new Set<Promise<void>>(); // Use Set for efficient tracking
     let isCompleteCalled = false; // To ensure `complete` is only processed once
 
-    const subscription = this.subscribe({
+    const subscription = this({
       next: (value: any) => {
         let emission = createEmission({ value });
         for (let i = 0; i < operators.length; i++) {

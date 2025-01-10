@@ -13,7 +13,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *
  * const mediaQueryStream = onMediaQueryMatch('(min-width: 768px)');
  *
- * const subscription = mediaQueryStream.subscribe({
+ * const subscription = mediaQueryStream({
  *   next: (matchStatus) => {
  *     console.log('Media Query Match:', matchStatus);
  *   },

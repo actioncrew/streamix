@@ -11,7 +11,7 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
       innerStream = factory();
 
       // Start the inner stream
-      subscription = innerStream.subscribe({
+      subscription = innerStream({
         next: value => handleEmission(this, value),
         complete: () => {
           if (!this[internals].shouldComplete()) {

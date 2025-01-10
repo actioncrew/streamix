@@ -8,7 +8,7 @@ describe('MergeStream', () => {
     const mergeStream = merge(source1, source2);
 
     const emittedValues: any[] = [];
-    const subscription = mergeStream.subscribe({
+    const subscription = mergeStream({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues.sort()).toEqual([
@@ -32,7 +32,7 @@ describe('MergeStream', () => {
 
     let subscriptionCalls = 0;
 
-    mergeStream.subscribe({
+    mergeStream({
       next: () => subscriptionCalls++,
       complete: () => {
         expect(subscriptionCalls).toBe(4);

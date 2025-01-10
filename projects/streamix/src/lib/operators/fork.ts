@@ -21,7 +21,7 @@ export const fork = <T = any, R = T>(
       }
 
       // Subscribe to the inputStream
-      subscription = input.subscribe({
+      subscription = input({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             handleEmission(createEmission({ value }));
@@ -79,7 +79,7 @@ export const fork = <T = any, R = T>(
         currentInnerStream = innerStream;
 
         return new Promise<void>((resolve) => {
-          subscription = currentInnerStream!.subscribe({
+          subscription = currentInnerStream!({
             next: (value) => {
               if (!output[internals].shouldComplete()) {
                 emission.link(output.next(value));

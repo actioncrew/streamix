@@ -12,7 +12,7 @@ describe('ConcatMapOperator', () => {
     const mockStream$ = from([]).pipe(concatMap(project));
 
     const emittedValues: any[] = [];
-    mockStream$.subscribe({
+    mockStream$({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([]);
@@ -25,7 +25,7 @@ describe('ConcatMapOperator', () => {
     const mockStream$ = from(['1', '2', '3', '4', '5']).pipe(concatMap(project));
     const emittedValues: any[] = [];
 
-    mockStream$.subscribe({
+    mockStream$({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['innerValue1', 'innerValue2', 'innerValue3', 'innerValue4', 'innerValue5']); // Expect each value from inner streams in sequence
@@ -39,7 +39,7 @@ describe('ConcatMapOperator', () => {
     const mockStream$ = from(emissions).pipe(concatMap(value => of(value)));
 
     const emittedValues: any[] = [];
-    mockStream$.subscribe({
+    mockStream$({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(emissions); // Sequential handling expected
@@ -55,7 +55,7 @@ describe('ConcatMapOperator', () => {
     const emittedValues: any[] = [];
     const errors: any[] = [];
 
-    mockStream$.subscribe({
+    mockStream$({
       next: (value) => emittedValues.push(value),
       error: (error) => errors.push(error),
       complete: () => {
@@ -78,7 +78,7 @@ describe('ConcatMapOperator', () => {
     const mockStream$ = from(outerValues).pipe(concatMap(projectFn));
     const emittedValues: any[] = [];
 
-    mockStream$.subscribe({
+    mockStream$({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['inner1a', 'inner1b', 'inner2a', 'inner2b']);

@@ -10,7 +10,7 @@ export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
     let hasEmitted = false;
     let lastValue: T;
 
-    const subscription = stream.subscribe({
+    const subscription = stream({
       next: (value: T) => {
         if(!hasEmitted) {
           hasEmitted = true;

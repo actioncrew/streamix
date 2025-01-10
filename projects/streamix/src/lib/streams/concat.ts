@@ -11,7 +11,7 @@ export function concat<T = any>(...sources: Stream[]): Stream<T> {
 
   const processSource = async (stream: Stream<T>, source: Stream): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
-      activeSubscription = source.subscribe({
+      activeSubscription = source({
         next: (value) => emitValue(stream, value),
         error: (err) => {
           emitError(stream, err);

@@ -6,7 +6,7 @@ export const toArray = (): StreamOperator => {
     let accumulatedArray: any[] = []; // Array to store emission values
     const output = createSubject(); // Create an output stream
 
-    const subscription = stream.subscribe({
+    const subscription = stream({
       next: (emission) => {
         // Accumulate values from each emission
         accumulatedArray.push(emission.value);

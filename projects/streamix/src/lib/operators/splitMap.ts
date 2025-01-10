@@ -9,7 +9,7 @@ export const splitMap = <T = any, R = T>(
     const output = createSubject<R>(); // The output stream
     let subscriptions: Array<any> = []; // Track all subscriptions
 
-    const subscription = input.subscribe({
+    const subscription = input({
       next: (partitionMap: Map<string, any[]>) => {
         let remainingSubscriptions = 0;
 
@@ -22,7 +22,7 @@ export const splitMap = <T = any, R = T>(
             const partitionStream = from(streamData).pipe(...caseOperators);
 
             // Subscribe to the processed partition stream
-            const partitionSubscription = partitionStream.subscribe({
+            const partitionSubscription = partitionStream({
               next: (value) => output.next(value),
               complete: () => {
                 remainingSubscriptions--;

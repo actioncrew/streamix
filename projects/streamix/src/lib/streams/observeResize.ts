@@ -14,7 +14,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  * const elementToObserve = document.getElementById('resizeMe');
  * const resizeStream = observeResize(elementToObserve);
  *
- * const subscription = resizeStream.subscribe({
+ * const subscription = resizeStream({
  *   next: (resizeEntry) => {
  *     console.log('Resize observed:', resizeEntry);
  *   },

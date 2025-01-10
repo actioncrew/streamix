@@ -6,7 +6,7 @@ export function merge<T = any>(...sources: Stream[]): Stream<T> {
   const stream = createStream<T>('merge', async function(this: Stream<T>): Promise<void> {
     const sourcePromises = sources.map((source) => {
       return new Promise<void>((resolve, reject) => {
-        const subscription = source.subscribe({
+        const subscription = source({
           next: (value) => {
             const emission = createEmission({ value });
             this.next(emission);

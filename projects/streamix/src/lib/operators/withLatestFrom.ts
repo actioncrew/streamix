@@ -10,7 +10,7 @@ export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
 
     // Subscribe to each of the input streams
     streams.forEach((stream, index) => {
-      const subscription = stream.subscribe({
+      const subscription = stream({
         next: (value) => {
           latestValues[index].set(value);
         },
@@ -20,7 +20,7 @@ export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
     });
 
     // Subscribe to the source stream
-    const sourceSubscription = input.subscribe({
+    const sourceSubscription = input({
       next: (value) => {
         if (latestValues.every((v) => v.hasValue())) {
           // Emit combined values only if all streams have emitted at least once

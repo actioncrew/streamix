@@ -7,7 +7,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): S
 
   const operator = (stream: Stream): Stream => {
     // Subscribe to the inputStream to start processing emissions
-    const subscription = stream.subscribe({
+    const subscription = stream({
       next: (value: any) => {
         // Accumulate the value using the provided accumulator function
         accumulatedValue = accumulator(accumulatedValue, value);

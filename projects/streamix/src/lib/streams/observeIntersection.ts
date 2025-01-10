@@ -17,7 +17,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *   threshold: 0.5,
  * });
  *
- * const subscription = intersectionStream.subscribe({
+ * const subscription = intersectionStream({
  *   next: (isVisible) => {
  *     console.log('Element visibility status:', isVisible);
  *   },

@@ -8,7 +8,7 @@ export const empty = <T = any>(): Stream<T> => {
     this[flags].isAutoComplete = true;
   });
 
-  stream.subscribe =  (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  const newStream =  (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
 
     const subscription = () => undefined;
@@ -25,7 +25,10 @@ export const empty = <T = any>(): Stream<T> => {
     return subscription as Subscription;
   }
 
-  return stream;
+  Object.defineProperty(newStream, 'name', { writable: true, enumerable: true, configurable: true });
+  Object.assign(newStream, stream);
+  newStream.subscribe = newStream;
+  return newStream as unknown as Stream<T>;
 };
 
 // Export a singleton instance of EmptyStream

@@ -17,7 +17,7 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
       }
 
       // Subscribe to the inputStream
-      subscription = input.subscribe({
+      subscription = input({
         next: (value) => {
           if (!output[internals].shouldComplete()) {
             handleEmission(createEmission({ value }));
@@ -54,7 +54,7 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
       }
 
       if(!activeStreams.has(innerStream)) {
-        const subscription = innerStream.subscribe({
+        const subscription = innerStream({
           next: (value) => emission.link(output.next(value)),
           error: (err) => {
             eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });

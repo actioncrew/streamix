@@ -9,7 +9,7 @@ describe('ConcatStream', () => {
     const concatStream = concat(source1, source2);
 
     const emittedValues: any[] = [];
-    const subscription = concatStream.subscribe({
+    const subscription = concatStream({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([
@@ -32,7 +32,7 @@ describe('ConcatStream', () => {
     const source2 = from(['source2_value1', 'source2_value2']);
 
     const concatStream = concat(source1, source2);
-    const subscription = concatStream.subscribe({
+    const subscription = concatStream({
       complete: () => {
         isCompleted = true;
         expect(isCompleted).toBe(true);

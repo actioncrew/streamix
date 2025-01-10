@@ -9,7 +9,7 @@ describe('takeUntil operator', () => {
 
     let results: any[] = [];
 
-    takenUntilStream.subscribe({
+    takenUntilStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([1, 2, 3]); // Should emit all values before notifier emits
@@ -26,7 +26,7 @@ describe('takeUntil operator', () => {
 
     let results: any[] = [];
 
-    takenUntilStream.subscribe({
+    takenUntilStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results.length).toEqual(0); // Should not emit any values because notifier emits immediately
@@ -43,7 +43,7 @@ describe('takeUntil operator', () => {
 
     let results: any[] = [];
 
-    takenUntilStream.subscribe({
+    takenUntilStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // Should not emit any values because the source stream is empty
