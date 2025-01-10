@@ -8,15 +8,13 @@ export type Subject<T = any> = Stream<T> & {
 // Create the functional version of the Subject
 export function createSubject<T = any>(): Subject<T> {
 
-  const stream = createStream<T>('subject', async () => Promise.resolve()) as Subject;
+  const stream = createStream<T>('subject', async () => stream[internals].awaitCompletion()) as Subject;
   let currentValue: T | undefined;
 
   let autoComplete = false;
   let unsubscribed = false;
 
   const completion = awaitable<void>();
-
-  stream.run = () => stream[internals].awaitCompletion();
 
   stream[internals].awaitCompletion = () => completion.promise();
   stream[internals].shouldComplete = () => unsubscribed || autoComplete;
