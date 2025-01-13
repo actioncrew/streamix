@@ -15,9 +15,7 @@ export const empty = <T = any>(): Stream<T> => {
 
     Object.assign(subscription, {
       unsubscribed: false,
-      unsubscribe: () => { /* No-op for EMPTY subscription */ },
-      started: Promise.resolve(), // Immediately resolve started promise
-      completed: Promise.resolve(), // Immediately resolve completed promise
+      unsubscribe: () => { /* No-op for EMPTY subscription */ }
     });
 
     receiver.complete && queueMicrotask(receiver.complete);
