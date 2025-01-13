@@ -81,7 +81,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
         await promise;
       }
     } catch (error) {
-      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' }); // Handle any errors
+      stream.error(error);
     } finally {
       !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook

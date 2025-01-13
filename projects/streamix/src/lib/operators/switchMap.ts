@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -24,7 +24,7 @@ export const switchMap = (project: (value: any) => Stream): StreamOperator => {
           }
         },
         error: (err) => {
-          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+          output.error(err);
         },
         complete: () => {
           subscription.unsubscribe();
@@ -47,7 +47,7 @@ export const switchMap = (project: (value: any) => Stream): StreamOperator => {
       const [error, innerStream] = await catchAny(() => project(emission.value));
 
       if (error) {
-        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+        output.error(error);
         executionCounter.increment();
         delete emission.pending;
         emission.phantom = true;
@@ -67,7 +67,7 @@ export const switchMap = (project: (value: any) => Stream): StreamOperator => {
           }
         },
         error: (err) => {
-          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+          output.error(err);
           finalize();
         },
         complete: () => {
