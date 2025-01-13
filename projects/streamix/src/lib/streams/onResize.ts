@@ -9,10 +9,10 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *
  * @example
  * // Example usage:
- * import { oResize } from './your-path';
+ * import { onResize } from './your-path';
  *
  * const elementToObserve = document.getElementById('resizeMe');
- * const resizeStream = oResize(elementToObserve);
+ * const resizeStream = onResize(elementToObserve);
  *
  * const subscription = resizeStream({
  *   next: (resizeEntry) => {
@@ -20,10 +20,10 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *   },
  * });
  */
-export function oResize(
+export function onResize(
   element: Element
 ): Stream<{ width: number; height: number }> {
-  const stream = createStream<{ width: number; height: number }>('oResize', async function (this: Stream<{ width: number; height: number }>) {
+  const stream = createStream<{ width: number; height: number }>('onResize', async function (this: Stream<{ width: number; height: number }>) {
     let resizeObserver: ResizeObserver;
 
     const callback = (entries: ResizeObserverEntry[]) => {
@@ -44,6 +44,6 @@ export function oResize(
     resizeObserver.disconnect();
   });
 
-  stream.name = 'oResize';
+  stream.name = 'onResize';
   return stream;
 }
