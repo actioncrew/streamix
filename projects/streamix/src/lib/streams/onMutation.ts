@@ -10,9 +10,9 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *
  * @example
  * // Example usage:
- * import { observeMutation } from './your-path';
+ * import { onMutation } from './your-path';
  *
- * const mutationStream = observeMutation(document.body, { childList: true });
+ * const mutationStream = onMutation(document.body, { childList: true });
  *
  * const subscription = mutationStream({
  *   next: (mutations) => {
@@ -20,11 +20,11 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *   },
  * });
  */
-export function observeMutation(
+export function onMutation(
   element: Element,
   options?: MutationObserverInit
 ): Stream<MutationRecord[]> {
-  const stream = createStream<MutationRecord[]>('observeMutation', async function (this: Stream<MutationRecord[]>) {
+  const stream = createStream<MutationRecord[]>('onMutation', async function (this: Stream<MutationRecord[]>) {
     const observer = new MutationObserver((mutationsList) => {
       if (mutationsList.length) {
         const emission = createEmission({ value: mutationsList });
