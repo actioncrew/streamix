@@ -1,4 +1,3 @@
-import { Emission } from "./emission";
 
 export interface Subscription {
   (): any;
@@ -7,18 +6,9 @@ export interface Subscription {
   unsubscribe(): void;
 }
 
-export const createSubscription = function (getValue: () => Emission, unsubscribe?: () => void): Subscription {
-  let currentValue: Emission | undefined = undefined;
+export const createSubscription = function <T>(getValue: () => T, unsubscribe?: () => void): Subscription {
 
-  const subscription = () => {
-    const emission = getValue();
-
-    if (!(emission.error || emission.pending || emission.phantom)) {
-      currentValue = emission;
-    }
-
-    return currentValue?.value;
-  };
+  const subscription = () => getValue();
 
   unsubscribe = unsubscribe ?? (function(this: Subscription) { this.unsubscribed = performance.now(); });
 
