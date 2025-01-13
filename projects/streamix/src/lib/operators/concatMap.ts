@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -26,7 +26,7 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
           }
         },
         error: (err) => {
-          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+          output.error(err);
         },
         complete: () => {
           queueMicrotask(() =>
@@ -65,7 +65,7 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
       const [error, innerStream] = await catchAny(() => project(emission.value));
 
       if (error) {
-        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+        output.error(error);
         emission.phantom = true;
         finalize();
         return;
@@ -82,7 +82,7 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
               }
             },
             error: (err) => {
-              eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+              output.error(err);
               resolve();
             },
             complete: () => {

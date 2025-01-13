@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -28,7 +28,7 @@ export const fork = <T = any, R = T>(
           }
         },
         error: (err) => {
-          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+          output.error(err);
         },
         complete: () => {
           queueMicrotask(() =>
@@ -70,7 +70,7 @@ export const fork = <T = any, R = T>(
         const [error, innerStream] = await catchAny(() => matchedCase.handler());
 
         if (error) {
-          eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+          output.error(error);
           emission.phantom = true;
           finalize();
           return;
@@ -114,7 +114,7 @@ export const fork = <T = any, R = T>(
     };
 
     const handleStreamError = (emission: Emission, error: any) => {
-      eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+      output.error(error);
       emission.error = error;
       finalize();
     };

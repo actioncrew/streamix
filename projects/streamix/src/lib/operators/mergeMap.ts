@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, eventBus, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject, EMPTY } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -24,7 +24,7 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
           }
         },
         error: (err) => {
-          eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+          output.error(err);
         },
         complete: () => {
           queueMicrotask(() =>
@@ -46,7 +46,7 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
       const [error, innerStream] = await catchAny(() => project(emission.value));
 
       if (error) {
-        eventBus.enqueue({ target: output, payload: { error }, type: 'error' });
+        output.error(error);
         executionCounter.increment();
         emission.phantom = true;
         delete emission.pending;
@@ -57,7 +57,7 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
         const subscription = innerStream({
           next: (value) => emission.link(output.next(value)),
           error: (err) => {
-            eventBus.enqueue({ target: output, payload: { error: err }, type: 'error' });
+            output.error(err);
           },
           complete: () => {
             finalizeInnerStream(innerStream);
