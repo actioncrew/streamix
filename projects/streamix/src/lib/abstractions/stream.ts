@@ -1,5 +1,5 @@
 import { createSubject } from "../../lib";
-import { createEmission, createReceiver, Emission, eventBus, Operator, Receiver, StreamOperator, Subscription } from "../abstractions";
+import { createEmission, createReceiver, createSubscription, Emission, eventBus, Operator, Receiver, StreamOperator, Subscription } from "../abstractions";
 import { awaitable, createEventEmitter, EventEmitter } from "../utils";
 
 export const flags = Symbol('Stream');
@@ -266,9 +266,23 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     }
 
     // Create the subscription object
-    const subscription: Subscription = () => currentValue;
-    subscription.subscribed = performance.now();
-    subscription.unsubscribed = undefined;
+    const subscription = createSubscription(
+      () => currentValue,
+      () => {
+        if (!subscription.unsubscribed) {
+          subscription.unsubscribed = performance.now();
+          const cleanup = () => {
+            if (receiver.complete) emitter.off('finalize', completeCallback);
+            if (receiver.error) emitter.off('error', errorCallback);
+            emitter.off('subscribers', boundCallback);
+          };
+
+          if (!stopped) {
+            stream.complete().then(cleanup);
+          }
+        }
+      }
+    );
 
     // Define the bound callback for handling emissions
     const boundCallback = ({ emission }: any) => {
@@ -289,27 +303,12 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
 
       return Promise.resolve();
     };
-
-    subscription.unsubscribe = () => {
-      if (!subscription.unsubscribed) {
-
-        subscription.unsubscribed = performance.now();
-        const cleanup = () => {
-          if (receiver.complete) emitter.off('finalize', completeCallback);
-          if (receiver.error) emitter.off('error', errorCallback);
-          emitter.off('subscribers', boundCallback);
-        };
-
-        if (!stopped) {
-          stream.complete().then(cleanup);
-        }
-      }
-    };
+;
 
     // Add the bound callback to the subscribers
     emitter.on('subscribers', boundCallback);
 
-    return subscription as Subscription;
+    return subscription;
   };
 
   const stream = subscribe as unknown as Stream;

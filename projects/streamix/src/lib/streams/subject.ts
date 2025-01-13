@@ -1,4 +1,4 @@
-import { createEmission, createReceiver, createStream, Emission, eventBus, flags, internals, Receiver, Stream, Subscription } from '../abstractions';
+import { createEmission, createReceiver, createStream, createSubscription, Emission, eventBus, flags, internals, Receiver, Stream, Subscription } from '../abstractions';
 import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
@@ -106,9 +106,22 @@ export function createSubject<T = any>(): Subject<T> {
     }
 
     // Create the subscription object
-    const subscription: Subscription = () => currentValue;
-    subscription.subscribed = performance.now();
-    subscription.unsubscribed = undefined;
+    const subscription = createSubscription(
+      () => currentValue,
+      () => {
+        if (!subscription.unsubscribed) {
+          subscription.unsubscribed = performance.now();
+          const cleanup = () => {
+            if (receiver.complete) stream.emitter.off('finalize', completeCallback);
+            if (receiver.error) stream.emitter.off('error', errorCallback);
+            stream.emitter.off('subscribers', boundCallback);
+          };
+
+          stream.complete().then(cleanup);
+        }
+      }
+    );
+
 
     // Define the bound callback for handling emissions
     const boundCallback = ({ emission }: any) => {
@@ -130,29 +143,10 @@ export function createSubject<T = any>(): Subject<T> {
       return Promise.resolve();
     };
 
-    subscription.unsubscribe = () => {
-      if (!subscription.unsubscribed) {
-
-        subscription.unsubscribed = performance.now();
-
-        const cleanup = () => {
-          if (receiver.complete) stream.emitter.off('finalize', completeCallback);
-          if (receiver.error) stream.emitter.off('error', errorCallback);
-          stream.emitter.off('subscribers', boundCallback);
-        };
-
-        if (!stream[flags].isStopped) {
-          stream.complete().then(cleanup);
-        } else {
-          cleanup();
-        }
-      }
-    };
-
     // Add the bound callback to the subscribers
     stream.emitter.on('subscribers', boundCallback);
 
-    return subscription as Subscription;
+    return subscription;
   };
 
   stream.emitter.once('finalize', () => {
