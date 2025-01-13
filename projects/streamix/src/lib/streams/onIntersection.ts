@@ -10,10 +10,10 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *
  * @example
  * // Example usage:
- * import { observeIntersection } from './your-path';
+ * import { onIntersection } from './your-path';
  *
  * const elementToObserve = document.getElementById('observeMe');
- * const intersectionStream = observeIntersection(elementToObserve, {
+ * const intersectionStream = onIntersection(elementToObserve, {
  *   threshold: 0.5,
  * });
  *
@@ -23,11 +23,11 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  *   },
  * });
  */
-export function observeIntersection(
+export function onIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  const stream = createStream<boolean>('observeIntersection', async function (this: Stream<boolean>) {
+  const stream = createStream<boolean>('onIntersection', async function (this: Stream<boolean>) {
     let observer: IntersectionObserver;
 
     // Define the callback for IntersectionObserver
