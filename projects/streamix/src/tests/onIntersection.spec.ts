@@ -1,4 +1,4 @@
-import { observeIntersection } from '../lib';
+import { onIntersection } from '../lib';
 
 // Set up Jest environment with jsdom
 beforeAll(() => {
@@ -24,7 +24,7 @@ xdescribe('Functional tests for fromIntersectionObserver', () => {
 
     document.body.appendChild(element);
 
-    visibilityStream = observeIntersection(element);
+    visibilityStream = onIntersection(element);
 
     const emittedValues: boolean[] = [];
     const subscription = visibilityStream({
@@ -54,7 +54,7 @@ xdescribe('Functional tests for fromIntersectionObserver', () => {
 
     document.body.appendChild(element);
 
-    visibilityStream = observeIntersection(element);
+    visibilityStream = onIntersection(element);
 
     const emittedValues: boolean[] = [];
     const subscription = visibilityStream({
@@ -82,7 +82,7 @@ xdescribe('Functional tests for fromIntersectionObserver', () => {
 
     document.body.appendChild(element);
 
-    visibilityStream = observeIntersection(element);
+    visibilityStream = onIntersection(element);
 
     const subscription = visibilityStream();
 

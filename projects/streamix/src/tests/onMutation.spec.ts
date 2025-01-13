@@ -1,4 +1,4 @@
-import { observeMutation } from '../lib';
+import { onMutation } from '../lib';
 
 // Mock DOM element for testing purposes
 let observedElement: HTMLDivElement;
@@ -16,7 +16,7 @@ describe('fromMutation Stream Tests', () => {
   });
 
   test('should emit mutations when child is added', (done) => {
-    const mutationStream = observeMutation(observedElement, {
+    const mutationStream = onMutation(observedElement, {
       childList: true,
     });
 
@@ -43,7 +43,7 @@ describe('fromMutation Stream Tests', () => {
     child.innerText = 'Child div to remove';
     observedElement.appendChild(child);
 
-    const mutationStream = observeMutation(observedElement, {
+    const mutationStream = onMutation(observedElement, {
       childList: true,
     });
 
@@ -71,7 +71,7 @@ describe('fromMutation Stream Tests', () => {
     nestedChild.innerText = 'Nested change';
     nestedParent.appendChild(nestedChild);
 
-    const mutationStream = observeMutation(observedElement, {
+    const mutationStream = onMutation(observedElement, {
       subtree: true,
       childList: true,
     });
