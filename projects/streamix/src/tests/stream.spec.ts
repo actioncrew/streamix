@@ -38,7 +38,7 @@ export const createSubscription = function <T>(getValue: () => T, unsubscribe?: 
 };
 
 
-type Stream<T> = (next: ((value: T) => void) | Receiver<T>) => Subscription;
+type Stream<T> = (next: (value: T) => void) => Subscription;
 type Emission<T> = { value: T; phantom?: boolean; pending?: boolean; error?: any };
 
 type StreamOperator<T, U> = (stream: Stream<T>) => Stream<U>;
@@ -64,10 +64,10 @@ export const filter = <T>(predicate: (value: T) => boolean): Operator<T, T> => (
 
 export const defer = <T>(factory: () => Stream<T>): StreamOperator<T, T> => {
   return (stream: Stream<T>) => {
-    return (nextOrReceiver: ((value: T) => void) | Receiver<T>) => {
+    return (next: ((value: T) => void)) => {
       return stream(() => {
         const deferredStream = factory();
-        deferredStream(nextOrReceiver);
+        deferredStream(next);
       });
     };
   };
@@ -76,10 +76,10 @@ export const defer = <T>(factory: () => Stream<T>): StreamOperator<T, T> => {
 // Higher-order operator for switching streams
 export const mergeMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, U> => {
   return (stream: Stream<T>) => {
-    return (nextOrReceiver: ((value: U) => void) | Receiver<U>) => {
+    return (next: ((value: U) => void)) => {
       return stream((value: T) => {
         const innerStream = fn(value);
-        innerStream(nextOrReceiver);
+        innerStream(next);
       });
     };
   };
@@ -89,8 +89,7 @@ export const concatMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, 
   return (stream: Stream<T>) => {
     let activeInnerStream: Subscription | null = null;
 
-    return (nextOrReceiver: ((value: U) => void) | Receiver<U>) => {
-      const next = typeof nextOrReceiver === 'function' ? nextOrReceiver : nextOrReceiver.next;
+    return (next: ((value: U) => void)) => {
       return stream((value: T) => {
         const innerStream = fn(value);
 
@@ -114,7 +113,7 @@ export const switchMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, 
     let currentInnerStream: Stream<U> | null = null;
     let subscription: Subscription | null = null;
 
-    return (nextOrReceiver: ((value: U) => void) | Receiver<U>) => {
+    return (next: ((value: U) => void)) => {
       const unsubscribeFromInner = () => {
         if (subscription) {
           subscription.unsubscribe();
@@ -125,7 +124,7 @@ export const switchMap = <T, U>(fn: (value: T) => Stream<U>): StreamOperator<T, 
       return stream((value: T) => {
         unsubscribeFromInner();
         currentInnerStream = fn(value);
-        subscription = currentInnerStream!(nextOrReceiver);
+        subscription = currentInnerStream!(next);
       });
     };
   };
@@ -145,8 +144,7 @@ export const catchError = <T>(handler: (error: any) => Emission<T>): Operator<T,
 
 export const delay = <T>(ms: number): StreamOperator<T, T> => {
   return (stream: Stream<T>) => {
-    return (nextOrReceiver: ((value: T) => void) | Receiver<T>) => {
-      const next = typeof nextOrReceiver === 'function' ? nextOrReceiver : nextOrReceiver.next;
+    return (next: ((value: T) => void)) => {
       let timerId: any = null;
 
       const clearTimer = () => {
@@ -167,8 +165,7 @@ export const delay = <T>(ms: number): StreamOperator<T, T> => {
 };
 
 export function fromArray<T>(arr: T[]): Stream<T> {
-  return (nextOrReceiver: ((value: T) => void) | Receiver<T>) => {
-    const next = typeof nextOrReceiver === 'function' ? nextOrReceiver : nextOrReceiver.next;
+  return (next: ((value: T) => void)) => {
     let index = 0; let currentValue: any = undefined;
     const interval = setInterval(() => {
       if (index < arr.length) {
@@ -260,8 +257,7 @@ const chain = <T, U>(...steps: (Operator<any, any> | StreamOperator<any, any>)[]
 // Example usage
 describe("adsasjdkasjdlas", () => {
   it("should emit values from stream", (done) => {
-    const source: Stream<number> = (nextOrReceiver) => {
-      const next = typeof nextOrReceiver === 'function' ? nextOrReceiver : nextOrReceiver.next;
+    const source: Stream<number> = (next) => {
 
       [1, 2, 3].forEach((value) => next!(value));
       return createSubscription(() => {});
@@ -276,8 +272,7 @@ describe("adsasjdkasjdlas", () => {
     // MergeMap Operator
     const mergeMapOperator = mergeMap((value: number) => {
       const innerValues = [1, 2, 3].map((v) => v + value);
-      const innerStream: Stream<number> = (nextOrReceiver) => {
-        const next = typeof nextOrReceiver === 'function' ? nextOrReceiver : nextOrReceiver.next!;
+      const innerStream: Stream<number> = (next) => {
         innerValues.forEach(next);
         return createSubscription(() => {});
       };
