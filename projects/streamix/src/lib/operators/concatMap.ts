@@ -1,5 +1,5 @@
 import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
-import { createSubject, EMPTY } from '../streams';
+import { createSubject } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
 export const concatMap = (project: (value: any) => Stream): StreamOperator => {
@@ -13,11 +13,6 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
     const output = createSubject();
 
     const init = () => {
-      if (input === EMPTY) {
-        output[flags].isAutoComplete = true;
-        return;
-      }
-
       // Subscribe to the inputStream
       subscription = input({
         next: (value) => {
