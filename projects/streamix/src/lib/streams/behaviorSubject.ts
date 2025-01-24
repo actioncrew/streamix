@@ -11,8 +11,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
   const behaviorSubject = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const subscription = originalSubscribe(callbackOrReceiver);
 
-    const value = subject.value ?? initialValue;
-    subject.next(value);
+    subject.next(initialValue);
     return subscription;
   };
 
