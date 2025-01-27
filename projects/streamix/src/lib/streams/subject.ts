@@ -1,4 +1,4 @@
-import { createEmission, createReceiver, createStream, createSubscription, Emission, eventBus, flags, internals, Receiver, Stream, Subscription } from '../abstractions';
+import { Consumer, createEmission, createStream, Emission, eventBus, flags, internals, Receiver, Stream, Subscription } from '../abstractions';
 import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
@@ -91,62 +91,29 @@ export function createSubject<T = any>(): Subject<T> {
   });
 
   stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
-    // Convert a callback into a Receiver if needed
-    const receiver = createReceiver(callbackOrReceiver);
-    const completeCallback = () => receiver.complete!();
-    const errorCallback = ({ error }: any) => receiver.error!(error);
-
-    // Chain the `complete` method to the `onStop` hook if present
-    if (receiver.complete) {
-      stream.emitter.on('finalize', completeCallback);
-    }
-
-    if (receiver.error) {
-      stream.emitter.on('error', errorCallback);
-    }
-
-    // Create the subscription object
-    const subscription = createSubscription(
-      () => currentValue,
-      () => {
-        if (!subscription.unsubscribed) {
-          subscription.unsubscribed = performance.now();
-          const cleanup = () => {
-            if (receiver.complete) stream.emitter.off('finalize', completeCallback);
-            if (receiver.error) stream.emitter.off('error', errorCallback);
-            stream.emitter.off('subscribers', boundCallback);
-          };
-
-          stream.complete().then(cleanup);
-        }
-      }
-    );
-
-
-    // Define the bound callback for handling emissions
-    const boundCallback = ({ emission }: any) => {
-      currentValue = emission.value;
-
-      try {
-        if (emission.error && receiver.error) {
-          receiver.error(emission.error); // Call `error` if emission failed
+    // Convert a callback into a Consumer if needed
+    const consumer: Consumer = {
+      next: async (emission) => {
+        if (!emission.error) {
+          if (callbackOrReceiver && typeof callbackOrReceiver === 'function') {
+            callbackOrReceiver(emission.value);
+          } else if (callbackOrReceiver && typeof callbackOrReceiver.next === 'function') {
+            callbackOrReceiver.next(emission.value);
+          }
         } else {
-          const rootEmissionTimestamp = emission.root().timestamp;
-          if (receiver.next && subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stream.stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
-            receiver.next(emission.value); // Call `next` for successful emissions
+          if (callbackOrReceiver && typeof callbackOrReceiver === 'object' && typeof callbackOrReceiver.error === 'function') {
+            callbackOrReceiver.error(emission.error);
           }
         }
-      } catch (err) {
-        console.error('Error in Receiver callback:', err);
-      }
-
-      return Promise.resolve();
+      },
+      complete: () => {
+        if (callbackOrReceiver && typeof callbackOrReceiver === 'object' && typeof callbackOrReceiver.complete === 'function') {
+          callbackOrReceiver.complete();
+        }
+      },
     };
 
-    // Add the bound callback to the subscribers
-    stream.emitter.on('subscribers', boundCallback);
-
-    return subscription;
+    return stream(consumer);
   };
 
   stream.emitter.once('finalize', () => {
