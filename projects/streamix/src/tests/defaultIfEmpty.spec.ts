@@ -7,7 +7,7 @@ describe('DefaultIfEmptyOperator', () => {
     const processedStream = stream.pipe(defaultIfEmpty(defaultValue));
     const emittedValues: any[] = [];
 
-    processedStream({
+    processedStream.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([defaultValue]);
@@ -24,7 +24,7 @@ describe('DefaultIfEmptyOperator', () => {
     const processedStream = stream.pipe(defaultIfEmpty(defaultValue));
     const emittedValues: any[] = [];
 
-    processedStream({
+    processedStream.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['Value 1', 'Value 2']);
@@ -47,7 +47,7 @@ describe('DefaultIfEmptyOperator', () => {
 
     const emittedValues: any[] = [];
 
-    processedStream({
+    processedStream.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([defaultValue]);
@@ -70,7 +70,7 @@ describe('DefaultIfEmptyOperator', () => {
 
     const emittedValues: any[] = [];
 
-    processedStream({
+    processedStream.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['Value 3', 'Value 3']);

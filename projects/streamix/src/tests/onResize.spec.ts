@@ -9,7 +9,7 @@ xdescribe('Functional tests for fromResizeObserver', () => {
 
     const resizeStream = onResize(divToTest);
 
-    const subscription = resizeStream({
+    const subscription = resizeStream.subscribe({
       next: (resizeData) => {
         try {
           expect(resizeData.width).toBe(200);

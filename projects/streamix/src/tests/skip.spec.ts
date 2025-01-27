@@ -9,7 +9,7 @@ describe('skip operator', () => {
 
     let results: any[] = [];
 
-    skippedStream({
+    skippedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([4, 5]); // Should skip the first 3 values and emit [4, 5]
@@ -26,7 +26,7 @@ describe('skip operator', () => {
 
     let results: any[] = [];
 
-    skippedStream({
+    skippedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // Should skip all values, resulting in an empty array
@@ -43,7 +43,7 @@ describe('skip operator', () => {
 
     let results: any[] = [];
 
-    skippedStream({
+    skippedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([1, 2, 3]); // Should emit all values without skipping

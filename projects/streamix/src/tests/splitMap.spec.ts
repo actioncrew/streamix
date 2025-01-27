@@ -46,7 +46,7 @@ describe('groupBy and splitMap operators', () => {
       splitMap(paths)  // Apply splitMap with custom operators
     );
 
-    source$({
+    source$.subscribe({
       next: (value) => result.push(value),
       complete: () => {
         // Expect processed values with the custom operator applied

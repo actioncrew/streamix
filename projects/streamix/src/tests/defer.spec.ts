@@ -31,7 +31,7 @@ describe('DeferStream', () => {
 
     // Collect emissions from the deferred stream
     const collectedEmissions: Emission[] = [];
-    const subscription = deferStream({
+    const subscription = deferStream.subscribe({
       next: (value) => collectedEmissions.push(value),
       complete: () => {
         expect(factory).toHaveBeenCalled(); // Check if factory was called
@@ -49,7 +49,7 @@ describe('DeferStream', () => {
 
     const deferStream = defer(factory);
 
-    deferStream({
+    deferStream.subscribe({
       complete: () => {
         expect(factory).toHaveBeenCalled();
         done();
@@ -63,7 +63,7 @@ describe('DeferStream', () => {
 
     const deferStream = defer(factory);
 
-    deferStream({
+    deferStream.subscribe({
       error: (e) => {
         if (e !== error)  {
           throw new Error('Expected error not received');

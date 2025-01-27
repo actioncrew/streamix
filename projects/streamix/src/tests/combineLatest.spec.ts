@@ -16,7 +16,7 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     let index = 0;
 
-    let subscription = combinedTimers((latestValues: any) => {
+    let subscription = combinedTimers.subscribe((latestValues: any) => {
       try {
         expect(latestValues).toEqual(expectedValues[index]);
         index++;
@@ -38,7 +38,7 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     const combinedTimers = combineLatest([firstTimer, secondTimer]);
 
-    const subscription: Subscription = combinedTimers({
+    const subscription: Subscription = combinedTimers.subscribe({
       next: () => subscription.unsubscribe(),
       complete: () => done()
     });
@@ -57,7 +57,7 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     let index = 0;
 
-    const subscription = combinedTimers((latestValues: any) => {
+    const subscription = combinedTimers.subscribe((latestValues: any) => {
       try {
         expect(latestValues).toEqual(expectedValues[index]);
         index++;
@@ -89,7 +89,7 @@ describe('CombineLatestStream with TimerStreams', () => {
 
     let index = 0;
 
-    const subscription = combinedTimers((latestValues: any) => {
+    const subscription = combinedTimers.subscribe((latestValues: any) => {
       try {
         expect(latestValues).toEqual(expectedValues[index]);
         index++;
@@ -111,7 +111,7 @@ describe('CombineLatestStream with TimerStreams', () => {
     const combinedStream = combineLatest([firstStream, secondStream]);
     let nextCalled = false;
 
-    const subscription = combinedStream({
+    const subscription = combinedStream.subscribe({
       next: () => nextCalled = true,
       complete: () => {
         subscription.unsubscribe();

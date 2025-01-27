@@ -10,7 +10,7 @@ describe('tap operator', () => {
 
     let results: any[] = [];
 
-    tappedStream({
+    tappedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         // Check if side effect function was called for each emission

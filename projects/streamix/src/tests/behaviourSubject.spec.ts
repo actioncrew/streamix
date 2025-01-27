@@ -6,7 +6,7 @@ describe('BehaviorSubject', () => {
     const behaviorSubject = createBehaviorSubject(initialValue);
 
     const emittedValues: any[] = [];
-    const subscription = behaviorSubject({
+    const subscription = behaviorSubject.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([initialValue, 'value1', 'value2']);
