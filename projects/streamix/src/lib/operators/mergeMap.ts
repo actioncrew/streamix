@@ -12,13 +12,16 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
 
     const init = () => {
       // Subscribe to the inputStream
-      subscription = input.subscribe({
-        next: async (value: any) => {
-          if (!output[internals].shouldComplete()) {
-            handleEmission(createEmission({ value }));
+      subscription = input({
+        next: async (emission: Emission) => {
+          if (!emission.error) {
+            if (!output[internals].shouldComplete()) {
+              handleEmission(createEmission({ value: emission.value }));
+            }
+          } else {
+            output.error(emission.error);
           }
         },
-        error: (err) => output.error(err),
         complete: () => {
           queueMicrotask(() =>
             executionCounter.waitFor(input.emissionCounter).then(finalize)
