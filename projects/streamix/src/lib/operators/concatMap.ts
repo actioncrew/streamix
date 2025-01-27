@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -15,13 +15,14 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
     const init = () => {
       // Subscribe to the inputStream
       subscription = input({
-        next: (value) => {
-          if (!output[internals].shouldComplete()) {
-            handle(createEmission({ value }));
+        next: async (emission: Emission) => {
+          if (!emission.error) {
+            if (!output[internals].shouldComplete()) {
+              handle(emission);
+            }
+          } else {
+            output.error(emission.error);
           }
-        },
-        error: (err) => {
-          output.error(err);
         },
         complete: () => {
           queueMicrotask(() =>
@@ -71,14 +72,15 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
       if (currentInnerStream) {
         return new Promise<void>((resolve) => {
           subscription = currentInnerStream!({
-            next: (value) => {
-              if (!output[internals].shouldComplete()) {
-                emission.link(output.next(value));
+            next: async (emission: Emission) => {
+              if (!emission.error) {
+                if (!output[internals].shouldComplete()) {
+                  emission.link(output.next(emission.value));
+                }
+              } else {
+                output.error(emission.error);
+                resolve();
               }
-            },
-            error: (err) => {
-              output.error(err);
-              resolve();
             },
             complete: () => {
               finalizeInnerStream(emission);

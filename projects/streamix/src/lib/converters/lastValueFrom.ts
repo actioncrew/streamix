@@ -1,4 +1,4 @@
-import { internals, Stream } from '../abstractions';
+import { Emission, internals, Stream } from '../abstractions';
 import { EMPTY } from '../streams';
 
 export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
@@ -11,11 +11,16 @@ export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
     let lastValue: T;
 
     const subscription = stream({
-      next: (value: T) => {
-        if(!hasEmitted) {
-          hasEmitted = true;
+      next: async (emission: Emission) => {
+        if (!emission.error) {
+          if(!hasEmitted) {
+            hasEmitted = true;
+          }
+          lastValue = emission.value;
+        } else {
+          subscription.unsubscribe(); // Ensure cleanup
+          reject(emission.error); // Reject on error
         }
-        lastValue = value;
       },
       complete: () => {
         subscription.unsubscribe();
@@ -23,10 +28,6 @@ export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
           reject(new Error("Stream has not emitted any value."));
         }
         resolve(lastValue);
-      },
-      error: (err) => {
-        subscription.unsubscribe(); // Ensure cleanup
-        reject(err); // Reject on error
       }
     });
   });

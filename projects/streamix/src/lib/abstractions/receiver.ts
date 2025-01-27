@@ -1,3 +1,10 @@
+import { Emission } from "./emission";
+
+export type Consumer = {
+  next: (emission: Emission) => Promise<void>;
+  complete: () => void;
+};
+
 export type Receiver<T = any> = {
   next?: (value: T) => void;
   error?: (err: Error) => void;

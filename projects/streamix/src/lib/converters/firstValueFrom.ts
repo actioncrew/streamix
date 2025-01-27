@@ -1,4 +1,4 @@
-import { internals, Stream } from '../../lib';
+import { Emission, internals, Stream } from '../../lib';
 import { EMPTY } from '../streams';
 
 export function firstValueFrom<T>(stream: Stream): Promise<T> {
@@ -10,11 +10,16 @@ export function firstValueFrom<T>(stream: Stream): Promise<T> {
     let hasEmitted = false;
 
     const subscription = stream({
-      next: (value: T) => {
-        if (!hasEmitted) {
-          hasEmitted = true;
-          subscription.unsubscribe(); // Unsubscribe once the first emission is received
-          resolve(value);
+      next: async (emission: Emission) => {
+        if (!emission.error) {
+          if (!hasEmitted) {
+            hasEmitted = true;
+            subscription.unsubscribe(); // Unsubscribe once the first emission is received
+            resolve(emission.value);
+          }
+        } else {
+          subscription.unsubscribe(); // Ensure cleanup
+          reject(emission.error);
         }
       },
       complete: () => {
@@ -22,10 +27,6 @@ export function firstValueFrom<T>(stream: Stream): Promise<T> {
         if (!hasEmitted) {
           reject(new Error("Stream has not emitted any value."));
         }
-      },
-      error: (err) => {
-        subscription.unsubscribe(); // Ensure cleanup
-        reject(err); // Reject on error
       }
     });
   });

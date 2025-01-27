@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -13,13 +13,14 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
     const init = () => {
       // Subscribe to the inputStream
       subscription = input({
-        next: (value) => {
-          if (!output[internals].shouldComplete()) {
-            handleEmission(createEmission({ value }));
+        next: async (emission: Emission) => {
+          if (!emission.error) {
+            if (!output[internals].shouldComplete()) {
+              handleEmission(emission);
+            }
+          } else {
+            output.error(emission.error);
           }
-        },
-        error: (err) => {
-          output.error(err);
         },
         complete: () => {
           queueMicrotask(() =>
@@ -50,9 +51,12 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
 
       if(!activeStreams.has(innerStream)) {
         const subscription = innerStream({
-          next: (value) => emission.link(output.next(value)),
-          error: (err) => {
-            output.error(err);
+          next: async (emission: Emission) => {
+            if (!emission.error) {
+              emission.link(output.next(emission.value));
+            } else {
+              output.error(emission.error);
+            }
           },
           complete: () => {
             finalizeInnerStream(innerStream);

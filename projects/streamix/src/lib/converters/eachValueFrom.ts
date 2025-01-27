@@ -1,4 +1,4 @@
-import { Stream } from "../abstractions";
+import { Emission, Stream } from "../abstractions";
 
 export async function* eachValueFrom<T>(stream: Stream<T>): AsyncGenerator<T> {
   let isCompleted = false;
@@ -7,17 +7,17 @@ export async function* eachValueFrom<T>(stream: Stream<T>): AsyncGenerator<T> {
   const promiseQueue: Promise<T>[] = [];
 
   const subscription = stream({
-    next: (value: T) => {
+    next: async (emission: Emission) => {
       // Add each emitted value to the queue
-      promiseQueue.push(Promise.resolve(value));
+      if (!emission.error) {
+        promiseQueue.push(Promise.resolve(emission.value));
+      } else {
+        stream.error(emission.error);
+      }
     },
     complete: () => {
       // Once complete, mark the stream as completed
       isCompleted = true;
-    },
-    error: (err: any) => {
-      // Handle errors if needed
-      throw err;
     }
   });
 

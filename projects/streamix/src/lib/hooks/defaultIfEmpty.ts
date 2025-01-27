@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Emission, Stream, StreamOperator } from '../abstractions';
 import { createSubject } from '../streams';
 
 export const defaultIfEmpty = (defaultValue: any): StreamOperator => {
@@ -8,12 +8,13 @@ export const defaultIfEmpty = (defaultValue: any): StreamOperator => {
     const output = createSubject<any>(); // The stream that will emit values, including the default value
 
     const subscription = stream({
-      next: (value) => {
-        hasEmitted = true; // Mark that the stream has emitted a value
-        output.next(value); // Pass the value through to the output stream
-      },
-      error: (error) => {
-        output.error(error);  // Pass the error through to the output stream
+      next: async (emission: Emission) => {
+        if (!emission.error) {
+          hasEmitted = true; // Mark that the stream has emitted a value
+          output.next(emission.value); // Pass the value through to the output stream
+        } else {
+          output.error(emission.error);  // Pass the error through to the output stream
+        }
       },
       complete: () => {
         output.complete();

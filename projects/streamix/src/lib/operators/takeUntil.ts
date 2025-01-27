@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator, Emission, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 
 export const takeUntil = (notifier: Stream): StreamOperator => {
@@ -19,7 +19,7 @@ export const takeUntil = (notifier: Stream): StreamOperator => {
 
     // Subscribe to the notifier
     notifierSubscription = notifier({
-      next: () => {
+      next: async () => {
         // Trigger stream completion when the notifier emits
         finalize();
       },
@@ -28,9 +28,13 @@ export const takeUntil = (notifier: Stream): StreamOperator => {
 
     // Subscribe to the source stream
     sourceSubscription = input({
-      next: (value) => {
-        // Forward values to the output stream
-        output.next(value);
+      next: async (emission: Emission) => {
+        if (!emission.error) {
+          // Forward values to the output stream
+          output.next(emission.value);
+        } else {
+          output.error(emission.error);
+        }
       },
       complete: finalize, // Complete the output stream when the source completes
     });

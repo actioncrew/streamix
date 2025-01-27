@@ -1,12 +1,12 @@
 import { createSubject } from "../../lib";
-import { createEmission, createReceiver, createSubscription, Emission, eventBus, Operator, Receiver, StreamOperator, Subscription } from "../abstractions";
+import { Consumer, createReceiver, createSubscription, Emission, eventBus, Operator, Receiver, StreamOperator, Subscription } from "../abstractions";
 import { awaitable, createEventEmitter, EventEmitter } from "../utils";
 
 export const flags = Symbol('Stream');
 export const internals = Symbol('Stream');
 
 export type Stream<T = any> = {
-  (callback?: ((value: T) => any) | Receiver): Subscription;
+  (consumer: Consumer): Subscription;
 
   type: "stream" | "subject";
   name?: string;
@@ -120,8 +120,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     let isCompleteCalled = false; // To ensure `complete` is only processed once
 
     const subscription = this({
-      next: (value: any) => {
-        let emission = createEmission({ value });
+      next: async (emission: Emission) => {
         for (let i = 0; i < operators.length; i++) {
           const operator = operators[i];
           if (operator?.name === "catchError") {

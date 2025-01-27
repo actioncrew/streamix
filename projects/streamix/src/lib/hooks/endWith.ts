@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Emission, Stream, StreamOperator } from '../abstractions';
 import { createSubject } from '../streams';
 
 export const endWith = (value: any): StreamOperator => {
@@ -7,15 +7,16 @@ export const endWith = (value: any): StreamOperator => {
 
     // Subscribe to the original stream
     input({
-      next: (emission) => {
-        output.next(emission); // Forward emissions from the original stream
+      next: async (emission: Emission) => {
+        if (!emission.error) {
+          output.next(emission.value); // Pass the value through to the output stream
+        } else {
+          output.error(emission.error);  // Pass the error through to the output stream
+        }
       },
       complete: () => {
         output.next(value); // Emit the value at the end of the stream
         output.complete();   // Complete the stream after emitting the value
-      },
-      error: (err) => {
-        output.error(err); // Forward errors if any
       }
     });
 

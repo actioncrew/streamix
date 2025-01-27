@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Emission, Stream, StreamOperator } from '../abstractions';
 import { createBehaviorSubject } from '../streams';
 
 export const startWith = (value: any): StreamOperator => {
@@ -7,14 +7,15 @@ export const startWith = (value: any): StreamOperator => {
 
     // Subscribe to the original stream
     input({
-      next: (emission) => {
-        output.next(emission);
+      next: async (emission: Emission) => {
+        if (!emission.error) {
+          output.next(emission.value);
+        } else {
+          output.error(emission.error); // Forward errors if any
+        }
       },
       complete: () => {
         output.complete(); // Complete the stream when the original completes
-      },
-      error: (err) => {
-        output.error(err); // Forward errors if any
       }
     });
 

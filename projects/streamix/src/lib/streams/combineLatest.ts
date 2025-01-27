@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Emission, internals, Stream, Subscription } from '../abstractions';
 
 export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined })); // Track the latest value from each source
@@ -8,15 +8,19 @@ export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
   const stream = createStream<T[]>('combineLatest', async function (this: Stream<T[]>): Promise<void> {
     sources.forEach((source, index) => {
       const subscription = source({
-        next: (value: T) => {
-          if (stream[internals].shouldComplete()) return;
+        next: async (emission: Emission) => {
+          if (!emission.error) {
+            if (stream[internals].shouldComplete()) return;
 
-          // Store the latest value from the source
-          values[index] = { hasValue: true, value };
+            // Store the latest value from the source
+            values[index] = { hasValue: true, value: emission.value };
 
-          // Emit combined values only when all sources have emitted at least once
-          if (values.every((v) => v.hasValue)) {
-            this.next(createEmission({ value: values.map((v) => v.value!) }));
+            // Emit combined values only when all sources have emitted at least once
+            if (values.every((v) => v.hasValue)) {
+              this.next(createEmission({ value: values.map((v) => v.value!) }));
+            }
+          } else {
+            this.error(emission.error);
           }
         },
         complete: () => {
@@ -30,11 +34,7 @@ export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
             }
             stream.complete();
           }
-        },
-        error: (err: any) => {
-          // Propagate errors from the source streams
-          this.error(err);
-        },
+        }
       });
 
       subscriptions.push(subscription); // Store the subscription for cleanup

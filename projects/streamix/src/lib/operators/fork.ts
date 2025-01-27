@@ -1,6 +1,7 @@
-import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
+import { Emission } from './../abstractions/emission';
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T) => boolean; handler: () => Stream<R> }>
@@ -17,13 +18,14 @@ export const fork = <T = any, R = T>(
     const init = () => {
       // Subscribe to the inputStream
       subscription = input({
-        next: (value) => {
-          if (!output[internals].shouldComplete()) {
-            handleEmission(createEmission({ value }));
+        next: async (emission: Emission) => {
+          if (!emission.error) {
+            if (!output[internals].shouldComplete()) {
+              handleEmission(emission);
+            }
+          } else {
+            output.error(emission.error);
           }
-        },
-        error: (err) => {
-          output.error(err);
         },
         complete: () => {
           queueMicrotask(() =>
@@ -75,14 +77,15 @@ export const fork = <T = any, R = T>(
 
         return new Promise<void>((resolve) => {
           subscription = currentInnerStream!({
-            next: (value) => {
-              if (!output[internals].shouldComplete()) {
-                emission.link(output.next(value));
+            next: async (emission: Emission) => {
+              if (!emission.error) {
+                if (!output[internals].shouldComplete()) {
+                  emission.link(output.next(emission.value));
+                }
+              } else {
+                output.error(emission.error);
+                resolve();
               }
-            },
-            error: (err) => {
-              handleStreamError(emission, err);
-              resolve();
             },
             complete: () => {
               finalizeInnerStream(emission);
@@ -93,8 +96,8 @@ export const fork = <T = any, R = T>(
       } else {
         executionCounter.increment();
         emission.finalize();
-        handleStreamError(emission, new Error(`No handler found for value: ${emission.value}`));
-        return Promise.resolve();
+        emission.error = new Error(`No handler found for value: ${emission.value}`);
+        output.error(emission.error);
       }
     };
 
@@ -106,12 +109,6 @@ export const fork = <T = any, R = T>(
       executionCounter.increment();
       emission.finalize();
       queueMicrotask(processQueue);
-    };
-
-    const handleStreamError = (emission: Emission, error: any) => {
-      output.error(error);
-      emission.error = error;
-      finalize();
     };
 
     const finalize = () => {

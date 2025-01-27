@@ -1,5 +1,5 @@
 import { createSubject } from '../../lib';
-import { createStreamOperator, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator, Emission, Stream, StreamOperator, Subscription } from '../abstractions';
 import { asyncValue } from '../utils';
 
 export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
@@ -11,23 +11,30 @@ export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
     // Subscribe to each of the input streams
     streams.forEach((stream, index) => {
       const subscription = stream({
-        next: (value) => {
-          latestValues[index].set(value);
+        next: async (emission) => {
+          if (!emission.error) {
+            latestValues[index].set(emission.value);
+          } else {
+            output.error(emission.error);
+          }
         },
-        error: (err) => output.error(err)
+        complete: () => {}
       });
       subscriptions.push(subscription);
     });
 
     // Subscribe to the source stream
     const sourceSubscription = input({
-      next: (value) => {
-        if (latestValues.every((v) => v.hasValue())) {
-          // Emit combined values only if all streams have emitted at least once
-          output.next([value, ...latestValues.map(value => value.value())]);
+      next: async (emission: Emission) => {
+        if (!emission.error) {
+          if (latestValues.every((v) => v.hasValue())) {
+            // Emit combined values only if all streams have emitted at least once
+            output.next([emission.value, ...latestValues.map(value => value.value())]);
+          }
+        } else {
+          output.error(emission.error);
         }
-      },
-      error: (err) => output.error(err), // Propagate errors to the output stream
+      }, // Propagate errors to the output stream
       complete: () => {
         // Complete the output stream after the source completes
         output.complete();

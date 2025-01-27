@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -13,13 +13,14 @@ export const switchMap = (project: (value: any) => Stream): StreamOperator => {
     const init = () => {
       // Subscribe to the inputStream
       const subscription = input({
-        next: (value) => {
-          if (!output[internals].shouldComplete()) {
-            handleEmission(createEmission({ value }));
+        next: async (emission: Emission) => {
+          if (!emission.error) {
+            if (!output[internals].shouldComplete()) {
+              handleEmission(emission);
+            }
+          } else {
+            output.error(emission.error);
           }
-        },
-        error: (err) => {
-          output.error(err);
         },
         complete: () => {
           subscription.unsubscribe();
@@ -56,14 +57,14 @@ export const switchMap = (project: (value: any) => Stream): StreamOperator => {
       currentInnerStream = innerStream;
 
       currentSubscription = innerStream({
-        next: (value) => {
-          if (!output[internals].shouldComplete()) {
-            emission.link(output.next(value));
+        next: async (emission: Emission) => {
+          if (!emission.error) {
+            if (!output[internals].shouldComplete()) {
+              emission.link(output.next(emission.value));
+            }
+          } else {
+            output.error(emission.error);
           }
-        },
-        error: (err) => {
-          output.error(err);
-          finalize();
         },
         complete: () => {
           executionCounter.increment();
