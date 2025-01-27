@@ -1,5 +1,5 @@
 import { createSubject } from "../../lib";
-import { createEmission, createReceiver, createSubscription, Emission, eventBus, Operator, Receiver, StreamOperator, Subscription } from "../abstractions";
+import { createEmission, createSubscription, Emission, eventBus, Operator, Receiver, StreamOperator, Subscription } from "../abstractions";
 import { awaitable, createEventEmitter, EventEmitter } from "../utils";
 import { Consumer } from './receiver';
 
@@ -244,71 +244,29 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
   };
 
   const subscribe = function (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription {
-    // Convert a callback into a Receiver if needed
-    const receiver = createReceiver(callbackOrReceiver);
-    const completeCallback = () => receiver.complete!();
-    const errorCallback = ({ error }: any) => receiver.error!(error);
-
-    // Chain the `complete` method to the `onStop` hook if present
-    if (receiver.complete) {
-      emitter.on('finalize', completeCallback);
-    }
-
-    if (receiver.error) {
-      emitter.on('error', errorCallback);
-    }
-
-    // Start the stream if it isn't running and stopping hasn't been requested
-    if (!running && !unsubscribed) {
-      running = true;
-      stream.startTimestamp = performance.now();
-      queueMicrotask(stream.run);
-    }
-
-    // Create the subscription object
-    const subscription = createSubscription(
-      () => currentValue,
-      () => {
-        if (!subscription.unsubscribed) {
-          subscription.unsubscribed = performance.now();
-          const cleanup = () => {
-            if (receiver.complete) emitter.off('finalize', completeCallback);
-            if (receiver.error) emitter.off('error', errorCallback);
-            emitter.off('subscribers', boundCallback);
-          };
-
-          if (!stopped) {
-            stream.complete().then(cleanup);
+    // Convert a callback into a Consumer if needed
+    const consumer: Consumer = {
+      next: async (emission) => {
+        if (!emission.error) {
+          if (callbackOrReceiver && typeof callbackOrReceiver === 'function') {
+            callbackOrReceiver(emission.value);
+          } else if (callbackOrReceiver && typeof callbackOrReceiver.next === 'function') {
+            callbackOrReceiver.next(emission.value);
           }
-        }
-      }
-    );
-
-    // Define the bound callback for handling emissions
-    const boundCallback = ({ emission }: any) => {
-      currentValue = emission.value;
-
-      try {
-        if (emission.error && receiver.error) {
-          receiver.error(emission.error); // Call `error` if emission failed
         } else {
-          const rootEmissionTimestamp = emission.root().timestamp;
-          if (receiver.next && subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stream.stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
-            receiver.next(emission.value); // Call `next` for successful emissions
+          if (callbackOrReceiver && typeof callbackOrReceiver === 'object' && typeof callbackOrReceiver.error === 'function') {
+            callbackOrReceiver.error(emission.error);
           }
         }
-      } catch (err) {
-        console.error('Error in Receiver callback:', err);
-      }
-
-      return Promise.resolve();
+      },
+      complete: () => {
+        if (callbackOrReceiver && typeof callbackOrReceiver === 'object' && typeof callbackOrReceiver.complete === 'function') {
+          callbackOrReceiver.complete();
+        }
+      },
     };
-;
 
-    // Add the bound callback to the subscribers
-    emitter.on('subscribers', boundCallback);
-
-    return subscription;
+    return stream(consumer);
   };
 
   const stream = function (consumer: Consumer): Subscription {
@@ -354,7 +312,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
       try {
         if (emission.error) {
           // Call `next` with an error emission
-          return consumer.next(createEmission({ error: emission.error })).catch((err) => console.error('Error in Consumer callback:', err));
+          return consumer.next(emission).catch((err) => console.error('Error in Consumer callback:', err));
         } else {
           const rootEmissionTimestamp = emission.root().timestamp;
           if (subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stream.stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
