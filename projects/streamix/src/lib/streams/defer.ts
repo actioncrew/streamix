@@ -1,11 +1,11 @@
-import { createEmission, createStream, Emission, flags, internals, Stream, Subscription } from '../abstractions';
+import { Consumer, createEmission, createStream, Emission, flags, internals, Stream, Subscription } from '../abstractions';
 
 export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
   let innerStream: Stream<T> | undefined;
   let subscription!: Subscription | undefined;
   // Define the run method
   // Create and return the stream with the defined run function
-  const stream = createStream<T>('defer', async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('defer', async function(this: Stream<T>, c: Consumer): Promise<void> {
     try {
       // Create a new inner stream from the factory
       innerStream = factory();
@@ -13,11 +13,7 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
       // Start the inner stream
       subscription = innerStream({
         next: async (emission: Emission) => {
-          if (emission.isOk()) {
-            handleEmission(this, emission.value);
-          } else {
-            this.error(emission.error);
-          }
+          c.next(emission);
         },
         complete: () => {
           if (!this[internals].shouldComplete()) {
@@ -31,14 +27,9 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
       await cleanupInnerStream();
 
     } catch (error) {
-      this.error(error);
+      c.next(createEmission({ error }));
     }
   });
-
-  // Handle emissions from the inner stream
-  const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    stream.next(createEmission({ value }));
-  };
 
   // Clean up the inner stream when complete
   const cleanupInnerStream = async (): Promise<void> => {

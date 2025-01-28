@@ -1,15 +1,15 @@
-import { createEmission, createStream, flags, internals, Stream } from '../abstractions';
+import { Consumer, createEmission, createStream, flags, internals, Stream } from '../abstractions';
 
 export function of<T = any>(value: T): Stream<T> {
   // Create the custom run function for the OfStream
-  const stream = createStream<T>('of', async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('of', async function(this: Stream<T>, c: Consumer): Promise<void> {
     try {
       if (!this[internals].shouldComplete()) {
-        this.next(createEmission({ value }));
+        c.next(createEmission({ value }));
         this[flags].isAutoComplete = true;
       }
     } catch (error) {
-      this.error(error);
+      c.next(createEmission({ error }));
     }
   });
 

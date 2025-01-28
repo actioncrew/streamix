@@ -1,9 +1,9 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { Consumer, createEmission, createStream, internals, Stream } from '../abstractions';
 
 export function onAnimationFrame<T>(): Stream<T> {
   let requestId: number | null = null;
 
-  const stream = createStream<T>('onAnimationFrame', async function (this: Stream<T>) {
+  const stream = createStream<T>('onAnimationFrame', async function (this: Stream<T>, c: Consumer) {
     let lastFrameTime = performance.now();
 
     const runFrame = (currentTime: number) => {
@@ -21,7 +21,7 @@ export function onAnimationFrame<T>(): Stream<T> {
       lastFrameTime = currentTime;
 
       // Emit the current value
-      stream.next(createEmission({ value: elapsedTime }));
+      c.next(createEmission({ value: elapsedTime }));
 
       // Schedule the next frame
       requestId = requestAnimationFrame(runFrame);

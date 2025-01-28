@@ -1,9 +1,9 @@
-import { Stream, createEmission, createStream, internals } from '../abstractions';
+import { Consumer, Stream, createEmission, createStream, internals } from '../abstractions';
 
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
   // Create a custom run function for the FromPromiseStream
-  const stream = createStream<T>('fromPromise', async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('fromPromise', async function(this: Stream<T>, c: Consumer): Promise<void> {
     let resolvedValue: Awaited<T> | void; // Renamed to avoid conflict
 
     try {
@@ -15,10 +15,10 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
 
       // If the stream is not complete, emit the value
       if (!this[internals].shouldComplete()) {
-        this.next(createEmission({ value: resolvedValue }));
+        c.next(createEmission({ value: resolvedValue }));
       }
     } catch (error) {
-      this.error(error);
+      c.next(createEmission({ error }));
     }
   });
 

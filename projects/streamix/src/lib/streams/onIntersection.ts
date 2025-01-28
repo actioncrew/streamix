@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { Consumer, createEmission, createStream, internals, Stream } from '../abstractions';
 
 /**
  * Creates a Stream using `IntersectionObserver` for observing element visibility changes.
@@ -27,14 +27,14 @@ export function onIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  const stream = createStream<boolean>('onIntersection', async function (this: Stream<boolean>) {
+  const stream = createStream<boolean>('onIntersection', async function (this: Stream<boolean>, c: Consumer) {
     let observer: IntersectionObserver;
 
     // Define the callback for IntersectionObserver
     const callback = (entries: IntersectionObserverEntry[]) => {
       const isVisible = entries[0]?.isIntersecting ?? false; // Extract visibility status
       const emission = createEmission({ value: isVisible });
-      this.next(emission);
+      c.next(emission);
     };
 
     // Initialize the IntersectionObserver

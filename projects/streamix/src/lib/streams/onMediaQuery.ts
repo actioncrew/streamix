@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { Consumer, createEmission, createStream, internals, Stream } from '../abstractions';
 
 /**
  * Creates a Stream from `window.matchMedia` for reactive media query handling.
@@ -20,7 +20,7 @@ import { createEmission, createStream, internals, Stream } from '../abstractions
  * });
  */
 export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
-  const stream = createStream<boolean>('fromMediaQuery', async function (this: Stream<boolean>) {
+  const stream = createStream<boolean>('fromMediaQuery', async function (this: Stream<boolean>, c: Consumer) {
     if (!window.matchMedia) {
       console.warn('matchMedia is not supported in this environment');
       return;
@@ -29,11 +29,11 @@ export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
     const mediaQueryList = window.matchMedia(mediaQueryString);
 
     // Emit the initial state
-    this.next(createEmission({ value: mediaQueryList.matches }));
+    c.next(createEmission({ value: mediaQueryList.matches }));
 
     // Define the event listener to monitor changes
     const listener = (event: MediaQueryListEvent) => {
-      this.next(createEmission({ value: event.matches }));
+      c.next(createEmission({ value: event.matches }));
     };
 
     mediaQueryList.addEventListener('change', listener);

@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { Consumer, createEmission, createStream, internals, Stream } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
@@ -6,7 +6,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   let intervalId: any;
   const actualIntervalMs = intervalMs ?? delayMs;
 
-  const stream = createStream<number>('timer', async function(this: Stream<number>): Promise<void> {
+  const stream = createStream<number>('timer', async function(this: Stream<number>, c: Consumer): Promise<void> {
     try {
       if (delayMs === 0) {
         if (this[internals].shouldComplete()) return;
@@ -22,7 +22,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       }
 
       // Initial emission
-      this.next(createEmission({ value: timerValue }));
+      c.next(createEmission({ value: timerValue }));
       timerValue++;
 
       if (actualIntervalMs > 0) {
@@ -36,20 +36,20 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
                 return;
               }
 
-              this.next(createEmission({ value: timerValue }));
+              c.next(createEmission({ value: timerValue }));
 
               timerValue++;
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              this.error(error);
+              c.next(createEmission({ error }));
               resolve();
             }
           }, actualIntervalMs);
         });
       }
     } catch (error) {
-      this.error(error);
+      c.next(createEmission({ error }));
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

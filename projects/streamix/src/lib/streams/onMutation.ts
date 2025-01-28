@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { Consumer, createEmission, createStream, internals, Stream } from '../abstractions';
 
 /**
  * Creates a Stream from `MutationObserver` for observing DOM mutations.
@@ -24,11 +24,11 @@ export function onMutation(
   element: Element,
   options?: MutationObserverInit
 ): Stream<MutationRecord[]> {
-  const stream = createStream<MutationRecord[]>('onMutation', async function (this: Stream<MutationRecord[]>) {
+  const stream = createStream<MutationRecord[]>('onMutation', async function (this: Stream<MutationRecord[]>, c: Consumer) {
     const observer = new MutationObserver((mutationsList) => {
       if (mutationsList.length) {
         const emission = createEmission({ value: mutationsList });
-        this.next(emission);
+        c.next(emission);
       }
     });
 

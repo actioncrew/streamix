@@ -1,4 +1,4 @@
-import { createEmission, createStream, Emission, internals, Stream, Subscription } from '../abstractions';
+import { Consumer, createEmission, createStream, Emission, internals, Stream, Subscription } from '../abstractions';
 import { counter, Counter } from '../utils';
 
 export function zip(sources: Stream[]): Stream<any[]> {
@@ -7,7 +7,7 @@ export function zip(sources: Stream[]): Stream<any[]> {
   let activeSources = sources.length; // Number of active source streams
   let emittedValues: Counter = counter(0);
 
-  const stream = createStream<any[]>('zip', async function (this: Stream<any[]>): Promise<void> {
+  const stream = createStream<any[]>('zip', async function (this: Stream<any[]>, c: Consumer): Promise<void> {
     sources.forEach((source, index) => {
       const subscription = source({
         next: async (emission: Emission) => {
@@ -20,11 +20,11 @@ export function zip(sources: Stream[]): Stream<any[]> {
             if (queues.every((queue) => queue.length > 0)) {
               const combined = queues.map((queue) => queue.shift()!); // Extract one value from each queue
                // Increment the emission count
-              this.next(createEmission({ value: combined }));
+              c.next(createEmission({ value: combined }));
               emittedValues.increment();
             }
           } else {
-            this.error(emission.error);
+            c.next(emission);
           }
         },
         complete: () => {

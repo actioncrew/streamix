@@ -21,7 +21,7 @@ export type Stream<T = any> = {
 
   emitter: EventEmitter;
 
-  run: () => Promise<void>;
+  run: (consumer: Consumer) => Promise<void>;
   next: (emission: Emission) => Emission;
   error: (error: any) => void;
   complete: () => Promise<void>;
@@ -55,7 +55,7 @@ export function isStream<T>(obj: any): obj is Stream<T> {
   );
 }
 
-export function createStream<T = any>(name: string, runFn: (this: Stream<T>, params?: any) => Promise<void> | void): Stream<T> {
+export function createStream<T = any>(name: string, runFn: (this: Stream<T>, c: Consumer) => Promise<void> | void): Stream<T> {
 
   const completion = awaitable<void>();
 
@@ -73,11 +73,11 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
 
   const emitter = createEventEmitter();
 
-  const run = async () => {
+  const run = async (consumer: Consumer) => {
     let promise: Promise<void> | void;
     try {
       eventBus.enqueue({ target: stream, type: 'start' }); // Trigger start hook
-      promise = runFn.call(stream); // Pass the stream instance to the run function
+      promise = runFn.call(stream, consumer); // Pass the stream instance to the run function
       if (promise && typeof promise.then === 'function') {
         await promise;
       }
@@ -272,7 +272,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
   const stream = function (consumer: Consumer): Subscription {
     const completeCallback = () => consumer.complete();
     const errorCallback = ({ error }: any) => {
-      consumer.next(createEmission({ error })).catch((err) => console.error('Error in Consumer callback:', err));
+      consumer.next(createEmission({ error }));
     };
 
     // Chain the `complete` method to the `onStop` hook if present
@@ -283,7 +283,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     if (!running && !unsubscribed) {
       running = true;
       stream.startTimestamp = performance.now();
-      queueMicrotask(stream.run);
+      queueMicrotask(() => stream.run(consumer));
     }
 
     // Create the subscription object
@@ -312,12 +312,12 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
       try {
         if (emission.error) {
           // Call `next` with an error emission
-          return consumer.next(emission).catch((err) => console.error('Error in Consumer callback:', err));
+          return consumer.next(emission);
         } else {
           const rootEmissionTimestamp = emission.root().timestamp;
           if (subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stream.stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
             // Call `next` for successful emissions
-            return consumer.next(emission).catch((err) => console.error('Error in Consumer callback:', err));
+            return consumer.next(emission);
           }
         }
       } catch (err) {

@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
+import { Consumer, createStream, flags, internals, Stream, Subscription } from '../abstractions';
 import { Emission } from './../abstractions/emission';
 
 export function iif<T>(
@@ -10,18 +10,14 @@ export function iif<T>(
   let subscription!: Subscription;
 
   // Create and return the stream with the defined run function
-  const stream = createStream<T>('iif', async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('iif', async function(this: Stream<T>, c: Consumer): Promise<void> {
     // Choose the appropriate stream based on the condition
     selectedStream = condition() ? trueStream : falseStream;
 
     // Start the selected stream
     subscription = selectedStream({
       next: async (emission: Emission) => {
-        if (emission.isOk()) {
-          handleEmission(this, emission.value);
-        } else {
-          this.error(emission.error);
-        }
+        c.next(emission);
       },
       complete: () => this[flags].isAutoComplete = true
     });
@@ -31,13 +27,6 @@ export function iif<T>(
 
     subscription.unsubscribe();
   });
-
-  // Handle emissions from the selected stream
-  const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    if (!stream[internals].shouldComplete()) {
-      stream.next(createEmission({ value }));
-    }
-  };
 
   return stream;
 }

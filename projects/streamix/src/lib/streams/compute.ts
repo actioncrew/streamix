@@ -1,10 +1,10 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { Consumer, createEmission, createStream, internals, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 import { catchAny } from '../utils';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
-  const stream = createStream<any>('compute', async function(this: Stream<any>): Promise<void> {
+  const stream = createStream<any>('compute', async function(this: Stream<any>, c: Consumer): Promise<void> {
     let promise = new Promise<void>(async (resolve, reject) => {
 
       const worker = await task.getIdleWorker();
@@ -13,10 +13,11 @@ export function compute(task: Coroutine, params: any): Stream<any> {
       // Handle messages from the worker
       worker.onmessage = async (event: any) => {
         if(event.data.error) {
+          c.next(createEmission({ error: event.data.error }));
           task.returnWorker(worker);
           reject(event.data.error);
         } else {
-          this.next(createEmission({ value: event.data }));
+          c.next(createEmission({ value: event.data }));
           task.returnWorker(worker);
           resolve();
         }

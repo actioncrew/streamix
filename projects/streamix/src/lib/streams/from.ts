@@ -1,8 +1,8 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { Consumer, createEmission, createStream, internals, Stream } from '../abstractions';
 
 export function from<T = any>(input: Iterable<T>): Stream<T> {
   // Create the stream with a custom run function
-  const stream = createStream<T>('from', async function(this: Stream<T>) {
+  const stream = createStream<T>('from', async function(this: Stream<T>, c: Consumer) {
     const iterator = input[Symbol.iterator](); // Get the iterator for the input
 
     let done = false;
@@ -17,7 +17,7 @@ export function from<T = any>(input: Iterable<T>): Stream<T> {
           done = true;
         } else {
           const emission = createEmission({ value });
-          this.next(emission);
+          c.next(emission);
 
           // Wait for the emission to complete
           // if (emission.wait && typeof emission.wait === 'function') {
@@ -30,10 +30,10 @@ export function from<T = any>(input: Iterable<T>): Stream<T> {
     // Start processing emissions
     processNext().then(() => {
       if (!this[internals].shouldComplete()) {
-        this.complete(); // Complete the stream when done
+        c.complete(); // Complete the stream when done
       }
     }).catch((error) => {
-      this.error(error); // Handle any errors
+      c.next(createEmission({ error })); // Handle any errors
     });
   });
 
