@@ -32,7 +32,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
 
     const [error] = await catchAny(Promise.race([this[internals].awaitCompletion(), promise]));
     if (error) {
-      this.error(error);
+      c.next(createEmission({ error }));
       return;
     }
   });

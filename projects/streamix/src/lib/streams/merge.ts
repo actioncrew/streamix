@@ -1,15 +1,15 @@
 
-import { createStream, Emission, internals, Stream, Subscription } from '../abstractions';
+import { Consumer, createStream, Emission, internals, Stream, Subscription } from '../abstractions';
 
 export function merge<T = any>(...sources: Stream[]): Stream<T> {
   const subscriptions: Subscription[] = [];
 
-  const stream = createStream<T>('merge', async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>('merge', async function(this: Stream<T>, c: Consumer): Promise<void> {
     const sourcePromises = sources.map((source) => {
       return new Promise<void>((resolve, reject) => {
         const subscription = source({
           next: async (emission: Emission) => {
-            this.next(emission);
+            c.next(emission);
             if (!emission.isOk()) {
               reject(emission.error); // Reject the promise on error
               finalize(); // Stop all processing on error
