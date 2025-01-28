@@ -12,7 +12,7 @@ export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
 
     const subscription = stream({
       next: async (emission: Emission) => {
-        if (!emission.error) {
+        if (emission.isOk()) {
           if(!hasEmitted) {
             hasEmitted = true;
           }

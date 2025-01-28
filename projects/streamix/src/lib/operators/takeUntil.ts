@@ -29,7 +29,7 @@ export const takeUntil = (notifier: Stream): StreamOperator => {
     // Subscribe to the source stream
     sourceSubscription = input({
       next: async (emission: Emission) => {
-        if (!emission.error) {
+        if (emission.isOk()) {
           // Forward values to the output stream
           output.next(emission.value);
         } else {

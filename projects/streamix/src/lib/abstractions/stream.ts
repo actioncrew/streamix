@@ -247,7 +247,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     // Convert a callback into a Consumer if needed
     const consumer: Consumer = {
       next: async (emission) => {
-        if (!emission.error) {
+        if (emission.isOk()) {
           if (callbackOrReceiver && typeof callbackOrReceiver === 'function') {
             callbackOrReceiver(emission.value);
           } else if (callbackOrReceiver && typeof callbackOrReceiver.next === 'function') {

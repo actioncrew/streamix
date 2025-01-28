@@ -11,7 +11,7 @@ export const splitMap = <T = any, R = T>(
 
     const subscription = input({
       next: async (emission: Emission) => {
-        if (!emission.error) {
+        if (emission.isOk()) {
           let remainingSubscriptions = 0;
           let partitionMap: Map<string, any[]> = emission.value;
           // Process each key in the partition map
@@ -25,7 +25,7 @@ export const splitMap = <T = any, R = T>(
               // Subscribe to the processed partition stream
               const partitionSubscription = partitionStream({
                 next: async (emission: Emission) => {
-                  if (!emission.error) {
+                  if (emission.isOk()) {
                     output.next(emission.value);
                   } else {
                     output.error(emission.error);

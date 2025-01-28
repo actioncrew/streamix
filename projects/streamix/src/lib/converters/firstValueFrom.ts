@@ -11,7 +11,7 @@ export function firstValueFrom<T>(stream: Stream): Promise<T> {
 
     const subscription = stream({
       next: async (emission: Emission) => {
-        if (!emission.error) {
+        if (emission.isOk()) {
           if (!hasEmitted) {
             hasEmitted = true;
             subscription.unsubscribe(); // Unsubscribe once the first emission is received

@@ -9,7 +9,7 @@ export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
     sources.forEach((source, index) => {
       const subscription = source({
         next: async (emission: Emission) => {
-          if (!emission.error) {
+          if (emission.isOk()) {
             if (stream[internals].shouldComplete()) return;
 
             // Store the latest value from the source

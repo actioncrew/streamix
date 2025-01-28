@@ -8,6 +8,7 @@ export type Emission<T = any> = {
   ancestor?: Emission;         // Emission that is pending and ancest this instance
   descendants?: Set<Emission>; // Track all descendants
   timestamp: number | undefined;
+  isOk(): boolean;
   resolve: () => Promise<void>;
   reject: (reason: any) => Promise<void>;
   wait: () => Promise<void>;
@@ -45,6 +46,9 @@ export function createEmission(emission: { value?: any, phantom?: boolean, pendi
 
   const instance: Emission = Object.assign(emission, {
     timestamp: performance.now(),
+    isOk(): boolean {
+      return !(instance.error || instance.phantom || instance.pending);
+    },
     root () {
       let current = emission as Emission;
       while (current.ancestor) {

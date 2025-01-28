@@ -13,7 +13,7 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
       // Start the inner stream
       subscription = innerStream({
         next: async (emission: Emission) => {
-          if (!emission.error) {
+          if (emission.isOk()) {
             handleEmission(this, emission.value);
           } else {
             this.error(emission.error);

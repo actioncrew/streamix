@@ -9,7 +9,7 @@ export function merge<T = any>(...sources: Stream[]): Stream<T> {
       return new Promise<void>((resolve, reject) => {
         const subscription = source({
           next: async (emission: Emission) => {
-            if (!emission.error) {
+            if (emission.isOk()) {
               this.next(emission);
             } else {
               this.error(emission.error);

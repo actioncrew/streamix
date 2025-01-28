@@ -17,7 +17,7 @@ export function iif<T>(
     // Start the selected stream
     subscription = selectedStream({
       next: async (emission: Emission) => {
-        if (!emission.error) {
+        if (emission.isOk()) {
           handleEmission(this, emission.value);
         } else {
           this.error(emission.error);

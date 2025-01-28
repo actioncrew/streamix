@@ -11,7 +11,7 @@ export function zip(sources: Stream[]): Stream<any[]> {
     sources.forEach((source, index) => {
       const subscription = source({
         next: async (emission: Emission) => {
-          if (!emission.error) {
+          if (emission.isOk()) {
             if (this[internals].shouldComplete()) return;
 
             queues[index].push(emission.value); // Add value to the appropriate queue

@@ -10,7 +10,7 @@ export const delay = (ms: number): StreamOperator => {
     // Subscribe to the original stream
     const subscription = input({
       next: async (emission: Emission) => {
-        if (!emission.error) {
+        if (emission.isOk()) {
           const promise = new Promise<void>((resolve) => {
             const timerId = setTimeout(() => {
               output.next(emission.value); // Emit to the delayed stream after delay

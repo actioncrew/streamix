@@ -14,7 +14,7 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
       // Subscribe to the inputStream
       subscription = input({
         next: async (emission: Emission) => {
-          if (!emission.error) {
+          if (emission.isOk()) {
             if (!output[internals].shouldComplete()) {
               handleEmission(createEmission({ value: emission.value }));
             }
@@ -52,7 +52,7 @@ export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
       if(!activeStreams.has(innerStream)) {
         const subscription = innerStream({
           next: async (emission: Emission) => {
-            if (!emission.error) {
+            if (emission.isOk()) {
               emission.link(output.next(emission.value));
             } else {
               output.error(emission.error);

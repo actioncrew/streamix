@@ -9,7 +9,7 @@ export async function* eachValueFrom<T>(stream: Stream<T>): AsyncGenerator<T> {
   const subscription = stream({
     next: async (emission: Emission) => {
       // Add each emitted value to the queue
-      if (!emission.error) {
+      if (emission.isOk()) {
         promiseQueue.push(Promise.resolve(emission.value));
       } else {
         stream.error(emission.error);
