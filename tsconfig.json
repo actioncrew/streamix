@@ -24,6 +24,14 @@
       "ES2022",
       "dom"
     ],
+    "paths": {
+      "@actioncrew/streamix": [
+        "./dist/streamix/index.d.ts"
+      ],
+      "@streamix/angular": [
+        "./dist/angular/index.d.ts"
+      ]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

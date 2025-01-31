@@ -9,11 +9,6 @@
     "declarationMap": true,
     "inlineSources": true,
     "types": [],
-    "paths": {
-      "@actioncrew/streamix": [
-        "../../dist/streamix/index.d.ts"
-      ]
-    }
   },
   "exclude": [
     "**/*.spec.ts"
