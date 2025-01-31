@@ -1,4 +1,4 @@
-import { EMPTY, flags } from '../lib';
+import { EMPTY } from '../lib';
 
 describe('EmptyStream', () => {
   it('should auto-complete without emitting any values', async () => {
@@ -12,7 +12,7 @@ describe('EmptyStream', () => {
         expect(emittedValues).toHaveLength(0);
 
         // Ensure the stream is auto-completed
-        expect(emptyStream[flags].isAutoComplete).toBe(true);
+        expect(emptyStream.isAutoComplete).toBe(true);
 
         subscription.unsubscribe();
       }
@@ -30,7 +30,7 @@ describe('EMPTY constant', () => {
         expect(emittedValues).toHaveLength(0);
 
         // Ensure the stream is auto-completed
-        expect(EMPTY[flags].isAutoComplete).toBe(true);
+        expect(EMPTY.isAutoComplete).toBe(true);
 
         subscription.unsubscribe();
       }

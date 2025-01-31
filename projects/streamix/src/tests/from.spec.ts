@@ -1,4 +1,4 @@
-import { flags, from } from '../lib';
+import { from } from '../lib';
 
 describe('from function', () => {
   it('should emit values in sequence and complete', async () => {
@@ -10,7 +10,7 @@ describe('from function', () => {
       next: (value) => emittedValues.push(value),
       complete:() => {
         expect(emittedValues).toEqual(values);
-        expect(stream[flags].isAutoComplete).toBe(true);
+        expect(stream.isAutoComplete).toBe(true);
 
         subscription.unsubscribe();
       }

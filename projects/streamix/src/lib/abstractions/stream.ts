@@ -32,13 +32,11 @@ export type Stream<T = any> = {
   pipe: (...steps: (Operator | StreamOperator)[]) => Stream;
   subscribe: (callback?: ((value: T) => any) | Receiver) => Subscription;
 
-  [flags]: {
-    isAutoComplete: boolean;
-    isUnsubscribed: boolean;
+  isAutoComplete: boolean;
+  isUnsubscribed: boolean;
 
-    isStopped: boolean;
-    isRunning: boolean;
-  };
+  isStopped: boolean;
+  isRunning: boolean;
 };
 
 export function isStream<T>(obj: any): obj is Stream<T> {
@@ -78,7 +76,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     } catch (error) {
       stream.error(error);
     } finally {
-      !stream.shouldComplete() && (stream[flags].isAutoComplete = true);
+      !stream.shouldComplete() && (stream.isAutoComplete = true);
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
     }
   };
@@ -94,13 +92,13 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
 
   const complete = async (): Promise<void> => {
     if(emitter.getCallbackCount('subscribers') === 1) {
-      stream[flags].isUnsubscribed = true;
+      stream.isUnsubscribed = true;
     }
 
     if(running && !stopped) {
       await emitter.waitForCompletion('finalize');
       running = false; stopped = true;
-      stream.stopTimestamp = performance.now();
+      stopTimestamp = performance.now();
     }
   };
 
@@ -306,7 +304,46 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
 
   const stream = subscribe as unknown as Stream;
 
-  Object.defineProperty(stream, 'name', { writable: true, enumerable: true, configurable: true });
+  Object.defineProperties(stream, {
+    type: { value: "stream", writable: true, enumerable: true },
+    name: { value: name, writable: true, enumerable: true },
+    isAutoComplete: {
+      get: function() { return autoComplete; },
+      set: function(value: boolean) {
+        if (value && completion.state() === 'pending') completion.resolve();
+        autoComplete = value;
+      },
+      configurable: true,  // Allows for redefinition
+      enumerable: true,
+    },
+    isUnsubscribed: {
+      get: function() { return unsubscribed; },
+      set: function(value: boolean) {
+        if (value && completion.state() === 'pending') completion.resolve();
+        unsubscribed = value;
+      },
+      configurable: true,  // Allows for redefinition
+      enumerable: true,
+    },
+    isRunning: {
+      get: function() { return running; },
+      set: function(value: boolean) { running = value; },
+      configurable: true,  // Allows for redefinition
+      enumerable: true,
+    },
+    isStopped: {
+      get: function() { return stopped; },
+      set: function(value: boolean) { stopped = value; },
+      configurable: true,  // Allows for redefinition
+      enumerable: true,
+    },
+    value: {
+      get: function() { return currentValue; },
+      enumerable: true,
+      configurable: true
+    }
+  });
+
   Object.assign(stream, {
     type: "stream" as "stream",
     name,
@@ -324,39 +361,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     emitter,
     emissionCounter,
     stopTimestamp,
-    startTimestamp,
-    get value() {
-      return currentValue;
-    },
-
-    [flags]: {
-      get isAutoComplete() {
-        return autoComplete;
-      },
-      set isAutoComplete(value: boolean) {
-        if (value && completion.state() === 'pending') completion.resolve();
-        autoComplete = value;
-      },
-      get isUnsubscribed() {
-        return unsubscribed;
-      },
-      set isUnsubscribed(value: boolean) {
-        if (value && completion.state() === 'pending') completion.resolve();
-        unsubscribed = value;
-      },
-      get isRunning() {
-        return running;
-      },
-      set isRunning(value: boolean) {
-        running = value;
-      },
-      get isStopped() {
-        return stopped;
-      },
-      set isStopped(value: boolean) {
-        stopped = value;
-      }
-    }
+    startTimestamp
   });
 
   emitter.on('emission', (params) => stream.emit(params));

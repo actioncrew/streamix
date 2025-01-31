@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 
 export function of<T = any>(value: T): Stream<T> {
   // Create the custom run function for the OfStream
@@ -6,7 +6,7 @@ export function of<T = any>(value: T): Stream<T> {
     try {
       if (!this.shouldComplete()) {
         this.next(createEmission({ value }));
-        this[flags].isAutoComplete = true;
+        this.isAutoComplete = true;
       }
     } catch (error) {
       this.error(error);

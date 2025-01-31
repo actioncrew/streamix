@@ -1,4 +1,4 @@
-import { createOperator, Emission, flags, Operator, Stream } from '../abstractions';
+import { createOperator, Emission, Operator, Stream } from '../abstractions';
 
 export const take = (count: number): Operator => {
   let emittedCount = 0;
@@ -8,7 +8,7 @@ export const take = (count: number): Operator => {
       emittedCount++;
 
       if(emittedCount === count) {
-        stream[flags].isAutoComplete = true;
+        stream.isAutoComplete = true;
       }
       return emission;
     } else {

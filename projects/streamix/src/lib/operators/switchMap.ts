@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, flags, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -88,9 +88,9 @@ export const switchMap = (project: (value: any) => Stream): StreamOperator => {
 
     const stopStreams = (...streams: (Stream | null | undefined)[]) => {
       streams
-        .filter((stream) => stream && stream[flags].isRunning)
+        .filter((stream) => stream && stream.isRunning)
         .forEach((stream) => {
-          stream![flags].isAutoComplete = true;
+          stream!.isAutoComplete = true;
         });
     };
 
