@@ -30,12 +30,13 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
       target.addEventListener(eventName, listener);
     }
 
-    Object.setPrototypeOf(newStream, stream);
-
     // Call the original subscribe method
     subscription = originalSubscribe(params);
     return subscription;
   };
+
+  // Inherit the prototype of the original stream so properties are shared
+  Object.setPrototypeOf(newStream, stream);
 
   // Ensure we return a stream type
   return newStream as unknown as Stream<T>;
