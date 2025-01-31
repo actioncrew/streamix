@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream, Subscription } from '../abstractions';
 import { counter, Counter } from '../utils';
 
 export function zip(sources: Stream[]): Stream<any[]> {
@@ -11,7 +11,7 @@ export function zip(sources: Stream[]): Stream<any[]> {
     sources.forEach((source, index) => {
       const subscription = source({
         next: (value) => {
-          if (stream[internals].shouldComplete()) return;
+          if (stream.shouldComplete()) return;
 
           queues[index].push(value); // Add value to the appropriate queue
 
@@ -38,7 +38,7 @@ export function zip(sources: Stream[]): Stream<any[]> {
       subscriptions.push(subscription); // Store subscriptions for cleanup
     });
 
-    await this[internals].awaitCompletion();
+    await this.awaitCompletion();
     await emittedValues.waitFor(Math.min(...sources.map(source => source.emissionCounter)));
   });
 

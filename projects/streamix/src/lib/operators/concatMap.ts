@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, flags, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -16,7 +16,7 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
       // Subscribe to the inputStream
       subscription = input({
         next: (value) => {
-          if (!output[internals].shouldComplete()) {
+          if (!output.shouldComplete()) {
             handle(createEmission({ value }));
           }
         },
@@ -72,7 +72,7 @@ export const concatMap = (project: (value: any) => Stream): StreamOperator => {
         return new Promise<void>((resolve) => {
           subscription = currentInnerStream!({
             next: (value) => {
-              if (!output[internals].shouldComplete()) {
+              if (!output.shouldComplete()) {
                 emission.link(output.next(value));
               }
             },

@@ -1,4 +1,4 @@
-import { createEmission, createReceiver, createStream, createSubscription, Emission, eventBus, flags, internals, Receiver, Stream, Subscription } from '../abstractions';
+import { createEmission, createReceiver, createStream, createSubscription, Emission, eventBus, flags, Receiver, Stream, Subscription } from '../abstractions';
 import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
@@ -8,7 +8,7 @@ export type Subject<T = any> = Stream<T> & {
 // Create the functional version of the Subject
 export function createSubject<T = any>(): Subject<T> {
 
-  const stream = createStream<T>('subject', async () => stream[internals].awaitCompletion()) as Subject;
+  const stream = createStream<T>('subject', async () => stream.awaitCompletion()) as Subject;
   let currentValue: T | undefined;
 
   let autoComplete = false;
@@ -16,11 +16,11 @@ export function createSubject<T = any>(): Subject<T> {
 
   const completion = awaitable<void>();
 
-  stream[internals].awaitCompletion = () => completion.promise();
-  stream[internals].shouldComplete = () => unsubscribed || autoComplete;
+  stream.awaitCompletion = () => completion.promise();
+  stream.shouldComplete = () => unsubscribed || autoComplete;
 
   stream.complete = async function (this: Subject): Promise<void> {
-    if (this[flags].isRunning && !this[internals].shouldComplete()) {
+    if (this[flags].isRunning && !this.shouldComplete()) {
       autoComplete = true; completion.resolve();
 
       eventBus.enqueue({
@@ -64,7 +64,7 @@ export function createSubject<T = any>(): Subject<T> {
     },
     set(value: boolean) {
       if (value) {
-        if(stream[flags].isRunning && !stream[internals].shouldComplete()) {
+        if(stream[flags].isRunning && !stream.shouldComplete()) {
           autoComplete = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
         }
@@ -80,7 +80,7 @@ export function createSubject<T = any>(): Subject<T> {
     },
     set(value: boolean) {
       if (value) {
-        if(stream[flags].isRunning && !stream[internals].shouldComplete()) {
+        if(stream[flags].isRunning && !stream.shouldComplete()) {
           unsubscribed = value; completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
         }

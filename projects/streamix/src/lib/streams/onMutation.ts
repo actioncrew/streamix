@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 
 /**
  * Creates a Stream from `MutationObserver` for observing DOM mutations.
@@ -34,7 +34,7 @@ export function onMutation(
 
     observer.observe(element, options);
 
-    await this[internals].awaitCompletion();
+    await this.awaitCompletion();
     observer.disconnect();
   });
 

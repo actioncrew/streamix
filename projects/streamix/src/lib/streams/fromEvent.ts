@@ -1,11 +1,11 @@
-import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, flags, Stream, Subscription } from '../abstractions';
 
 export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
   let listener!: (event: Event) => void;
 
   const run = async function(this: Stream<T>): Promise<void> {
     // Wait for completion
-    await this[internals].awaitCompletion();
+    await this.awaitCompletion();
 
     target.removeEventListener(eventName, listener);
   };

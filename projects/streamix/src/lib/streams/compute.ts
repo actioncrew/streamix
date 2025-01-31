@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 import { catchAny } from '../utils';
 
@@ -29,7 +29,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
       };
     });
 
-    const [error] = await catchAny(Promise.race([this[internals].awaitCompletion(), promise]));
+    const [error] = await catchAny(Promise.race([this.awaitCompletion(), promise]));
     if (error) {
       this.error(error);
       return;

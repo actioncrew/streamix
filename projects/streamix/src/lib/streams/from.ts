@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 
 export function from<T = any>(input: Iterable<T>): Stream<T> {
   // Create the stream with a custom run function
@@ -9,7 +9,7 @@ export function from<T = any>(input: Iterable<T>): Stream<T> {
 
     // Helper function to process emissions sequentially
     const processNext = async () => {
-      while (!done && !this[internals].shouldComplete()) {
+      while (!done && !this.shouldComplete()) {
         const result = iterator.next(); // Get the next value from the iterator
 
         const { value, done: isDone } = result;
@@ -29,7 +29,7 @@ export function from<T = any>(input: Iterable<T>): Stream<T> {
 
     // Start processing emissions
     processNext().then(() => {
-      if (!this[internals].shouldComplete()) {
+      if (!this.shouldComplete()) {
         this.complete(); // Complete the stream when done
       }
     }).catch((error) => {

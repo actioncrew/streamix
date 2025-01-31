@@ -1,4 +1,4 @@
-import { Stream, createEmission, createStream, internals } from '../abstractions';
+import { Stream, createEmission, createStream } from '../abstractions';
 
 // Function to create a FromPromiseStream
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
@@ -10,11 +10,11 @@ export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
       // Await the promise directly
       resolvedValue = await Promise.race([
         promise,
-        this[internals].awaitCompletion() // Allow the stream to complete while waiting
+        this.awaitCompletion() // Allow the stream to complete while waiting
       ]);
 
       // If the stream is not complete, emit the value
-      if (!this[internals].shouldComplete()) {
+      if (!this.shouldComplete()) {
         this.next(createEmission({ value: resolvedValue }));
       }
     } catch (error) {

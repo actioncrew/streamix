@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 
 /**
  * Creates a Stream from `window.matchMedia` for reactive media query handling.
@@ -38,7 +38,7 @@ export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
 
     mediaQueryList.addEventListener('change', listener);
 
-    await this[internals].awaitCompletion();
+    await this.awaitCompletion();
 
     mediaQueryList.removeEventListener('change', listener);
   });

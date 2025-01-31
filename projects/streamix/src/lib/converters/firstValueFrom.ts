@@ -1,8 +1,8 @@
-import { internals, Stream } from '../../lib';
+import { Stream } from '../../lib';
 import { EMPTY } from '../streams';
 
 export function firstValueFrom<T>(stream: Stream): Promise<T> {
-  if(stream === EMPTY || stream[internals].shouldComplete()) {
+  if(stream === EMPTY || stream.shouldComplete()) {
     throw new Error("Stream has not emitted any value.");
   }
 

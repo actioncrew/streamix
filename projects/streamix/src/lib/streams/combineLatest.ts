@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream, Subscription } from '../abstractions';
 
 export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
   const values = sources.map(() => ({ hasValue: false, value: undefined as T | undefined })); // Track the latest value from each source
@@ -9,7 +9,7 @@ export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
     sources.forEach((source, index) => {
       const subscription = source({
         next: (value: T) => {
-          if (stream[internals].shouldComplete()) return;
+          if (stream.shouldComplete()) return;
 
           // Store the latest value from the source
           values[index] = { hasValue: true, value };
@@ -40,7 +40,7 @@ export function combineLatest<T = any>(sources: Stream<T>[]): Stream<T[]> {
       subscriptions.push(subscription); // Store the subscription for cleanup
     });
 
-    await stream[internals].awaitCompletion();
+    await stream.awaitCompletion();
   });
 
   // Cleanup subscriptions when the main stream terminates
