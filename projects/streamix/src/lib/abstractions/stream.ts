@@ -286,7 +286,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
         } else {
           currentValue = emission.value;
           const timestamp = emission.root().timestamp;
-          if (receiver.next && subscription.subscribed <= timestamp && ((subscription.unsubscribed && subscription.unsubscribed >= timestamp) || !subscription.unsubscribed)) {
+          if (receiver.next && subscription.subscribed <= timestamp && (!subscription.unsubscribed || subscription.unsubscribed >= timestamp)) {
             receiver.next(emission.value);
           }
         }

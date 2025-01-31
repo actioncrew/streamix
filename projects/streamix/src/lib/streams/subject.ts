@@ -98,7 +98,7 @@ export function createSubject<T = any>(): Subject<T> {
         } else if (receiver.next) {
           currentValue = emission.value;
           const timestamp = emission.root().timestamp;
-          if (receiver.next && subscription.subscribed <= timestamp && ((subscription.unsubscribed && subscription.unsubscribed >= timestamp) || !subscription.unsubscribed)) {
+          if (receiver.next && subscription.subscribed <= timestamp && (!subscription.unsubscribed || subscription.unsubscribed >= timestamp)) {
             receiver.next(emission.value);
           }
         }
