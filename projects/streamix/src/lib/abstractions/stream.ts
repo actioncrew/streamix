@@ -97,13 +97,11 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
       stream[flags].isUnsubscribed = true;
     }
 
-    return Promise.resolve().then(async () => {
-      if(running && !stopped) {
-        await emitter.waitForCompletion('finalize');
-        running = false; stopped = true;
-        stream.stopTimestamp = performance.now();
-      }
-    })
+    if(running && !stopped) {
+      await emitter.waitForCompletion('finalize');
+      running = false; stopped = true;
+      stream.stopTimestamp = performance.now();
+    }
   };
 
   const awaitCompletion = () => completion.promise();
@@ -281,15 +279,15 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
 
     // Define the bound callback for handling emissions
     const boundCallback = ({ emission }: any) => {
-      currentValue = emission.value;
 
       try {
         if (emission.error && receiver.error) {
           receiver.error(emission.error); // Call `error` if emission failed
         } else {
-          const rootEmissionTimestamp = emission.root().timestamp;
-          if (receiver.next && subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stream.stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
-            receiver.next(emission.value); // Call `next` for successful emissions
+          currentValue = emission.value;
+          const timestamp = emission.root().timestamp;
+          if (receiver.next && subscription.subscribed <= timestamp && ((subscription.unsubscribed && subscription.unsubscribed >= timestamp) || !subscription.unsubscribed)) {
+            receiver.next(emission.value);
           }
         }
       } catch (err) {

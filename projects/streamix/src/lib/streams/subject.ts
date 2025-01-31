@@ -91,18 +91,14 @@ export function createSubject<T = any>(): Subject<T> {
     );
 
     const boundCallback = ({ emission }: any) => {
-      currentValue = emission.value;
 
       try {
         if (emission.error) {
           receiver.error?.(emission.error);
         } else if (receiver.next) {
+          currentValue = emission.value;
           const timestamp = emission.root().timestamp;
-          if (
-            subscription.subscribed <= timestamp &&
-            ((subscription.unsubscribed && subscription.unsubscribed >= timestamp) ||
-              (stream.stopTimestamp || performance.now()) >= timestamp)
-          ) {
+          if (receiver.next && subscription.subscribed <= timestamp && ((subscription.unsubscribed && subscription.unsubscribed >= timestamp) || !subscription.unsubscribed)) {
             receiver.next(emission.value);
           }
         }
