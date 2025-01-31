@@ -25,10 +25,7 @@ export type Stream<T = any> = {
   error: (error: any) => void;
   complete: () => Promise<void>;
 
-  compose: (...operators: StreamOperator[]) => Stream;
-  chain: (...operators: Operator[]) => Stream;
   pipe: (...steps: (Operator | StreamOperator)[]) => Stream;
-
   subscribe: (callback?: ((value: T) => any) | Receiver) => Subscription;
 
   [flags]: {
@@ -206,7 +203,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
       } else if (typeof step === 'function') {
         // Apply any pending SimpleOperators first
         if (operatorsGroup.length > 0) {
-          combinedStream = combinedStream.chain(...operatorsGroup);
+          combinedStream = chain.call(combinedStream, ...operatorsGroup);
           operatorsGroup = [];
         }
 
@@ -219,7 +216,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
 
     // Apply remaining SimpleOperators, if any
     if (operatorsGroup.length > 0) {
-      combinedStream = combinedStream.chain(...operatorsGroup);
+      combinedStream = chain.call(combinedStream, ...operatorsGroup);
     }
 
     return combinedStream as Stream;
