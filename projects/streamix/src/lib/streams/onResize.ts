@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 
 /**
  * Creates a Stream using `ResizeObserver` for observing element resizing.
@@ -38,7 +38,7 @@ export function onResize(
     // Start observing the provided DOM element
     resizeObserver.observe(element);
 
-    await stream[internals].awaitCompletion();
+    await stream.awaitCompletion();
 
     resizeObserver.unobserve(element);
     resizeObserver.disconnect();

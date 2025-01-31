@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 
 /**
  * Creates a Stream using `IntersectionObserver` for observing element visibility changes.
@@ -43,7 +43,7 @@ export function onIntersection(
     // Start observing the provided DOM element
     observer.observe(element);
 
-    await this[internals].awaitCompletion();
+    await this.awaitCompletion();
 
     observer.unobserve(element);
     observer.disconnect();

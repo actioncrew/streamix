@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream, Subscription } from '../abstractions';
 
 export function merge<T = any>(...sources: Stream[]): Stream<T> {
   const subscriptions: Subscription[] = [];
@@ -28,7 +28,7 @@ export function merge<T = any>(...sources: Stream[]): Stream<T> {
 
     try {
       // Wait for all sources to complete or for the stream to stop
-      await Promise.race([ Promise.all(sourcePromises), this[internals].awaitCompletion() ]);
+      await Promise.race([ Promise.all(sourcePromises), this.awaitCompletion() ]);
     } finally {
       finalize(); // Ensure cleanup
     }

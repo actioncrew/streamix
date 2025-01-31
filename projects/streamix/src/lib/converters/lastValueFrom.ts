@@ -1,8 +1,8 @@
-import { internals, Stream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { EMPTY } from '../streams';
 
 export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
-  if(stream === EMPTY || stream[internals].shouldComplete()) {
+  if(stream === EMPTY || stream.shouldComplete()) {
     throw new Error("Stream has not emitted any value.");
   }
 

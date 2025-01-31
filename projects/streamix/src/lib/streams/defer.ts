@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, flags, Stream, Subscription } from '../abstractions';
 
 export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
   let innerStream: Stream<T> | undefined;
@@ -14,13 +14,13 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
       subscription = innerStream({
         next: value => handleEmission(this, value),
         complete: () => {
-          if (!this[internals].shouldComplete()) {
+          if (!this.shouldComplete()) {
             this[flags].isAutoComplete = true;
           }
         }
       });
 
-      await this[internals].awaitCompletion();
+      await this.awaitCompletion();
 
       await cleanupInnerStream();
 

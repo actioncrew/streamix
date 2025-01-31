@@ -3,7 +3,6 @@ import { createEmission, createReceiver, createSubscription, Emission, eventBus,
 import { awaitable, createEventEmitter, EventEmitter } from "../utils";
 
 export const flags = Symbol('Stream');
-export const internals = Symbol('Stream');
 
 export type Stream<T = any> = {
   (callback?: ((value: T) => any) | Receiver): Subscription;
@@ -23,6 +22,11 @@ export type Stream<T = any> = {
   run: () => Promise<void>;
   next: (emission: Emission) => Emission;
   error: (error: any) => void;
+
+  emit: (args: { emission: Emission; source: any }) => Promise<any>;
+
+  shouldComplete: () => boolean;
+  awaitCompletion: () => Promise<void>;
   complete: () => Promise<void>;
 
   pipe: (...steps: (Operator | StreamOperator)[]) => Stream;
@@ -34,12 +38,6 @@ export type Stream<T = any> = {
 
     isStopped: boolean;
     isRunning: boolean;
-  };
-
-  [internals]: {
-    shouldComplete: () => boolean;
-    awaitCompletion: () => Promise<void>;
-    emit: (args: { emission: Emission; source: any }) => Promise<any>;
   };
 };
 
@@ -80,7 +78,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     } catch (error) {
       stream.error(error);
     } finally {
-      !stream[internals].shouldComplete() && (stream[flags].isAutoComplete = true);
+      !stream.shouldComplete() && (stream[flags].isAutoComplete = true);
       eventBus.enqueue({ target: stream, type: 'complete' }); // Trigger complete hook
     }
   };
@@ -151,7 +149,7 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
           }
         }
 
-        if (!emission.error && !emission.phantom && !output[internals].shouldComplete()) {
+        if (!emission.error && !emission.phantom && !output.shouldComplete()) {
 
           const task = output.next(emission.value).wait();
 
@@ -321,6 +319,9 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     run,
     next,
     error,
+    emit,
+    awaitCompletion,
+    shouldComplete,
     complete,
     emitter,
     emissionCounter,
@@ -328,12 +329,6 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     startTimestamp,
     get value() {
       return currentValue;
-    },
-
-    [internals]: {
-      emit,
-      awaitCompletion,
-      shouldComplete,
     },
 
     [flags]: {
@@ -366,6 +361,6 @@ export function createStream<T = any>(name: string, runFn: (this: Stream<T>, par
     }
   });
 
-  emitter.on('emission', (params) => stream[internals].emit(params));
+  emitter.on('emission', (params) => stream.emit(params));
   return stream; // Return the stream instance
 }

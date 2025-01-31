@@ -1,4 +1,4 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
@@ -9,7 +9,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   const stream = createStream<number>('timer', async function(this: Stream<number>): Promise<void> {
     try {
       if (delayMs === 0) {
-        if (this[internals].shouldComplete()) return;
+        if (this.shouldComplete()) return;
       } else {
         await new Promise<void>((resolve) => {
           timeoutId = setTimeout(() => {
@@ -18,7 +18,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
           }, delayMs);
         });
 
-        if (this[internals].shouldComplete()) return;
+        if (this.shouldComplete()) return;
       }
 
       // Initial emission
@@ -29,7 +29,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
         await new Promise<void>((resolve) => {
           intervalId = setInterval(async () => {
             try {
-              if (this[internals].shouldComplete()) {
+              if (this.shouldComplete()) {
                 clearInterval(intervalId);
                 intervalId = undefined;
                 resolve();

@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, flags, Stream, Subscription } from '../abstractions';
 
 export function iif<T>(
   condition: () => boolean, // Evaluate condition once at initialization
@@ -20,14 +20,14 @@ export function iif<T>(
     });
 
     // Wait for the completion of the selected stream
-    await this[internals].awaitCompletion();
+    await this.awaitCompletion();
 
     subscription.unsubscribe();
   });
 
   // Handle emissions from the selected stream
   const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    if (!stream[internals].shouldComplete()) {
+    if (!stream.shouldComplete()) {
       stream.next(createEmission({ value }));
     }
   };
