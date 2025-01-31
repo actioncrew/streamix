@@ -84,7 +84,7 @@ describe('Subject', () => {
     })
 
     for (let i = 0; i < 1000; i++) {
-      await subject.next(i);
+      subject.next(i);
     }
 
     await subject.complete();

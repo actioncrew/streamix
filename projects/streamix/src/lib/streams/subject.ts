@@ -1,150 +1,119 @@
-import { createEmission, createReceiver, createStream, createSubscription, Emission, eventBus, flags, Receiver, Stream, Subscription } from '../abstractions';
+import {
+  createEmission, createReceiver, createStream, createSubscription,
+  Emission, eventBus, flags, Receiver, Stream, Subscription
+} from '../abstractions';
 import { awaitable } from '../utils';
 
 export type Subject<T = any> = Stream<T> & {
   next(value?: T): Emission;
 };
 
-// Create the functional version of the Subject
 export function createSubject<T = any>(): Subject<T> {
-
-  const stream = createStream<T>('subject', async () => stream.awaitCompletion()) as Subject;
   let currentValue: T | undefined;
-
   let autoComplete = false;
   let unsubscribed = false;
 
   const completion = awaitable<void>();
 
+  const stream = createStream<T>('subject', async () => completion.promise()) as Subject;
+
+  Object.defineProperties(stream, {
+    value: {
+      get: () => currentValue,
+      enumerable: true,
+      configurable: true
+    }
+  });
+
+  Object.defineProperties(stream[flags], {
+    isAutoComplete: {
+      get: () => autoComplete,
+      set: (value: boolean) => {
+        if (value && stream[flags].isRunning && !stream.shouldComplete()) {
+          autoComplete = true;
+          completion.resolve();
+          eventBus.enqueue({ target: stream, type: 'complete' });
+        }
+      },
+      configurable: true
+    },
+    isUnsubscribed: {
+      get: () => unsubscribed,
+      set: (value: boolean) => {
+        if (value && stream[flags].isRunning && !stream.shouldComplete()) {
+          unsubscribed = true;
+          completion.resolve();
+          eventBus.enqueue({ target: stream, type: 'complete' });
+        }
+      },
+      configurable: true
+    }
+  });
+
   stream.awaitCompletion = () => completion.promise();
   stream.shouldComplete = () => unsubscribed || autoComplete;
 
-  stream.complete = async function (this: Subject): Promise<void> {
-    if (this[flags].isRunning && !this.shouldComplete()) {
-      autoComplete = true; completion.resolve();
+  stream.complete = async function (): Promise<void> {
+    if (!this[flags].isRunning || this.shouldComplete()) return;
+    autoComplete = true;
+    completion.resolve();
 
-      eventBus.enqueue({
-        target: this,
-        type: 'complete'
-      });
-
-      return this.emitter.waitForCompletion('finalize');
-    }
+    eventBus.enqueue({ target: this, type: 'complete' });
+    await this.emitter.waitForCompletion('finalize');
   };
 
-  stream.next = function(this: Subject, value?: any): Emission {
-    // If the stream is stopped, further emissions are not allowed
-    const emission = createEmission({ value });
-
+  stream.next = function (value?: any): Emission {
     if (this[flags].isUnsubscribed || this[flags].isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
-      return emission;
+      return createEmission({ value });
     }
 
-    eventBus.enqueue({
-      target: this,
-      payload: { emission, source: this },
-      type: 'emission',
-    });
-
+    const emission = createEmission({ value });
+    eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
     return emission;
   };
 
-  Object.defineProperty(stream, 'value', {
-    get: function() {
-      return currentValue;
-    },
-    enumerable: true,
-    configurable: true
-  });
-
-  Object.defineProperty(stream[flags], "isAutoComplete", {
-    get() {
-      return autoComplete;
-    },
-    set(value: boolean) {
-      if (value) {
-        if(stream[flags].isRunning && !stream.shouldComplete()) {
-          autoComplete = value; completion.resolve();
-          eventBus.enqueue({ target: stream, type: 'complete' });
-        }
-      }
-
-    },
-    configurable: true
-  });
-
-  Object.defineProperty(stream[flags], "isUnsubscribed", {
-    get() {
-      return unsubscribed;
-    },
-    set(value: boolean) {
-      if (value) {
-        if(stream[flags].isRunning && !stream.shouldComplete()) {
-          unsubscribed = value; completion.resolve();
-          eventBus.enqueue({ target: stream, type: 'complete' });
-        }
-      }
-
-    },
-    configurable: true
-  });
-
   stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
-    // Convert a callback into a Receiver if needed
     const receiver = createReceiver(callbackOrReceiver);
-    const completeCallback = () => receiver.complete!();
-    const errorCallback = ({ error }: any) => receiver.error!(error);
 
-    // Chain the `complete` method to the `onStop` hook if present
-    if (receiver.complete) {
-      stream.emitter.on('finalize', completeCallback);
-    }
-
-    if (receiver.error) {
-      stream.emitter.on('error', errorCallback);
-    }
-
-    // Create the subscription object
     const subscription = createSubscription(
       () => currentValue,
       () => {
         if (!subscription.unsubscribed) {
           subscription.unsubscribed = performance.now();
-          const cleanup = () => {
-            if (receiver.complete) stream.emitter.off('finalize', completeCallback);
-            if (receiver.error) stream.emitter.off('error', errorCallback);
+          stream.complete().then(() => {
+            if (receiver.complete) stream.emitter.off('finalize', receiver.complete);
+            if (receiver.error) stream.emitter.off('error', receiver.error);
             stream.emitter.off('subscribers', boundCallback);
-          };
-
-          stream.complete().then(cleanup);
+          });
         }
       }
     );
 
-
-    // Define the bound callback for handling emissions
     const boundCallback = ({ emission }: any) => {
       currentValue = emission.value;
 
       try {
-        if (emission.error && receiver.error) {
-          receiver.error(emission.error); // Call `error` if emission failed
-        } else {
-          const rootEmissionTimestamp = emission.root().timestamp;
-          if (receiver.next && subscription.subscribed <= rootEmissionTimestamp && ((subscription.unsubscribed && subscription.unsubscribed >= rootEmissionTimestamp) || (stream.stopTimestamp || performance.now()) >= rootEmissionTimestamp)) {
-            receiver.next(emission.value); // Call `next` for successful emissions
+        if (emission.error) {
+          receiver.error?.(emission.error);
+        } else if (receiver.next) {
+          const timestamp = emission.root().timestamp;
+          if (
+            subscription.subscribed <= timestamp &&
+            ((subscription.unsubscribed && subscription.unsubscribed >= timestamp) ||
+              (stream.stopTimestamp || performance.now()) >= timestamp)
+          ) {
+            receiver.next(emission.value);
           }
         }
       } catch (err) {
         console.error('Error in Receiver callback:', err);
       }
-
-      return Promise.resolve();
     };
 
-    // Add the bound callback to the subscribers
     stream.emitter.on('subscribers', boundCallback);
+    if (receiver.complete) stream.emitter.on('finalize', receiver.complete);
+    if (receiver.error) stream.emitter.on('error', receiver.error);
 
     return subscription;
   };
@@ -158,6 +127,5 @@ export function createSubject<T = any>(): Subject<T> {
   stream.startTimestamp = performance.now();
   eventBus.enqueue({ target: stream, type: 'start' });
 
-  stream.type = 'subject';
   return stream;
 }
