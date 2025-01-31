@@ -1,4 +1,4 @@
-import { createEmission, createStream, flags, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream, Subscription } from '../abstractions';
 
 export function iif<T>(
   condition: () => boolean, // Evaluate condition once at initialization
@@ -16,7 +16,7 @@ export function iif<T>(
     // Start the selected stream
     subscription = selectedStream({
       next: (value) => handleEmission(this, value),
-      complete: () => this[flags].isAutoComplete = true
+      complete: () => this.isAutoComplete = true
     });
 
     // Wait for the completion of the selected stream

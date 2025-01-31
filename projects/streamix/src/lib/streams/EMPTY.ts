@@ -1,11 +1,11 @@
-import { createReceiver, createStream, flags, Receiver, Stream, Subscription } from '../abstractions';
+import { createReceiver, createStream, Receiver, Stream, Subscription } from '../abstractions';
 
 // Function to create an EmptyStream
 export const empty = <T = any>(): Stream<T> => {
   // Custom run function for the EmptyStream
   const stream = createStream<T>('EMPTY', async function(this: Stream<T>): Promise<void> {
     // Set the auto-completion flag
-    this[flags].isAutoComplete = true;
+    this.isAutoComplete = true;
   });
 
   const newStream =  (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {

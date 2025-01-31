@@ -1,4 +1,4 @@
-import { createEmission, createStream, Emission, flags, Stream } from '../abstractions';
+import { createEmission, createStream, Emission, Stream } from '../abstractions';
 
 export function loop<T>(
   initialValue: T,
@@ -22,7 +22,7 @@ export function loop<T>(
 
     // If the condition fails, complete the stream
     if (!this.shouldComplete()) {
-      this[flags].isAutoComplete = true;
+      this.isAutoComplete = true;
     }
   });
 

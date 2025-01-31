@@ -1,4 +1,4 @@
-import { createEmission, createStream, defer, Emission, eventBus, flags, Stream } from '../lib';
+import { createEmission, createStream, defer, Emission, eventBus, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(values: any[], completed = false, error?: Error): Stream {
@@ -15,7 +15,7 @@ export function mockStream(values: any[], completed = false, error?: Error): Str
     }
 
     if (completed) {
-      stream[flags].isAutoComplete = true; // Set auto-completion flag
+      stream.isAutoComplete = true; // Set auto-completion flag
     }
   });
 

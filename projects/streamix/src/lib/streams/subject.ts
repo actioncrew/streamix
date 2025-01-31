@@ -1,6 +1,6 @@
 import {
   createEmission, createReceiver, createStream, createSubscription,
-  Emission, eventBus, flags, Receiver, Stream, Subscription
+  Emission, eventBus, Receiver, Stream, Subscription
 } from '../abstractions';
 import { awaitable } from '../utils';
 
@@ -17,36 +17,37 @@ export function createSubject<T = any>(): Subject<T> {
 
   const stream = createStream<T>('subject', async () => completion.promise()) as Subject;
 
+  // Define `value` property directly on the stream
   Object.defineProperties(stream, {
     value: {
       get: () => currentValue,
       enumerable: true,
       configurable: true
-    }
-  });
-
-  Object.defineProperties(stream[flags], {
+    },
+    // Define flags directly on the stream
     isAutoComplete: {
       get: () => autoComplete,
       set: (value: boolean) => {
-        if (value && stream[flags].isRunning && !stream.shouldComplete()) {
+        if (value && stream.isRunning && !stream.shouldComplete()) {
           autoComplete = true;
           completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
         }
       },
-      configurable: true
+      configurable: true,
+      enumerable: true
     },
     isUnsubscribed: {
       get: () => unsubscribed,
       set: (value: boolean) => {
-        if (value && stream[flags].isRunning && !stream.shouldComplete()) {
+        if (value && stream.isRunning && !stream.shouldComplete()) {
           unsubscribed = true;
           completion.resolve();
           eventBus.enqueue({ target: stream, type: 'complete' });
         }
       },
-      configurable: true
+      configurable: true,
+      enumerable: true
     }
   });
 
@@ -54,7 +55,7 @@ export function createSubject<T = any>(): Subject<T> {
   stream.shouldComplete = () => unsubscribed || autoComplete;
 
   stream.complete = async function (): Promise<void> {
-    if (!this[flags].isRunning || this.shouldComplete()) return;
+    if (!this.isRunning || this.shouldComplete()) return;
     autoComplete = true;
     completion.resolve();
 
@@ -63,7 +64,7 @@ export function createSubject<T = any>(): Subject<T> {
   };
 
   stream.next = function (value?: any): Emission {
-    if (this[flags].isUnsubscribed || this[flags].isStopped) {
+    if (this.isUnsubscribed || this.isStopped) {
       console.warn('Cannot push value to a stopped Subject.');
       return createEmission({ value });
     }
@@ -115,11 +116,11 @@ export function createSubject<T = any>(): Subject<T> {
   };
 
   stream.emitter.once('finalize', () => {
-    stream[flags].isStopped = true;
-    stream[flags].isRunning = false;
+    stream.isStopped = true;
+    stream.isRunning = false;
   });
 
-  stream[flags].isRunning = true;
+  stream.isRunning = true;
   stream.startTimestamp = performance.now();
   eventBus.enqueue({ target: stream, type: 'start' });
 

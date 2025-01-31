@@ -1,4 +1,4 @@
-import { createEmission, createStreamOperator, Emission, flags, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createEmission, createStreamOperator, Emission, Stream, StreamOperator, Subscription } from '../abstractions';
 import { createSubject } from '../streams';
 import { catchAny, Counter, counter } from '../utils';
 
@@ -119,8 +119,8 @@ export const fork = <T = any, R = T>(
       isFinalizing = true;
 
       [currentInnerStream, input, output].forEach((stream) => {
-        if (stream && stream[flags]?.isRunning) {
-          stream[flags].isAutoComplete = true;
+        if (stream && stream?.isRunning) {
+          stream.isAutoComplete = true;
         }
       });
 
