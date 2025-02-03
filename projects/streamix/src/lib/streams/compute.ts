@@ -1,7 +1,6 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, eventBus, internals, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 import { catchAny } from '../utils';
-import { eventBus } from '../abstractions';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
   // Create the custom run function for the ComputeStream
@@ -35,8 +34,6 @@ export function compute(task: Coroutine, params: any): Stream<any> {
       eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
       return;
     }
-
-    return promise;
   });
 
   stream.name = "compute";
