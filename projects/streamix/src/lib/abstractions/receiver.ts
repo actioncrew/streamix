@@ -18,9 +18,6 @@ export function createReceiver<T = any>(callbackOrReceiver?: ((value: T) => void
     { next: callbackOrReceiver } :
     callbackOrReceiver || {};
 
-  receiver.next = receiver.next ?? (() => {});
-  receiver.error = receiver.error ?? ((err) => console.error('Unhandled error:', err));
-  receiver.complete = receiver.complete ?? (() => {});
-
+  receiver.error || ((err) => console.error('Unhandled error:', err));
   return receiver;
 }

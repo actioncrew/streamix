@@ -1,14 +1,14 @@
-import { createOperator, Emission, Operator, Stream } from '../abstractions';
+import { createOperator, Emission, flags, Operator, Subscribable } from '../abstractions';
 
 export const take = (count: number): Operator => {
   let emittedCount = 0;
 
-  const handle = (emission: Emission, stream: Stream): Emission => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     if (emittedCount < count) {
       emittedCount++;
 
       if(emittedCount === count) {
-        stream.isAutoComplete = true;
+        stream[flags].isAutoComplete = true;
       }
       return emission;
     } else {
@@ -17,5 +17,7 @@ export const take = (count: number): Operator => {
     }
   };
 
-  return createOperator('take', handle);
+  const operator = createOperator(handle);
+  operator.name = 'take';
+  return operator;
 };

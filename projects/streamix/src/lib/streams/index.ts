@@ -12,13 +12,12 @@ export * from './interval';
 export * from './loop';
 export * from './merge';
 export * from './of';
+export * from './observeIntersection';
+export * from './observeMutation';
+export * from './observeResize';
 export * from './onAnimationFrame';
-export * from './onIntersection';
-export * from './onMediaQuery';
-export * from './onMutation';
-export * from './onResize';
+export * from './onMediaQueryMatch';
 export * from './range';
 export * from './subject';
 export * from './timer';
 export * from './zip';
-

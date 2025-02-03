@@ -1,26 +1,24 @@
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
-import { createSubject } from '../streams';
+import { BusEvent, createEmission, createOperator, Emission, Operator, Stream } from '../abstractions';
 
-export const endWith = (value: any): StreamOperator => {
-  const operator = (input: Stream): Stream => {
-    const output = createSubject<any>(); // Create the output stream
+export const endWith = (value: any): Operator => {
+  let boundStream: Stream;
 
-    // Subscribe to the original stream
-    input({
-      next: (emission) => {
-        output.next(emission); // Forward emissions from the original stream
-      },
-      complete: () => {
-        output.next(value); // Emit the value at the end of the stream
-        output.complete();   // Complete the stream after emitting the value
-      },
-      error: (err) => {
-        output.error(err); // Forward errors if any
-      }
-    });
-
-    return output;
+  const init = function(this: Operator, stream: Stream) {
+    boundStream = stream;
+    boundStream.emitter.once('complete', (params: any) => callback(this, params)); // Trigger the callback when the stream starts
   };
 
-  return createStreamOperator('endWith', operator);
+  const callback = (instance: Operator, _: any): (() => BusEvent) | void => {
+    // Emit the provided initial value when the stream starts
+    return () => ({ target: boundStream, payload: { emission: createEmission({ value }), source: instance }, type: 'emission' });
+  };
+
+  const handle = (emission: Emission): Emission => {
+    return emission; // Pass the emission forward without modification
+  };
+
+  const operator = createOperator(handle);
+  operator.name = 'endWith';
+  operator.init = init;
+  return operator;
 };

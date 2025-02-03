@@ -1,18 +1,19 @@
-import { createEmission, createStream, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, internals, Stream, Subscribable, Subscription } from '../abstractions';
+import { eventBus } from '../abstractions';
 
-export function merge<T = any>(...sources: Stream[]): Stream<T> {
+export function merge<T = any>(...sources: Subscribable[]): Stream<T> {
   const subscriptions: Subscription[] = [];
 
-  const stream = createStream<T>('merge', async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     const sourcePromises = sources.map((source) => {
       return new Promise<void>((resolve, reject) => {
-        const subscription = source({
+        const subscription = source.subscribe({
           next: (value) => {
             const emission = createEmission({ value });
-            this.next(emission);
+            eventBus.enqueue({ target: this, payload: { emission, source: this }, type: 'emission' });
           },
           error: (err) => {
-            this.error(err);
+            eventBus.enqueue({ target: this, payload: { error: err }, type: 'error' });
             reject(err); // Reject the promise on error
             finalize(); // Stop all processing on error
           },
@@ -28,7 +29,7 @@ export function merge<T = any>(...sources: Stream[]): Stream<T> {
 
     try {
       // Wait for all sources to complete or for the stream to stop
-      await Promise.race([ Promise.all(sourcePromises), this.awaitCompletion() ]);
+      await Promise.race([ Promise.all(sourcePromises), this[internals].awaitCompletion() ]);
     } finally {
       finalize(); // Ensure cleanup
     }
@@ -39,5 +40,6 @@ export function merge<T = any>(...sources: Stream[]): Stream<T> {
     subscriptions.length = 0;
   };
 
+  stream.name = "merge";
   return stream;
 }

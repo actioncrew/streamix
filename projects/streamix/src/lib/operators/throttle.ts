@@ -1,4 +1,5 @@
-import { createOperator, Emission, Operator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
+import { Emission } from '../abstractions';
 
 export const throttle = (time: number): Operator => {
   let lastEmissionTime = 0;
@@ -14,5 +15,7 @@ export const throttle = (time: number): Operator => {
     }
   };
 
-  return createOperator('throttle', handle);
+  const operator = createOperator(handle);
+  operator.name = 'throttle';
+  return operator;
 };

@@ -1,4 +1,4 @@
-import { onResize } from "../lib";
+import { observeResize } from "../lib/streams/observeResize";
 
 xdescribe('Functional tests for fromResizeObserver', () => {
   test('should detect element resize changes', (done) => {
@@ -7,9 +7,9 @@ xdescribe('Functional tests for fromResizeObserver', () => {
     divToTest.style.height = '100px';
     document.body.appendChild(divToTest);
 
-    const resizeStream = onResize(divToTest);
+    const resizeStream = observeResize(divToTest);
 
-    const subscription = resizeStream({
+    const subscription = resizeStream.subscribe({
       next: (resizeData) => {
         try {
           expect(resizeData.width).toBe(200);

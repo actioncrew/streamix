@@ -1,13 +1,13 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
 
 export function onAnimationFrame<T>(): Stream<T> {
   let requestId: number | null = null;
 
-  const stream = createStream<T>('onAnimationFrame', async function (this: Stream<T>) {
+  const stream = createStream<T>(async function (this: Stream<T>) {
     let lastFrameTime = performance.now();
 
     const runFrame = (currentTime: number) => {
-      if (this.shouldComplete()) {
+      if (this[internals].shouldComplete()) {
         // Stop the loop and complete the stream
         if (requestId !== null) {
           cancelAnimationFrame(requestId);
@@ -21,7 +21,7 @@ export function onAnimationFrame<T>(): Stream<T> {
       lastFrameTime = currentTime;
 
       // Emit the current value
-      stream.next(createEmission({ value: elapsedTime }));
+      stream.emitter.emit('emission', { emission: createEmission({ value: elapsedTime }), source: this });
 
       // Schedule the next frame
       requestId = requestAnimationFrame(runFrame);
@@ -29,8 +29,10 @@ export function onAnimationFrame<T>(): Stream<T> {
 
     // Start the animation frame loop
     requestId = requestAnimationFrame(runFrame);
-    await stream.awaitCompletion();
+    await stream[internals].awaitCompletion();
   });
+
+  stream.name = "onAnimationFrame";
 
   return stream;
 }

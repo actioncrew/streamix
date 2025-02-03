@@ -1,4 +1,5 @@
-import { createOperator, Emission, Operator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
+import { Emission } from '../abstractions';
 
 export const tap = (tapFunction: (value: any) => void): Operator => {
   const handle = (emission: Emission): Emission => {
@@ -6,5 +7,8 @@ export const tap = (tapFunction: (value: any) => void): Operator => {
     return emission; // Return the original emission
   };
 
-  return createOperator('tap', handle);
+  // Create the operator with the handle function
+  const operator = createOperator(handle);
+  operator.name = 'tap';
+  return operator;
 };

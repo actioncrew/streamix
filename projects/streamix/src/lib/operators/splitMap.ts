@@ -1,64 +1,50 @@
-import { Operator, Stream, StreamOperator } from '../abstractions';
+import { createOperator, Operator, Emission } from '../abstractions';
 import { createSubject, from } from '../streams';
-import { createStreamOperator } from './../abstractions/operator';
 
 export const splitMap = <T = any, R = T>(
   paths: { [key: string]: Array<Operator> }
-): StreamOperator => {
-  const operator = (input: Stream) => {
-    const output = createSubject<R>(); // The output stream
-    let subscriptions: Array<any> = []; // Track all subscriptions
+): Operator => {
+  const output = createSubject<R>(); // The final output stream
+  let subscriptions: Array<any> = []; // Track subscriptions
 
-    const subscription = input({
-      next: (partitionMap: Map<string, any[]>) => {
-        let remainingSubscriptions = 0;
+  const handle = (emission: Emission) => {
+    const partitionMap = emission.value as Map<string, any[]>; // Partitioned streams
 
-        // Process each key in the partition map
-        partitionMap.forEach((streamData, key) => {
-          const caseOperators = paths[key]; // Operators for the current partition
+    let remainingSubscriptions = 0;
 
-          if (caseOperators) {
-            // Create a stream for the partition and apply the operators
-            const partitionStream = from(streamData).pipe(...caseOperators);
+    // Process each key in the partition map
+    partitionMap.forEach((stream, key) => {
+      const caseOperators = paths[key]; // Get the operators for the current key
 
-            // Subscribe to the processed partition stream
-            const partitionSubscription = partitionStream({
-              next: (value) => output.next(value),
-              complete: () => {
-                remainingSubscriptions--;
-                if (remainingSubscriptions === 0) {
-                  output.complete(); // Complete when all partitions finish
-                }
-              },
-            });
-
-            remainingSubscriptions++;
-            subscriptions.push(partitionSubscription);
-          } else {
-            console.warn(`No handlers found for partition key: ${key}`);
-          }
+      if (caseOperators) {
+        // For each partition stream, subscribe and apply the operators
+        const subscription = from(stream).pipe(...caseOperators).subscribe({
+          next: (value) => {
+            output.next(value); // Pass the value downstream
+          },
+          complete: () => {
+            remainingSubscriptions--;
+            if (remainingSubscriptions === 0) {
+              output.complete(); // Complete the output stream when all subscriptions are done
+            }
+          },
         });
-      },
-      complete: () => {
-        // Complete the output stream if the main stream completes with no partitions
-        if (subscriptions.length === 0) {
-          output.complete();
-        }
-      },
-      error: (err) => {
-        // Propagate errors to the output stream
-        output.error(err);
-      },
+
+        // Increase the count of remaining subscriptions
+        remainingSubscriptions++;
+        subscriptions.push(subscription);
+      } else {
+        console.warn(`No handlers found for partition key: ${key}`);
+      }
     });
 
-    // Clean up all subscriptions when the output stream finalizes
-    output.emitter.once('finalize', () => {
-      subscriptions.forEach((sub) => sub.unsubscribe());
-      subscription.unsubscribe();
-    });
-
-    return output; // Return the resulting stream
+    return emission;
   };
 
-  return createStreamOperator('splitMap', operator);
+  // Create the operator and initialize its properties
+  const operator = createOperator(handle) as any;
+  operator.stream = output;
+  operator.name = 'splitMap';
+
+  return operator;
 };

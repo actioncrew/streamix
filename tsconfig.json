@@ -26,10 +26,8 @@
     ],
     "paths": {
       "@actioncrew/streamix": [
+        "./projects/streamix/src/lib/index.ts",
         "./dist/streamix/index.d.ts"
-      ],
-      "@streamix/angular": [
-        "./dist/angular/index.d.ts"
       ]
     }
   },

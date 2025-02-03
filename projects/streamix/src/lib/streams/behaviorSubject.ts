@@ -1,6 +1,6 @@
 
-import { Receiver, Subscription } from '../abstractions';
 import { createSubject, Subject } from './subject';
+import { Receiver, Subscription } from '../abstractions';
 
 // Create function for the BehaviorSubject
 export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
@@ -8,16 +8,14 @@ export function createBehaviorSubject<T = any>(initialValue: T): Subject<T> {
 
   const originalSubscribe = subject.subscribe.bind(subject);
 
-  const behaviorSubject = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  subject.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const subscription = originalSubscribe(callbackOrReceiver);
 
-    subject.next(initialValue);
+    const value = subject.value ?? initialValue;
+    subject.next(value);
     return subscription;
   };
 
-  Object.defineProperty(behaviorSubject, 'name', { writable: true, enumerable: true, configurable: true });
-  Object.assign(behaviorSubject, subject);
-  behaviorSubject.name = 'behaviorSubject';
-  behaviorSubject.subscribe = behaviorSubject;
-  return behaviorSubject as unknown as Subject<T>;
+  subject.name = "behaviorSubject";
+  return subject;
 }

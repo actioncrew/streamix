@@ -1,4 +1,5 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 /**
  * Creates a Stream from `window.matchMedia` for reactive media query handling.
@@ -11,37 +12,48 @@ import { createEmission, createStream, Stream } from '../abstractions';
  * // Example usage:
  * import { fromMediaQuery } from './your-path';
  *
- * const mediaQueryStream = onMediaQuery('(min-width: 768px)');
+ * const mediaQueryStream = onMediaQueryMatch('(min-width: 768px)');
  *
- * const subscription = mediaQueryStream({
+ * const subscription = mediaQueryStream.subscribe({
  *   next: (matchStatus) => {
  *     console.log('Media Query Match:', matchStatus);
  *   },
  * });
  */
-export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
-  const stream = createStream<boolean>('fromMediaQuery', async function (this: Stream<boolean>) {
+export function onMediaQueryMatch(mediaQueryString: string): Stream<boolean> {
+  const stream = createStream<boolean>(async function (this: Stream<boolean>) {
     if (!window.matchMedia) {
       console.warn('matchMedia is not supported in this environment');
       return;
     }
 
     const mediaQueryList = window.matchMedia(mediaQueryString);
-
+    const emission = createEmission({ value: mediaQueryList.matches });
     // Emit the initial state
-    this.next(createEmission({ value: mediaQueryList.matches }));
+    eventBus.enqueue({
+      target: this,
+      payload: { emission, source: this },
+      type: 'emission',
+    });
 
     // Define the event listener to monitor changes
     const listener = (event: MediaQueryListEvent) => {
-      this.next(createEmission({ value: event.matches }));
+      const emission = createEmission({ value: event.matches });
+      // Emit the initial state
+      eventBus.enqueue({
+        target: this,
+        payload: { emission, source: this },
+        type: 'emission',
+      });
     };
 
     mediaQueryList.addEventListener('change', listener);
 
-    await this.awaitCompletion();
+    await this[internals].awaitCompletion();
 
     mediaQueryList.removeEventListener('change', listener);
   });
 
+  stream.name = 'fromMediaQuery';
   return stream;
 }

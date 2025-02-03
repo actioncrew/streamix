@@ -1,4 +1,5 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, internals, createStream, Stream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 /**
  * Creates a Stream using `ResizeObserver` for observing element resizing.
@@ -9,27 +10,31 @@ import { createEmission, createStream, Stream } from '../abstractions';
  *
  * @example
  * // Example usage:
- * import { onResize } from './your-path';
+ * import { observeResize } from './your-path';
  *
  * const elementToObserve = document.getElementById('resizeMe');
- * const resizeStream = onResize(elementToObserve);
+ * const resizeStream = observeResize(elementToObserve);
  *
- * const subscription = resizeStream({
+ * const subscription = resizeStream.subscribe({
  *   next: (resizeEntry) => {
  *     console.log('Resize observed:', resizeEntry);
  *   },
  * });
  */
-export function onResize(
+export function observeResize(
   element: Element
 ): Stream<{ width: number; height: number }> {
-  const stream = createStream<{ width: number; height: number }>('onResize', async function (this: Stream<{ width: number; height: number }>) {
+  const stream = createStream<{ width: number; height: number }>(async function (this: Stream<{ width: number; height: number }>) {
     let resizeObserver: ResizeObserver;
 
     const callback = (entries: ResizeObserverEntry[]) => {
       const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
       const emission = createEmission({ value: { width, height } });
-      this.next(emission);
+      eventBus.enqueue({
+        target: this,
+        payload: { emission, source: this },
+        type: 'emission',
+      });
     };
 
     // Initialize ResizeObserver
@@ -38,12 +43,12 @@ export function onResize(
     // Start observing the provided DOM element
     resizeObserver.observe(element);
 
-    await stream.awaitCompletion();
+    await stream[internals].awaitCompletion();
 
     resizeObserver.unobserve(element);
     resizeObserver.disconnect();
   });
 
-  stream.name = 'onResize';
+  stream.name = 'observeResize';
   return stream;
 }

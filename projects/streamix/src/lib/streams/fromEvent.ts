@@ -1,28 +1,30 @@
-import { createEmission, createStream, Stream, Subscription } from '../abstractions';
+import { createEmission, flags, internals, Stream, Subscription } from '../abstractions';
+import { createStream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
   let listener!: (event: Event) => void;
-  let subscription!: Subscription;
+
+  const run = async function(this: Stream<T>): Promise<void> {
+    // Wait for completion
+    await this[internals].awaitCompletion();
+
+    target.removeEventListener(eventName, listener);
+  };
 
   // Create the stream using createStream
-  const stream = createStream<T>('fromEvent', async function(this: Stream<T>): Promise<void> {
-    // Wait for completion
-    await this.awaitCompletion();
+  const stream = createStream<T>(run);
+  const originalSubscribe = stream.subscribe.bind(stream); // Store the original start method
 
-    // Clean up listener when stream completes
-    target.removeEventListener(eventName, listener);
-  });
+  stream.subscribe = function(this: Stream<T>, params?: any): Subscription {
+    // Call the original start method
+    let subscription = originalSubscribe(params);
 
-  // Override the subscribe method to handle adding event listeners
-  const originalSubscribe = stream.subscribe.bind(stream);
-
-  const newStream: any = function(params?: any): Subscription {
-    // Ensure that the listener is added only once
     if (!listener) {
-      listener = (event: Event) => {
-        if (newStream.isRunning) {
+      listener = async (event: Event) => {
+        if (this[flags].isRunning) {
           // Emit the event to the stream
-          newStream.next(createEmission({ value: event }));
+          eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: event }), source: this }, type: 'emission' });
         }
       };
 
@@ -30,14 +32,9 @@ export function fromEvent<T = any>(target: EventTarget, eventName: string): Stre
       target.addEventListener(eventName, listener);
     }
 
-    // Call the original subscribe method
-    subscription = originalSubscribe(params);
     return subscription;
   };
 
-  // Inherit the prototype of the original stream so properties are shared
-  Object.setPrototypeOf(newStream, stream);
-
-  // Ensure we return a stream type
-  return newStream as unknown as Stream<T>;
+  stream.name = "fromEvent";
+  return stream;
 }

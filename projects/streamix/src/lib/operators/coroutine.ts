@@ -1,4 +1,5 @@
-import { Emission, Operator, Stream, createEmission, createOperator, eventBus } from '../abstractions';
+import { Emission, Operator, Subscribable, createEmission, createOperator, eventBus } from '../abstractions';
+import { EMPTY } from '../streams';
 
 export type Coroutine = Operator & {
   finalize: () => Promise<void>;
@@ -78,7 +79,11 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  const handle = (emission: Emission, stream: Stream): Emission => {
+  const init = () => {
+    initWorkers();
+  };
+
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     const data = emission.value; // The data to be processed by the main task
     queueMicrotask(() => processTask(data).then((data) => {
       const child = createEmission({ value: data });
@@ -140,12 +145,14 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     workerQueue.length = 0; // Clear the queue
   };
 
-  const operator = createOperator('coroutine',handle) as Coroutine;
+  const operator = createOperator(handle) as Coroutine;
+  operator.name = 'coroutine';
+  operator.init = init;
   operator.finalize = finalize;
   operator.processTask = processTask;
   operator.getIdleWorker = getIdleWorker;
   operator.returnWorker = returnWorker;
 
-  initWorkers();
+  operator.init(EMPTY);
   return operator;
 };

@@ -1,4 +1,5 @@
-import { createSubject, from, zip } from '../lib';
+import { createSubject, from } from '../lib';
+import { zip } from '../lib';
 
 describe('zip operator', () => {
   it('should zip values from multiple streams', (done) => {
@@ -7,7 +8,7 @@ describe('zip operator', () => {
     const stream3$ = from([true, false, true]);
 
     const result: any[] = [];
-    zip([stream1$, stream2$, stream3$])({
+    zip([stream1$, stream2$, stream3$]).subscribe({
       next: (value: any) => result.push(value),
       complete: () => {
         expect(result).toEqual([
@@ -27,7 +28,7 @@ describe('zip operator', () => {
     const stream3$ = from([true, false, true]);
 
     const result: any[] = [];
-    zip([stream1$, stream2$, stream3$])({
+    zip([stream1$, stream2$, stream3$]).subscribe({
       next: () => done.fail('Should not emit any values'),
       complete: () => {
         expect(result).toEqual([]);
@@ -43,7 +44,7 @@ describe('zip operator', () => {
     const stream3$ = from([true, false, true, false]);
 
     const result: any[] = [];
-    zip([stream1$, stream2$, stream3$])({
+    zip([stream1$, stream2$, stream3$]).subscribe({
       next: (value) => result.push(value),
       complete: () => {
         expect(result).toEqual([
@@ -62,7 +63,7 @@ describe('zip operator', () => {
     const stream3$ = createSubject<boolean>();
 
     const result: any[] = [];
-    zip([stream1$, stream2$, stream3$])({
+    zip([stream1$, stream2$, stream3$]).subscribe({
       next: (value) => result.push(value),
       complete: () => {
         expect(result).toEqual([

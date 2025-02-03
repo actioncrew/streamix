@@ -9,7 +9,7 @@ describe('fromEvent function', () => {
     const stream = fromEvent(element, 'click');
 
     let emittedEvents: Event[] = [];
-    const subscription = stream({
+    const subscription = stream.subscribe({
       next: (event) => emittedEvents.push(event.value),
       complete: () => {
         expect(emittedEvents.length).toBe(2); // Check that two click events were emitted

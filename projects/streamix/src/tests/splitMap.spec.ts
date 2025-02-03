@@ -1,4 +1,5 @@
-import { from, groupBy, map, merge, splitMap } from '../lib';
+import { from, map, merge } from '../lib';
+import { groupBy, splitMap } from '../lib';
 
 describe('groupBy and splitMap operators', () => {
   let source$: any;
@@ -15,7 +16,7 @@ describe('groupBy and splitMap operators', () => {
 
     source$ = from([1, 2, 3, 4, 5, 6]).pipe(partitionOperator);
 
-    source$({
+    source$.subscribe({
       next: (value: any) => { result = Array.from(value.values()).flat(); },
       complete: () => {
         expect(result).toEqual([ 1, 3, 5, 2, 4, 6]);  // odd numbers first, followed by even
@@ -46,7 +47,7 @@ describe('groupBy and splitMap operators', () => {
       splitMap(paths)  // Apply splitMap with custom operators
     );
 
-    source$({
+    source$.subscribe({
       next: (value) => result.push(value),
       complete: () => {
         // Expect processed values with the custom operator applied
@@ -74,7 +75,7 @@ describe('groupBy and splitMap operators', () => {
       splitMap(paths)
     );
 
-    source$({
+    source$.subscribe({
       next: (value: any) => result.push(value),
       complete: () => {
         expect(result).toEqual(['low', 'low', 'low', 'high', 'high']); // Correctly split into "low" and "high"

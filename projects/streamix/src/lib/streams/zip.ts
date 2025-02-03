@@ -1,17 +1,17 @@
-import { createEmission, createStream, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, eventBus, internals, Stream, Subscribable, Subscription } from '../abstractions';
 import { counter, Counter } from '../utils';
 
-export function zip(sources: Stream[]): Stream<any[]> {
+export function zip(sources: Subscribable[]): Stream<any[]> {
   const queues = sources.map(() => [] as any[]); // Queues for values from each source
   const subscriptions: Subscription[] = []; // Track subscriptions for cleanup
   let activeSources = sources.length; // Number of active source streams
   let emittedValues: Counter = counter(0);
 
-  const stream = createStream<any[]>('zip', async function (this: Stream<any[]>): Promise<void> {
+  const stream = createStream<any[]>(async function (this: Stream<any[]>): Promise<void> {
     sources.forEach((source, index) => {
-      const subscription = source({
+      const subscription = source.subscribe({
         next: (value) => {
-          if (stream.shouldComplete()) return;
+          if (stream[internals].shouldComplete()) return;
 
           queues[index].push(value); // Add value to the appropriate queue
 
@@ -19,7 +19,14 @@ export function zip(sources: Stream[]): Stream<any[]> {
           if (queues.every((queue) => queue.length > 0)) {
             const combined = queues.map((queue) => queue.shift()!); // Extract one value from each queue
              // Increment the emission count
-            stream.next(createEmission({ value: combined }));
+            eventBus.enqueue({
+              target: stream,
+              payload: {
+                emission: createEmission({ value: combined }),
+                source: stream,
+              },
+              type: 'emission',
+            });
             emittedValues.increment();
           }
         },
@@ -29,16 +36,16 @@ export function zip(sources: Stream[]): Stream<any[]> {
             stream.complete(); // Complete the stream only when all emissions are emitted
           }
         },
-        error: (err) => {
+        error: (err: any) => {
           // Emit an error if any source stream fails
-          stream.error(err);
+          eventBus.enqueue({ target: stream, payload: { error: err }, type: 'error' });
         },
       });
 
       subscriptions.push(subscription); // Store subscriptions for cleanup
     });
 
-    await this.awaitCompletion();
+    await this[internals].awaitCompletion();
     await emittedValues.waitFor(Math.min(...sources.map(source => source.emissionCounter)));
   });
 
@@ -49,5 +56,6 @@ export function zip(sources: Stream[]): Stream<any[]> {
     return originalComplete();
   };
 
+  stream.name = 'zip';
   return stream;
 }

@@ -1,21 +1,23 @@
-import { createReceiver, createStream, Receiver, Stream, Subscription } from '../abstractions';
+import { createReceiver, createStream, flags, Receiver, Stream, Subscription } from '../abstractions';
 
 // Function to create an EmptyStream
 export const empty = <T = any>(): Stream<T> => {
   // Custom run function for the EmptyStream
-  const stream = createStream<T>('EMPTY', async function(this: Stream<T>): Promise<void> {
+  const stream = createStream<T>(async function(this: Stream<T>): Promise<void> {
     // Set the auto-completion flag
-    this.isAutoComplete = true;
+    this[flags].isAutoComplete = true;
   });
 
-  const newStream =  (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  stream.subscribe =  (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
 
     const subscription = () => undefined;
 
     Object.assign(subscription, {
       unsubscribed: false,
-      unsubscribe: () => { /* No-op for EMPTY subscription */ }
+      unsubscribe: () => { /* No-op for EMPTY subscription */ },
+      started: Promise.resolve(), // Immediately resolve started promise
+      completed: Promise.resolve(), // Immediately resolve completed promise
     });
 
     receiver.complete && queueMicrotask(receiver.complete);
@@ -23,10 +25,8 @@ export const empty = <T = any>(): Stream<T> => {
     return subscription as Subscription;
   }
 
-  Object.defineProperty(newStream, 'name', { writable: true, enumerable: true, configurable: true });
-  Object.assign(newStream, stream);
-  newStream.subscribe = newStream;
-  return newStream as unknown as Stream<T>;
+  stream.name = "EMPTY";
+  return stream;
 };
 
 // Export a singleton instance of EmptyStream

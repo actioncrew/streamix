@@ -1,9 +1,9 @@
-import { createEmission, createOperator, Emission, eventBus, Operator, Stream } from '../abstractions';
+import { createEmission, createOperator, Emission, eventBus, Operator, Subscribable } from '../abstractions';
 
 export const debounce = (time: number): Operator => {
   let timeoutId: any;
 
-  const handle = function (this: Operator, emission: Emission, source: Stream): Emission {
+  const handle = function (this: Operator, emission: Emission, source: Subscribable): Emission {
     clearTimeout(timeoutId); // Clear any previous debounce timer
     const debounced = createEmission({ value: emission.value });
 
@@ -20,5 +20,7 @@ export const debounce = (time: number): Operator => {
     return emission;
   };
 
-  return createOperator('debounce', handle);
+  const operator = createOperator(handle);
+  operator.name = 'debounce';
+  return operator;
 };

@@ -1,4 +1,5 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
@@ -6,10 +7,10 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   let intervalId: any;
   const actualIntervalMs = intervalMs ?? delayMs;
 
-  const stream = createStream<number>('timer', async function(this: Stream<number>): Promise<void> {
+  const stream = createStream<number>(async function(this: Stream<number>): Promise<void> {
     try {
       if (delayMs === 0) {
-        if (this.shouldComplete()) return;
+        if (this[internals].shouldComplete()) return;
       } else {
         await new Promise<void>((resolve) => {
           timeoutId = setTimeout(() => {
@@ -18,38 +19,38 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
           }, delayMs);
         });
 
-        if (this.shouldComplete()) return;
+        if (this[internals].shouldComplete()) return;
       }
 
       // Initial emission
-      this.next(createEmission({ value: timerValue }));
+      eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
       timerValue++;
 
       if (actualIntervalMs > 0) {
         await new Promise<void>((resolve) => {
           intervalId = setInterval(async () => {
             try {
-              if (this.shouldComplete()) {
+              if (this[internals].shouldComplete()) {
                 clearInterval(intervalId);
                 intervalId = undefined;
                 resolve();
                 return;
               }
 
-              this.next(createEmission({ value: timerValue }));
+              eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: timerValue }), source: this }, type: 'emission' });
 
               timerValue++;
             } catch (error) {
               clearInterval(intervalId);
               intervalId = undefined;
-              this.error(error);
+              eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
               resolve();
             }
           }, actualIntervalMs);
         });
       }
     } catch (error) {
-      this.error(error);
+      eventBus.enqueue({ target: this, payload: { error }, type: 'error' });
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -75,5 +76,6 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
     return originalComplete();
   };
 
+  stream.name = "timer";
   return stream;
 }

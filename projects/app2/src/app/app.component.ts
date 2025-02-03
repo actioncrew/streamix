@@ -1,4 +1,4 @@
-import { compute, coroutine, finalize, map, mergeMap, range, scan, Stream, tap } from '@actioncrew/streamix';
+import { compute, coroutine, finalize, map, mergeMap, range, scan, Subscribable, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 // Main Mandelbrot computation function
@@ -105,8 +105,8 @@ export class AppComponent implements OnInit {
   panY!: number;
   subSampling!: number;
 
-  fractal$!: Stream;
-  average$!: Stream;
+  fractal$!: Subscribable;
+  average$!: Subscribable;
 
   ngOnInit(): void {
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
@@ -127,7 +127,7 @@ export class AppComponent implements OnInit {
 
     this.showProgressOverlay();
     this.fractal$ = this.drawFractal();
-    this.fractal$();
+    this.fractal$.subscribe();
   }
 
   showProgressOverlay() {
@@ -145,7 +145,7 @@ export class AppComponent implements OnInit {
     progressText!.textContent = `Processing... ${Math.round(progress)}%`;
   }
 
-  drawFractal(): Stream {
+  drawFractal(): Subscribable {
     const imageData = this.ctx.createImageData(this.width, this.height);
     const data = imageData.data;
     // Create ComputeOperator instance

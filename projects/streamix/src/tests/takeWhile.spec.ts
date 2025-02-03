@@ -9,7 +9,7 @@ describe('takeWhile operator', () => {
 
     let results: any[] = [];
 
-    takenWhileStream({
+    takenWhileStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([1, 2, 3]); // Should emit values until predicate returns false
@@ -26,7 +26,7 @@ describe('takeWhile operator', () => {
 
     let results: any[] = [];
 
-    takenWhileStream({
+    takenWhileStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // Should not emit any values from an empty stream
@@ -43,7 +43,7 @@ describe('takeWhile operator', () => {
 
     let results: any[] = [];
 
-    takenWhileStream({
+    takenWhileStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // Should not emit any values because predicate returns false immediately

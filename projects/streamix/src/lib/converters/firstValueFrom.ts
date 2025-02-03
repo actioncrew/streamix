@@ -1,15 +1,15 @@
-import { Stream } from '../../lib';
+import { internals, Subscribable } from '../../lib';
 import { EMPTY } from '../streams';
 
-export function firstValueFrom<T>(stream: Stream): Promise<T> {
-  if(stream === EMPTY || stream.shouldComplete()) {
-    throw new Error("Stream has not emitted any value.");
+export function firstValueFrom<T>(stream: Subscribable): Promise<T> {
+  if(stream === EMPTY || stream[internals].shouldComplete()) {
+    throw new Error("Subscribable has not emitted any value.");
   }
 
   return new Promise<any>((resolve, reject) => {
     let hasEmitted = false;
 
-    const subscription = stream({
+    const subscription = stream.subscribe({
       next: (value: T) => {
         if (!hasEmitted) {
           hasEmitted = true;
@@ -20,7 +20,7 @@ export function firstValueFrom<T>(stream: Stream): Promise<T> {
       complete: () => {
         subscription.unsubscribe(); // Ensure cleanup
         if (!hasEmitted) {
-          reject(new Error("Stream has not emitted any value."));
+          reject(new Error("Subscribable has not emitted any value."));
         }
       },
       error: (err) => {

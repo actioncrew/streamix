@@ -1,4 +1,6 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, internals } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 /**
  * Creates a Stream using `IntersectionObserver` for observing element visibility changes.
@@ -10,31 +12,35 @@ import { createEmission, createStream, Stream } from '../abstractions';
  *
  * @example
  * // Example usage:
- * import { onIntersection } from './your-path';
+ * import { observeIntersection } from './your-path';
  *
  * const elementToObserve = document.getElementById('observeMe');
- * const intersectionStream = onIntersection(elementToObserve, {
+ * const intersectionStream = observeIntersection(elementToObserve, {
  *   threshold: 0.5,
  * });
  *
- * const subscription = intersectionStream({
+ * const subscription = intersectionStream.subscribe({
  *   next: (isVisible) => {
  *     console.log('Element visibility status:', isVisible);
  *   },
  * });
  */
-export function onIntersection(
+export function observeIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  const stream = createStream<boolean>('onIntersection', async function (this: Stream<boolean>) {
+  const stream = createStream<boolean>(async function (this: Stream<boolean>) {
     let observer: IntersectionObserver;
 
     // Define the callback for IntersectionObserver
     const callback = (entries: IntersectionObserverEntry[]) => {
       const isVisible = entries[0]?.isIntersecting ?? false; // Extract visibility status
       const emission = createEmission({ value: isVisible });
-      this.next(emission);
+      eventBus.enqueue({
+        target: this,
+        payload: { emission, source: this },
+        type: 'emission',
+      });
     };
 
     // Initialize the IntersectionObserver
@@ -43,11 +49,12 @@ export function onIntersection(
     // Start observing the provided DOM element
     observer.observe(element);
 
-    await this.awaitCompletion();
+    await this[internals].awaitCompletion();
 
     observer.unobserve(element);
     observer.disconnect();
   });
 
+  stream.name = 'observeIntersection';
   return stream;
 }

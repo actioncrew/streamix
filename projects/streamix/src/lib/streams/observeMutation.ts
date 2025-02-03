@@ -1,4 +1,6 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, internals } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
+import { eventBus } from '../abstractions';
 
 /**
  * Creates a Stream from `MutationObserver` for observing DOM mutations.
@@ -10,33 +12,38 @@ import { createEmission, createStream, Stream } from '../abstractions';
  *
  * @example
  * // Example usage:
- * import { onMutation } from './your-path';
+ * import { observeMutation } from './your-path';
  *
- * const mutationStream = onMutation(document.body, { childList: true });
+ * const mutationStream = observeMutation(document.body, { childList: true });
  *
- * const subscription = mutationStream({
+ * const subscription = mutationStream.subscribe({
  *   next: (mutations) => {
  *     console.log('Mutations observed:', mutations);
  *   },
  * });
  */
-export function onMutation(
+export function observeMutation(
   element: Element,
   options?: MutationObserverInit
 ): Stream<MutationRecord[]> {
-  const stream = createStream<MutationRecord[]>('onMutation', async function (this: Stream<MutationRecord[]>) {
+  const stream = createStream<MutationRecord[]>(async function (this: Stream<MutationRecord[]>) {
     const observer = new MutationObserver((mutationsList) => {
       if (mutationsList.length) {
         const emission = createEmission({ value: mutationsList });
-        this.next(emission);
+        eventBus.enqueue({
+          target: this,
+          payload: { emission, source: this },
+          type: 'emission',
+        });
       }
     });
 
     observer.observe(element, options);
 
-    await this.awaitCompletion();
+    await this[internals].awaitCompletion();
     observer.disconnect();
   });
 
+  stream.name = 'observeMutation';
   return stream;
 }

@@ -6,9 +6,9 @@ export interface EventEmitter {
   off(event: string, callback: Callback): this;
   emit(event: string, params?: any): Promise<any[]>;
   waitForCompletion(event: string): Promise<void>;
-  contains(event: string, callback: Callback): boolean;
-  getCallbackCount(event: string): number;
   clear(): this;
+  contains(event: string, callback: Callback): boolean;
+  getCallbackNumber(event: string): number;
 }
 
 export const createEventEmitter = (): EventEmitter => {
@@ -170,7 +170,7 @@ export const createEventEmitter = (): EventEmitter => {
     waitForCompletion,
     clear,
     contains,
-    getCallbackCount: getCallbackNumber,
+    getCallbackNumber,
   };
 
   return api;

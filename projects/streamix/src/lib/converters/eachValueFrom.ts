@@ -1,12 +1,12 @@
-import { Stream } from "../abstractions";
+import { Subscribable } from "../abstractions";
 
-export async function* eachValueFrom<T>(stream: Stream<T>): AsyncGenerator<T> {
+export async function* eachValueFrom<T>(stream: Subscribable<T>): AsyncGenerator<T> {
   let isCompleted = false;
 
   // Create an observable iterator
   const promiseQueue: Promise<T>[] = [];
 
-  const subscription = stream({
+  const subscription = stream.subscribe({
     next: (value: T) => {
       // Add each emitted value to the queue
       promiseQueue.push(Promise.resolve(value));

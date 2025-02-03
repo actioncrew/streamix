@@ -6,7 +6,7 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream({
+    const subscription = ofStream.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([value]);
@@ -20,7 +20,7 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     let isComplete = false;
-    ofStream({
+    ofStream.subscribe({
       next: () => isComplete = true,
       complete: () => {
         expect(isComplete).toBe(true);
@@ -34,7 +34,7 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream((value) => {
+    const subscription = ofStream.subscribe((value) => {
       emittedValues.push(value);
     });
 
@@ -51,7 +51,7 @@ describe('OfStream', () => {
 
     ofStream.complete();
 
-    ofStream((value) => {
+    ofStream.subscribe((value) => {
       emittedValues.push(value);
     });
 

@@ -1,9 +1,10 @@
-import { createOperator, Emission, Operator, Stream } from '../abstractions';
+import { createOperator, Operator, Subscribable } from '../abstractions';
+import { Emission } from '../abstractions';
 
 export const takeWhile = (predicate: (value: any, index?: number) => boolean): Operator => {
   let index = 0; // To track the index of emissions
 
-  const handle = (emission: Emission, stream: Stream): Emission => {
+  const handle = (emission: Emission, stream: Subscribable): Emission => {
     const shouldContinue = predicate(emission.value, index++);
 
     if (!shouldContinue) {
@@ -15,5 +16,7 @@ export const takeWhile = (predicate: (value: any, index?: number) => boolean): O
     return emission; // Return the emission if the condition is met
   };
 
-  return createOperator('takeWhile', handle);
+  const operator = createOperator(handle);
+  operator.name = 'takeWhile';
+  return operator;
 };

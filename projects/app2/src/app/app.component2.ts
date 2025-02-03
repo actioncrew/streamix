@@ -1,4 +1,4 @@
-import { concatMap, delay, finalize, map, of, range, reduce, scan, Stream, tap } from '@actioncrew/streamix';
+import { concatMap, delay, finalize, map, of, range, reduce, scan, Subscribable, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
@@ -25,8 +25,8 @@ export class AppComponent implements OnInit {
   panY!: number;
   subSampling!: number;
 
-  fractal$!: Stream;
-  average$!: Stream;
+  fractal$!: Subscribable;
+  average$!: Subscribable;
 
   ngOnInit(): void {
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
@@ -46,7 +46,7 @@ export class AppComponent implements OnInit {
     this.subSampling = 2;
 
     this.showProgressOverlay();
-    this.drawFractal()();
+    this.drawFractal().subscribe();
   }
 
   showProgressOverlay() {
@@ -100,7 +100,7 @@ export class AppComponent implements OnInit {
     return [Math.round(r! * 255), Math.round(g! * 255), Math.round(b! * 255)];
   }
 
-  drawFractal(): Stream {
+  drawFractal(): Subscribable {
     const imageData = this.ctx.createImageData(this.width, this.height);
     const data = imageData.data;
 

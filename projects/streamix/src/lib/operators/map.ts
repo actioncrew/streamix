@@ -1,4 +1,5 @@
-import { createOperator, Emission, Operator } from '../abstractions';
+import { Emission } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 
 export const map = (transform: (value: any, index?: number) => any): Operator => {
   let index = 0;
@@ -7,5 +8,7 @@ export const map = (transform: (value: any, index?: number) => any): Operator =>
     return emission; // Return the modified emission
   };
 
-  return createOperator('map', handle);
+  const operator = createOperator(handle); // Create the operator using createOperator
+  operator.name = 'map';
+  return operator; // Return the created operator
 };

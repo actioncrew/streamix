@@ -1,21 +1,21 @@
-import { createEmission, createStream, defer, Emission, eventBus, Stream } from '../lib';
+import { createEmission, createStream, defer, Emission, eventBus, flags, internals, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(values: any[], completed = false, error?: Error): Stream {
   // Create the custom run function for the MockStream
-  const stream = createStream('mockStream', async (): Promise<void> => {
+  const stream = createStream(async (): Promise<void> => {
     if (error) {
-      stream.error(error);
+      eventBus.enqueue({ target: stream, payload: { error }, type: 'error' });
       return;
     }
 
     for (const value of values) {
-      if (stream.shouldComplete()) return; // Exit if stop is requested
+      if (stream[internals].shouldComplete()) return; // Exit if stop is requested
       eventBus.enqueue({ target: stream, payload: { emission: createEmission({ value }), source: stream }, type: 'emission' });
     }
 
     if (completed) {
-      stream.isAutoComplete = true; // Set auto-completion flag
+      stream[flags].isAutoComplete = true; // Set auto-completion flag
     }
   });
 
@@ -31,7 +31,7 @@ describe('DeferStream', () => {
 
     // Collect emissions from the deferred stream
     const collectedEmissions: Emission[] = [];
-    const subscription = deferStream({
+    const subscription = deferStream.subscribe({
       next: (value) => collectedEmissions.push(value),
       complete: () => {
         expect(factory).toHaveBeenCalled(); // Check if factory was called
@@ -49,7 +49,7 @@ describe('DeferStream', () => {
 
     const deferStream = defer(factory);
 
-    deferStream({
+    deferStream.subscribe({
       complete: () => {
         expect(factory).toHaveBeenCalled();
         done();
@@ -63,7 +63,7 @@ describe('DeferStream', () => {
 
     const deferStream = defer(factory);
 
-    deferStream({
+    deferStream.subscribe({
       error: (e) => {
         if (e !== error)  {
           throw new Error('Expected error not received');

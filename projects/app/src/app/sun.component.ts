@@ -1,15 +1,15 @@
 import {
-    createSubject,
-    fromEvent,
-    interval,
-    map,
-    startWith,
-    Stream,
-    switchMap,
-    takeUntil,
-    tap,
-    timer,
-    withLatestFrom,
+  createSubject,
+  fromEvent,
+  interval,
+  map,
+  startWith,
+  Subscribable,
+  switchMap,
+  takeUntil,
+  tap,
+  timer,
+  withLatestFrom,
 } from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
@@ -65,7 +65,7 @@ export class CaptionComponent implements OnInit {
     let currentIndex = 0;
     const typeInterval = 200;
 
-    timer(1800, typeInterval)(() => {
+    timer(1800, typeInterval).subscribe(() => {
       if (currentIndex < this.caption.length) {
         this.displayedCaption += this.caption[currentIndex];
         currentIndex++;
@@ -74,7 +74,7 @@ export class CaptionComponent implements OnInit {
   }
 
   startCursorBlinking() {
-    interval(500)(() => {
+    interval(500).subscribe(() => {
       this.showCursor = !this.showCursor;
     });
   }
@@ -98,7 +98,7 @@ export class AppSunComponent implements AfterViewInit, OnDestroy {
   private letterArray = '0123456789'.split('');
   private colorPalette = ['#0f0', '#f0f', '#0ff', '#f00', '#ff0'];
   private destroy$ = createSubject<void>();
-  private scene$!: Stream;
+  private scene$!: Subscribable;
 
   ngAfterViewInit() {
     this.canvas = document.querySelector('canvas') as HTMLCanvasElement;
@@ -208,7 +208,7 @@ export class AppSunComponent implements AfterViewInit, OnDestroy {
       takeUntil(this.destroy$)
     );
 
-    this.scene$();
+    this.scene$.subscribe();
   }
 
   private getCanvasSize() {
