@@ -5,8 +5,8 @@ export type HookOperator = {
   callback: (params?: any) => void | Promise<void>;
 }
 
-export type StreamOperator = {
-  get stream(): Subscribable;
+export type StreamOperator = Operator & {
+  get stream(): Stream;
 }
 
 export type Operator = {
