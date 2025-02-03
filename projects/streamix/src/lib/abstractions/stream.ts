@@ -2,8 +2,6 @@ import { createSubject } from "../../lib";
 import { createEmission, createReceiver, createSubscription, Emission, eventBus, Operator, Receiver, StreamOperator, Subscription } from "../abstractions";
 import { awaitable, createEventEmitter, EventEmitter } from "../utils";
 
-export const flags = Symbol('Stream');
-
 export type Stream<T = any> = {
   (callback?: ((value: T) => any) | Receiver): Subscription;
 
