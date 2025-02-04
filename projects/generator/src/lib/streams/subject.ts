@@ -60,7 +60,8 @@ export function createSubject<T = any>(): Subject<T> {
         receiver.unsubscribed = true;
         if (!completed && !hasError) {
           completed = true;
-          receiver.complete?.();
+          // Ensure that even unsubscribed receivers are notified of completion or error
+          subscribers.forEach((subscriber) => subscriber.complete?.());
         }
         subscribers = subscribers.filter((sub) => sub !== receiver); // Clean up
       }
