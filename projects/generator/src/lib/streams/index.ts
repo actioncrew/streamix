@@ -2,7 +2,7 @@ export * from './behaviorSubject';
 export * from './combineLatest';
 export * from './compute';
 export * from './concat';
-// export * from './defer';
+export * from './defer';
 // export * from './EMPTY';
 export * from './from';
 export * from './fromEvent';
