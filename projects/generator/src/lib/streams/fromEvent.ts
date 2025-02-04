@@ -1,23 +1,27 @@
 import { createEmission, createStream, Stream } from "../abstractions";
 
 export function fromEvent<T>(target: EventTarget, event: string): Stream<T> {
-  return createStream("fromEvent", async function* () {
-    const queue: T[] = [];
+  return createStream("fromEvent", async function* ({ completed }) {
+    let resolve: ((value: Event) => void) | null = null;
 
-    const listener = (event: Event) => queue.push(event as unknown as T);
+    // Event listener to push events into the queue and resolve the promise
+    const listener = (ev: Event) => {
+      if (resolve) {
+        const tempResolve = resolve; // Store resolver before resetting
+        resolve = null; // Reset before resolving (prevents race conditions)
+        tempResolve(ev);
+      }
+    };
+
+    // Add the event listener
     target.addEventListener(event, listener);
 
     try {
-      while (true) {
-        if (queue.length > 0) {
-          yield createEmission({ value: queue.shift()! });
-        } else if (this.completed()) {
-          break;
-        } else {
-          await new Promise(requestAnimationFrame);
-        }
+      while (!completed()) {
+        yield createEmission({ value: await new Promise<Event>((r) => (resolve = r)) });
       }
     } finally {
+      // Clean up the event listener
       target.removeEventListener(event, listener);
     }
   });
