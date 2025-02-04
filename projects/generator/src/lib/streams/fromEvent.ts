@@ -10,17 +10,12 @@ export function fromEvent<T>(target: EventTarget, event: string): Stream<T> {
     try {
       while (true) {
         if (queue.length > 0) {
-          const value = queue.shift()!
-          yield createEmission({ value });
+          yield createEmission({ value: queue.shift()! });
         } else if (this.completed()) {
           break;
         } else {
           await new Promise(requestAnimationFrame);
         }
-      }
-
-      while (queue.length > 0) {
-        yield createEmission({ value: queue.shift()! });
       }
     } finally {
       target.removeEventListener(event, listener);
