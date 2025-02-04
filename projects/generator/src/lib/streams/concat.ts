@@ -2,31 +2,27 @@ import { createEmission, createStream, Stream } from "../abstractions";
 
 export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
   return createStream<T>("concat", async function* () {
+    // Process each source one by one in sequence
     for (const source of sources) {
-      const queue: T[] = [];
       let completed = false;
+      const queue: T[] = [];
 
-      // Subscribe to the current source
+      // Subscribe to the source and collect its emissions
       const subscription = source.subscribe({
-        next: (value) => queue.push(value),  // Add emitted values to the queue
-        complete: () => (completed = true),  // Mark source as completed
+        next: (value) => queue.push(value), // Collect emitted values in the queue
+        complete: () => (completed = true),  // Mark as completed when source is done
       });
 
-      // Wrap the iterable in a generator to emit values sequentially
-      yield* (async function* () {
-        while (!completed || queue.length > 0) {
-          if (queue.length > 0) {
-            // Yield values from the current source
-            yield createEmission({ value: queue.shift()! });
-          } else {
-            // Wait for the next value to be emitted
-            await new Promise(requestAnimationFrame);
-          }
+      // Yield values from the queue as they become available
+      while (!completed || queue.length > 0) {
+        if (queue.length > 0) {
+          yield createEmission({ value: queue.shift()! });
+        } else {
+          await new Promise(requestAnimationFrame); // Yield control and wait for next value
         }
-      })();
+      }
 
-      // Unsubscribe when the source has completed
-      subscription.unsubscribe();
+      subscription.unsubscribe(); // Unsubscribe when done with this source
     }
   });
 }
