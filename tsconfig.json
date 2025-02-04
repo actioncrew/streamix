@@ -30,6 +30,9 @@
       ],
       "@streamix/angular": [
         "./dist/angular/index.d.ts"
+      ],
+      "generator": [
+        "./dist/generator"
       ]
     }
   },
