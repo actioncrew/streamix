@@ -1,27 +1,37 @@
 import { createEmission, createStream, Stream } from "../abstractions";
 
-export function fromEvent<T>(target: EventTarget, event: string): Stream<T> {
+export function fromEvent<T>(target: EventTarget, event: string, timeout = Infinity): Stream<T> {
   return createStream("fromEvent", async function* ({ completed }) {
-    let resolve: ((value: Event) => void) | null = null;
+    let resolve: ((value: Event | null) => void) | null = null;
 
-    // Event listener to push events into the queue and resolve the promise
+    // Event listener to resolve the promise when an event occurs
     const listener = (ev: Event) => {
       if (resolve) {
         const tempResolve = resolve; // Store resolver before resetting
-        resolve = null; // Reset before resolving (prevents race conditions)
+        resolve = null; // Prevent race conditions
         tempResolve(ev);
       }
     };
 
-    // Add the event listener
     target.addEventListener(event, listener);
 
     try {
       while (!completed()) {
-        yield createEmission({ value: await new Promise<Event>((r) => (resolve = r)) });
+        const eventOrTimeout = await new Promise<Event | null>((r) => {
+          resolve = r; // Assign resolver
+
+          // If timeout is set, resolve with `null` after the timeout
+          if (timeout !== Infinity) {
+            setTimeout(() => {
+              if (resolve === r) resolve(null); // Avoid overriding if already resolved
+            }, timeout);
+          }
+        });
+
+        if (eventOrTimeout === null) continue; // Skip emissions on timeout
+        yield createEmission({ value: eventOrTimeout });
       }
     } finally {
-      // Clean up the event listener
       target.removeEventListener(event, listener);
     }
   });
