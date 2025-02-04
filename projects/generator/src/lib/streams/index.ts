@@ -6,7 +6,7 @@ export * from './defer';
 export * from './EMPTY';
 export * from './from';
 export * from './fromEvent';
-// export * from './fromPromise';
+export * from './fromPromise';
 // export * from './iif';
 // export * from './interval';
 // export * from './loop';
