@@ -24,7 +24,7 @@ export function createSubject<T = any>(): Subject<T> {
 
   // Complete the stream
   const complete = () => {
-    if (completed || hasError) return; // If already completed or in error state, do nothing
+    if (completed) return; // If already completed or in error state, do nothing
     completed = true;
     subscribers.forEach((subscriber) => subscriber.complete?.());
     subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up
