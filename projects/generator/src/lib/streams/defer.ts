@@ -1,29 +1,35 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from "../abstractions";
+import { createSemaphore } from "../utils";
 
 export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
   return createStream<T>('defer', async function* (this: Stream<T>) {
-    let innerStream = factory(); // Create the inner stream from the factory
+    const innerStream = factory(); // Create the inner stream from the factory
 
-    const queue: T[] = [];
+    const itemAvailable = createSemaphore(0); // Controls when items are available
+    const queue: T[] = []; // Event queue
     let completed = false;
 
     // Subscribe to the inner stream
     const subscription = innerStream.subscribe({
-      next: (value: T) => queue.push(value), // Push emitted values to the queue
+      next: (value: T) => {
+        queue.push(value);
+        itemAvailable.release(); // Signal that an item is available
+      },
       complete: () => {
-        completed = true; // Mark as completed once the inner stream completes
+        completed = true; // Mark as completed when the stream finishes
+        itemAvailable.release(); // Ensure loop doesn't hang if no values were emitted
       },
     });
 
-    // Yield values from the inner stream sequentially
+    // Yield values sequentially
     while (!completed || queue.length > 0) {
+      await itemAvailable.acquire(); // Wait until an event is available
+
       if (queue.length > 0) {
-        yield createEmission({ value: queue.shift()! }); // Yield value from the queue
-      } else {
-        await new Promise(requestAnimationFrame); // Wait for new values to be emitted
+        yield createEmission({ value: queue.shift()! });
       }
     }
 
-    subscription.unsubscribe(); // Unsubscribe once the inner stream is completed
+    subscription.unsubscribe(); // Unsubscribe when done with the inner stream
   });
 }

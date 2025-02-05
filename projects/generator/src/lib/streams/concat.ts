@@ -14,7 +14,10 @@ export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
           queue.push(value);
           itemAvailable.release(); // Signal that an item is available
         },
-        complete: () => (completed = true), // Mark completion
+        complete: () => {
+          completed = true; // Mark as completed when the stream finishes
+          itemAvailable.release(); // Ensure loop doesn't hang if no values were emitted
+        },
       });
 
       // Process queued values sequentially
