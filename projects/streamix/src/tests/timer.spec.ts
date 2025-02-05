@@ -1,31 +1,36 @@
 import { timer } from '../lib';
 
 describe('TimerStream', () => {
-  it('should emit values at specified interval', async () => {
+  it('should emit values at specified interval', (done) => {
     const intervalMs = 100;
-    const timerStream = timer(0, intervalMs);
+    const timerStream = timer(0, intervalMs); // Starting at 0 and emitting every intervalMs
 
     const emittedValues: number[] = [];
-    timerStream({
+    const subscription = timerStream.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
-        // Check that values are emitted at approximately the correct interval
-        expect(emittedValues.length).toBeGreaterThan(1);
+        // Check that values are emitted at the correct interval
+        expect(emittedValues.length).toBeGreaterThan(1); // At least two emissions should be received
         for (let i = 1; i < emittedValues.length; i++) {
-          const timeDiff = emittedValues[i] - emittedValues[i - 1];
-          expect(timeDiff).toBeGreaterThanOrEqual(intervalMs - 10); // Allow for slight timing variations
-          expect(timeDiff).toBeLessThanOrEqual(intervalMs + 10);
+          expect(emittedValues[i] - emittedValues[i - 1]).toBe(1); // Values should increment by 1, indicating interval passes
         }
+
+        done();
       }
     });
+
+    setTimeout(() => {
+      subscription.unsubscribe();
+    }, 250); // Ensure subscription is stopped after some time
   });
+
 
   it('should stop emitting after unsubscribe', async () => {
     const intervalMs = 100;
     const timerStream = timer(0, intervalMs);
 
     const emittedValues: number[] = [];
-    const subscription = timerStream((value) => {
+    const subscription = timerStream.subscribe((value) => {
       emittedValues.push(value);
     });
 
