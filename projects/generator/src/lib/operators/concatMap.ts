@@ -1,53 +1,62 @@
-import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
-import { createSubject } from "../streams";
+import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createSubject } from "../streams/subject";
 
-// The concatMap operator
-export function concatMap(
-  project: (value: any) => Stream
+export function concatMap<T, R>(
+  project: (value: T) => Stream<R>
 ): StreamOperator {
-  const operator = (input: Stream) => {
-    const output = createSubject(); // The subject that will emit the results
-    let isProcessing = false; // Flag to track if we are processing the current stream
+  const operator = (input: Stream<T>): Stream<R> => {
+    const output = createSubject<R>();
+    let isOuterComplete = false;
+    let activeSubscriptions: Subscription[] = [];
+    const innerQueue: Array<Stream<R>> = [];
 
-    const processNext = async (value: any) => {
-      if (isProcessing) return; // If already processing, skip until it's done
-      isProcessing = true; // Mark processing as started
-
-      // Project the current value to a new stream
-      const projectedStream = project(value);
-      let completed = false;
-
-      // Subscribe to the projected stream and handle emissions
-      projectedStream.subscribe({
-        next: (value: any) => {
-          output.next(value); // Emit values from the projected stream
-        },
-        complete: () => {
-          completed = true;
-          if (completed) {
-            isProcessing = false; // Mark the current processing as finished
+    const subscribeToInner = (innerStream: Stream<R>) => {
+      const innerSub = innerStream.subscribe({
+        next: (value) => output.next(value),
+        error: (err) => {
+          output.error(err);
+          activeSubscriptions = activeSubscriptions.filter(
+            (sub) => sub !== innerSub
+          );
+          if (innerQueue.length > 0) {
+            subscribeToInner(innerQueue.shift()!);
+          } else if (isOuterComplete && activeSubscriptions.length === 0) {
+            output.complete();
           }
         },
-        error: (err) => {
-          output.error?.(err); // Forward any errors
+        complete: () => {
+          activeSubscriptions = activeSubscriptions.filter(
+            (sub) => sub !== innerSub
+          );
+          if (innerQueue.length > 0) {
+            subscribeToInner(innerQueue.shift()!);
+          } else if (isOuterComplete && activeSubscriptions.length === 0) {
+            output.complete();
+          }
         },
       });
+      activeSubscriptions.push(innerSub);
     };
 
-    // Subscribe to the input stream and process each emitted value
     input.subscribe({
-      next: (value: any) => {
-        processNext(value); // Process each value emitted from the input stream
+      next: (value) => {
+        const innerStream = project(value);
+        if (activeSubscriptions.length > 0) {
+          innerQueue.push(innerStream);
+        } else {
+          subscribeToInner(innerStream);
+        }
       },
+      error: (err) => output.error(err),
       complete: () => {
-        output.complete(); // Complete the output subject when the source stream completes
-      },
-      error: (err) => {
-        output.error?.(err); // Forward any errors from the source stream
+        isOuterComplete = true;
+        if (innerQueue.length === 0 && activeSubscriptions.length === 0) {
+          output.complete();
+        }
       },
     });
 
-    return output as Stream; // Return the output stream
+    return output;
   };
 
   return createStreamOperator('concatMap', operator);
