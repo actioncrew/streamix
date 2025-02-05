@@ -1,7 +1,6 @@
 import { createSubject } from "../streams/subject";
-import { createLock } from "../utils";
 import { createEmission, Emission } from "./emission";
-import { AsyncOperator, Operator, StreamOperator } from "./operator";
+import { Operator, StreamOperator } from "./operator";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
@@ -10,9 +9,23 @@ export type Stream<T = any> = {
   name?: string;
   emissionCounter: number;
 
+  /**
+   * Subscribe to the stream to receive emissions.
+   * Returns a Subscription that can be used to unsubscribe.
+   */
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
-  pipe: (...steps: (Operator | AsyncOperator | StreamOperator)[]) => Stream<T>;
+
+  /**
+   * Pipes transformations or stream operators into a new stream.
+   * Each operator can modify emissions before they reach the subscriber.
+   */
+  pipe: (...steps: (Operator | StreamOperator)[]) => Stream<T>;
+
+  /**
+   * Retrieves the last emitted value, if any.
+   */
   value: () => T | undefined;
+
   completed: () => boolean;
 };
 
@@ -25,6 +38,7 @@ export function createStream<T = any>(
   let completed = false;
   let currentValue: T | undefined;
 
+  // Define the async generator function
   async function* generator() {
     for await (const emission of generatorFn.call(stream)) {
       emissionCounter++;
@@ -33,108 +47,75 @@ export function createStream<T = any>(
     }
   }
 
-  const chain = function (this: Stream, ...operators: (Operator | AsyncOperator)[]): Stream {
+  const chain = function (this: Stream, ...operators: Operator[]): Stream {
     const output = createSubject();
     let isCompleteCalled = false;
-    let emissionCaptured = 0;
-    let emissionProcessed = 0;
-    let lock = createLock();
-    let lastEmission: Emission | null = null;
-
-    const handleComplete = () => {
-      if (!isCompleteCalled) {
-        isCompleteCalled = true;
-        if (lastEmission && !lastEmission.error) {
-          output.next(lastEmission.value);
-        }
-        output.complete();
-        subscription.unsubscribe();
-      }
-    };
 
     const subscription = this.subscribe({
       next: (value: any) => {
-        emissionCaptured++;
         let emission = createEmission({ value });
-        lastEmission = emission;
 
-        // Synchronously apply operators (but async ones still handle promises internally)
+        // Apply operators sequentially
         for (const operator of operators) {
           try {
-            if (
-              operator.handle instanceof Function &&
-              operator.handle.constructor.name === 'AsyncFunction'
-            ) {
-              lock.acquire().then((releaseLock) => {
-                const result = operator.handle(emission, this) as any;
-
-                if (result && typeof result.then === 'function') {
-                  result
-                    .then((emission: any) => {
-                      lastEmission = emission;
-                    })
-                    .finally(() => {
-                      emissionProcessed++;
-                      if (emissionCaptured === emissionProcessed) {
-                        handleComplete();
-                      }
-                      releaseLock(); // Ensure the lock is released here
-                    });
-                } else {
-                  releaseLock();
-                }
-              });
-            } else {
-              emission = operator.handle(emission, this) as Emission;
-              if (!emission.error) {
-                lastEmission = emission;
-              }
-              emissionProcessed++;
-            }
+            emission = operator.handle(emission, this);
           } catch (error) {
             emission.error = error;
+          }
+
+          // Stop processing if an error occurred
+          if (emission.error) {
             break;
           }
         }
+
+        // If no error, push emission value to the output stream
+        if (!emission.error) {
+          output.next(emission.value);
+        }
       },
       complete: () => {
-        lock.acquire().then((releaseLock) => {
-          if (emissionCaptured === emissionProcessed) {
-            handleComplete();
-          }
-          releaseLock();
-        });
-      },
+        if (!isCompleteCalled) {
+          isCompleteCalled = true;
+          output.complete();
+          subscription.unsubscribe();
+        }
+      }
     });
 
-    return output;
+    return output; // Return the transformed stream
   };
 
-
-  const pipe = function(this: Stream, ...steps: (Operator | AsyncOperator | StreamOperator)[]): Stream {
+  const pipe = function(this: Stream, ...steps: (Operator | StreamOperator)[]): Stream {
     let combinedStream: Stream = this;
-    let operatorsGroup: (Operator | AsyncOperator)[] = [];
+    let operatorsGroup: Operator[] = []; // Group to accumulate SimpleOperators
 
+    // Process each step in the pipeline
     for (const step of steps) {
       if ('handle' in step) {
+        // If it's a StreamOperator (with a handle method), add it to the operators group
         operatorsGroup.push(step);
       } else if (typeof step === 'function') {
+        // If it's a regular Operator, handle SimpleOperators first
         if (operatorsGroup.length > 0) {
+          // Chain the current accumulated group of SimpleOperators
           combinedStream = chain.call(combinedStream, ...operatorsGroup);
-          operatorsGroup = [];
+          operatorsGroup = []; // Reset the group
         }
 
+        // Apply the regular operator to the stream
         combinedStream = step(combinedStream);
       } else {
         throw new Error("Invalid step provided to pipe.");
       }
     }
 
+    // Apply remaining SimpleOperators after all steps are processed, if any
     if (operatorsGroup.length > 0) {
       combinedStream = chain.call(combinedStream, ...operatorsGroup);
     }
 
-    return combinedStream;
+    return combinedStream; // Return the transformed stream
   };
 
   const subscribe = (
