@@ -6,8 +6,9 @@ export function fromEvent<T>(target: EventTarget, event: string, timeout = Infin
 
     const listener = (ev: Event) => {
       if (resolve) {
-        resolve(ev);
+        const tempResolve = resolve;
         resolve = null; // Prevent race conditions
+        tempResolve(ev);
       }
     };
 
@@ -15,20 +16,8 @@ export function fromEvent<T>(target: EventTarget, event: string, timeout = Infin
 
     try {
       while (!this.completed()) {
-        const eventPromise = new Promise<Event>((r) => (resolve = r));
-
-        const eventOrTimeout = timeout === Infinity
-          ? await eventPromise
-          : await Promise.race([
-              eventPromise,
-              new Promise<Event>((_, reject) =>
-                setTimeout(() => reject(new Error("timeout")), timeout)
-              ),
-            ]).catch(() => null); // Convert timeout rejection to `null`
-
-        if (eventOrTimeout) {
-          yield createEmission({ value: eventOrTimeout });
-        }
+        const value = await new Promise<Event>((r) => (resolve = r));
+        yield createEmission({ value });
       }
     } finally {
       target.removeEventListener(event, listener);
