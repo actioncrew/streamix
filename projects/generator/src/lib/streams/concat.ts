@@ -1,24 +1,28 @@
 import { createEmission, createStream, Stream } from "../abstractions";
+import { createSemaphore } from "../utils";
 
 export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
-  return createStream<T>("concat", async function* () {
-    // Process each source one by one in sequence
+  return createStream<T>("concat", async function* (this: Stream<T>) {
     for (const source of sources) {
+      const itemAvailable = createSemaphore(0); // Controls when items are available
+      const queue: T[] = []; // Event queue
       let completed = false;
-      const queue: T[] = [];
 
       // Subscribe to the source and collect its emissions
       const subscription = source.subscribe({
-        next: (value) => queue.push(value), // Collect emitted values in the queue
-        complete: () => (completed = true),  // Mark as completed when source is done
+        next: (value) => {
+          queue.push(value);
+          itemAvailable.release(); // Signal that an item is available
+        },
+        complete: () => (completed = true), // Mark completion
       });
 
-      // Yield values from the queue as they become available
+      // Process queued values sequentially
       while (!completed || queue.length > 0) {
+        await itemAvailable.acquire(); // Wait until an event is available
+
         if (queue.length > 0) {
           yield createEmission({ value: queue.shift()! });
-        } else {
-          await new Promise(requestAnimationFrame); // Yield control and wait for next value
         }
       }
 
