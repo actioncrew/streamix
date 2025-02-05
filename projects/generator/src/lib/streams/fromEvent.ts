@@ -32,7 +32,7 @@ export function fromEvent<T>(target: EventTarget, event: string): Stream<T> {
     const itemAvailable = new Semaphore(0); // Semaphore to signal when an event is ready to be processed
     const spaceAvailable = new Semaphore(1); // Semaphore to manage concurrent event handling
 
-    const eventQueue: Event[] = []; // Queue to hold events
+    let buffer: Event | undefined; // Queue to hold events
     let eventsCaptured = 0;
     let eventsProcessed = 0;
 
@@ -41,7 +41,7 @@ export function fromEvent<T>(target: EventTarget, event: string): Stream<T> {
         eventsCaptured++;
       }
       spaceAvailable.acquire().then(() => {
-        eventQueue.push(ev); // Push event into the queue
+        buffer = ev; // Push event into the queue
         itemAvailable.release(); // Signal that an event is available
       });
     };
@@ -54,8 +54,7 @@ export function fromEvent<T>(target: EventTarget, event: string): Stream<T> {
 
         // Process and yield the event
         if (eventsCaptured > eventsProcessed) {
-          const ev = eventQueue.shift()!;
-          yield createEmission({ value: ev as T });
+          yield createEmission({ value: buffer as T });
           eventsProcessed++;
           spaceAvailable.release();
         }
