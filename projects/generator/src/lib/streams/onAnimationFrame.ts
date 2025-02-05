@@ -1,10 +1,10 @@
 import { createEmission, createStream, Stream } from '../abstractions';
 
 export function onAnimationFrame<T = number>(): Stream<T> {
-  return createStream<T>('onAnimationFrame', async function* () {
+  return createStream<T>('onAnimationFrame', async function* (this: Stream<T>) {
     let lastFrameTime = performance.now();
 
-    while (true) {
+    while (!this.completed()) {
       const currentTime = await new Promise<number>((resolve) =>
         requestAnimationFrame(resolve)
       );

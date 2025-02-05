@@ -5,7 +5,6 @@ export const empty = <T = any>(): Stream<T> => {
   // Custom run function for the EmptyStream using generator
   const stream = createStream<T>('EMPTY', async function* (this: Stream<T>): AsyncGenerator<Emission<T>> {
     // No emissions, just complete immediately
-    return; // Empty generator, yields nothing
   });
 
   // Empty stream does not subscribe to any source
