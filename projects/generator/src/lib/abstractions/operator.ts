@@ -8,6 +8,12 @@ export type StreamOperator = Omit<Operator, "handle"> & {
   (stream: Stream): Stream;
 }
 
+export type AsyncOperator = {
+  handle: (emission: Emission, stream: Stream) => Promise<Emission>;
+  type: string;
+  name?: string;
+};
+
 export type Operator = {
   handle: (emission: Emission, stream: Stream) => Emission;
   type: string;
