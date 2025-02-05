@@ -1,26 +1,44 @@
-import { AsyncOperator, Emission } from "../abstractions";
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createSubject } from "../streams/subject";
 
+export function debounce<T>(duration: number): StreamOperator {
+  const operator = (input: Stream<T>): Stream<T> => {
+    const output = createSubject<T>();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let latestValue: T | null = null;
+    let isCompleted = false;
 
-export function debounce<T>(duration: number): AsyncOperator {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  let lastEmission: Emission<T> | null = null;
+    input.subscribe({
+      next: (value) => {
+        latestValue = value;
 
-  const operator: AsyncOperator = {
-    type: 'debounce',
-    handle: async (emission: Emission<T>) => {
-      return new Promise<Emission<T>>((resolve) => {
-        if (timeoutId) {
+        if (timeoutId !== null) {
           clearTimeout(timeoutId);
         }
 
-        lastEmission = emission;
-
         timeoutId = setTimeout(() => {
-          resolve(lastEmission!);
+          if (latestValue !== null) {
+            output.next(latestValue);
+
+            if (isCompleted) {
+              output.complete();
+            }
+          }
+          timeoutId = null;
         }, duration);
-      });
-    }
+      },
+      error: (err) => output.error(err),
+      complete: () => {
+        isCompleted = true;
+
+        if (timeoutId === null) {
+          output.complete();
+        }
+      },
+    });
+
+    return output;
   };
 
-  return operator;
+  return createStreamOperator('debounce', operator);
 }
