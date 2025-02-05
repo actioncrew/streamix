@@ -4,41 +4,95 @@ import { Operator, StreamOperator } from "./operator";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
+// Basic Stream type definition
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
   emissionCounter: number;
-
-  /**
-   * Subscribe to the stream to receive emissions.
-   * Returns a Subscription that can be used to unsubscribe.
-   */
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
-
-  /**
-   * Pipes transformations or stream operators into a new stream.
-   * Each operator can modify emissions before they reach the subscriber.
-   */
   pipe: (...steps: (Operator | StreamOperator)[]) => Stream<T>;
-
-  /**
-   * Retrieves the last emitted value, if any.
-   */
   value: () => T | undefined;
-
   completed: () => boolean;
 };
 
-export function createStream<T = any>(
+// Functional composition to extend stream functionality
+export function pipeStream<T>(
+  stream: Stream<T>,
+  ...steps: (Operator | StreamOperator)[]
+): Stream<T> {
+  let combinedStream: Stream<T> = stream;
+  let operatorsGroup: Operator[] = [];
+
+  for (const step of steps) {
+    if ('handle' in step) {
+      // If it's an operator that has `handle`
+      operatorsGroup.push(step);
+    } else if (typeof step === 'function') {
+      // Apply SimpleOperators or StreamOperators sequentially
+      if (operatorsGroup.length > 0) {
+        // Apply operators before moving to the next step
+        combinedStream = chain(combinedStream, ...operatorsGroup);
+        operatorsGroup = [];  // Reset operator group
+      }
+      // Apply the StreamOperator
+      combinedStream = step(combinedStream);
+    } else {
+      throw new Error("Invalid step provided to pipe.");
+    }
+  }
+
+  // Apply remaining operators at the end
+  if (operatorsGroup.length > 0) {
+    combinedStream = chain(combinedStream, ...operatorsGroup);
+  }
+
+  return combinedStream;
+}
+
+// Function to chain operators for composition
+function chain<T>(stream: Stream<T>, ...operators: Operator[]): Stream<T> {
+  const output = createSubject<T>();
+  let isCompleteCalled = false;
+
+  const subscription = stream.subscribe({
+    next: (value: T) => {
+      let emission = createEmission({ value });
+      for (const operator of operators) {
+        try {
+          emission = operator.handle(emission, stream);
+        } catch (error) {
+          emission.error = error;
+        }
+        if (emission.error) {
+          break;
+        }
+      }
+
+      if (!emission.error) {
+        output.next(emission.value);
+      }
+    },
+    complete: () => {
+      if (!isCompleteCalled) {
+        isCompleteCalled = true;
+        output.complete();
+        subscription.unsubscribe();
+      }
+    },
+  });
+
+  return output;
+}
+
+// The stream factory function
+export function createStream<T>(
   name: string,
   generatorFn: (this: Stream<T>) => AsyncGenerator<Emission<T>, void, unknown>
 ): Stream<T> {
   let emissionCounter = 0;
-  let running = false;
   let completed = false;
   let currentValue: T | undefined;
 
-  // Define the async generator function
   async function* generator() {
     for await (const emission of generatorFn.call(stream)) {
       emissionCounter++;
@@ -47,87 +101,11 @@ export function createStream<T = any>(
     }
   }
 
-  const chain = function (this: Stream, ...operators: Operator[]): Stream {
-    const output = createSubject();
-    let isCompleteCalled = false;
-
-    const subscription = this.subscribe({
-      next: (value: any) => {
-        let emission = createEmission({ value });
-
-        // Apply operators sequentially
-        for (const operator of operators) {
-          try {
-            emission = operator.handle(emission, this);
-          } catch (error) {
-            emission.error = error;
-          }
-
-          // Stop processing if an error occurred
-          if (emission.error) {
-            break;
-          }
-        }
-
-        // If no error, push emission value to the output stream
-        if (!emission.error) {
-          output.next(emission.value);
-        }
-      },
-      complete: () => {
-        if (!isCompleteCalled) {
-          isCompleteCalled = true;
-          output.complete();
-          subscription.unsubscribe();
-        }
-      }
-    });
-
-    return output; // Return the transformed stream
-  };
-
-  const pipe = function(this: Stream, ...steps: (Operator | StreamOperator)[]): Stream {
-    let combinedStream: Stream = this;
-    let operatorsGroup: Operator[] = []; // Group to accumulate SimpleOperators
-
-    // Process each step in the pipeline
-    for (const step of steps) {
-      if ('handle' in step) {
-        // If it's a StreamOperator (with a handle method), add it to the operators group
-        operatorsGroup.push(step);
-      } else if (typeof step === 'function') {
-        // If it's a regular Operator, handle SimpleOperators first
-        if (operatorsGroup.length > 0) {
-          // Chain the current accumulated group of SimpleOperators
-          combinedStream = chain.call(combinedStream, ...operatorsGroup);
-          operatorsGroup = []; // Reset the group
-        }
-
-        // Apply the regular operator to the stream
-        combinedStream = step(combinedStream);
-      } else {
-        throw new Error("Invalid step provided to pipe.");
-      }
-    }
-
-    // Apply remaining SimpleOperators after all steps are processed, if any
-    if (operatorsGroup.length > 0) {
-      combinedStream = chain.call(combinedStream, ...operatorsGroup);
-    }
-
-    return combinedStream; // Return the transformed stream
-  };
-
-  const subscribe = (
-    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
-  ): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     const iter = generator();
-
-    running = true;
-
-    const unsubscribe = async () => {
-      if (running && !completed) {
+    const unsubscribe = () => {
+      if (!completed) {
         completed = true;
       }
     };
@@ -153,9 +131,9 @@ export function createStream<T = any>(
     name,
     emissionCounter,
     subscribe,
-    pipe,
+    pipe: (...steps: (Operator | StreamOperator)[]) => pipeStream(stream, ...steps),
     value: () => currentValue,
-    completed: () => completed
+    completed: () => completed,
   };
 
   return stream;

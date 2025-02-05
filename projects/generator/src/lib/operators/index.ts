@@ -14,7 +14,7 @@ export * from './debounce';
 // export * from './skip';
 // export * from './splitMap';
 // export * from './switchMap';
-// export * from './take';
+export * from './take';
 // export * from './takeUntil';
 // export * from './takeWhile';
 // export * from './tap';
