@@ -4,22 +4,25 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   let timerValue = 0;
   const actualIntervalMs = intervalMs ?? delayMs;
 
-  const stream = createStream<number>('timer', async function* () {
+  const stream = createStream<number>('timer', async function* (this: Stream) {
     // Initial delay if specified
+
     if (delayMs > 0) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
+    } else {
+      await Promise.resolve();
     }
 
     // Emit the first value immediately
-    if (!stream.completed()) {
+    if (!this.completed()) {
       yield createEmission({ value: timerValue++ });
     }
 
     // Emit subsequent values at intervals
-    while (!stream.completed()) {
+    while (!this.completed()) {
       await new Promise(resolve => setTimeout(resolve, actualIntervalMs));
 
-      if (!stream.completed()) {
+      if (!this.completed()) {
         yield createEmission({ value: timerValue++ });
       }
     }

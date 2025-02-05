@@ -19,4 +19,21 @@ describe('TimerStream', () => {
       }
     });
   });
+
+  it('should stop emitting after unsubscribe', async () => {
+    const intervalMs = 100;
+    const timerStream = timer(0, intervalMs);
+
+    const emittedValues: number[] = [];
+    const subscription = timerStream.subscribe((value) => {
+      emittedValues.push(value);
+    });
+
+    subscription.unsubscribe();
+
+    const previousLength = emittedValues.length;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs * 2)); // Wait for potential additional emissions
+
+    expect(emittedValues.length).toBe(previousLength); // No new emissions should occur after unsubscribe
+  });
 });
