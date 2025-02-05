@@ -7,9 +7,11 @@ export function debounce<T>(duration: number): StreamOperator {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let latestValue: T | null = null;
     let isCompleted = false;
+    let emissionCount = 0;
 
     input.subscribe({
       next: (value) => {
+        emissionCount++;
         latestValue = value;
 
         if (timeoutId !== null) {
@@ -32,6 +34,9 @@ export function debounce<T>(duration: number): StreamOperator {
         isCompleted = true;
 
         if (timeoutId === null) {
+          if (emissionCount > 1) {
+            output.next(latestValue!);
+          }
           output.complete();
         }
       },

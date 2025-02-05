@@ -1,4 +1,4 @@
-import { createEmission, createStream, debounce, from, timer } from "../lib";
+import { createEmission, createStream, debounce, from, interval, take } from "../lib";
 
 describe('debounce operator', () => {
   it('should debounce values from an array stream', (done) => {
@@ -16,15 +16,18 @@ describe('debounce operator', () => {
     });
   });
 
-  it('should debounce values from a timer stream', (done) => {
-    const debouncedStream = timer(100).pipe(debounce(150));
+  it('should debounce values from an interval stream', (done) => {
+    const source$ = interval(50).pipe(take(5)); // Emits 0,1,2,3,4 at intervals of 50ms
+    const debouncedStream = source$.pipe(debounce(120)); // Debounces emissions
+
     const emittedValues: number[] = [];
 
     debouncedStream.subscribe({
       next: (value: number) => emittedValues.push(value),
       complete: () => {
-        // Only the last emission should be debounced
-        expect(emittedValues.length).toBe(2);
+        // Expecting only the last emission to be debounced and received
+        expect(emittedValues.length).toBe(1);
+        expect(emittedValues[0]).toBe(4); // Last value after debounce period
         done();
       },
     });
