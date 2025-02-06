@@ -124,9 +124,13 @@ export function createStream<T>(
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     const iter = generator();
-    const unsubscribe = () => {
-      if (!completed) {
-        completed = true;
+
+    const unsubscribe = function (this: Subscription) {
+      if(!this.unsubscribed) {
+        this.unsubscribed = performance.now();
+        if (!completed) {
+          completed = true;
+        }
       }
     };
 
