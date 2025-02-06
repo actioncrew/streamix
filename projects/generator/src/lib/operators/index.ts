@@ -8,9 +8,9 @@ export * from './filter';
 // export * from './fork';
 export * from './map';
 // export * from './mergeMap'
-// export * from './scan';
-// export * from './slidingPair';
-// export * from './skip';
+export * from './scan';
+export * from './skip';
+export * from './slidingPair';
 // export * from './splitMap';
 // export * from './switchMap';
 export * from './take';
