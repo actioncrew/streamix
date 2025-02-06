@@ -55,7 +55,7 @@ describe('withLatestFrom operator', () => {
 
     let results: any[] = [];
 
-    combinedStream({
+    const subscription = combinedStream({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]);
@@ -63,6 +63,6 @@ describe('withLatestFrom operator', () => {
       }
     });
 
-    combinedStream.complete();
+    subscription.unsubscribe();
   });
 });
