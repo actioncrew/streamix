@@ -28,7 +28,6 @@ Streamix offers a simple, effective way to handle asynchronous data streams with
 - Emission: The individual values emitted by a stream, along with metadata like whether the emission was canceled or if it encountered an error.
 - Operator: Functions that transform, filter, or combine streams of data.
 - Subject: A special type of stream that allows manually dispatching emissions. Subjects can also be used to share a single execution path among multiple subscribers.
-- Bus: After experimenting with various approaches, we decided to use a bus to manage event flow across streams. This approach simplifies coordination and enhances stream management for more complex scenarios.
 
 ## Why Streamix?
 Streamix is designed for those who need a straightforward way to manage asynchronous data without the complexity of larger frameworks. It's a great alternative to RxJS for simpler use cases, offering all the core functionality you need in a more lightweight, efficient package.
