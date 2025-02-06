@@ -1,43 +1,41 @@
-import { createEmission, createStream, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream } from "../abstractions";
+import { createSemaphore } from "../utils";
 
-export function fromEvent<T = any>(target: EventTarget, eventName: string): Stream<T> {
-  let listener!: (event: Event) => void;
-  let subscription!: Subscription;
 
-  // Create the stream using createStream
-  const stream = createStream<T>('fromEvent', async function(this: Stream<T>): Promise<void> {
-    // Wait for completion
-    await this.awaitCompletion();
+export function fromEvent<T>(target: EventTarget, event: string): Stream<T> {
+  return createStream("fromEvent", async function* (this: Stream<T>) {
+    const itemAvailable = createSemaphore(0); // Semaphore to signal when an event is ready to be processed
+    const spaceAvailable = createSemaphore(1); // Semaphore to manage concurrent event handling
 
-    // Clean up listener when stream completes
-    target.removeEventListener(eventName, listener);
-  });
+    let buffer: Event | undefined; // Queue to hold events
+    let eventsCaptured = 0;
+    let eventsProcessed = 0;
 
-  // Override the subscribe method to handle adding event listeners
-  const originalSubscribe = stream.subscribe.bind(stream);
+    const listener = (ev: Event) => {
+      if (!this.completed()) {
+        eventsCaptured++;
+      }
+      spaceAvailable.acquire().then(() => {
+        buffer = ev; // Push event into the queue
+        itemAvailable.release(); // Signal that an event is available
+      });
+    };
 
-  const newStream: any = function(params?: any): Subscription {
-    // Ensure that the listener is added only once
-    if (!listener) {
-      listener = (event: Event) => {
-        if (newStream.isRunning) {
-          // Emit the event to the stream
-          newStream.next(createEmission({ value: event }));
+    target.addEventListener(event, listener);
+
+    try {
+      while (!this.completed() || eventsCaptured > eventsProcessed) {
+        await itemAvailable.acquire(); // Wait until an event is available
+
+        // Process and yield the event
+        if (eventsCaptured > eventsProcessed) {
+          yield createEmission({ value: buffer as T });
+          eventsProcessed++;
+          spaceAvailable.release();
         }
-      };
-
-      // Add the event listener to the target
-      target.addEventListener(eventName, listener);
+      }
+    } finally {
+      target.removeEventListener(event, listener);
     }
-
-    // Call the original subscribe method
-    subscription = originalSubscribe(params);
-    return subscription;
-  };
-
-  // Inherit the prototype of the original stream so properties are shared
-  Object.setPrototypeOf(newStream, stream);
-
-  // Ensure we return a stream type
-  return newStream as unknown as Stream<T>;
+  });
 }

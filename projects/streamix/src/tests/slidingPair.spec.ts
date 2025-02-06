@@ -14,7 +14,7 @@ describe('slidingPair Operator', () => {
     ];
     let index = 0;
 
-    pairedStream({
+    pairedStream.subscribe({
       next: (value) => {
         expect(value).toEqual(expectedValues[index]);
         index++;
@@ -35,7 +35,7 @@ describe('slidingPair Operator', () => {
     ];
     let index = 0;
 
-    pairedStream({
+    pairedStream.subscribe({
       next: (value) => {
         expect(value).toEqual(expectedValues[index]);
         index++;
@@ -53,7 +53,7 @@ describe('slidingPair Operator', () => {
 
     let emitted = false;
 
-    pairedStream({
+    pairedStream.subscribe({
       next: () => {
         emitted = true;
       },

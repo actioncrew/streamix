@@ -7,7 +7,7 @@ export function take<T>(count: number): StreamOperator {
     let emittedCount = 0;
     let isCompleted = false;
 
-    const subscription = input({
+    const subscription = input.subscribe({
       next: (value) => {
         if (!isCompleted && emittedCount < count) {
           emittedCount++;
@@ -24,6 +24,7 @@ export function take<T>(count: number): StreamOperator {
         if (!isCompleted) {
           output.complete();
         }
+        subscription.unsubscribe();
       },
     });
 

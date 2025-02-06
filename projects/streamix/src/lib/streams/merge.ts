@@ -1,43 +1,36 @@
-import { createEmission, createStream, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream, Subscription } from "../abstractions";
+import { createSemaphore } from "../utils";
 
-export function merge<T = any>(...sources: Stream[]): Stream<T> {
-  const subscriptions: Subscription[] = [];
+export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
+  return createStream<T>('merge', async function* (this: Stream<T>) {
+    const itemAvailable = createSemaphore(0); // Controls when an item is available
+    const queue: T[] = [];
+    let completedCount = 0;
 
-  const stream = createStream<T>('merge', async function(this: Stream<T>): Promise<void> {
-    const sourcePromises = sources.map((source) => {
-      return new Promise<void>((resolve, reject) => {
-        const subscription = source({
-          next: (value) => {
-            const emission = createEmission({ value });
-            this.next(emission);
-          },
-          error: (err) => {
-            this.error(err);
-            reject(err); // Reject the promise on error
-            finalize(); // Stop all processing on error
-          },
-          complete: () => {
-            subscription.unsubscribe();
-            resolve(); // Resolve the promise when the source completes
-          },
-        });
+    // Subscribe to each source and push emissions to the queue
+    const subscriptions: Subscription[] = sources.map((source) =>
+      source.subscribe({
+        next: (value) => {
+          queue.push(value);
+          itemAvailable.release(); // Signal availability
+        },
+        complete: () => {
+          completedCount++;
+          itemAvailable.release(); // Ensure loop progresses when a source completes
+        },
+      })
+    );
 
-        subscriptions.push(subscription);
-      });
-    });
+    // Yield values from the queue as they become available
+    while (completedCount < sources.length || queue.length > 0) {
+      await itemAvailable.acquire(); // Wait until an event is available
 
-    try {
-      // Wait for all sources to complete or for the stream to stop
-      await Promise.race([ Promise.all(sourcePromises), this.awaitCompletion() ]);
-    } finally {
-      finalize(); // Ensure cleanup
+      if (queue.length > 0) {
+        yield createEmission({ value: queue.shift()! });
+      }
     }
-  });
 
-  const finalize = () => {
+    // Cleanup subscriptions
     subscriptions.forEach((sub) => sub.unsubscribe());
-    subscriptions.length = 0;
-  };
-
-  return stream;
+  });
 }

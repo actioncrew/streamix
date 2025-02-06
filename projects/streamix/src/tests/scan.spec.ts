@@ -10,7 +10,7 @@ describe('scan operator', () => {
 
     let results: any[] = [];
 
-    scannedStream({
+    scannedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([1, 3, 6]);
@@ -33,10 +33,10 @@ describe('scan operator', () => {
 
     let results: any[] = [];
 
-    scannedStream({
+    scannedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
-        expect(results).toEqual([1, 4]); // Only the first value should be accumulated before error
+        expect(results).toEqual([1]); // Only the first value should be accumulated before error
         done();
       }
     });

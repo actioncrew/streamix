@@ -6,12 +6,13 @@ export const startWith = (value: any): StreamOperator => {
     const output = createBehaviorSubject<any>(value); // Create the output stream
 
     // Subscribe to the original stream
-    input({
+    const subscription = input.subscribe({
       next: (emission) => {
         output.next(emission);
       },
       complete: () => {
         output.complete(); // Complete the stream when the original completes
+        subscription.unsubscribe();
       },
       error: (err) => {
         output.error(err); // Forward errors if any

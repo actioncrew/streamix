@@ -1,0 +1,23 @@
+{
+  "name": "@actioncrew/streamix",
+  "version": "0.2.2",
+  "description": "Reactive TypeScript library",
+  "license": "MIT",
+  "keywords": [
+    "RxJS",
+    "reactive programming",
+    "data streams"
+  ],
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "main": "public-api.ts",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/actioncrew/streamix.git"
+  },
+  "author": "Oleksii Shepel",
+  "email": "oleksii.shepel@outlook.com"
+}
