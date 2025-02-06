@@ -8,7 +8,7 @@ export function delay<T>(ms: number): StreamOperator {
     let isCompleted = false;
     let lastEmissionPromise: Promise<void> = Promise.resolve();
 
-    const subscription = input({
+    const subscription = input.subscribe({
       next: (value) => {
         pending++;
         lastEmissionPromise = lastEmissionPromise.then(

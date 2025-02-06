@@ -9,7 +9,7 @@ export function debounce<T>(duration: number): StreamOperator {
     let isCompleted = false;
     let emissionCount = 0;
 
-    input.subscribe({
+    input({
       next: (value) => {
         emissionCount++;
         latestValue = value;

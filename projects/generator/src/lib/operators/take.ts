@@ -24,6 +24,7 @@ export function take<T>(count: number): StreamOperator {
         if (!isCompleted) {
           output.complete();
         }
+        subscription.unsubscribe();
       },
     });
 
