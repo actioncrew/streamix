@@ -24,7 +24,7 @@ export const empty = <T = any>(): Stream<T> => {
     return subscription as Subscription;
   };
 
-  return Object.assign(stream, { subscribe });
+  return Object.assign(stream, { subscribe, completed: () => true });
 };
 
 // Export a singleton instance of EmptyStream
