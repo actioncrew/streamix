@@ -1,6 +1,5 @@
 import { createEmission, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
-import { catchAny } from '../utils';
 import { createSubject } from './subject';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
@@ -34,13 +33,17 @@ export function compute(task: Coroutine, params: any): Stream<any> {
     });
 
     // Wait for completion or error
-    const [error] = await catchAny(Promise.race([promise]));
-    if (error) {
-      subject.error(error); // Propagate error through the subject
-      return;
-    }
+    try {
+      const result = await promise;
 
-    subject.complete(); // Complete the subject once the task is done
+      // If the promise resolves, emit the result
+      subject.next(result);
+    } catch (error) {
+      // If an error occurs, propagate the error
+      subject.error(error);  // Propagate error through the subject
+    } finally {
+      subject.complete(); // Complete the subject once the task is done
+    }
   };
 
   runTask(); // Start the task
