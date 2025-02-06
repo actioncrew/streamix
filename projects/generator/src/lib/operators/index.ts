@@ -12,7 +12,7 @@ export * from './scan';
 export * from './skip';
 export * from './slidingPair';
 export * from './splitMap';
-// export * from './switchMap';
+export * from './switchMap';
 export * from './take';
 // export * from './takeUntil';
 // export * from './takeWhile';

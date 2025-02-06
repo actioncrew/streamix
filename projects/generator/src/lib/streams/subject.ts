@@ -52,13 +52,13 @@ export function createSubject<T = any>(): Subject<T> {
     }
 
     if (completed) {
-      receiver.complete?.(); // If completed, notify the subscriber
+      subscribers.forEach((subscriber) => subscriber.complete?.()); // If completed, notify the subscriber
     }
 
     return createSubscription(() => latestValue, () => {
       if (!receiver.unsubscribed) {
         receiver.unsubscribed = true;
-        if (!completed && !hasError) {
+        if (!completed) {
           completed = true;
           // Ensure that even unsubscribed receivers are notified of completion or error
           subscribers.forEach((subscriber) => subscriber.complete?.());
