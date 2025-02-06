@@ -1,14 +1,14 @@
-import { createEmission, Stream, StreamOperator } from '../abstractions';
+import { createEmission, createStreamOperator, Stream, StreamOperator } from '../abstractions';
 import { createSubject, Subject } from '../streams';
 
-export type Coroutine = {
+export type Coroutine = StreamOperator & {
   finalize: () => Promise<void>;
   processTask: (data: any) => Promise<any>;
   getIdleWorker: () => Promise<Worker>;
   returnWorker: (worker: Worker) => void;
 };
 
-export const coroutine = (...functions: Function[]): StreamOperator => {
+export const coroutine = (...functions: Function[]): Coroutine => {
   if (functions.length === 0) {
     throw new Error("At least one function (the main task) is required.");
   }
@@ -133,7 +133,7 @@ export const coroutine = (...functions: Function[]): StreamOperator => {
   };
 
   // Stream operator to transform the stream using the coroutine logic
-  const operator: StreamOperator = (stream: Stream) => {
+  const operator = createStreamOperator('coroutine', (stream: Stream) => {
     const subject = createSubject<any>() as Subject<any> & Coroutine; // Create a Subject to manage emissions
 
     // Subscribe to the original stream and process each emission using the coroutine task
@@ -149,18 +149,14 @@ export const coroutine = (...functions: Function[]): StreamOperator => {
       error: subject.error,
     });
 
-    subject.finalize = finalize;
-    subject.processTask = processTask;
-    subject.getIdleWorker = getIdleWorker;
-    subject.returnWorker = returnWorker;
-
-    initWorkers(); // Initialize workers
-
     return subject; // Return the Subject as the result of the operator
-  };
+  }) as Coroutine;
 
-  operator.type = 'operator';
-  operator.name = 'coroutine';
+  initWorkers();
 
+  operator.finalize = finalize;
+  operator.processTask = processTask;
+  operator.getIdleWorker = getIdleWorker;
+  operator.returnWorker = returnWorker;
   return operator;
 };
