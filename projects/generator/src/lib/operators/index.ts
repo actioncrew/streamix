@@ -14,7 +14,8 @@ export * from './slidingPair';
 export * from './splitMap';
 export * from './switchMap';
 export * from './take';
-// export * from './takeUntil';
-// export * from './takeWhile';
+export * from './takeUntil';
+export * from './takeWhile';
 export * from './tap';
-// export * from './withLatestFrom';
+export * from './withLatestFrom';
+
