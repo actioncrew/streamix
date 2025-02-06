@@ -2,8 +2,7 @@ export * from './bufferCount';
 export * from './concatMap';
 export * from './coroutine';
 export * from './debounce';
-
-// export * from './delay';
+export * from './delay';
 // export * from './distinctUntilChanged';
 // export * from './filter';
 // export * from './fork';
