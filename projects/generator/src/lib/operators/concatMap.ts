@@ -11,6 +11,14 @@ export function concatMap<T, R>(
     const innerQueue: Array<Stream<R>> = [];
 
     const subscribeToInner = (innerStream: Stream<R>) => {
+      if (innerStream.completed()) {
+        // If the inner stream is already completed, check if we can complete the outer stream
+        if (isOuterComplete && activeSubscriptions.length === 0) {
+          output.complete();
+        }
+        return;
+      }
+
       const innerSub = innerStream.subscribe({
         next: (value) => output.next(value),
         error: (err) => {
