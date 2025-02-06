@@ -68,7 +68,7 @@ function chain<T>(stream: Stream<T>, ...operators: Operator[]): Stream<T> {
         }
       }
 
-      if (!emission.error) {
+      if (!(emission.pending || emission.phantom || emission.error)) {
         output.next(emission.value);
       }
     },
@@ -115,11 +115,11 @@ export function createStream<T>(
         for await (const emission of iter) {
           receiver.next?.(emission.value!);
         }
-        receiver.complete?.();
       } catch (err: any) {
         receiver.error?.(err);
       } finally {
         completed = true;
+        receiver.complete?.();
       }
     })();
 

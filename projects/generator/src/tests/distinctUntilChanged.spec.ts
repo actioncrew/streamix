@@ -9,7 +9,7 @@ describe('distinctUntilChanged', () => {
     const expectedValues = [1, 2, 3];
     let index = 0;
 
-    distinctStream((value) => {
+    distinctStream.subscribe((value) => {
       expect(value).toEqual(expectedValues[index]);
       index++;
       if (index === expectedValues.length) {
@@ -24,7 +24,7 @@ describe('distinctUntilChanged', () => {
 
     let count = 0;
 
-    distinctStream({
+    distinctStream.subscribe({
       next: () => count++,
       complete: () => {
         expect(count).toBe(3); // Only three distinct values should be emitted
@@ -40,7 +40,7 @@ describe('distinctUntilChanged', () => {
     const expectedValues = [1, 2, 3];
     let index = 0;
 
-    distinctStream((value) => {
+    distinctStream.subscribe((value) => {
       expect(value).toEqual(expectedValues[index]);
       index++;
       if (index === expectedValues.length) {
@@ -63,7 +63,7 @@ describe('distinctUntilChanged', () => {
 
     let emittedValues: any[] = [];
 
-    distinctStream({
+    distinctStream.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
         // Ensure emitted values are distinct based on reference
