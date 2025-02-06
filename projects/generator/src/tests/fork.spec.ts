@@ -18,7 +18,7 @@ describe('fork operator', () => {
 
     source$ = from([1, 5, 10, 20]).pipe(fork(options));
 
-    source$({
+    source$.subscribe({
       next: (value: any) => result.push(value),
       complete: () => {
         expect(result).toEqual(['Small number', 'Small number', 'Medium number', 'Large number']);
@@ -32,7 +32,7 @@ describe('fork operator', () => {
 
     const source$ = from([1, 10, 20]).pipe(fork(options));
 
-    source$({
+    source$.subscribe({
       next: (value: any) => result.push(value),
       complete: () => {
         // Test each value matches the correct case
@@ -52,7 +52,7 @@ describe('fork operator', () => {
 
     const source$ = from([1, 5, 10, 20]).pipe(fork(invalidOptions)); // Emissions: 1, 5, 10, 20
 
-    source$({
+    source$.subscribe({
       next: (value: any) => result.push(value),
       error: (error: any) => {
         expect(error.message).toBe('No handler found for value: 1');
@@ -74,7 +74,7 @@ describe('fork operator', () => {
 
     const source$ = of(10).pipe(fork(options)); // Single emission: 10
 
-    source$({
+    source$.subscribe({
       next: (value: any) => result.push(value),
       complete: () => {
         expect(result).toEqual(['Custom stream result']);
