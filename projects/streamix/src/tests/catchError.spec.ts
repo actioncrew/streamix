@@ -21,7 +21,7 @@ describe('CatchErrorOperator Functional Test', () => {
     });
 
     subject.next(1);
-    streamWithCatchError.complete();
+    subject.complete();
   });
 
   it('should propagate errors if catchError is not present', (done) => {
@@ -38,6 +38,6 @@ describe('CatchErrorOperator Functional Test', () => {
     });
 
     subject.next(1);
-    streamWithCatchError.complete();
+    subject.complete();
   });
 });
