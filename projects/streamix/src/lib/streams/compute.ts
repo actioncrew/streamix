@@ -1,4 +1,4 @@
-import { createEmission, Stream } from '../abstractions';
+import { Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 import { createSubject } from './subject';
 
@@ -19,7 +19,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
           task.returnWorker(worker);
           reject(event.data.error); // Reject if there is an error
         } else {
-          subject.next(createEmission({ value: event.data })); // Emit result to subject
+          subject.next(event.data); // Emit result to subject
           task.returnWorker(worker); // Return the worker
           resolve(); // Resolve the promise
         }
@@ -34,10 +34,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
 
     // Wait for completion or error
     try {
-      const result = await promise;
-
-      // If the promise resolves, emit the result
-      subject.next(result);
+      await promise;
     } catch (error) {
       // If an error occurs, propagate the error
       subject.error(error);  // Propagate error through the subject
