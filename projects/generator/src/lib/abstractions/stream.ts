@@ -49,26 +49,46 @@ export function pipeStream<T>(
   return combinedStream;
 }
 
-// Function to chain operators for composition
-function chain<T>(stream: Stream<T>, ...operators: Operator[]): Stream<T> {
-  const output = createSubject<T>();
-  let isCompleteCalled = false;
+const chain = function (stream: Stream, ...operators: Operator[]): Stream {
+  const output = createSubject();
+  let isCompleteCalled = false; // To ensure `complete` is only processed once
 
   const subscription = stream.subscribe({
-    next: (value: T) => {
+    next: (value: any) => {
       let emission = createEmission({ value });
-      for (const operator of operators) {
+      for (let i = 0; i < operators.length; i++) {
+        const operator = operators[i];
+        if (operator?.name === "catchError") {
+          continue;
+        }
+
         try {
           emission = operator.handle(emission, stream);
         } catch (error) {
           emission.error = error;
         }
+
         if (emission.error) {
+          let foundCatchError = false;
+          for (let j = i + 1; j < operators.length; j++) {
+            if (operators[j]?.name === "catchError") {
+              foundCatchError = true;
+              emission = operators[j].handle(emission, stream);
+              i = j;
+              break;
+            }
+          }
+          if (!foundCatchError) {
+            output.error(emission.error);
+          }
+        }
+
+        if (emission.error || (emission.phantom && emission.pending)) {
           break;
         }
       }
 
-      if (!(emission.pending || emission.phantom || emission.error)) {
+      if (!emission.error && !emission.phantom && !emission.pending) {
         output.next(emission.value);
       }
     },
@@ -78,11 +98,11 @@ function chain<T>(stream: Stream<T>, ...operators: Operator[]): Stream<T> {
         output.complete();
         subscription.unsubscribe();
       }
-    },
+    }
   });
 
   return output;
-}
+};
 
 // The stream factory function
 export function createStream<T>(
