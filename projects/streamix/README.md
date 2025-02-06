@@ -1,24 +1,42 @@
-# Generator
+# Streamix
 
-This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.0.
+```javascript
+    const resize$ = fromEvent(window, 'resize').pipe(
+      startWith(this.getCanvasSize()),
+      map(() => this.getCanvasSize())
+    );
+```
 
-## Code scaffolding
+  [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
+  [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
+  [![npm downloads](https://img.shields.io/npm/dm/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
+  [![min+zipped](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)
 
-Run `ng generate component component-name --project generator` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module --project generator`.
-> Note: Don't forget to add `--project generator` or else it will be added to the default project in your `angular.json` file. 
+Streamix is a lightweight alternative to RxJS that implements reactive programming with a simplified concept of streams and emissions. If you're already familiar with RxJS, you’ll find Streamix easy to pick up, but with a fresh, minimalistic approach designed for modern, performance-oriented applications.
 
-## Build
+Streamix supports many core RxJS operators, along with unique tools designed to handle heavy computational tasks, including those leveraging the Web Workers API. It’s continuously evolving with new operators and features to meet the needs of modern developers.
 
-Run `ng build generator` to build the project. The build artifacts will be stored in the `dist/` directory.
+## The Asynchronous Future
+Today's development landscape revolves around asynchronous challenges: managing user interactions, network requests, and ensuring a responsive UI. In such a world, synchronous programming is a thing of the past, and async/await reigns supreme.
 
-## Publishing
+However, the complexity of asynchronous programming can sometimes feel overwhelming, especially for simple projects or specific use cases where lightweight, easy-to-understand tools are more suitable.
 
-After building your library with `ng build generator`, go to the dist folder `cd dist/generator` and run `npm publish`.
+Streamix offers a simple, effective way to handle asynchronous data streams without the overhead of more advanced libraries like RxJS, while still maintaining robust features for dealing with async patterns.
 
-## Running unit tests
+## Key Concepts
+- Stream: A sequence of values that can be observed. Streams can emit values either synchronously or asynchronously.
+- Emission: The individual values emitted by a stream, along with metadata like whether the emission was canceled or if it encountered an error.
+- Operator: Functions that transform, filter, or combine streams of data.
+- Subject: A special type of stream that allows manually dispatching emissions. Subjects can also be used to share a single execution path among multiple subscribers.
 
-Run `ng test generator` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## Why Streamix?
+Streamix is designed for those who need a straightforward way to manage asynchronous data without the complexity of larger frameworks. It's a great alternative to RxJS for simpler use cases, offering all the core functionality you need in a more lightweight, efficient package.
 
-## Further help
+## Explore More
+To see Streamix in action, check out these sample projects:
+[Sample projects](https://github.com/actioncrew/streamix/)
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Interested in extending Streamix or using it in your project? Reach out to us! We’re excited to collaborate and help bring your ideas to life.
+
+[More information](https://medium.com/p/00d5467f0c01)
+
