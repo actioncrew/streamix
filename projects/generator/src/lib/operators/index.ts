@@ -16,5 +16,5 @@ export * from './slidingPair';
 export * from './take';
 // export * from './takeUntil';
 // export * from './takeWhile';
-// export * from './tap';
+export * from './tap';
 // export * from './withLatestFrom';
