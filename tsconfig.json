@@ -26,13 +26,14 @@
     ],
     "paths": {
       "@actioncrew/streamix": [
-        "./dist/streamix/index.d.ts"
+        "./dist/streamix/index.d.ts",
+        "./projects/streamix/src/public-api.ts"
       ],
       "@streamix/angular": [
         "./dist/angular/index.d.ts"
       ],
-      "generator": [
-        "./dist/generator"
+      "@actioncrew/streamix-old": [
+        "./dist/streamix-old/index.d.ts"
       ]
     }
   },
