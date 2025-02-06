@@ -1,54 +1,35 @@
-import { createEmission, createStream, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream } from "../abstractions";
+import { createSemaphore } from "../utils";
 
 export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
-  let innerStream: Stream<T> | undefined;
-  let subscription!: Subscription | undefined;
-  // Define the run method
-  // Create and return the stream with the defined run function
-  const stream = createStream<T>('defer', async function(this: Stream<T>): Promise<void> {
-    try {
-      // Create a new inner stream from the factory
-      innerStream = factory();
+  return createStream<T>('defer', async function* (this: Stream<T>) {
+    const innerStream = factory(); // Create the inner stream from the factory
 
-      // Start the inner stream
-      subscription = innerStream({
-        next: value => handleEmission(this, value),
-        complete: () => {
-          if (!this.shouldComplete()) {
-            this.isAutoComplete = true;
-          }
-        }
-      });
+    const itemAvailable = createSemaphore(0); // Controls when items are available
+    const queue: T[] = []; // Event queue
+    let completed = false;
 
-      await this.awaitCompletion();
+    // Subscribe to the inner stream
+    const subscription = innerStream.subscribe({
+      next: (value: T) => {
+        queue.push(value);
+        itemAvailable.release(); // Signal that an item is available
+      },
+      complete: () => {
+        completed = true; // Mark as completed when the stream finishes
+        itemAvailable.release(); // Ensure loop doesn't hang if no values were emitted
+      },
+    });
 
-      await cleanupInnerStream();
+    // Yield values sequentially
+    while (!completed || queue.length > 0) {
+      await itemAvailable.acquire(); // Wait until an event is available
 
-    } catch (error) {
-      this.error(error);
+      if (queue.length > 0) {
+        yield createEmission({ value: queue.shift()! });
+      }
     }
+
+    subscription.unsubscribe(); // Unsubscribe when done with the inner stream
   });
-
-  // Handle emissions from the inner stream
-  const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    stream.next(createEmission({ value }));
-  };
-
-  // Clean up the inner stream when complete
-  const cleanupInnerStream = async (): Promise<void> => {
-    if (innerStream) {
-      innerStream.isAutoComplete = true;
-      subscription?.unsubscribe();
-      innerStream = undefined;
-    }
-  };
-
-  // Override the complete method to ensure cleanup
-  const originalComplete = stream.complete.bind(stream);
-  stream.complete = async (): Promise<void> => {
-    await cleanupInnerStream();
-    return originalComplete();
-  };
-
-  return stream;
 }

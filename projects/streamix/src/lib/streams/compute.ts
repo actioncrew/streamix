@@ -1,40 +1,52 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createEmission, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
-import { catchAny } from '../utils';
+import { createSubject } from './subject';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
-  // Create the custom run function for the ComputeStream
-  const stream = createStream<any>('compute', async function(this: Stream<any>): Promise<void> {
+  const subject = createSubject<any>(); // Create a Subject
+
+  // Function to run the task and emit values
+  const runTask = async () => {
     let promise = new Promise<void>(async (resolve, reject) => {
 
+      // Get an idle worker for the task
       const worker = await task.getIdleWorker();
-      worker.postMessage(params);
+      worker.postMessage(params); // Send parameters to the worker
 
       // Handle messages from the worker
       worker.onmessage = async (event: any) => {
-        if(event.data.error) {
+        if (event.data.error) {
           task.returnWorker(worker);
-          reject(event.data.error);
+          reject(event.data.error); // Reject if there is an error
         } else {
-          this.next(createEmission({ value: event.data }));
-          task.returnWorker(worker);
-          resolve();
+          subject.next(createEmission({ value: event.data })); // Emit result to subject
+          task.returnWorker(worker); // Return the worker
+          resolve(); // Resolve the promise
         }
       };
 
       // Handle errors from the worker
       worker.onerror = async (error: any) => {
-        task.returnWorker(worker);
-        reject(error);
+        task.returnWorker(worker); // Return the worker
+        reject(error); // Reject the promise
       };
     });
 
-    const [error] = await catchAny(Promise.race([this.awaitCompletion(), promise]));
-    if (error) {
-      this.error(error);
-      return;
-    }
-  });
+    // Wait for completion or error
+    try {
+      const result = await promise;
 
-  return stream;
+      // If the promise resolves, emit the result
+      subject.next(result);
+    } catch (error) {
+      // If an error occurs, propagate the error
+      subject.error(error);  // Propagate error through the subject
+    } finally {
+      subject.complete(); // Complete the subject once the task is done
+    }
+  };
+
+  runTask(); // Start the task
+
+  return subject; // Return the Subject
 }

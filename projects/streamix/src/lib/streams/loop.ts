@@ -7,22 +7,15 @@ export function loop<T>(
 ): Stream<T> {
   let currentValue = initialValue;
 
-  // Create the stream with a custom run function
-  const stream = createStream<T>('loop', async function(this: Stream<T>) {
+  // Create the stream with a custom run function using a generator
+  const stream = createStream<T>('loop', async function* (this: Stream<T>): AsyncGenerator<Emission<T>> {
+    // Loop while condition is true and the stream is not completed
+    while (condition(currentValue) && !this.completed()) {
+      // Create and yield the emission for the current value
+      yield createEmission({ value: currentValue });
 
-    while (condition(currentValue) && !this.shouldComplete()) {
-      const emission = createEmission({ value: currentValue }) as Emission;
-
-      // Emit the current value
-      this.next(emission);
-
-      // Apply the iterateFn to get the next value
+      // Update the value using the iterate function
       currentValue = iterateFn(currentValue);
-    }
-
-    // If the condition fails, complete the stream
-    if (!this.shouldComplete()) {
-      this.isAutoComplete = true;
     }
   });
 

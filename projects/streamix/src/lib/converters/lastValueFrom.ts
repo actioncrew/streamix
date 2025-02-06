@@ -1,32 +1,23 @@
-import { Stream } from '../abstractions';
-import { EMPTY } from '../streams';
+import { Stream } from "../abstractions";
 
-export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
-  if(stream === EMPTY || stream.shouldComplete()) {
-    throw new Error("Stream has not emitted any value.");
-  }
-
+export function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    let hasEmitted = false;
-    let lastValue: T;
+    let lastValue: T | undefined;
+    let hasValue = false;
 
-    const subscription = stream({
-      next: (value: T) => {
-        if(!hasEmitted) {
-          hasEmitted = true;
-        }
+    const subscription = stream.subscribe({
+      next: (value) => {
         lastValue = value;
+        hasValue = true;
       },
+      error: (err) => reject(err),
       complete: () => {
-        subscription.unsubscribe();
-        if (!hasEmitted) {
-          reject(new Error("Stream has not emitted any value."));
+        if (hasValue) {
+          resolve(lastValue as T); // Resolve with the last emitted value
+        } else {
+          reject(new Error("Stream completed without emitting a value"));
         }
-        resolve(lastValue);
-      },
-      error: (err) => {
-        subscription.unsubscribe(); // Ensure cleanup
-        reject(err); // Reject on error
+        subscription.unsubscribe();
       }
     });
   });

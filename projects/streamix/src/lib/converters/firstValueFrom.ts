@@ -1,32 +1,14 @@
-import { Stream } from '../../lib';
-import { EMPTY } from '../streams';
+import { Stream } from "../abstractions";
 
-export function firstValueFrom<T>(stream: Stream): Promise<T> {
-  if(stream === EMPTY || stream.shouldComplete()) {
-    throw new Error("Stream has not emitted any value.");
-  }
-
-  return new Promise<any>((resolve, reject) => {
-    let hasEmitted = false;
-
-    const subscription = stream({
-      next: (value: T) => {
-        if (!hasEmitted) {
-          hasEmitted = true;
-          subscription.unsubscribe(); // Unsubscribe once the first emission is received
-          resolve(value);
-        }
+export function firstValueFrom<T>(stream: Stream<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const subscription = stream.subscribe({
+      next: (value) => {
+        resolve(value); // Resolve with the first emitted value
+        subscription.unsubscribe(); // Unsubscribe after receiving the first value
       },
-      complete: () => {
-        subscription.unsubscribe(); // Ensure cleanup
-        if (!hasEmitted) {
-          reject(new Error("Stream has not emitted any value."));
-        }
-      },
-      error: (err) => {
-        subscription.unsubscribe(); // Ensure cleanup
-        reject(err); // Reject on error
-      }
+      error: (err) => reject(err),
+      complete: () => reject(new Error("Stream completed without emitting a value"))
     });
   });
 }

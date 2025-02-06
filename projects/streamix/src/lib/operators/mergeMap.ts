@@ -1,91 +1,62 @@
-import { createEmission, createStreamOperator, Emission, Stream, StreamOperator, Subscription } from '../abstractions';
-import { createSubject } from '../streams';
-import { catchAny, Counter, counter } from '../utils';
+import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createSubject } from "../streams/subject";
 
-export const mergeMap = (project: (value: any) => Stream): StreamOperator => {
-  const operator = (input: Stream) => {
-    const output = createSubject();
-    const activeStreams: Map<Stream, Subscription> = new Map();
-    const executionCounter: Counter = counter(0);
-    let subscription: Subscription | undefined;
-    let isFinalizing = false;
+export function mergeMap<T, R>(
+  project: (value: T) => Stream<R>
+): StreamOperator {
+  const operator = (input: Stream<T>): Stream<R> => {
+    const output = createSubject<R>();
+    let isOuterComplete = false;
+    let activeSubscriptions: Subscription[] = [];
 
-    const init = () => {
-      // Subscribe to the inputStream
-      subscription = input({
-        next: (value) => {
-          if (!output.shouldComplete()) {
-            handleEmission(createEmission({ value }));
-          }
-        },
-        error: (err) => {
-          output.error(err);
-        },
-        complete: () => {
-          queueMicrotask(() =>
-            executionCounter.waitFor(input.emissionCounter).then(finalize)
-          );
-        },
-      });
-
-      output.emitter.once('finalize', finalize);
-    };
-
-    const handleEmission = (emission: Emission): Emission => {
-      queueMicrotask(() => processEmission(emission));
-      emission.pending = true;
-      return emission;
-    };
-
-    const processEmission = async (emission: Emission): Promise<void> => {
-      const [error, innerStream] = await catchAny(() => project(emission.value));
-
-      if (error) {
-        output.error(error);
-        executionCounter.increment();
-        emission.phantom = true;
-        delete emission.pending;
+    const subscribeToInner = (innerStream: Stream<R>) => {
+      if (innerStream.completed()) {
+        // If the inner stream is already completed, check if we can complete the outer stream
+        if (isOuterComplete && activeSubscriptions.length === 0) {
+          output.complete();
+        }
         return;
       }
 
-      if(!activeStreams.has(innerStream)) {
-        const subscription = innerStream({
-          next: (value) => emission.link(output.next(value)),
-          error: (err) => {
-            output.error(err);
-          },
-          complete: () => {
-            finalizeInnerStream(innerStream);
-          },
-        });
+      const innerSub = innerStream.subscribe({
+        next: (value) => output.next(value),
+        error: (err) => {
+          output.error(err);
+          activeSubscriptions = activeSubscriptions.filter(
+            (sub) => sub !== innerSub
+          );
+          checkComplete();
+        },
+        complete: () => {
+          activeSubscriptions = activeSubscriptions.filter(
+            (sub) => sub !== innerSub
+          );
+          checkComplete();
+        },
+      });
+      activeSubscriptions.push(innerSub);
+    };
 
-        activeStreams.set(innerStream, subscription);
+    const checkComplete = () => {
+      if (isOuterComplete && activeSubscriptions.length === 0) {
+        output.complete();
       }
     };
 
-    const finalizeInnerStream = (innerStream: Stream) => {
-      if(activeStreams.has(innerStream)) {
-        activeStreams.get(innerStream)!.unsubscribe();
-        activeStreams.delete(innerStream);
-      }
+    input.subscribe({
+      next: (value) => {
+        const innerStream = project(value);
+        subscribeToInner(innerStream);
+      },
+      error: (err) => output.error(err),
+      complete: () => {
+        isOuterComplete = true;
+        checkComplete();
+      },
+    });
 
-      executionCounter.increment();
-    };
-
-    const finalize = () => {
-      if (isFinalizing) return;
-      isFinalizing = true;
-      stopStreams();
-    };
-
-    const stopStreams = () => {
-      subscription?.unsubscribe();
-      output.isAutoComplete = true;
-    };
-
-    init();
     return output;
   };
 
   return createStreamOperator('mergeMap', operator);
-};
+}

@@ -9,7 +9,7 @@ describe('map operator', () => {
 
     let results: any[] = [];
 
-    mappedStream({
+    mappedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([2, 4, 6]);
@@ -31,10 +31,10 @@ describe('map operator', () => {
 
     let results: any[] = [];
 
-    mappedStream({
+    mappedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
-        expect(results).toEqual([2, 6]); // Only the first value should be emitted before error
+        expect(results).toEqual([2]); // Only the first value should be emitted before error
         done();
       }
     });

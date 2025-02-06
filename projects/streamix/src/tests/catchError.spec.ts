@@ -15,7 +15,7 @@ describe('CatchErrorOperator Functional Test', () => {
     const streamWithCatchError = subject
       .pipe(map(() => { throw error; }), catchError(handlerMock));
 
-    streamWithCatchError({
+    streamWithCatchError.subscribe({
       next: value => console.log(value),
       complete: () => { expect(handlerMock).toHaveBeenCalled(); done(); }
     });
@@ -32,7 +32,7 @@ describe('CatchErrorOperator Functional Test', () => {
     const streamWithCatchError = subject
       .pipe(map(() => { throw error; }));
 
-    streamWithCatchError({
+    streamWithCatchError.subscribe({
       next: value => console.log(value),
       complete: () => { expect(handlerMock).not.toHaveBeenCalled(); done(); }
     });

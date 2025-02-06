@@ -1,4 +1,4 @@
-import { createSubject } from '../../lib';
+import { createSubject } from '..';
 import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOperator => {
@@ -6,7 +6,7 @@ export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOp
     const output = createSubject<Map<string | number, T[]>>(); // The output stream to emit grouped results
     const partitions = new Map<string | number, T[]>(); // Store grouped partitions
 
-    const subscription = input({
+    const subscription = input.subscribe({
       next: (value: T) => {
         const key = keyFn(value); // Compute the partition key
 
@@ -20,16 +20,12 @@ export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOp
         // Emit all partitions as a single Map when the stream completes
         output.next(partitions);
         output.complete();
+        subscription.unsubscribe();
       },
       error: (err) => {
         // Forward errors to the output stream
         output.error(err);
       },
-    });
-
-    // Ensure the new stream cleans up the subscription when it completes
-    output.emitter.once('finalize', () => {
-      subscription.unsubscribe();
     });
 
     return output; // Return the output stream

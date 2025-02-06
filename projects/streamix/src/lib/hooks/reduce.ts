@@ -1,4 +1,4 @@
-import { createSubject } from '../../lib';
+import { createSubject } from '..';
 import { createEmission, createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): StreamOperator => {
@@ -7,7 +7,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): S
 
   const operator = (stream: Stream): Stream => {
     // Subscribe to the inputStream to start processing emissions
-    const subscription = stream({
+    const subscription = stream.subscribe({
       next: (value: any) => {
         // Accumulate the value using the provided accumulator function
         accumulatedValue = accumulator(accumulatedValue, value);

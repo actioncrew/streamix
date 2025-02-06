@@ -6,11 +6,11 @@ describe('from function', () => {
     const stream = from(values);
 
     let emittedValues: any[] = [];
-    const subscription = stream({
+    const subscription = stream.subscribe({
       next: (value) => emittedValues.push(value),
       complete:() => {
         expect(emittedValues).toEqual(values);
-        expect(stream.isAutoComplete).toBe(true);
+        expect(stream.completed()).toBe(true);
 
         subscription.unsubscribe();
       }
