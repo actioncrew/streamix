@@ -10,7 +10,7 @@ describe('mergeMap operator', () => {
 
     let results: any[] = [];
 
-    mergedStream({
+    mergedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         results.sort((a, b) => a - b);
@@ -42,7 +42,7 @@ describe('mergeMap operator', () => {
     let results: number[] = [];
     let emissionCounter = 0; // Assume you're tracking emissions this way
 
-    chainedStream({
+    chainedStream.subscribe({
       next: (value) => {
         results.push(value);
         emissionCounter++; // Increment the counter for each emission
@@ -68,7 +68,7 @@ describe('mergeMap operator', () => {
 
     const results: number[] = [];
 
-    mergedStream({
+    mergedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // No emissions
@@ -91,7 +91,7 @@ describe('mergeMap operator', () => {
 
     const results: number[] = [];
 
-    mergedStream({
+    mergedStream.subscribe({
       next: (value) => results.push(value),
       error: (err) => {
         expect(err.message).toBe('Inner observable error');
@@ -109,7 +109,7 @@ describe('mergeMap operator', () => {
 
     const results: number[] = [];
 
-    mergedStream({
+    mergedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results.sort((a, b) => a - b)).toEqual([2, 3, 4, 6]); // Sorted results
@@ -127,7 +127,7 @@ describe('mergeMap operator', () => {
 
     const results: number[] = [];
 
-    mergedStream({
+    mergedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([]); // No emissions
@@ -146,7 +146,7 @@ describe('mergeMap operator', () => {
 
     const results: number[] = [];
 
-    mergedStream({
+    mergedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([2, 4, 6, 8, 10]); // Ordered by values processed
@@ -164,7 +164,7 @@ describe('mergeMap operator', () => {
 
     const results: number[] = [];
 
-    mergedStream({
+    mergedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([2, 4, 6]); // Inner streams complete in order
