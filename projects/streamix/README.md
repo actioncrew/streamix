@@ -17,7 +17,7 @@ Streamix supports many core RxJS operators, along with unique tools designed to 
     const task = coroutine(computeMandelbrotInChunks, computeMandelbrot, computeColor);
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
 
-    return onResize(this.canvas).pipe(
+    const subscription = onResize(this.canvas).pipe(
       startWith({ width: window.innerWidth, height: window.innerHeight }),
       tap(({width, height}) => {
         this.showProgressOverlay();
@@ -61,7 +61,7 @@ Streamix supports many core RxJS operators, along with unique tools designed to 
       finalize(() => {
         task.finalize();
       })
-    );
+    ).subscribe();
 ```
 
 ## The Asynchronous Future
