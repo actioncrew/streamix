@@ -20,8 +20,8 @@ describe('fromMutation Stream Tests', () => {
       childList: true,
     });
 
-    const subscription = mutationStream({
-      next: (mutations) => {
+    const subscription = mutationStream.subscribe({
+      next: (mutations: any) => {
         expect(mutations.length).toBeGreaterThan(0);
         expect(mutations[0].type).toBe('childList');
         expect(mutations[0].addedNodes.length).toBe(1);
@@ -47,8 +47,8 @@ describe('fromMutation Stream Tests', () => {
       childList: true,
     });
 
-    const subscription = mutationStream({
-      next: (mutations) => {
+    const subscription = mutationStream.subscribe({
+      next: (mutations: any) => {
         expect(mutations.length).toBeGreaterThan(0);
         expect(mutations[0].type).toBe('childList');
         expect(mutations[0].removedNodes.length).toBe(1);
@@ -76,8 +76,8 @@ describe('fromMutation Stream Tests', () => {
       childList: true,
     });
 
-    const subscription = mutationStream({
-      next: (mutations) => {
+    const subscription = mutationStream.subscribe({
+      next: (mutations: any) => {
         console.log('Mutations observed:', mutations);
         try {
           expect(mutations).toHaveLength(1);

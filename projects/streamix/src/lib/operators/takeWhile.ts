@@ -1,19 +1,27 @@
-import { createOperator, Emission, Operator, Stream } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createSubject } from "../streams";
 
-export const takeWhile = (predicate: (value: any, index?: number) => boolean): Operator => {
-  let index = 0; // To track the index of emissions
+export function takeWhile<T>(predicate: (value: T) => boolean): StreamOperator {
+  const operator = (input: Stream<T>): Stream<T> => {
+    const output = createSubject<T>();
+    let inputSubscription: Subscription | null = null;
 
-  const handle = (emission: Emission, stream: Stream): Emission => {
-    const shouldContinue = predicate(emission.value, index++);
+    // Subscribe to the input stream
+    inputSubscription = input.subscribe({
+      next: (value) => {
+        if (predicate(value)) {
+          output.next(value); // Emit the value if the predicate is true
+        } else {
+          output.complete(); // Complete the stream if the predicate is false
+          if (inputSubscription) inputSubscription.unsubscribe();
+        }
+      },
+      error: (err) => output.error(err),
+      complete: () => output.complete(),
+    });
 
-    if (!shouldContinue) {
-      emission.phantom = true; // Mark emission as phantom
-      stream.complete(); // Complete the stream if the condition fails
-      return emission;
-    }
-
-    return emission; // Return the emission if the condition is met
+    return output;
   };
 
-  return createOperator('takeWhile', handle);
-};
+  return createStreamOperator('takeWhile', operator);
+}

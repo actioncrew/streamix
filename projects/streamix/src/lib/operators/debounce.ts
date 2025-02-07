@@ -1,24 +1,49 @@
-import { createEmission, createOperator, Emission, eventBus, Operator, Stream } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createSubject } from "../streams/subject";
 
-export const debounce = (time: number): Operator => {
-  let timeoutId: any;
+export function debounce<T>(duration: number): StreamOperator {
+  const operator = (input: Stream<T>): Stream<T> => {
+    const output = createSubject<T>();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let latestValue: T | null = null;
+    let isCompleted = false;
+    let emissionCount = 0;
 
-  const handle = function (this: Operator, emission: Emission, source: Stream): Emission {
-    clearTimeout(timeoutId); // Clear any previous debounce timer
-    const debounced = createEmission({ value: emission.value });
+    input.subscribe({
+      next: (value) => {
+        emissionCount++;
+        latestValue = value;
 
-    timeoutId = setTimeout(() => {
-      emission.link(debounced);
-      eventBus.enqueue({
-        target: source,
-        payload: { emission: debounced, source: this },
-        type: 'emission',
-      }); // Emit the debounced value
-      emission.finalize();
-    }, time);
-    emission.pending = true; // Mark as delayed
-    return emission;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+
+        timeoutId = setTimeout(() => {
+          if (latestValue !== null) {
+            output.next(latestValue);
+
+            if (isCompleted) {
+              output.complete();
+            }
+          }
+          timeoutId = null;
+        }, duration);
+      },
+      error: (err) => output.error(err),
+      complete: () => {
+        isCompleted = true;
+
+        if (timeoutId === null) {
+          if (emissionCount > 1) {
+            output.next(latestValue!);
+          }
+          output.complete();
+        }
+      },
+    });
+
+    return output;
   };
 
-  return createOperator('debounce', handle);
-};
+  return createStreamOperator('debounce', operator);
+}

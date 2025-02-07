@@ -1,107 +1,62 @@
-import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
-import { createSubject, EMPTY } from '../streams';
-import { catchAny, Counter, counter } from '../utils';
+import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createSubject } from "../streams/subject";
 
-export const switchMap = (project: (value: any) => Stream): StreamOperator => {
-  const operator = (input: Stream) => {
-    const output = createSubject();
-    let currentInnerStream: Stream | null = null;
-    let currentSubscription: Subscription | undefined;
-    const executionCounter: Counter = counter(0);
-    let isFinalizing = false;
+export function switchMap<T, R>(project: (value: T) => Stream<R>): StreamOperator {
+  const operator = (input: Stream<T>): Stream<R> => {
+    const output = createSubject<R>(); // The output stream
+    let currentSubscription: Subscription | null = null;
+    let isOuterComplete = false;
 
-    const init = () => {
-      if (input === EMPTY) {
-        output[flags].isAutoComplete = true;
-        return;
+    const subscribeToInner = (innerStream: Stream<R>) => {
+      // Unsubscribe from the previous inner subscription if any
+      if (currentSubscription) {
+        currentSubscription.unsubscribe();
+        currentSubscription = null;
       }
 
-      // Subscribe to the inputStream
-      const subscription = input({
-        next: (value) => {
-          if (!output[internals].shouldComplete()) {
-            handleEmission(createEmission({ value }));
-          }
-        },
-        error: (err) => {
-          output.error(err);
-        },
-        complete: () => {
-          subscription.unsubscribe();
-          queueMicrotask(() =>
-            executionCounter.waitFor(input.emissionCounter).then(finalize)
-          );
-        },
-      });
-
-      output.emitter.once('finalize', finalize);
-    };
-
-    const handleEmission = (emission: Emission): Emission => {
-      queueMicrotask(() => processEmission(emission));
-      emission.pending = true;
-      return emission;
-    };
-
-    const processEmission = async (emission: Emission) => {
-      const [error, innerStream] = await catchAny(() => project(emission.value));
-
-      if (error) {
-        output.error(error);
-        executionCounter.increment();
-        delete emission.pending;
-        emission.phantom = true;
-        return;
-      }
-
-      if (currentInnerStream && currentInnerStream !== innerStream) {
-        stopCurrentInnerStream();
-      }
-
-      currentInnerStream = innerStream;
-
-      currentSubscription = innerStream({
-        next: (value) => {
-          if (!output[internals].shouldComplete()) {
-            emission.link(output.next(value));
-          }
-        },
-        error: (err) => {
-          output.error(err);
-          finalize();
-        },
-        complete: () => {
-          executionCounter.increment();
-          emission.finalize();
-        },
-      });
-    };
-
-    const stopCurrentInnerStream = () => {
-      currentSubscription?.unsubscribe();
-      currentSubscription = undefined;
-      currentInnerStream = null;
-    };
-
-    const finalize = () => {
-      if (isFinalizing) return;
-      isFinalizing = true;
-
-      stopStreams(input, currentInnerStream, output);
-      currentInnerStream = null;
-    };
-
-    const stopStreams = (...streams: (Stream | null | undefined)[]) => {
-      streams
-        .filter((stream) => stream && stream[flags].isRunning)
-        .forEach((stream) => {
-          stream![flags].isAutoComplete = true;
+      if (!innerStream.completed()) {
+        // Subscribe to the new inner stream
+        currentSubscription = innerStream.subscribe({
+          next: (value) => {
+            output.next(value); // Forward values to the outer stream
+          },
+          error: (err) => {
+            output.error(err); // Forward errors to the outer stream
+            currentSubscription = null; // Mark the subscription as null
+            checkComplete(); // Check if we can complete the outer stream
+          },
+          complete: () => {
+            currentSubscription = null; // Mark the subscription as null
+            checkComplete(); // Check if we can complete the outer stream
+          },
         });
+      } else {
+        checkComplete(); // Check if we can complete the outer stream
+      }
     };
 
-    init();
-    return output;
+    const checkComplete = () => {
+      // Complete the outer stream if the outer stream is marked complete and there are no active subscriptions
+      if (isOuterComplete && !currentSubscription) {
+        output.complete();
+      }
+    };
+
+    // Subscribe to the outer input stream
+    input.subscribe({
+      next: (value) => {
+        const innerStream = project(value); // Project to the inner stream
+        subscribeToInner(innerStream); // Subscribe to the inner stream
+      },
+      error: (err) => output.error(err), // Forward errors to the outer stream
+      complete: () => {
+        isOuterComplete = true; // Mark the outer stream as complete
+        checkComplete(); // Check if we can complete the outer stream
+      },
+    });
+
+    return output; // Return the resulting stream
   };
 
-  return createStreamOperator('switchMap', operator);
-};
+  return createStreamOperator("switchMap", operator); // Return the switchMap operator
+}

@@ -1,32 +1,30 @@
-import { createReceiver, createStream, flags, Receiver, Stream, Subscription } from '../abstractions';
+import { createReceiver, createStream, Emission, Receiver, Stream, Subscription } from '../abstractions';
 
-// Function to create an EmptyStream
+// Function to create an EmptyStream as a generator
 export const empty = <T = any>(): Stream<T> => {
-  // Custom run function for the EmptyStream
-  const stream = createStream<T>('EMPTY', async function(this: Stream<T>): Promise<void> {
-    // Set the auto-completion flag
-    this[flags].isAutoComplete = true;
+  // Custom run function for the EmptyStream using generator
+  const stream = createStream<T>('EMPTY', async function* (this: Stream<T>): AsyncGenerator<Emission<T>> {
+    // No emissions, just complete immediately
   });
 
-  const newStream =  (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  // Empty stream does not subscribe to any source
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
 
-    const subscription = () => undefined;
+    // No data is emitted, immediately complete the receiver
+    queueMicrotask(() => receiver.complete && receiver.complete());
 
+    // Return a no-op subscription for EMPTY stream
+    const subscription = () => undefined;
     Object.assign(subscription, {
       unsubscribed: false,
-      unsubscribe: () => { /* No-op for EMPTY subscription */ }
+      unsubscribe: () => { /* No-op for EMPTY subscription */ },
     });
 
-    receiver.complete && queueMicrotask(receiver.complete);
-
     return subscription as Subscription;
-  }
+  };
 
-  Object.defineProperty(newStream, 'name', { writable: true, enumerable: true, configurable: true });
-  Object.assign(newStream, stream);
-  newStream.subscribe = newStream;
-  return newStream as unknown as Stream<T>;
+  return Object.assign(stream, { subscribe, completed: () => true });
 };
 
 // Export a singleton instance of EmptyStream

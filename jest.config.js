@@ -7,4 +7,16 @@ export default {
   moduleNameMapper: {
     '^@actioncrew/streamix$': '<rootDir>/projects/streamix/src/lib/index.ts'
   },
+  projects: [
+    {
+      displayName: "streamix",
+      preset: "jest-preset-angular",
+      testMatch: ["<rootDir>/projects/streamix/**/*.spec.ts"],
+    },
+    {
+      displayName: "streamix-old",
+      preset: "jest-preset-angular",
+      testMatch: ["<rootDir>/projects/streamix-old/**/*.spec.ts"],
+    }
+  ]
 };

@@ -1,19 +1,20 @@
-import { concatMap, createEmission, createStream, eventBus, from, of, Stream } from '../lib';
+import { concatMap, createStream, from, of, Stream } from '../lib';
 
 describe('ConcatMapOperator', () => {
 
   let project: (value: any) => Stream;
 
   beforeEach(() => {
-    project = (value: any) => myInnerStream(value); // Replace with your inner stream implementation
+    // Replace with library-based stream function, e.g., `of` or `from`.
+    project = (value: any) => of('innerValue' + value); // A simple stream projection
   });
 
   it('should handle an empty stream', (done) => {
     const mockStream$ = from([]).pipe(concatMap(project));
 
     const emittedValues: any[] = [];
-    mockStream$({
-      next: value => emittedValues.push(value),
+    mockStream$.subscribe({
+      next: (value: any) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([]);
         done();
@@ -25,10 +26,10 @@ describe('ConcatMapOperator', () => {
     const mockStream$ = from(['1', '2', '3', '4', '5']).pipe(concatMap(project));
     const emittedValues: any[] = [];
 
-    mockStream$({
-      next: value => emittedValues.push(value),
+    mockStream$.subscribe({
+      next: (value: any) => emittedValues.push(value),
       complete: () => {
-        expect(emittedValues).toEqual(['innerValue1', 'innerValue2', 'innerValue3', 'innerValue4', 'innerValue5']); // Expect each value from inner streams in sequence
+        expect(emittedValues).toEqual(['innerValue1', 'innerValue2', 'innerValue3', 'innerValue4', 'innerValue5']);
         done();
       }
     });
@@ -36,11 +37,11 @@ describe('ConcatMapOperator', () => {
 
   it('should complete inner stream before processing next outer emission', (done) => {
     const emissions = ['1', '2', '3'];
-    const mockStream$ = from(emissions).pipe(concatMap(value => of(value)));
+    const mockStream$ = from(emissions).pipe(concatMap((value: any) => of(value)));
 
     const emittedValues: any[] = [];
-    mockStream$({
-      next: value => emittedValues.push(value),
+    mockStream$.subscribe({
+      next: (value: any) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(emissions); // Sequential handling expected
         done();
@@ -50,14 +51,14 @@ describe('ConcatMapOperator', () => {
 
   it('should handle errors in inner stream without affecting other emissions', (done) => {
     const values = ['1', '2'];
-    const mockStream$ = from(values).pipe(concatMap(value => (value === '2' ? errorInnerStream() : project(value))));
+    const mockStream$ = from(values).pipe(concatMap((value: any) => (value === '2' ? errorInnerStream() : project(value))));
 
     const emittedValues: any[] = [];
     const errors: any[] = [];
 
-    mockStream$({
-      next: (value) => emittedValues.push(value),
-      error: (error) => errors.push(error),
+    mockStream$.subscribe({
+      next: (value: any) => emittedValues.push(value),
+      error: (error: any) => errors.push(error),
       complete: () => {
         expect(emittedValues).toEqual(['innerValue1']);
         expect(errors[0].message).toEqual('Inner Stream Error'); // Only second emission should throw
@@ -78,8 +79,8 @@ describe('ConcatMapOperator', () => {
     const mockStream$ = from(outerValues).pipe(concatMap(projectFn));
     const emittedValues: any[] = [];
 
-    mockStream$({
-      next: value => emittedValues.push(value),
+    mockStream$.subscribe({
+      next: (value: any) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['inner1a', 'inner1b', 'inner2a', 'inner2b']);
         done();
@@ -88,22 +89,9 @@ describe('ConcatMapOperator', () => {
   });
 });
 
-// Inner Stream Implementations (Replace with your actual implementations)
-export function myInnerStream(value: any): Stream {
-  return createStream('myInnerStream', async function (this: Stream) {
-    await new Promise((resolve) => setTimeout(resolve, 10)); // Simulated delay
-    eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: 'innerValue' + value }), source: this }, type: 'emission' });
-  });
-}
-
-export function myRealStream(): Stream {
-  return createStream('myRealStream', async function (this: Stream) {
-    eventBus.enqueue({ target: this, payload: { emission: createEmission({ value: 'streamValue1' }), source: this }, type: 'emission' });
-  });
-}
-
+// Error Handling Stream using library's `of` for simplicity
 export function errorInnerStream(): Stream {
-  return createStream('errorInnerStream', async function (this: Stream) {
+  return createStream('errorInnerStream', async function *(this: Stream) {
     throw new Error('Inner Stream Error');
   });
 }

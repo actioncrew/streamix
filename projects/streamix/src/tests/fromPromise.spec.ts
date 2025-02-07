@@ -7,8 +7,8 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    stream({
-      next: (value) => emittedValues.push(value),
+    stream.subscribe({
+      next: (value: any) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([value]);
         done();
@@ -22,7 +22,7 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     let completed = false;
-    stream({
+    stream.subscribe({
       next: () => completed = true,
       complete: () => {
         expect(completed).toBe(true);
@@ -37,7 +37,7 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     let receivedError: Error | undefined;
-    const subscription = stream({
+    const subscription = stream.subscribe({
       error: (error: any) => receivedError = error,
       complete: () => {
         expect(receivedError).toBe(error);
@@ -53,28 +53,13 @@ describe('FromPromiseStream', () => {
     const stream = fromPromise(promise);
 
     const emittedValues: any[] = [];
-    const subscription = stream({
-      next: (value) => emittedValues.push(value),
+    const subscription = stream.subscribe({
+      next: (value: any) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([]);
       }
     });
 
     subscription.unsubscribe(); // Unsubscribe before running
-  });
-
-  it('should not emit if cancelled before run', async () => {
-    const value = 'test_value';
-    const promise = Promise.resolve(value);
-    const stream = fromPromise(promise);
-
-    const emittedValues: any[] = [];
-    stream((value) => {
-      emittedValues.push(value);
-    });
-
-    stream.complete(); // Cancel before running
-
-    expect(emittedValues).toEqual([]);
   });
 });

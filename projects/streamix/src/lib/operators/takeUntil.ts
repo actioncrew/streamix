@@ -1,47 +1,35 @@
-import { createStreamOperator, Stream, StreamOperator, Subscription } from '../abstractions';
-import { createSubject } from '../streams';
+import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createSubject } from "../streams";
 
-export const takeUntil = (notifier: Stream): StreamOperator => {
-  const operator = (input: Stream) => {
-    const output = createSubject(); // The resulting stream
+export function takeUntil<T>(notifier: Stream<any>): StreamOperator {
+  const operator = (input: Stream<T>): Stream<T> => {
+    const output = createSubject<T>();
+    let inputSubscription: Subscription | null = null;
     let notifierSubscription: Subscription | null = null;
-    let sourceSubscription: Subscription | null = null;
-    let finalized = false;
 
-    const finalize = async () => {
-      if(!finalized) {
-        finalized = true;
-        await notifierSubscription?.unsubscribe();
-        await sourceSubscription?.unsubscribe();
-        output.complete();
-      }
-    };
+    // Subscribe to the input stream
+    inputSubscription = input.subscribe({
+      next: (value) => output.next(value),
+      error: (err) => output.error(err),
+      complete: () => output.complete(),
+    });
 
-    // Subscribe to the notifier
-    notifierSubscription = notifier({
+    // Subscribe to the notifier stream
+    notifierSubscription = notifier.subscribe({
       next: () => {
-        // Trigger stream completion when the notifier emits
-        finalize();
+        // When the notifier emits, complete the output stream
+        output.complete();
+        if (inputSubscription) inputSubscription.unsubscribe();
+        if (notifierSubscription) notifierSubscription.unsubscribe();
       },
-      complete: finalize, // Clean up when the notifier completes
-    });
-
-    // Subscribe to the source stream
-    sourceSubscription = input({
-      next: (value) => {
-        // Forward values to the output stream
-        output.next(value);
+      error: (err) => output.error(err),
+      complete: () => {
+        // If the notifier completes without emitting, do nothing
       },
-      complete: finalize, // Complete the output stream when the source completes
-    });
-
-    // Clean up subscriptions when the output stream finalizes
-    output.emitter.once('finalize', () => {
-      finalize();
     });
 
     return output;
   };
 
   return createStreamOperator('takeUntil', operator);
-};
+}

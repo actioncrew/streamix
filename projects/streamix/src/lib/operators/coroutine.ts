@@ -1,6 +1,7 @@
-import { Emission, Operator, Stream, createEmission, createOperator, eventBus } from '../abstractions';
+import { createEmission, createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createSubject, Subject } from '../streams';
 
-export type Coroutine = Operator & {
+export type Coroutine = StreamOperator & {
   finalize: () => Promise<void>;
   processTask: (data: any) => Promise<any>;
   getIdleWorker: () => Promise<Worker>;
@@ -15,7 +16,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   const maxWorkers = navigator.hardwareConcurrency || 4;
   const workerPool: Worker[] = [];
   const workerQueue: Array<(worker: Worker) => void> = [];
-  let isFinalizing: boolean = false;
+  let isFinalizing = false;
 
   // Worker initialization
   const initWorkers = () => {
@@ -29,7 +30,6 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }).join(';');
 
     const mainTaskBody = mainTask.toString().replace(/function[\s]*\(/, `function ${mainTask.name}(`);
-
 
     const workerBody = `
       function __async(thisArg, _arguments, generatorFunc) {
@@ -78,18 +78,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  const handle = (emission: Emission, stream: Stream): Emission => {
-    const data = emission.value; // The data to be processed by the main task
-    queueMicrotask(() => processTask(data).then((data) => {
-      const child = createEmission({ value: data });
-      emission.link(child);
-      eventBus.enqueue({ target: stream, payload: { emission: child, source: stream }, type: 'emission' });
-      emission.finalize();
-    }));
-    emission.pending = true;
-    return emission;
-  };
-
+  // Process task using an idle worker
   const processTask = async (data: any): Promise<any> => {
     const worker = await getIdleWorker();
     return new Promise<any>((resolve, reject) => {
@@ -99,29 +88,31 @@ export const coroutine = (...functions: Function[]): Coroutine => {
         } else {
           resolve(event.data);
         }
-        returnWorker(worker); // Always return the worker after task is done
+        returnWorker(worker);  // Always return the worker after task is done
       };
 
       worker.onerror = (error: ErrorEvent) => {
         reject(error.message);
-        returnWorker(worker); // Return the worker even if an error occurs
+        returnWorker(worker);  // Return the worker even if an error occurs
       };
 
       worker.postMessage(data);
     });
   };
 
+  // Get an idle worker from the pool
   const getIdleWorker = (): Promise<Worker> => {
     return new Promise<Worker>((resolve) => {
       const idleWorker = workerPool.shift();
       if (idleWorker) {
         resolve(idleWorker);
       } else {
-        workerQueue.push(resolve);
+        workerQueue.push(resolve);  // Queue resolve if no idle worker
       }
     });
   };
 
+  // Return a worker back to the pool
   const returnWorker = (worker: Worker): void => {
     if (workerQueue.length > 0) {
       const resolve = workerQueue.shift()!;
@@ -131,21 +122,41 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
+  // Finalize by terminating all workers
   const finalize = async () => {
-    if (isFinalizing) { return; }
+    if (isFinalizing) return;
     isFinalizing = true;
 
     workerPool.forEach(worker => worker.terminate());
-    workerPool.length = 0; // Clear the pool
-    workerQueue.length = 0; // Clear the queue
+    workerPool.length = 0;  // Clear worker pool
+    workerQueue.length = 0;  // Clear worker queue
   };
 
-  const operator = createOperator('coroutine',handle) as Coroutine;
+  // Stream operator to transform the stream using the coroutine logic
+  const operator = createStreamOperator('coroutine', (stream: Stream) => {
+    const subject = createSubject<any>() as Subject<any> & Coroutine; // Create a Subject to manage emissions
+
+    // Subscribe to the original stream and process each emission using the coroutine task
+    stream.subscribe({
+      next: (value) => {
+        processTask(value).then((data) => {
+          subject.next(createEmission({ value: data })); // Emit the processed value
+        }).catch((error) => {
+          subject.error?.(error); // Handle errors by calling error method of Subject
+        });
+      },
+      complete: subject.complete,
+      error: subject.error,
+    });
+
+    return subject; // Return the Subject as the result of the operator
+  }) as Coroutine;
+
+  initWorkers();
+
   operator.finalize = finalize;
   operator.processTask = processTask;
   operator.getIdleWorker = getIdleWorker;
   operator.returnWorker = returnWorker;
-
-  initWorkers();
   return operator;
 };

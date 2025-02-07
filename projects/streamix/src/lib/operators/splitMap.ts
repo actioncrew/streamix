@@ -1,60 +1,85 @@
-import { Operator, Stream, StreamOperator } from '../abstractions';
+import { Operator, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createStreamOperator } from '../abstractions/operator';
 import { createSubject, from } from '../streams';
-import { createStreamOperator } from './../abstractions/operator';
 
-export const splitMap = <T = any, R = T>(
+export const splitMap = (
   paths: { [key: string]: Array<Operator> }
 ): StreamOperator => {
-  const operator = (input: Stream) => {
-    const output = createSubject<R>(); // The output stream
-    let subscriptions: Array<any> = []; // Track all subscriptions
+  const operator = (input: Stream): Stream => {
+    const output = createSubject(); // The output stream
+    let activeSubscriptions: Subscription[] = [];
+    let partitionQueue: Array<{ key: string; values: any[] }> = []; // Queue to track partitions
+    let isProcessing = false; // Flag to track if we're currently processing a partition
+    let isOuterComplete = false; // Flag to track if the outer stream has completed
 
-    const subscription = input({
-      next: (partitionMap: Map<string, any[]>) => {
-        let remainingSubscriptions = 0;
+    const processNextPartition = () => {
+      if (partitionQueue.length === 0 || isProcessing) {
+        // No partitions to process or already processing
+        checkComplete();
+        return;
+      }
 
-        // Process each key in the partition map
-        partitionMap.forEach((streamData, key) => {
-          const caseOperators = paths[key]; // Operators for the current partition
+      isProcessing = true;
+      const { key, values } = partitionQueue.shift()!; // Dequeue the next partition
+      const caseOperators = paths[key]; // Operators for the current partition
 
-          if (caseOperators) {
-            // Create a stream for the partition and apply the operators
-            const partitionStream = from(streamData).pipe(...caseOperators);
+      if (caseOperators) {
+        // Create a stream for the partition and apply the operators
+        const partitionStream = from(values).pipe(...caseOperators);
 
-            // Subscribe to the processed partition stream
-            const partitionSubscription = partitionStream({
-              next: (value) => output.next(value),
-              complete: () => {
-                remainingSubscriptions--;
-                if (remainingSubscriptions === 0) {
-                  output.complete(); // Complete when all partitions finish
-                }
-              },
-            });
-
-            remainingSubscriptions++;
-            subscriptions.push(partitionSubscription);
-          } else {
-            console.warn(`No handlers found for partition key: ${key}`);
-          }
+        // Subscribe to the processed partition stream
+        const partitionSubscription = partitionStream.subscribe({
+          next: (value) => output.next(value),
+          error: (err) => {
+            output.error(err);
+            activeSubscriptions = activeSubscriptions.filter(
+              (sub) => sub !== partitionSubscription
+            );
+            isProcessing = false;
+            processNextPartition(); // Process the next partition after error
+          },
+          complete: () => {
+            activeSubscriptions = activeSubscriptions.filter(
+              (sub) => sub !== partitionSubscription
+            );
+            isProcessing = false;
+            processNextPartition(); // Process the next partition after completion
+          },
         });
-      },
-      complete: () => {
-        // Complete the output stream if the main stream completes with no partitions
-        if (subscriptions.length === 0) {
-          output.complete();
+
+        activeSubscriptions.push(partitionSubscription);
+      } else {
+        console.warn(`No handlers found for partition key: ${key}`);
+        isProcessing = false;
+        processNextPartition(); // Process the next partition if no handlers
+      }
+    };
+
+    const checkComplete = () => {
+      if (isOuterComplete && partitionQueue.length === 0 && activeSubscriptions.length === 0 && !isProcessing) {
+        output.complete();
+      }
+    };
+
+    input.subscribe({
+      next: (partitionMap: Map<string, any[]>) => {
+        // Enqueue partitions in the order they arrive
+        partitionMap.forEach((values, key) => {
+          partitionQueue.push({ key, values });
+        });
+
+        // Start processing partitions if not already processing
+        if (!isProcessing) {
+          processNextPartition();
         }
       },
+      complete: () => {
+        isOuterComplete = true;
+        checkComplete();
+      },
       error: (err) => {
-        // Propagate errors to the output stream
         output.error(err);
       },
-    });
-
-    // Clean up all subscriptions when the output stream finalizes
-    output.emitter.once('finalize', () => {
-      subscriptions.forEach((sub) => sub.unsubscribe());
-      subscription.unsubscribe();
     });
 
     return output; // Return the resulting stream

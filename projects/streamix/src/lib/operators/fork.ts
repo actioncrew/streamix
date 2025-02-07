@@ -1,138 +1,74 @@
-import { createEmission, createStreamOperator, Emission, flags, internals, Stream, StreamOperator, Subscription } from '../abstractions';
-import { createSubject, EMPTY } from '../streams';
-import { catchAny, Counter, counter } from '../utils';
+import { createStreamOperator, Stream, StreamOperator, Subscription } from '../abstractions';
+import { createSubject } from '../streams';
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T) => boolean; handler: () => Stream<R> }>
 ): StreamOperator => {
-  const operator = (input: Stream) => {
-    let currentInnerStream: Stream | null = null;
-    let emissionQueue: Emission[] = [];
-    let processingChain = Promise.resolve();
-    const executionCounter: Counter = counter(0);
-    let isFinalizing = false;
-    let subscription: Subscription | undefined;
-    const output = createSubject();
+  const operator = (input: Stream<T>): Stream<R> => {
+    const output = createSubject<R>();
+    let isOuterComplete = false;
+    let activeSubscriptions: Subscription[] = [];
+    const innerQueue: Array<Stream<R>> = [];
 
-    const init = () => {
-      if (input === EMPTY) {
-        output[flags].isAutoComplete = true;
+    const subscribeToInner = (innerStream: Stream<R>) => {
+      if (innerStream.completed()) {
+        // If the inner stream is already completed, check if we can complete the outer stream
+        if (isOuterComplete && activeSubscriptions.length === 0) {
+          output.complete();
+        }
         return;
       }
 
-      // Subscribe to the inputStream
-      subscription = input({
-        next: (value) => {
-          if (!output[internals].shouldComplete()) {
-            handleEmission(createEmission({ value }));
-          }
-        },
+      const innerSub = innerStream.subscribe({
+        next: (value) => output.next(value),
         error: (err) => {
           output.error(err);
+          activeSubscriptions = activeSubscriptions.filter(
+            (sub) => sub !== innerSub
+          );
+          if (innerQueue.length > 0) {
+            subscribeToInner(innerQueue.shift()!);
+          } else if (isOuterComplete && activeSubscriptions.length === 0) {
+            output.complete();
+          }
         },
         complete: () => {
-          queueMicrotask(() =>
-            executionCounter.waitFor(input.emissionCounter).then(finalize)
+          activeSubscriptions = activeSubscriptions.filter(
+            (sub) => sub !== innerSub
           );
+          if (innerQueue.length > 0) {
+            subscribeToInner(innerQueue.shift()!);
+          } else if (isOuterComplete && activeSubscriptions.length === 0) {
+            output.complete();
+          }
         },
       });
-
-      output.emitter.once('finalize', finalize);
+      activeSubscriptions.push(innerSub);
     };
 
-    const handleEmission = (emission: Emission) => {
-      emissionQueue.push(emission);
-
-      if (!currentInnerStream) {
-        queueMicrotask(processQueue);
-      }
-
-      emission.pending = true;
-      return emission;
-    };
-
-    const processQueue = (): Promise<void> => {
-      processingChain = processingChain.then(async () => {
-        while (emissionQueue.length > 0 && !isFinalizing) {
-          const nextEmission = emissionQueue.shift();
-          if (nextEmission) {
-            await processEmission(nextEmission);
+    input.subscribe({
+      next: (value) => {
+        const matchedOption = options.find(({ on }) => on(value));
+        if (matchedOption) {
+          const innerStream = matchedOption.handler();
+          if (activeSubscriptions.length > 0) {
+            innerQueue.push(innerStream);
+          } else {
+            subscribeToInner(innerStream);
           }
+        } else {
+          output.error(new Error(`No handler found for value: ${value}`));
         }
-      });
-      return processingChain;
-    };
-
-    const processEmission = async (emission: Emission): Promise<void> => {
-      const matchedCase = options.find(({ on }) => on(emission.value));
-
-      if (matchedCase) {
-        const [error, innerStream] = await catchAny(() => matchedCase.handler());
-
-        if (error) {
-          output.error(error);
-          emission.phantom = true;
-          finalize();
-          return;
+      },
+      error: (err) => output.error(err),
+      complete: () => {
+        isOuterComplete = true;
+        if (innerQueue.length === 0 && activeSubscriptions.length === 0) {
+          output.complete();
         }
+      },
+    });
 
-        currentInnerStream = innerStream;
-
-        return new Promise<void>((resolve) => {
-          subscription = currentInnerStream!({
-            next: (value) => {
-              if (!output[internals].shouldComplete()) {
-                emission.link(output.next(value));
-              }
-            },
-            error: (err) => {
-              handleStreamError(emission, err);
-              resolve();
-            },
-            complete: () => {
-              finalizeInnerStream(emission);
-              resolve();
-            },
-          });
-        });
-      } else {
-        executionCounter.increment();
-        emission.finalize();
-        handleStreamError(emission, new Error(`No handler found for value: ${emission.value}`));
-        return Promise.resolve();
-      }
-    };
-
-    const finalizeInnerStream = (emission: Emission) => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-      currentInnerStream = null;
-      executionCounter.increment();
-      emission.finalize();
-      queueMicrotask(processQueue);
-    };
-
-    const handleStreamError = (emission: Emission, error: any) => {
-      output.error(error);
-      emission.error = error;
-      finalize();
-    };
-
-    const finalize = () => {
-      if (isFinalizing) return;
-      isFinalizing = true;
-
-      [currentInnerStream, input, output].forEach((stream) => {
-        if (stream && stream[flags]?.isRunning) {
-          stream[flags].isAutoComplete = true;
-        }
-      });
-
-      currentInnerStream = null;
-    };
-
-    init();
     return output;
   };
 

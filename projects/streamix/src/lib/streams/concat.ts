@@ -1,37 +1,35 @@
-import { createEmission, createStream, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream } from "../abstractions";
+import { createSemaphore } from "../utils";
 
-export function concat<T = any>(...sources: Stream[]): Stream<T> {
-  let activeSubscription: Subscription | undefined;
-
-  const stream = createStream<T>('concat', async function(this: Stream<T>): Promise<void> {
+export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
+  return createStream<T>("concat", async function* (this: Stream<T>) {
     for (const source of sources) {
-      await processSource(this, source);
-    }
-  });
+      const itemAvailable = createSemaphore(0); // Controls when items are available
+      const queue: T[] = []; // Event queue
+      let completed = false;
 
-  const processSource = async (stream: Stream<T>, source: Stream): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      activeSubscription = source({
-        next: (value) => emitValue(stream, value),
-        error: (err) => {
-          emitError(stream, err);
-          reject(err); // Terminate the processing chain
+      // Subscribe to the source and collect its emissions
+      const subscription = source.subscribe({
+        next: (value) => {
+          queue.push(value);
+          itemAvailable.release(); // Signal that an item is available
         },
         complete: () => {
-          activeSubscription?.unsubscribe();
-          resolve(); // Proceed to the next source
+          completed = true; // Mark as completed when the stream finishes
+          itemAvailable.release(); // Ensure loop doesn't hang if no values were emitted
         },
       });
-    });
-  };
 
-  const emitValue = (stream: Stream<T>, value: T) => {
-    stream.next(createEmission({ value }));
-  };
+      // Process queued values sequentially
+      while (!completed || queue.length > 0) {
+        await itemAvailable.acquire(); // Wait until an event is available
 
-  const emitError = (stream: Stream<T>, error: any) => {
-    stream.error(error);
-  };
+        if (queue.length > 0) {
+          yield createEmission({ value: queue.shift()! });
+        }
+      }
 
-  return stream;
+      subscription.unsubscribe(); // Unsubscribe when done with this source
+    }
+  });
 }

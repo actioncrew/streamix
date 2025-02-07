@@ -1,4 +1,4 @@
-import { createSubject } from '../../lib';
+import { createSubject } from '..';
 import { createEmission, createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const toArray = (): StreamOperator => {
@@ -6,7 +6,7 @@ export const toArray = (): StreamOperator => {
     let accumulatedArray: any[] = []; // Array to store emission values
     const output = createSubject(); // Create an output stream
 
-    const subscription = stream({
+    const subscription = stream.subscribe({
       next: (emission) => {
         // Accumulate values from each emission
         accumulatedArray.push(emission.value);

@@ -7,7 +7,7 @@ describe('zip operator', () => {
     const stream3$ = from([true, false, true]);
 
     const result: any[] = [];
-    zip([stream1$, stream2$, stream3$])({
+    zip([stream1$, stream2$, stream3$]).subscribe({
       next: (value: any) => result.push(value),
       complete: () => {
         expect(result).toEqual([
@@ -27,13 +27,13 @@ describe('zip operator', () => {
     const stream3$ = from([true, false, true]);
 
     const result: any[] = [];
-    zip([stream1$, stream2$, stream3$])({
+    zip([stream1$, stream2$, stream3$]).subscribe({
       next: () => done.fail('Should not emit any values'),
       complete: () => {
         expect(result).toEqual([]);
         done();
       },
-      error: (err) => done.fail(err),
+      error: (err: any) => done.fail(err),
     });
   });
 
@@ -43,8 +43,8 @@ describe('zip operator', () => {
     const stream3$ = from([true, false, true, false]);
 
     const result: any[] = [];
-    zip([stream1$, stream2$, stream3$])({
-      next: (value) => result.push(value),
+    zip([stream1$, stream2$, stream3$]).subscribe({
+      next: (value: any) => result.push(value),
       complete: () => {
         expect(result).toEqual([
           [1, 'a', true],
@@ -52,7 +52,7 @@ describe('zip operator', () => {
         ]);
         done();
       },
-      error: (err) => done.fail(err),
+      error: (err: any) => done.fail(err),
     });
   });
 
@@ -62,8 +62,8 @@ describe('zip operator', () => {
     const stream3$ = createSubject<boolean>();
 
     const result: any[] = [];
-    zip([stream1$, stream2$, stream3$])({
-      next: (value) => result.push(value),
+    zip([stream1$, stream2$, stream3$]).subscribe({
+      next: (value: any) => result.push(value),
       complete: () => {
         expect(result).toEqual([
           [1, 'a', true],
@@ -71,7 +71,7 @@ describe('zip operator', () => {
         ]);
         done();
       },
-      error: (err) => done.fail(err),
+      error: (err: any) => done.fail(err),
     });
 
     setTimeout(() => {

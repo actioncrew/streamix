@@ -1,49 +1,42 @@
-import { createSubject } from '../../lib';
-import { createStreamOperator, Stream, StreamOperator, Subscription } from '../abstractions';
-import { asyncValue } from '../utils';
+import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createSubject } from "../streams/subject";
 
-export const withLatestFrom = (...streams: Stream[]): StreamOperator => {
-  const operator = (input: Stream) => {
-    const output = createSubject<any>(); // Output stream for combined values
-    let latestValues = streams.map(() => asyncValue());
+export const withLatestFrom = (...streams: Stream<any>[]): StreamOperator => {
+  const operator = (inputStream: Stream<any>): Stream<any> => {
+    const output = createSubject<any>();
+    const latestValues: any[] = new Array(streams.length).fill(undefined);
+    const hasValue: boolean[] = new Array(streams.length).fill(false);
     let subscriptions: Subscription[] = [];
+    let allStreamsHaveEmitted = false;
 
-    // Subscribe to each of the input streams
+    // Subscribe to each other stream
     streams.forEach((stream, index) => {
-      const subscription = stream({
-        next: (value) => {
-          latestValues[index].set(value);
-        },
-        error: (err) => output.error(err)
-      });
-      subscriptions.push(subscription);
+      subscriptions.push(
+        stream.subscribe({
+          next: (value) => {
+            latestValues[index] = value;
+            hasValue[index] = true;
+            allStreamsHaveEmitted = hasValue.every((v) => v); // Ensure all have emitted at least once
+          },
+          error: (err) => output.error(err),
+          complete: () => {} // Completion of other streams does not affect the main stream
+        })
+      );
     });
 
-    // Subscribe to the source stream
-    const sourceSubscription = input({
-      next: (value) => {
-        if (latestValues.every((v) => v.hasValue())) {
-          // Emit combined values only if all streams have emitted at least once
-          output.next([value, ...latestValues.map(value => value.value())]);
+    // Subscribe to the main stream
+    inputStream.subscribe({
+      next: (mainValue) => {
+        if (allStreamsHaveEmitted) {
+          output.next([mainValue, ...latestValues]);
         }
       },
-      error: (err) => output.error(err), // Propagate errors to the output stream
-      complete: () => {
-        // Complete the output stream after the source completes
-        output.complete();
-      },
+      error: (err) => output.error(err),
+      complete: () => output.complete()
     });
 
-    // Add the source subscription to the list of subscriptions
-    subscriptions.push(sourceSubscription);
-
-    // Clean up all subscriptions when the output stream is finalized
-    output.emitter.once('finalize', () => {
-      subscriptions.forEach((sub) => sub.unsubscribe());
-    });
-
-    return output; // Return the resulting stream
+    return output;
   };
 
-  return  createStreamOperator('withLatestFrom', operator);
+  return createStreamOperator('withLatestFrom', operator);
 };

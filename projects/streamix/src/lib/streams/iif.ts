@@ -1,36 +1,39 @@
-import { createEmission, createStream, flags, internals, Stream, Subscription } from '../abstractions';
+import { createEmission, createStream, Stream } from "../abstractions";
+import { createSemaphore } from "../utils";
 
-export function iif<T>(
-  condition: () => boolean, // Evaluate condition once at initialization
-  trueStream: Stream<T>, // Stream to choose when condition is true
-  falseStream: Stream<T> // Stream to choose when condition is false
+export function iif<T = any>(
+  condition: () => boolean,
+  trueStream: Stream<T>,
+  falseStream: Stream<T>
 ): Stream<T> {
-  let selectedStream: Stream<T> | undefined;
-  let subscription!: Subscription;
+  return createStream<T>("iif", async function* (this: Stream<T>) {
+    const source = condition() ? trueStream : falseStream;
+    const itemAvailable = createSemaphore(0); // Controls when items are available
+    let latestValue: T | undefined;
+    let completed = false;
 
-  // Create and return the stream with the defined run function
-  const stream = createStream<T>('iif', async function(this: Stream<T>): Promise<void> {
-    // Choose the appropriate stream based on the condition
-    selectedStream = condition() ? trueStream : falseStream;
-
-    // Start the selected stream
-    subscription = selectedStream({
-      next: (value) => handleEmission(this, value),
-      complete: () => this[flags].isAutoComplete = true
+    // Subscribe to the source and collect its emissions
+    const subscription = source.subscribe({
+      next: (value) => {
+        latestValue = value;
+        itemAvailable.release(); // Signal that an item is available
+      },
+      complete: () => {
+        completed = true; // Mark as completed when the stream finishes
+        itemAvailable.release(); // Ensure loop doesn't hang if no values were emitted
+      },
     });
 
-    // Wait for the completion of the selected stream
-    await this[internals].awaitCompletion();
+    // Process latest value only
+    while (!completed || latestValue !== undefined) {
+      await itemAvailable.acquire(); // Wait until an event is available
 
-    subscription.unsubscribe();
-  });
-
-  // Handle emissions from the selected stream
-  const handleEmission = async (stream: Stream<T>, value: T): Promise<void> => {
-    if (!stream[internals].shouldComplete()) {
-      stream.next(createEmission({ value }));
+      if (latestValue !== undefined) {
+        yield createEmission({ value: latestValue });
+        latestValue = undefined; // Reset latest value after yielding it
+      }
     }
-  };
 
-  return stream;
+    subscription.unsubscribe(); // Unsubscribe when done with this source
+  });
 }
