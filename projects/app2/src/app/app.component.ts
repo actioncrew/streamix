@@ -1,4 +1,4 @@
-import { compute, concatMap, coroutine, finalize, map, mergeMap, onResize, range, scan, startWith, Stream, tap } from '@actioncrew/streamix';
+import { compute, concatMap, coroutine, debounce, finalize, map, mergeMap, onResize, range, scan, startWith, Stream, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 // Main Mandelbrot computation function
@@ -135,17 +135,20 @@ export class AppComponent implements OnInit {
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
 
     return onResize(this.canvas).pipe(
+      debounce(100),
       startWith({ width: window.innerWidth, height: window.innerHeight }),
-      tap(() => this.showProgressOverlay()),
+      tap(() => {
+        this.showProgressOverlay();
+      }),
       concatMap(({width, height}: any) => {
         this.canvas.width = width;
         this.canvas.height = height;
 
         this.ctx = this.canvas.getContext('2d')!;
+        this.ctx.clearRect(0, 0, this.width, this.height);
 
         const imageData = this.ctx.createImageData(width, height);
         const data = imageData.data;
-
 
         this.width = width;
         this.height = height;
