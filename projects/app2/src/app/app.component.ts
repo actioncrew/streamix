@@ -1,4 +1,4 @@
-import { compute, coroutine, finalize, map, mergeMap, range, scan, Stream, tap } from '@actioncrew/streamix';
+import { compute, concatMap, coroutine, finalize, map, mergeMap, onResize, range, scan, startWith, Stream, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 // Main Mandelbrot computation function
@@ -109,28 +109,12 @@ export class AppComponent implements OnInit {
   average$!: Stream;
 
   ngOnInit(): void {
-    this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
-    this.ctx = this.canvas.getContext('2d')!;
-
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-
-    this.width = this.canvas.width;
-    this.height = this.canvas.height;
-    this.maxIterations = 20;
-    this.zoom = 200;
-    this.centerX = this.width / 2;
-    this.centerY = this.height / 2;
-    this.panX = 0.5;
-    this.panY = 0;
-    this.subSampling = 4;
-
-    this.showProgressOverlay();
     this.fractal$ = this.drawFractal();
     this.fractal$.subscribe();
   }
 
   showProgressOverlay() {
+    this.updateProgressBar(0);
     document.getElementById('progress-overlay')!.classList.remove('hidden');
   }
 
@@ -146,34 +130,59 @@ export class AppComponent implements OnInit {
   }
 
   drawFractal(): Stream {
-    const imageData = this.ctx.createImageData(this.width, this.height);
-    const data = imageData.data;
     // Create ComputeOperator instance
     const task = coroutine(computeMandelbrotInChunks, computeMandelbrot, computeColor);
+    this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
 
-    return range(0, this.width * this.height, 1000).pipe(
-      map(index => ({ index, width: this.width, height: this.height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
-      mergeMap((params) => compute(task, params)),
-      tap((result: any) => {
-        result.forEach(({ px, py, r, g, b }: any) => {
-          const i = py * this.width + px;
-          const index = i * 4;
-          data[index] = r;
-          data[index + 1] = g;
-          data[index + 2] = b;
-          data[index + 3] = 255;
-        });
-      }),
-      scan((acc, _, index) => {
-        const progress = ((index! + 1) * 1000 / (this.width * this.height)) * 100; // Adjusted progress calculation for batching
-        requestAnimationFrame(() => this.updateProgressBar(progress)); // Use requestAnimationFrame for smoother updates
-        return acc;
-      }, 0),
+    return onResize(this.canvas).pipe(
+      startWith({ width: window.innerWidth, height: window.innerHeight }),
+      tap(() => this.showProgressOverlay()),
+      concatMap(({width, height}: any) => {
+        this.canvas.width = width;
+        this.canvas.height = height;
+
+        this.ctx = this.canvas.getContext('2d')!;
+
+        const imageData = this.ctx.createImageData(width, height);
+        const data = imageData.data;
+
+
+        this.width = width;
+        this.height = height;
+        this.maxIterations = 20;
+        this.zoom = 200;
+        this.centerX = width / 2;
+        this.centerY = height / 2;
+        this.panX = 0.5;
+        this.panY = 0;
+        this.subSampling = 4;
+
+        return range(0, width * height, 1000).pipe(
+          map(index => ({ index, width, height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
+          mergeMap((params) => compute(task, params)),
+          tap((result: any) => {
+            result.forEach(({ px, py, r, g, b }: any) => {
+              const i = py * width + px;
+              const index = i * 4;
+              data[index] = r;
+              data[index + 1] = g;
+              data[index + 2] = b;
+              data[index + 3] = 255;
+            });
+          }),
+          scan((acc, _, index) => {
+            const progress = ((index! + 1) * 1000 / (width * height)) * 100; // Adjusted progress calculation for batching
+            requestAnimationFrame(() => this.updateProgressBar(progress)); // Use requestAnimationFrame for smoother updates
+            return acc;
+          }, 0),
+          finalize(() => {
+            this.ctx.putImageData(imageData, 0, 0);
+            this.hideProgressOverlay();
+          })
+      )}),
       finalize(() => {
-        this.ctx.putImageData(imageData, 0, 0);
         task.finalize();
-        this.hideProgressOverlay();
       })
-    );
+    )
   }
 }
