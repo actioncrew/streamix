@@ -63,7 +63,7 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
         }
 
         try {
-          emission = operator.handle(emission, stream);
+          emission = operator.handle(emission);
         } catch (error) {
           emission.error = error;
         }
@@ -73,7 +73,7 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
           for (let j = i + 1; j < operators.length; j++) {
             if (operators[j]?.name === "catchError") {
               foundCatchError = true;
-              emission = operators[j].handle(emission, stream);
+              emission = operators[j].handle(emission);
               i = j;
               break;
             }
@@ -83,12 +83,12 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
           }
         }
 
-        if (emission.error || (emission.phantom && emission.pending)) {
+        if (emission.error || emission.phantom) {
           break;
         }
       }
 
-      if (!emission.error && !emission.phantom && !emission.pending) {
+      if (!emission.error && !emission.phantom) {
         output.next(emission.value);
       }
     },
