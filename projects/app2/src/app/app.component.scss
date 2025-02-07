@@ -19,6 +19,10 @@ canvas {
   width: 100%;
 }
 
+#mandelbrotCanvas {
+  transition: width 0.3s ease, height 0.3s ease; /* Smooth transition */
+}
+
 #progress-overlay {
   position: fixed;
   top: 0;
