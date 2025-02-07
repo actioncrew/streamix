@@ -135,17 +135,17 @@ export class AppComponent implements OnInit {
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
 
     return onResize(this.canvas).pipe(
-      debounce(100),
       startWith({ width: window.innerWidth, height: window.innerHeight }),
-      tap(() => {
+      tap(({width, height}) => {
         this.showProgressOverlay();
-      }),
-      concatMap(({width, height}: any) => {
         this.canvas.width = width;
         this.canvas.height = height;
 
         this.ctx = this.canvas.getContext('2d')!;
-        this.ctx.clearRect(0, 0, this.width, this.height);
+        this.ctx.clearRect(0, 0, width, height);
+      }),
+      debounce(100),
+      concatMap(({width, height}: any) => {
 
         const imageData = this.ctx.createImageData(width, height);
         const data = imageData.data;
