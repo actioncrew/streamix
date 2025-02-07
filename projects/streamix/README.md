@@ -2,7 +2,7 @@
 
 Streamix is a lightweight alternative to RxJS that implements reactive programming with a simplified concept of streams and emissions. If you're already familiar with RxJS, you’ll find Streamix easy to pick up, but with a fresh, minimalistic approach designed for modern, performance-oriented applications.
 
-Streamix supports many core RxJS operators, along with unique tools designed to handle heavy computational tasks, including those leveraging the Web Workers API. It’s continuously evolving with new operators and features to meet the needs of modern developers.
+Streamix supports many core RxJS operators, along with unique tools designed to handle heavy computational tasks. It is a weighed solution that combines simplicity of development with an ultra-light footprint, with a bundle size of approximately **5 KB (zipped)**. By maintaining a minimalist and functional design, it ensures that developers can build reactive programs with minimal complexity.
 
   [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
   [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
