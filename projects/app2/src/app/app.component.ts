@@ -150,18 +150,8 @@ export class AppComponent implements OnInit {
         const imageData = this.ctx.createImageData(width, height);
         const data = imageData.data;
 
-        this.width = width;
-        this.height = height;
-        this.maxIterations = 20;
-        this.zoom = 200;
-        this.centerX = width / 2;
-        this.centerY = height / 2;
-        this.panX = 0.5;
-        this.panY = 0;
-        this.subSampling = 4;
-
         return range(0, width * height, 1000).pipe(
-          map(index => ({ index, width, height, maxIterations: this.maxIterations, zoom: this.zoom, centerX: this.centerX, centerY: this.centerY, panX: this.panX, panY: this.panY })),
+          map(index => ({ index, width, height, maxIterations: 20, zoom: 200, centerX: width / 2, centerY: height / 2, panX: 0.5, panY: 0 })),
           mergeMap((params) => compute(task, params)),
           tap((result: any) => {
             result.forEach(({ px, py, r, g, b }: any) => {
@@ -174,8 +164,8 @@ export class AppComponent implements OnInit {
             });
           }),
           scan((acc, _, index) => {
-            const progress = ((index! + 1) * 1000 / (width * height)) * 100; // Adjusted progress calculation for batching
-            requestAnimationFrame(() => this.updateProgressBar(progress)); // Use requestAnimationFrame for smoother updates
+            const progress = ((index! + 1) * 1000 / (width * height)) * 100;
+            requestAnimationFrame(() => this.updateProgressBar(progress));
             return acc;
           }, 0),
           finalize(() => {
@@ -186,6 +176,6 @@ export class AppComponent implements OnInit {
       finalize(() => {
         task.finalize();
       })
-    )
+    );
   }
 }
