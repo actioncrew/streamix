@@ -1,17 +1,15 @@
-import { Emission, Stream } from '../abstractions';
+import { Emission, Stream } from '.';
 
 export type HookOperator = {
   callback: (params?: any) => void | Promise<void>;
 }
 
-export type StreamOperator = {
+export type StreamOperator = Omit<Operator, "handle"> & {
   (stream: Stream): Stream;
-  type: string;
-  name?: string;
 }
 
 export type Operator = {
-  handle: (emission: Emission, stream: Stream) => Emission;
+  handle: (emission: Emission) => Emission;
   type: string;
   name?: string;
 };
@@ -21,7 +19,7 @@ export function isOperator(obj: any): obj is Operator {
   return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.run === 'undefined';
 }
 
-export const createOperator = (name: string, handleFn: (emission: Emission, stream: Stream) => Emission): Operator => {
+export const createOperator = (name: string, handleFn: (emission: Emission) => Emission): Operator => {
   return {
     name,
     handle: handleFn,

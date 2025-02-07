@@ -1,4 +1,4 @@
-import { flags, from } from '../lib';
+import { from } from '../lib';
 
 describe('from function', () => {
   it('should emit values in sequence and complete', async () => {
@@ -6,11 +6,11 @@ describe('from function', () => {
     const stream = from(values);
 
     let emittedValues: any[] = [];
-    const subscription = stream({
+    const subscription = stream.subscribe({
       next: (value) => emittedValues.push(value),
       complete:() => {
         expect(emittedValues).toEqual(values);
-        expect(stream[flags].isAutoComplete).toBe(true);
+        expect(stream.completed()).toBe(true);
 
         subscription.unsubscribe();
       }

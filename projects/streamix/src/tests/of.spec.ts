@@ -6,8 +6,8 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream({
-      next: (value) => emittedValues.push(value),
+    const subscription = ofStream.subscribe({
+      next: (value: any) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([value]);
         subscription.unsubscribe();
@@ -20,7 +20,7 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     let isComplete = false;
-    ofStream({
+    ofStream.subscribe({
       next: () => isComplete = true,
       complete: () => {
         expect(isComplete).toBe(true);
@@ -34,26 +34,11 @@ describe('OfStream', () => {
     const ofStream = of(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream((value) => {
+    const subscription = ofStream.subscribe((value: any) => {
       emittedValues.push(value);
     });
 
     subscription.unsubscribe();
-
-    expect(emittedValues).toEqual([]);
-  });
-
-  it('should not emit value if cancelled before run', async () => {
-    const value = 'test_value';
-    const ofStream = of(value);
-
-    const emittedValues: any[] = [];
-
-    ofStream.complete();
-
-    ofStream((value) => {
-      emittedValues.push(value);
-    });
 
     expect(emittedValues).toEqual([]);
   });

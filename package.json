@@ -1,13 +1,13 @@
 {
   "name": "streamix",
-  "version": "0.2.2",
+  "version": "1.0.2",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "jest --verbose",
-    "test:coverage": "jest --coverage --watchAll=false",
+    "test:coverage": "jest --coverage --watchAll=false --selectProjects streamix",
     "test:watch": "jest --watch",
     "minify": "node terser.mjs",
     "bundle": "dts-bundle-generator --o ./dist/streamix/@actioncrew/streamix.d.ts ./dist/streamix/index.d.ts && npm run minify",

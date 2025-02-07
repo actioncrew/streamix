@@ -1,51 +1,45 @@
-import { createSubject } from '../../lib';
 import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createSubject } from '../streams';
 
-export const delay = (ms: number): StreamOperator => {
-  const operator = (input: Stream) => {
-    const output = createSubject<any>(); // Create a subject for the delayed stream
-    let pendingPromises: Promise<void>[] = []; // Array to store pending promises
-    let isCompleteCalled = false; // Flag to handle the first complete call
+export function delay<T>(ms: number): StreamOperator {
+  return createStreamOperator('delay', (input: Stream<T>): Stream<T> => {
+    const output = createSubject<T>();
+    let pending = 0;
+    let isCompleted = false;
+    let lastEmissionPromise: Promise<void> = Promise.resolve();
 
-    // Subscribe to the original stream
-    const subscription = input({
+    const subscription = input.subscribe({
       next: (value) => {
-        const promise = new Promise<void>((resolve) => {
-          const timerId = setTimeout(() => {
-            output.next(value); // Emit to the delayed stream after delay
-            resolve(); // Resolve the promise when timeout completes
-          }, ms);
-
-          // Track the timeout for cleanup
-          output.emitter.once('finalize', () => {
-            clearTimeout(timerId);
-          });
-        });
-
-        pendingPromises.push(promise); // Add promise to the pending array
+        pending++;
+        lastEmissionPromise = lastEmissionPromise.then(
+          () =>
+            new Promise<void>((resolve) => {
+              setTimeout(() => {
+                output.next(value);
+                pending--;
+                // If it's completed and there are no pending emissions, complete the stream
+                if (isCompleted && pending === 0) {
+                  output.complete();
+                  subscription.unsubscribe();
+                }
+                resolve();
+              }, ms);
+            }),
+        );
       },
+      error: (err) => output.error(err),
       complete: () => {
-        subscription.unsubscribe(); // Unsubscribe from the source stream
-
-        if (!isCompleteCalled) {
-          isCompleteCalled = true;
-
-          // Complete immediately if no pending promises
-          if (pendingPromises.length === 0) {
+        isCompleted = true;
+        // Check if there are no pending emissions; if so, complete immediately
+        lastEmissionPromise.then(() => {
+          if (pending === 0) {
             output.complete();
-          } else {
-            // Wait for all pending promises to resolve before completing
-            Promise.all(pendingPromises).then(() => {
-              output.complete(); // Complete after all promises resolve
-            });
+            subscription.unsubscribe();
           }
-        }
+        });
       },
     });
 
-    // Return the delayed stream
     return output;
-  };
-
-  return createStreamOperator('delay', operator);
-};
+  });
+}

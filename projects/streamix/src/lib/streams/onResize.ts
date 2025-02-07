@@ -1,49 +1,50 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
+import { createSemaphore } from '../utils';
 
 /**
- * Creates a Stream using `ResizeObserver` for observing element resizing.
- * Uses eventBus for emissions.
+ * Creates a Stream using `ResizeObserver` to observe element size changes.
  *
  * @param element - The DOM element to observe for resizing.
- * @returns A reactive Stream that emits resize events with element size information.
- *
- * @example
- * // Example usage:
- * import { onResize } from './your-path';
- *
- * const elementToObserve = document.getElementById('resizeMe');
- * const resizeStream = onResize(elementToObserve);
- *
- * const subscription = resizeStream({
- *   next: (resizeEntry) => {
- *     console.log('Resize observed:', resizeEntry);
- *   },
- * });
+ * @returns A Stream emitting `{ width, height }` when the element resizes.
  */
 export function onResize(
   element: Element
 ): Stream<{ width: number; height: number }> {
-  const stream = createStream<{ width: number; height: number }>('onResize', async function (this: Stream<{ width: number; height: number }>) {
-    let resizeObserver: ResizeObserver;
+  return createStream<{ width: number; height: number }>('onResize', async function* (this: Stream<{ width: number; height: number }>) {
+    const itemAvailable = createSemaphore(0); // Semaphore to signal when a resize event is ready to be processed
+    const spaceAvailable = createSemaphore(1); // Semaphore to manage concurrent resize event handling
+
+    let buffer: { width: number; height: number } | undefined; // Store the resize values
+    let eventsCaptured = 0;
+    let eventsProcessed = 0;
 
     const callback = (entries: ResizeObserverEntry[]) => {
       const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
-      const emission = createEmission({ value: { width, height } });
-      this.next(emission);
+      if (!this.completed()) {
+        eventsCaptured++; // Increment when new resize events are captured
+      }
+      spaceAvailable.acquire().then(() => {
+        buffer = { width, height }; // Store the resize dimensions in the buffer
+        itemAvailable.release(); // Signal that a resize event is available
+      });
     };
 
-    // Initialize ResizeObserver
-    resizeObserver = new ResizeObserver(callback);
-
-    // Start observing the provided DOM element
+    const resizeObserver = new ResizeObserver(callback);
     resizeObserver.observe(element);
 
-    await stream[internals].awaitCompletion();
+    try {
+      while (!this.completed() || eventsCaptured > eventsProcessed) {
+        await itemAvailable.acquire(); // Wait until a resize event is available
 
-    resizeObserver.unobserve(element);
-    resizeObserver.disconnect();
+        if (eventsCaptured > eventsProcessed) {
+          yield createEmission({ value: buffer! }); // Emit the buffered resize event
+          eventsProcessed++; // Mark the event as processed
+          spaceAvailable.release(); // Allow space for new resize events
+        }
+      }
+    } finally {
+      resizeObserver.unobserve(element); // Cleanup
+      resizeObserver.disconnect();
+    }
   });
-
-  stream.name = 'onResize';
-  return stream;
 }

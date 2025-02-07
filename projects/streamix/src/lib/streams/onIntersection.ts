@@ -1,53 +1,69 @@
-import { createEmission, createStream, internals, Stream } from '../abstractions';
+import { createEmission, createStream, Stream } from '../abstractions';
 
 /**
- * Creates a Stream using `IntersectionObserver` for observing element visibility changes.
- * Uses eventBus for emissions.
+ * Creates a Stream using `IntersectionObserver` to detect element visibility.
  *
- * @param element - The DOM element to observe for visibility changes.
- * @param options - Options to configure `IntersectionObserver`.
- * @returns A reactive Stream that emits boolean values for visibility changes.
- *
- * @example
- * // Example usage:
- * import { onIntersection } from './your-path';
- *
- * const elementToObserve = document.getElementById('observeMe');
- * const intersectionStream = onIntersection(elementToObserve, {
- *   threshold: 0.5,
- * });
- *
- * const subscription = intersectionStream({
- *   next: (isVisible) => {
- *     console.log('Element visibility status:', isVisible);
- *   },
- * });
+ * @param element - The DOM element to observe.
+ * @param options - Optional configuration for `IntersectionObserver`.
+ * @returns A Stream emitting `true` when visible and `false` when not.
  */
+
+// Semaphore for event synchronization
+class Semaphore {
+  private value = 0;
+  private queue: (() => void)[] = [];
+
+  async acquire(): Promise<void> {
+    if (this.value > 0) {
+      this.value--;
+      return;
+    }
+    return new Promise((resolve) => this.queue.push(resolve));
+  }
+
+  release(): void {
+    if (this.queue.length > 0) {
+      const resolve = this.queue.shift()!;
+      resolve();
+    } else {
+      this.value++;
+    }
+  }
+}
+
 export function onIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  const stream = createStream<boolean>('onIntersection', async function (this: Stream<boolean>) {
-    let observer: IntersectionObserver;
+  return createStream<boolean>('onIntersection', async function* (this: Stream<boolean>) {
+    const itemAvailable = new Semaphore();
+    let buffer: boolean | undefined;
+    let eventsCaptured = 0;
+    let eventsProcessed = 0;
 
-    // Define the callback for IntersectionObserver
     const callback = (entries: IntersectionObserverEntry[]) => {
-      const isVisible = entries[0]?.isIntersecting ?? false; // Extract visibility status
-      const emission = createEmission({ value: isVisible });
-      this.next(emission);
+      if (!this.completed()) {
+        eventsCaptured++;
+      }
+      buffer = entries[0]?.isIntersecting ?? false;
+      itemAvailable.release(); // Notify that a new event is available
     };
 
-    // Initialize the IntersectionObserver
-    observer = new IntersectionObserver(callback, options);
-
-    // Start observing the provided DOM element
+    const observer = new IntersectionObserver(callback, options);
     observer.observe(element);
 
-    await this[internals].awaitCompletion();
+    try {
+      while (!(this.completed() && eventsCaptured === eventsProcessed)) {
+        await itemAvailable.acquire(); // Wait for an event to be available
 
-    observer.unobserve(element);
-    observer.disconnect();
+        if (buffer !== undefined) {
+          yield createEmission({ value: buffer });
+          eventsProcessed++;
+        }
+      }
+    } finally {
+      observer.unobserve(element);
+      observer.disconnect();
+    }
   });
-
-  return stream;
 }

@@ -1,53 +1,38 @@
-import { createEmission, createStream, internals, Stream, Subscription } from '../abstractions';
-import { counter, Counter } from '../utils';
+import { Stream } from "../abstractions";
+import { createSubject } from "./subject";
 
-export function zip(sources: Stream[]): Stream<any[]> {
-  const queues = sources.map(() => [] as any[]); // Queues for values from each source
-  const subscriptions: Subscription[] = []; // Track subscriptions for cleanup
-  let activeSources = sources.length; // Number of active source streams
-  let emittedValues: Counter = counter(0);
+// Combine multiple streams by emitting values when all streams emit
+export function zip(streams: Stream<any>[]): Stream<any[]> {
+  const subject = createSubject<any[]>();  // Create a Subject to handle emissions
 
-  const stream = createStream<any[]>('zip', async function (this: Stream<any[]>): Promise<void> {
-    sources.forEach((source, index) => {
-      const subscription = source({
-        next: (value) => {
-          if (stream[internals].shouldComplete()) return;
+  const latestValues: any[] = Array(streams.length).fill(undefined);
+  const hasEmitted = Array(streams.length).fill(false);
+  let completedStreams = 0;
 
-          queues[index].push(value); // Add value to the appropriate queue
+  // Wrap the streams with subscription logic
+  streams.forEach((stream, index) => {
+    stream.subscribe({
+      next: (value) => {
+        latestValues[index] = value;
+        hasEmitted[index] = true;
 
-          // Emit combined values when all queues have at least one value
-          if (queues.every((queue) => queue.length > 0)) {
-            const combined = queues.map((queue) => queue.shift()!); // Extract one value from each queue
-             // Increment the emission count
-            stream.next(createEmission({ value: combined }));
-            emittedValues.increment();
-          }
-        },
-        complete: () => {
-          activeSources--;
-          if (activeSources === 0) {
-            stream.complete(); // Complete the stream only when all emissions are emitted
-          }
-        },
-        error: (err) => {
-          // Emit an error if any source stream fails
-          stream.error(err);
-        },
-      });
-
-      subscriptions.push(subscription); // Store subscriptions for cleanup
+        // Emit the combined value when all streams have emitted
+        if (hasEmitted.every(Boolean)) {
+          subject.next([...latestValues as any[]]);  // Emit the tuple of latest values
+          latestValues.fill(undefined);  // Reset the values for the next emission
+          hasEmitted.fill(false);  // Reset the emit flags
+        }
+      },
+      complete: () => {
+        completedStreams++;
+        if (completedStreams === streams.length) {
+          // Complete the subject when all streams have completed
+          subject.complete();
+        }
+      },
+      error: (err) => subject.error(err),  // Pass errors to the subject
     });
-
-    await this[internals].awaitCompletion();
-    await emittedValues.waitFor(Math.min(...sources.map(source => source.emissionCounter)));
   });
 
-  // Cleanup subscriptions when the `zip` stream terminates
-  const originalComplete = stream.complete.bind(stream);
-  stream.complete = async function (): Promise<void> {
-    subscriptions.forEach((subscription) => subscription.unsubscribe());
-    return originalComplete();
-  };
-
-  return stream;
+  return subject;  // Return the subject that acts as a combined stream
 }

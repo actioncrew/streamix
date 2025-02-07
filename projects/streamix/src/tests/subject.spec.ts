@@ -5,7 +5,7 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription: Subscription = subject({
+    const subscription: Subscription = subject.subscribe({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['value1', 'value2']);
@@ -23,7 +23,7 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription = subject({
+    const subscription = subject.subscribe({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['value1']);
@@ -41,7 +41,7 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     const emittedValues: any[] = [];
-    const subscription = subject({
+    const subscription = subject.subscribe({
       next: value => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(['value1']);
@@ -59,7 +59,7 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     let counter = 0;
-    const subscription = subject({
+    const subscription = subject.subscribe({
       next: value => expect(value === counter++).toBeTruthy(),
       complete: () => {
         subscription.unsubscribe();
@@ -78,13 +78,13 @@ describe('Subject', () => {
     const subject = createSubject<any>();
 
     let counter = 0;
-    const subscription: Subscription = subject({
+    const subscription: Subscription = subject.subscribe({
       next: value => expect(value === counter++).toBeTruthy(),
       complete: () => subscription.unsubscribe()
     })
 
     for (let i = 0; i < 1000; i++) {
-      await subject.next(i);
+      subject.next(i);
     }
 
     await subject.complete();

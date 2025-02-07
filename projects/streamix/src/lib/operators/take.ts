@@ -1,21 +1,33 @@
-import { createOperator, Emission, flags, Operator, Stream } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createSubject } from "../streams/subject";
 
-export const take = (count: number): Operator => {
-  let emittedCount = 0;
+export function take<T>(count: number): StreamOperator {
+  return createStreamOperator("take", (input: Stream<T>): Stream<T> => {
+    const output = createSubject<T>();
+    let emittedCount = 0;
+    let isCompleted = false;
 
-  const handle = (emission: Emission, stream: Stream): Emission => {
-    if (emittedCount < count) {
-      emittedCount++;
+    const subscription = input.subscribe({
+      next: (value) => {
+        if (!isCompleted && emittedCount < count) {
+          emittedCount++;
+          output.next(value);
+          if (emittedCount === count) {
+            isCompleted = true;
+            output.complete();
+            subscription.unsubscribe();
+          }
+        }
+      },
+      error: (err) => output.error(err),
+      complete: () => {
+        if (!isCompleted) {
+          output.complete();
+        }
+        subscription.unsubscribe();
+      },
+    });
 
-      if(emittedCount === count) {
-        stream[flags].isAutoComplete = true;
-      }
-      return emission;
-    } else {
-      emission.phantom = true; // Mark as phantom if beyond count
-      return emission;
-    }
-  };
-
-  return createOperator('take', handle);
-};
+    return output;
+  });
+}

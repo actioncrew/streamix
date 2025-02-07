@@ -1,37 +1,41 @@
 import { Stream } from "../abstractions";
 
 export async function* eachValueFrom<T>(stream: Stream<T>): AsyncGenerator<T> {
-  let isCompleted = false;
+  let resolveNext: ((value: T) => void) | null = null;
+  let rejectNext: ((err: any) => void) | null = null;
+  let completed = false;
 
-  // Create an observable iterator
-  const promiseQueue: Promise<T>[] = [];
-
-  const subscription = stream({
-    next: (value: T) => {
-      // Add each emitted value to the queue
-      promiseQueue.push(Promise.resolve(value));
+  const subscription = stream.subscribe({
+    next: (value) => {
+      if (resolveNext) {
+        resolveNext(value); // Resolve the promise with the next value
+      }
+    },
+    error: (err) => {
+      if (rejectNext) {
+        rejectNext(err); // Reject the promise if an error occurs
+      }
     },
     complete: () => {
-      // Once complete, mark the stream as completed
-      isCompleted = true;
+      completed = true; // Mark the stream as complete
+      if (resolveNext) {
+        resolveNext(undefined as any); // Resolve the promise to exit the loop
+      }
     },
-    error: (err: any) => {
-      // Handle errors if needed
-      throw err;
-    }
   });
 
   try {
-    // Continuously yield values as they are emitted
-    while (!isCompleted || promiseQueue.length > 0) {
-      // Await the next value from the queue
-      const value = await promiseQueue.shift();
-      if (value !== undefined) {
-        yield value;
-      }
+    while (!completed) {
+      // Create a new promise to wait for the next value
+      yield await new Promise<T>((resolve, reject) => {
+        resolveNext = resolve;
+        rejectNext = reject;
+      });
     }
+  } catch (err) {
+    // Propagate any errors from the stream
+    throw err;
   } finally {
-    // Ensure subscription cleanup when generator completes
-    subscription.unsubscribe();
+    subscription.unsubscribe(); // Clean up the subscription when done
   }
 }
