@@ -20,8 +20,6 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
   // Worker initialization
   const initWorkers = () => {
-    const asyncPresent = functions.some((fn) => Object.prototype.toString.call(fn) === '[object AsyncFunction]');
-    
     const mainTask = functions[0];
     const dependencies = functions.slice(1);
 
@@ -33,7 +31,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
     const mainTaskBody = mainTask.toString().replace(/function[\s]*\(/, `function ${mainTask.name}(`);
 
-    const workerBody = `${asyncPresent ? `__async(thisArg, _arguments, generatorFunc) {
+    const workerBody = `__async(thisArg, _arguments, generatorFunc) {
         return new Promise((resolve, reject) => {
           const generator = generatorFunc.apply(thisArg, _arguments || []);
 
@@ -57,7 +55,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
           step(() => generator.next());
         });
-      };` : ''}
+      };
 
       ${injectedDependencies}
       const mainTask = ${mainTaskBody};
