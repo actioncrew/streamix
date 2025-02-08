@@ -57,7 +57,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
           step(() => generator.next());
         });
-      };` : ``}
+      };` : ''}
 
       ${injectedDependencies}
       const mainTask = ${mainTaskBody};
