@@ -20,7 +20,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
   // Worker initialization
   const initWorkers = () => {
-    const asyncPresent = functions.some((fn) => fn.constructor.name === "AsyncFunction");
+    const asyncPresent = functions.some((fn) => Object.prototype.toString.call(fn) === '[object AsyncFunction]');
     
     const mainTask = functions[0];
     const dependencies = functions.slice(1);
