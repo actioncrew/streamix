@@ -2,7 +2,7 @@ import { compute, concatMap, coroutine, debounce, finalize, map, mergeMap, onRes
 import { Component, OnInit } from '@angular/core';
 
 // Main Mandelbrot computation function
-function computeMandelbrot(data: { px: number, py: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
+async function computeMandelbrot(data: { px: number, py: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
   const { px, py, maxIterations, zoom, centerX, centerY, panX, panY } = data;
   let x = 0, y = 0;
   const x0 = (px - centerX) / zoom - panX;
@@ -11,7 +11,7 @@ function computeMandelbrot(data: { px: number, py: number, maxIterations: number
     const x2 = x * x, y2 = y * y;
     if (x2 + y2 > 4) {
       // Calculate color based on iteration count
-      const { r, g, b } = computeColor(i, maxIterations);
+      const { r, g, b } = await computeColor(i, maxIterations);
       return {px, py, r, g, b};
     }
     y = 2 * x * y + y0;
@@ -22,7 +22,7 @@ function computeMandelbrot(data: { px: number, py: number, maxIterations: number
 }
 
 // Compute color function
-function computeColor(iteration: number, maxIterations: number): { r: number, g: number, b: number } {
+async function computeColor(iteration: number, maxIterations: number): Promise<{ r: number, g: number, b: number }> {
   if (iteration === maxIterations) return { r: 0, g: 0, b: 0 }; // Black for points in the set
 
   const hue = (iteration / 50) % 1;
@@ -48,7 +48,7 @@ function computeColor(iteration: number, maxIterations: number): { r: number, g:
   return { r: Math.round(r! * 255), g: Math.round(g! * 255), b: Math.round(b! * 255) };
 }
 
-function computeMandelbrotInChunks(data: { index: number, width: number, height: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
+async function computeMandelbrotInChunks(data: { index: number, width: number, height: number, maxIterations: number, zoom: number, centerX: number, centerY: number, panX: number, panY: number }) {
   const { index, width, height, maxIterations, zoom, centerX, centerY, panX, panY } = data;
   const chunkSize = 1000;
   const result: { px: number, py: number, r: number, g: number, b: number }[] = [];
@@ -68,7 +68,7 @@ function computeMandelbrotInChunks(data: { index: number, width: number, height:
 
     const px = (chunkData.index % width);
     const py = Math.floor(chunkData.index / width);
-    result.push(computeMandelbrot({
+    result.push(await computeMandelbrot({
       px,
       py,
       maxIterations,
