@@ -57,7 +57,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
       });
     };` : ''}
 
-    ${injectedDependencies}
+    ${injectedDependencies};
     const mainTask = ${mainTaskBody};
     onmessage = async (event) => {
       try {
