@@ -20,8 +20,8 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
   // Worker initialization
   const initWorkers = () => {
-    const mainTask = functions[0];
-    const dependencies = functions.slice(1);
+    const asyncPresent = functions.some(fn => fn.toString().includes("__async"));
+    const [mainTask, ...dependencies] = functions;
 
     const injectedDependencies = dependencies.map(fn => {
       let fnBody = fn.toString();
@@ -31,43 +31,43 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
     const mainTaskBody = mainTask.toString().replace(/function[\s]*\(/, `function ${mainTask.name}(`);
 
-    const workerBody = `__async(thisArg, _arguments, generatorFunc) {
-        return new Promise((resolve, reject) => {
-          const generator = generatorFunc.apply(thisArg, _arguments || []);
+    const workerBody = `${asyncPresent ? `function __async(thisArg, _arguments, generatorFunc) {
+      return new Promise((resolve, reject) => {
+        const generator = generatorFunc.apply(thisArg, _arguments || []);
 
-          function step(nextFunc) {
-            let result;
-            try {
-              result = nextFunc();
-            } catch (error) {
-              reject(error);
-              return;
-            }
-            if (result.done) {
-              resolve(result.value);
-            } else {
-              Promise.resolve(result.value).then(
-                (value) => step(() => generator.next(value)),
-                (error) => step(() => generator.throw(error))
-              );
-            }
+        function step(nextFunc) {
+          let result;
+          try {
+            result = nextFunc();
+          } catch (error) {
+            reject(error);
+            return;
           }
-
-          step(() => generator.next());
-        });
-      };
-
-      ${injectedDependencies}
-      const mainTask = ${mainTaskBody};
-      onmessage = async (event) => {
-        try {
-          const result = await mainTask(event.data);
-          postMessage(result);
-        } catch (error) {
-          postMessage({ error: error.message });
+          if (result.done) {
+            resolve(result.value);
+          } else {
+            Promise.resolve(result.value).then(
+              (value) => step(() => generator.next(value)),
+              (error) => step(() => generator.throw(error))
+            );
+          }
         }
-      };
-    `;
+
+        step(() => generator.next());
+      });
+    };` : ''}
+
+    ${injectedDependencies}
+    const mainTask = ${mainTaskBody};
+    onmessage = async (event) => {
+      try {
+        const result = await mainTask(event.data);
+        postMessage(result);
+      } catch (error) {
+        postMessage({ error: error.message });
+      }
+    };
+  `;
 
     const blob = new Blob([workerBody], { type: 'application/javascript' });
     const workerUrl = URL.createObjectURL(blob);
