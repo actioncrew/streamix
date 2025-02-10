@@ -1,4 +1,5 @@
 import { createEmission, createReceiver, createSubscription, Emission, Operator, pipeStream, Receiver, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createSemaphore } from "../utils";
 
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
@@ -70,34 +71,26 @@ export function createSubject<T = any>(): Subject<T> {
 
   // Implement AsyncIterator
   const asyncIterator = async function* (): AsyncGenerator<Emission<T>, void, unknown> {
-    let resolveNext: ((value: IteratorResult<Emission<T>>) => void) | null = null;
-    let rejectNext: ((reason?: any) => void) | null = null;
-    let queue: T[] = [];
+    let currentValue: T | undefined;
     let isDone = false;
+    const itemAvailable = createSemaphore(0);
+    const spaceAvailable = createSemaphore(1);
 
     const handleNext = (value: T) => {
-      queue.push(value);
-      if (resolveNext) {
-        const emission = createEmission({ value: queue.shift()! });
-        resolveNext({ value: emission, done: false });
-        resolveNext = null;
-      }
+      void spaceAvailable.acquire().then(() => {
+        currentValue = value;
+        itemAvailable.release();
+      });
     };
 
     const handleComplete = () => {
       isDone = true;
-      if (resolveNext) {
-        resolveNext({ value: createEmission({ value: undefined }), done: true });
-        resolveNext = null;
-      }
+      itemAvailable.release();
     };
 
-    const handleError = (err: Error) => {
+    const handleError = () => {
       isDone = true;
-      if (rejectNext) {
-        rejectNext(err);
-        rejectNext = null;
-      }
+      itemAvailable.release();
     };
 
     const subscription = subscribe({
@@ -108,15 +101,16 @@ export function createSubject<T = any>(): Subject<T> {
 
     try {
       while (!isDone) {
-        if (queue.length > 0) {
-          yield createEmission({ value: queue.shift()! });
-        } else {
-          const result = await new Promise<IteratorResult<Emission<T>>>((resolve, reject) => {
-            resolveNext = resolve;
-            rejectNext = reject;
-          });
-          if (result.done) break;
-          yield result.value;
+        await itemAvailable.acquire();
+
+        if (isDone) {
+          break;
+        }
+
+        if (currentValue !== undefined) {
+          yield createEmission({ value: currentValue });
+          currentValue = undefined;
+          spaceAvailable.release();
         }
       }
     } finally {
