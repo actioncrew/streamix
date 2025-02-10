@@ -83,4 +83,21 @@ describe('DefaultIfEmptyOperator', () => {
 
     stream.complete();
   });
+
+  test('should propagate errors from the stream', (done) => {
+    const stream = createSubject<string>();
+    const defaultValue = 'Default Value';
+    const processedStream = stream.pipe(defaultIfEmpty(defaultValue));
+    const emittedValues: any[] = [];
+
+    processedStream.subscribe({
+      next: (value) => emittedValues.push(value),
+      error: (err) => {
+        expect(err).toEqual(new Error('Test Error')); // Check if the error was propagated
+        done();
+      }
+    });
+
+    stream.error(new Error('Test Error')); // Emit an error
+  });
 });
