@@ -73,23 +73,19 @@ export function createSubject<T = any>(): Subject<T> {
     let resolveNext: ((value: IteratorResult<Emission<T>>) => void) | null = null;
     let rejectNext: ((reason?: any) => void) | null = null;
     let queue: T[] = [];
-    let completedHandled = false;  // Flag to ensure we handle the completion
+    let completedHandled = false;
 
     const handleNext = (value: T) => {
       queue.push(value);
       if (resolveNext) {
         const emission = createEmission({ value: queue.shift()! });
-        resolveNext({ value: emission, done: false });
+        resolveNext({ value: emission, done: false }); // Type assertion here
         resolveNext = null;
       }
     };
 
     const handleComplete = () => {
-      completedHandled = true;  // Mark that the complete handler was triggered
-      if (resolveNext && queue.length === 0) {
-        resolveNext({ value: createEmission({ value: undefined }), done: true });
-        resolveNext = null;
-      }
+      completedHandled = true;
     };
 
     const handleError = (err: Error) => {
@@ -106,10 +102,8 @@ export function createSubject<T = any>(): Subject<T> {
     });
 
     try {
-      // Continue until both the queue is empty and the stream has completed (i.e., handleComplete has been triggered)
       while (!completedHandled || queue.length > 0) {
         if (queue.length > 0) {
-          // Emit the next value from the queue
           yield createEmission({ value: queue.shift()! });
         } else {
           // Wait for a new value to be added to the queue
