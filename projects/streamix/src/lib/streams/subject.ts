@@ -1,5 +1,4 @@
 import { createEmission, createReceiver, createSubscription, Emission, Operator, pipeStream, Receiver, Stream, StreamOperator, Subscription } from "../abstractions";
-import { createSemaphore } from "../utils";
 
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
@@ -10,7 +9,7 @@ export type Subject<T = any> = Stream<T> & {
 // Subject Stream Implementation
 export function createSubject<T = any>(): Subject<T> {
   let subscribers: Receiver<T>[] = [];
-  let latestValue: T | undefined;
+  let currentValue: T | undefined;
   let completed = false; // Flag to indicate if the stream is completed
   let hasError = false; // Flag to indicate if an error has occurred
   let errorValue: any = null; // Store the error value
@@ -18,7 +17,7 @@ export function createSubject<T = any>(): Subject<T> {
   // Emit a new value to all subscribers
   const next = (value: T) => {
     if (completed || hasError) return; // Prevent emitting if the stream is completed or in error state
-    latestValue = value;
+    currentValue = value;
     subscribers.forEach((subscriber) => subscriber.next?.(value));
     subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed);
   };
@@ -44,8 +43,8 @@ export function createSubject<T = any>(): Subject<T> {
     const receiver = createReceiver(callbackOrReceiver);
     subscribers.push(receiver);
 
-    if (latestValue !== undefined && !hasError) {
-      receiver.next?.(latestValue); // Emit the current value to new subscriber immediately
+    if (currentValue !== undefined && !hasError) {
+      receiver.next?.(currentValue); // Emit the current value to new subscriber immediately
     }
 
     if (hasError) {
@@ -56,7 +55,7 @@ export function createSubject<T = any>(): Subject<T> {
       subscribers.forEach((subscriber) => subscriber.complete?.()); // If completed, notify the subscriber
     }
 
-    return createSubscription(() => latestValue, () => {
+    return createSubscription(() => currentValue, () => {
       if (!receiver.unsubscribed) {
         receiver.unsubscribed = true;
         if (!completed) {
@@ -71,26 +70,33 @@ export function createSubject<T = any>(): Subject<T> {
 
   // Implement AsyncIterator
   const asyncIterator = async function* (): AsyncGenerator<Emission<T>, void, unknown> {
-    let currentValue: T | undefined;
-    let isDone = false;
-    const itemAvailable = createSemaphore(0);
-    const spaceAvailable = createSemaphore(1);
+    let resolveNext: ((value: IteratorResult<Emission<T>>) => void) | null = null;
+    let rejectNext: ((reason?: any) => void) | null = null;
+    let queue: T[] = [];
+    let completedHandled = false;  // Flag to ensure we handle the completion
 
     const handleNext = (value: T) => {
-      void spaceAvailable.acquire().then(() => {
-        currentValue = value;
-        itemAvailable.release();
-      });
+      queue.push(value);
+      if (resolveNext) {
+        const emission = createEmission({ value: queue.shift()! });
+        resolveNext({ value: emission, done: false });
+        resolveNext = null;
+      }
     };
 
     const handleComplete = () => {
-      isDone = true;
-      itemAvailable.release();
+      completedHandled = true;  // Mark that the complete handler was triggered
+      if (resolveNext && queue.length === 0) {
+        resolveNext({ value: createEmission({ value: undefined }), done: true });
+        resolveNext = null;
+      }
     };
 
-    const handleError = () => {
-      isDone = true;
-      itemAvailable.release();
+    const handleError = (err: Error) => {
+      if (rejectNext) {
+        rejectNext(err);
+        rejectNext = null;
+      }
     };
 
     const subscription = subscribe({
@@ -100,17 +106,19 @@ export function createSubject<T = any>(): Subject<T> {
     });
 
     try {
-      while (!isDone) {
-        await itemAvailable.acquire();
-
-        if (isDone) {
-          break;
-        }
-
-        if (currentValue !== undefined) {
-          yield createEmission({ value: currentValue });
-          currentValue = undefined;
-          spaceAvailable.release();
+      // Continue until both the queue is empty and the stream has completed (i.e., handleComplete has been triggered)
+      while (!completedHandled || queue.length > 0) {
+        if (queue.length > 0) {
+          // Emit the next value from the queue
+          yield createEmission({ value: queue.shift()! });
+        } else {
+          // Wait for a new value to be added to the queue
+          const result = await new Promise<IteratorResult<Emission<T>>>((resolve, reject) => {
+            resolveNext = resolve;
+            rejectNext = reject;
+          });
+          if (result.done) break;  // Exit when completed
+          yield result.value;
         }
       }
     } finally {
@@ -122,14 +130,14 @@ export function createSubject<T = any>(): Subject<T> {
     type: "subject",
     name: "subject",
     emissionCounter: 0,
+    [Symbol.asyncIterator]: asyncIterator,
     subscribe,
     pipe: (...steps: (Operator | StreamOperator)[]) => pipeStream(stream, ...steps),
-    value: () => latestValue,
-    next, // Add next method
-    complete, // Add complete
+    value: () => currentValue,
+    next,
+    complete,
     completed: () => completed,
-    error, // Add error method
-    [Symbol.asyncIterator]: asyncIterator, // Implement AsyncIterable protocol
+    error,
   };
 
   return stream;
