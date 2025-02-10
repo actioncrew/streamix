@@ -7,26 +7,29 @@ export function take<T>(count: number): StreamOperator {
     let emittedCount = 0;
     let isCompleted = false;
 
-    const subscription = input.subscribe({
-      next: (value) => {
-        if (!isCompleted && emittedCount < count) {
-          emittedCount++;
-          output.next(value);
-          if (emittedCount === count) {
-            isCompleted = true;
-            output.complete();
-            subscription.unsubscribe();
+    // Async function to iterate through the input stream and take `count` values
+    (async () => {
+      try {
+        for await (const emission of input) {
+          if (emittedCount < count) {
+            emittedCount++;
+            output.next(emission.value!);
+            if (emittedCount === count) {
+              isCompleted = true;
+              output.complete();
+              break; // Stop processing once we've emitted the required number of values
+            }
           }
         }
-      },
-      error: (err) => output.error(err),
-      complete: () => {
+      } catch (err) {
+        output.error(err); // Propagate errors from the input stream
+      } finally {
+        // Ensure completion if it wasn't done earlier
         if (!isCompleted) {
           output.complete();
         }
-        subscription.unsubscribe();
-      },
-    });
+      }
+    })();
 
     return output;
   });

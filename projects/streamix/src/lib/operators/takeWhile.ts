@@ -1,24 +1,31 @@
-import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
 import { createSubject } from "../streams";
 
 export function takeWhile<T>(predicate: (value: T) => boolean): StreamOperator {
   const operator = (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
-    let inputSubscription: Subscription | null = null;
 
-    // Subscribe to the input stream
-    inputSubscription = input.subscribe({
-      next: (value) => {
-        if (predicate(value)) {
-          output.next(value); // Emit the value if the predicate is true
-        } else {
-          output.complete(); // Complete the stream if the predicate is false
-          if (inputSubscription) inputSubscription.unsubscribe();
+    (async () => {
+      let isCompleted = false;
+
+      try {
+        for await (const emission of input) {
+          // If predicate returns false, complete the stream
+          if (!predicate(emission.value!)) {
+            output.complete();
+            isCompleted = true;
+            break;
+          }
+          output.next(emission.value!);
         }
-      },
-      error: (err) => output.error(err),
-      complete: () => output.complete(),
-    });
+      } catch (err) {
+        output.error(err);
+      } finally {
+        if (!isCompleted) {
+          output.complete();
+        }
+      }
+    })();
 
     return output;
   };

@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
 export const withLatestFrom = (...streams: Stream<any>[]): StreamOperator => {
@@ -6,35 +6,46 @@ export const withLatestFrom = (...streams: Stream<any>[]): StreamOperator => {
     const output = createSubject<any>();
     const latestValues: any[] = new Array(streams.length).fill(undefined);
     const hasValue: boolean[] = new Array(streams.length).fill(false);
-    let subscriptions: Subscription[] = [];
     let allStreamsHaveEmitted = false;
 
-    // Subscribe to each other stream
-    streams.forEach((stream, index) => {
-      subscriptions.push(
-        stream.subscribe({
-          next: (value) => {
-            latestValues[index] = value;
-            hasValue[index] = true;
-            allStreamsHaveEmitted = hasValue.every((v) => v); // Ensure all have emitted at least once
-          },
-          error: (err) => output.error(err),
-          complete: () => {} // Completion of other streams does not affect the main stream
-        })
-      );
-    });
+    // Async generator to handle each stream
+    const processStreams = async () => {
+      const iterators = streams.map((stream) => stream[Symbol.asyncIterator]());
 
-    // Subscribe to the main stream
-    inputStream.subscribe({
-      next: (mainValue) => {
-        if (allStreamsHaveEmitted) {
-          output.next([mainValue, ...latestValues]);
+      try {
+        // Wait for all streams to emit at least one value
+        while (!allStreamsHaveEmitted) {
+          const nextValues = await Promise.all(iterators.map((iterator) => iterator.next()));
+
+          // Collect the values
+          nextValues.forEach((result, index) => {
+            if (!result.done) {
+              latestValues[index] = result.value.value;
+              hasValue[index] = true;
+            }
+          });
+
+          // Check if all streams have emitted at least once
+          allStreamsHaveEmitted = hasValue.every((v) => v);
         }
-      },
-      error: (err) => output.error(err),
-      complete: () => output.complete()
-    });
 
+        // Process the input stream while collecting the latest values
+        for await (const mainValue of inputStream) {
+          if (allStreamsHaveEmitted) {
+            output.next([mainValue.value, ...latestValues]); // Emit the main value along with the latest values
+          }
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        output.complete();
+      }
+    };
+
+    // Run the stream processing
+    processStreams();
+
+    // Return the output stream
     return output;
   };
 
