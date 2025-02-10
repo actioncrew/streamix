@@ -59,29 +59,12 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
       let emission = createEmission({ value });
       for (let i = 0; i < operators.length; i++) {
         const operator = operators[i];
-        if (operator?.name === "catchError") {
-          continue;
-        }
 
         try {
           emission = operator.handle(emission);
         } catch (error) {
           emission.error = error;
-        }
-
-        if (emission.error) {
-          let foundCatchError = false;
-          for (let j = i + 1; j < operators.length; j++) {
-            if (operators[j]?.name === "catchError") {
-              foundCatchError = true;
-              emission = operators[j].handle(emission);
-              i = j;
-              break;
-            }
-          }
-          if (!foundCatchError) {
-            output.error(emission.error);
-          }
+          output.error(error);
         }
 
         if (emission.error || emission.phantom) {
@@ -157,11 +140,14 @@ export function createStream<T>(
     emissionCounter,
     async *[Symbol.asyncIterator]() {
       try {
-        for await (const emission of generator()) {
+        for await (const value of generator()) {
+          emissionCounter++;
+          const emission = createEmission({ value });
+          currentValue = emission.value;
           yield emission;
         }
       } catch (err) {
-        throw err;
+        console.warn("Stream error:", err);
       } finally {
         completed = true;
       }
