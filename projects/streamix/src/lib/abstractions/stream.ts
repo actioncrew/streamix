@@ -157,10 +157,7 @@ export function createStream<T>(
     emissionCounter,
     async *[Symbol.asyncIterator]() {
       try {
-        for await (const value of generatorFn.call(stream)) {
-          emissionCounter++;
-          const emission = createEmission({ value });
-          currentValue = emission.value;
+        for await (const emission of generator()) {
           yield emission;
         }
       } catch (err) {
