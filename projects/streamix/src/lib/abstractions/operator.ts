@@ -14,11 +14,6 @@ export type Operator = {
   name?: string;
 };
 
-// Assuming OperatorType has a certain structure, we can use type guards
-export function isOperator(obj: any): obj is Operator {
-  return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.run === 'undefined';
-}
-
 export const createOperator = (name: string, handleFn: (emission: Emission) => Emission): Operator => {
   return {
     name,
