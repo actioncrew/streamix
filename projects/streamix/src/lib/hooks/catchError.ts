@@ -6,7 +6,7 @@ export const catchError = (handler: (error: any) => void): StreamOperator => {
   const operator = (inputStream: Stream<any>): Stream<any> => {
     const output = createSubject<any>();
 
-    inputStream.subscribe({
+    const subscription = inputStream.subscribe({
       next: (value) => {
         output.next(value);
       },
@@ -15,9 +15,11 @@ export const catchError = (handler: (error: any) => void): StreamOperator => {
         handler(error);
         // Optionally, you could return a new stream or just complete the stream
         output.complete();
+        subscription.unsubscribe();
       },
       complete: () => {
         output.complete();
+        subscription.unsubscribe();
       }
     });
 
