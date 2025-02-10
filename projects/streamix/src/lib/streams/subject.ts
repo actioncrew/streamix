@@ -79,13 +79,17 @@ export function createSubject<T = any>(): Subject<T> {
       queue.push(value);
       if (resolveNext) {
         const emission = createEmission({ value: queue.shift()! });
-        resolveNext({ value: emission, done: false }); // Type assertion here
+        resolveNext({ value: emission, done: false });  // Type assertion here
         resolveNext = null;
       }
     };
 
     const handleComplete = () => {
       completedHandled = true;
+      if (resolveNext) {
+        // Ensure we resolve with the completed state once everything is finished
+        resolveNext({ value: createEmission({ value: undefined }), done: true });
+      }
     };
 
     const handleError = (err: Error) => {
