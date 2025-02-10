@@ -1,8 +1,4 @@
-import { Emission, Stream } from '.';
-
-export type HookOperator = {
-  callback: (params?: any) => void | Promise<void>;
-}
+import { Emission, Stream } from '../abstractions';
 
 export type StreamOperator = Omit<Operator, "handle"> & {
   (stream: Stream): Stream;
