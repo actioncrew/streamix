@@ -9,6 +9,7 @@ export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
   emissionCounter: number;
+  [Symbol.asyncIterator]: () => AsyncGenerator<Emission<T>, void, unknown>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   pipe: (...steps: (Operator | StreamOperator)[]) => Stream<T>;
   value: () => T | undefined;
@@ -154,6 +155,20 @@ export function createStream<T>(
     type: "stream",
     name,
     emissionCounter,
+    async *[Symbol.asyncIterator]() {
+      try {
+        for await (const value of generatorFn.call(stream)) {
+          emissionCounter++;
+          const emission = createEmission({ value });
+          currentValue = emission.value;
+          yield emission;
+        }
+      } catch (err) {
+        console.warn("Stream error:", err);
+      } finally {
+        completed = true;
+      }
+    },
     subscribe,
     pipe: (...steps: (Operator | StreamOperator)[]) => pipeStream(stream, ...steps),
     value: () => currentValue,

@@ -89,4 +89,64 @@ describe('Subject', () => {
 
     await subject.complete();
   });
+
+  test("should iterate over emitted values and complete", async () => {
+    const subject = createSubject<number>();
+    const receivedValues: number[] = [];
+
+    // Simulate async emissions
+    setTimeout(() => subject.next(1), 10);
+    setTimeout(() => subject.next(2), 20);
+    setTimeout(() => subject.next(3), 30);
+    setTimeout(() => subject.complete(), 40); // Completion after all values are emitted
+
+    // Collect emitted values
+    const iterateSubject = async () => {
+      for await (const emission of subject) {
+        receivedValues.push(emission.value!);
+      }
+    };
+
+    const iterationPromise = iterateSubject();
+
+    // Advance Jest timers to process all setTimeout calls
+    jest.runAllTimers();
+    await iterationPromise;
+
+    // Assertions
+    expect(receivedValues).toEqual([1, 2, 3]);
+  });
+
+  test("should catch errors during iteration", async () => {
+    const subject = createSubject<number>();
+    const receivedValues: number[] = [];
+    let caughtError: any = null;
+
+    // Simulate emissions and an error
+    setTimeout(() => subject.next(1), 10);
+    setTimeout(() => subject.next(2), 20);
+    setTimeout(() => subject.error(new Error("Test Error")), 30);
+
+    // Collect values and handle errors
+    const iterateSubject = async () => {
+      try {
+        for await (const emission of subject) {
+          receivedValues.push(emission.value!);
+        }
+      } catch (error) {
+        caughtError = error;
+      }
+    };
+
+    const iterationPromise = iterateSubject();
+
+    // Advance Jest timers
+    jest.runAllTimers();
+    await iterationPromise;
+
+    // Assertions
+    expect(receivedValues).toEqual([1, 2]);
+    expect(caughtError).toBeInstanceOf(Error);
+    expect(caughtError?.message).toBe("Test Error");
+  });
 });

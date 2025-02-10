@@ -1,4 +1,4 @@
-import { catchError, createSubject, map, Subject } from '../lib';
+import { catchError, createSubject, map, mergeMap, Subject } from '../lib';
 
 describe('CatchErrorOperator Functional Test', () => {
   let subject: Subject;
@@ -35,6 +35,22 @@ describe('CatchErrorOperator Functional Test', () => {
     streamWithCatchError.subscribe({
       next: value => console.log(value),
       complete: () => { expect(handlerMock).not.toHaveBeenCalled(); done(); }
+    });
+
+    subject.next(1);
+    subject.complete();
+  });
+
+  it('should handle errors within stream operators', (done) => {
+    // Create a subject and attach the catchError operator to it
+    subject = createSubject();
+    let error = new Error("Unhandled exception.");
+    const streamWithCatchError = subject
+      .pipe(mergeMap(() => { throw error; }), catchError(handlerMock));
+
+    streamWithCatchError.subscribe({
+      next: value => console.log(value),
+      complete: () => { expect(handlerMock).toHaveBeenCalled(); done(); }
     });
 
     subject.next(1);
