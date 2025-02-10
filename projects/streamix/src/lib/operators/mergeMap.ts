@@ -1,57 +1,55 @@
-import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
-export function mergeMap<T, R>(
-  project: (value: T) => Stream<R>
-): StreamOperator {
+export function mergeMap<T, R>(project: (value: T) => Stream<R>): StreamOperator {
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let isOuterComplete = false;
-    let activeSubscriptions: Subscription[] = [];
+    let activeInnerStreams = 0; // Track active inner streams
 
-    const subscribeToInner = (innerStream: Stream<R>) => {
-      if (innerStream.completed()) {
-        // If the inner stream is already completed, check if we can complete the outer stream
-        if (isOuterComplete && activeSubscriptions.length === 0) {
+    // Async generator to process inner streams concurrently
+    const processInnerStream = async (innerStream: Stream<R>) => {
+      try {
+        for await (const emission of innerStream) {
+          output.next(emission.value!); // Forward value from inner stream
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        activeInnerStreams -= 1;
+        if (isOuterComplete && activeInnerStreams === 0) {
+          output.complete(); // Complete the output stream when all inner streams are processed
+        }
+      }
+    };
+
+    // Iterate over the input stream using async iterator
+    (async () => {
+      try {
+        for await (const emission of input) {
+          const innerStream = project(emission.value!); // Project input to inner stream
+          activeInnerStreams += 1;
+          processInnerStream(innerStream); // Process the inner stream concurrently
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        // If outer stream is complete and there are no active inner streams, complete output stream
+        if (isOuterComplete && activeInnerStreams === 0) {
           output.complete();
         }
-        return;
       }
+    })();
 
-      const innerSub = innerStream.subscribe({
-        next: (value) => output.next(value),
-        error: (err) => {
-          output.error(err);
-          activeSubscriptions = activeSubscriptions.filter(
-            (sub) => sub !== innerSub
-          );
-          checkComplete();
-        },
-        complete: () => {
-          activeSubscriptions = activeSubscriptions.filter(
-            (sub) => sub !== innerSub
-          );
-          checkComplete();
-        },
-      });
-      activeSubscriptions.push(innerSub);
-    };
-
-    const checkComplete = () => {
-      if (isOuterComplete && activeSubscriptions.length === 0) {
-        output.complete();
-      }
-    };
-
+    // Handling the outer stream's completion
     input.subscribe({
-      next: (value) => {
-        const innerStream = project(value);
-        subscribeToInner(innerStream);
-      },
+      next: () => {}, // This is handled by the async iterator already
       error: (err) => output.error(err),
       complete: () => {
         isOuterComplete = true;
-        checkComplete();
+        if (activeInnerStreams === 0) {
+          output.complete(); // Complete the output stream if all inner streams are done
+        }
       },
     });
 

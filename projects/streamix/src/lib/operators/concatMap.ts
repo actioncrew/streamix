@@ -1,31 +1,52 @@
 import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
-import { createSubject } from "../streams";
+import { createSubject } from "../streams/subject";
 
 export function concatMap<T, R>(project: (value: T) => Stream<R>): StreamOperator {
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
+    let isOuterComplete = false;
+    let activeInnerStreams = 0; // Track active inner streams
 
-    // Async function to process the input stream and inner streams sequentially
+    // Async generator to process inner streams sequentially
+    const processInnerStream = async (innerStream: Stream<R>) => {
+      try {
+        for await (const emission of innerStream) {
+          output.next(emission.value!); // Forward value from inner stream
+        }
+      } catch (err) {
+        // Handle error in inner stream without affecting other emissions
+        output.error(err); // Propagate error from the inner stream
+      } finally {
+        activeInnerStreams -= 1;
+        if (isOuterComplete && activeInnerStreams === 0) {
+          output.complete(); // Complete the output stream when all inner streams are processed
+        }
+      }
+    };
+
+    // Iterate over the input stream using async iterator
     (async () => {
       try {
+        let hasValue = false;
         for await (const emission of input) {
+          hasValue = true;
           const innerStream = project(emission.value!); // Project input to inner stream
-
-          try {
-            // Process the inner stream sequentially
-            for await (const innerEmission of innerStream) {
-              output.next(innerEmission.value!); // Forward value from the inner stream
-            }
-          } catch (innerErr) {
-            output.error(innerErr); // Propagate errors from the inner stream
-            return; // Stop processing if an inner stream errors
-          }
+          activeInnerStreams += 1;
+          processInnerStream(innerStream); // Process the inner stream sequentially
         }
 
-        // If the outer stream completes without errors, complete the output stream
-        output.complete();
-      } catch (outerErr) {
-        output.error(outerErr); // Propagate errors from the outer stream
+        // If no values were emitted in the outer stream, complete immediately
+        if (!hasValue && !isOuterComplete) {
+          output.complete();
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        isOuterComplete = true;
+        // If all inner streams are done, complete the output stream
+        if (activeInnerStreams === 0) {
+          output.complete();
+        }
       }
     })();
 

@@ -161,7 +161,7 @@ export function createStream<T>(
           yield emission;
         }
       } catch (err) {
-        console.warn("Stream error:", err);
+        throw err;
       } finally {
         completed = true;
       }
