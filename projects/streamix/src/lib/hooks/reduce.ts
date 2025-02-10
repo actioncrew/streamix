@@ -2,27 +2,36 @@ import { createSubject } from '..';
 import { createEmission, createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): StreamOperator => {
-  let accumulatedValue = seed;
-  let output = createSubject();
+  const operator = (input: Stream): Stream => {
+    const output = createSubject();
+    let accumulatedValue = seed;
 
-  const operator = (stream: Stream): Stream => {
-    // Subscribe to the inputStream to start processing emissions
-    const subscription = stream.subscribe({
-      next: (value: any) => {
-        // Accumulate the value using the provided accumulator function
-        accumulatedValue = accumulator(accumulatedValue, value);
-      },
-      complete: () => {
-        // Emit the accumulated value once the stream completes
-        const emission = createEmission({ value: accumulatedValue });
-        output.next(emission);
-        output.complete();
-        subscription.unsubscribe();
+    // Use async iterator to iterate over the input stream
+    const reduceIterator = async function* () {
+      for await (const emission of input) {
+        // Apply the accumulator function on each emission
+        accumulatedValue = accumulator(accumulatedValue, emission.value);
       }
-    });
 
-    return output;
+      // Emit the final accumulated value after stream completion
+      yield createEmission({ value: accumulatedValue });
+    };
+
+    // Handle the input stream and process values
+    (async () => {
+      try {
+        // Iterate over the values emitted by the input stream
+        for await (const result of reduceIterator()) {
+          output.next(result); // Emit the accumulated value to the output stream
+        }
+        output.complete(); // Complete the output stream when the iteration is done
+      } catch (err) {
+        output.error(err); // Forward any errors to the output stream
+      }
+    })();
+
+    return output; // Return the output stream
   };
 
-    return createStreamOperator('reduce', operator);
+  return createStreamOperator('reduce', operator);
 };

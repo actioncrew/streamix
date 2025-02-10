@@ -5,25 +5,30 @@ export const finalize = (callback: () => void | Promise<void>): StreamOperator =
   const operator = (stream: Stream): Stream => {
     const output = createSubject();
 
-    const subscription = stream.subscribe({
-      next: (value: any) => {
-        output.next(value);
-      },
-      complete: async () => {
-        try {
-          await callback();
-        } catch (error) {
-          output.error(error);
-        } finally {
-          output.complete();
-          subscription.unsubscribe();
+    let finalized = false;  // Flag to ensure `callback` is called only once
+
+    (async () => {
+      try {
+        // Iterate over the stream asynchronously
+        for await (const emission of stream) {
+          output.next(emission.value);
         }
-      },
-      error: (err: any) => {
+      } catch (err) {
+        // If an error occurs, forward the error and trigger the finalize callback
         output.error(err);
-        subscription.unsubscribe();
-      },
-    });
+      } finally {
+        if (finalized) return;  // Prevent multiple calls to `callback`
+        finalized = true;
+
+        try {
+          await callback();  // Execute the callback, it could be async
+        } catch (error) {
+          output.error(error);  // Forward any error from the callback
+        } finally {
+          output.complete();  // Complete the output stream
+        }
+      }
+    })();
 
     return output;
   };
