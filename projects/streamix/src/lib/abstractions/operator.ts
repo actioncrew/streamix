@@ -1,9 +1,5 @@
 import { Emission, Stream } from '.';
 
-export type HookOperator = {
-  callback: (params?: any) => void | Promise<void>;
-}
-
 export type StreamOperator = Omit<Operator, "handle"> & {
   (stream: Stream): Stream;
 }
@@ -13,11 +9,6 @@ export type Operator = {
   type: string;
   name?: string;
 };
-
-// Assuming OperatorType has a certain structure, we can use type guards
-export function isOperator(obj: any): obj is Operator {
-  return obj && typeof obj === 'object' && typeof obj.handle === 'function' && typeof obj.run === 'undefined';
-}
 
 export const createOperator = (name: string, handleFn: (emission: Emission) => Emission): Operator => {
   return {
