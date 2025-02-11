@@ -72,22 +72,24 @@ export function createSubject<T = any>(): Subject<T> {
   const asyncIterator = async function* (): AsyncGenerator<Emission<T>, void, unknown> {
     let resolveNext: ((value: IteratorResult<Emission<T>>) => void) | null = null;
     let rejectNext: ((reason?: any) => void) | null = null;
-    let queue: T[] = [];
+    let latestValue: T | undefined;
+    let hasNewValue = false;
     let completedHandled = false;
 
     const handleNext = (value: T) => {
-      queue.push(value);
+      latestValue = value;
+      hasNewValue = true;
       if (resolveNext) {
-        const emission = createEmission({ value: queue.shift()! });
-        resolveNext({ value: emission, done: false });  // Type assertion here
+        const emission = createEmission({ value });
+        resolveNext({ value: emission, done: false });
         resolveNext = null;
+        hasNewValue = false;
       }
     };
 
     const handleComplete = () => {
       completedHandled = true;
       if (resolveNext) {
-        // Ensure we resolve with the completed state once everything is finished
         resolveNext({ value: createEmission({ value: undefined }), done: true });
       }
     };
@@ -106,16 +108,16 @@ export function createSubject<T = any>(): Subject<T> {
     });
 
     try {
-      while (!completedHandled || queue.length > 0) {
-        if (queue.length > 0) {
-          yield createEmission({ value: queue.shift()! });
+      while (!completedHandled || hasNewValue) {
+        if (hasNewValue) {
+          yield createEmission({ value: latestValue! });
+          hasNewValue = false;
         } else {
-          // Wait for a new value to be added to the queue
           const result = await new Promise<IteratorResult<Emission<T>>>((resolve, reject) => {
             resolveNext = resolve;
             rejectNext = reject;
           });
-          if (result.done) break;  // Exit when completed
+          if (result.done) break;
           yield result.value;
         }
       }
