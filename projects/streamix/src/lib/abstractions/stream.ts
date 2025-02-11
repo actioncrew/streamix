@@ -58,9 +58,6 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
       let emission = createEmission({ value });
       for (let i = 0; i < operators.length; i++) {
         const operator = operators[i];
-        if (operator?.name === "catchError") {
-          continue;
-        }
 
         try {
           emission = operator.handle(emission);
@@ -69,18 +66,7 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
         }
 
         if (emission.error) {
-          let foundCatchError = false;
-          for (let j = i + 1; j < operators.length; j++) {
-            if (operators[j]?.name === "catchError") {
-              foundCatchError = true;
-              emission = operators[j].handle(emission);
-              i = j;
-              break;
-            }
-          }
-          if (!foundCatchError) {
-            output.error(emission.error);
-          }
+          output.error(emission.error);
         }
 
         if (emission.error || emission.phantom) {
