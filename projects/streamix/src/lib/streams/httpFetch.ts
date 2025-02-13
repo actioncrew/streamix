@@ -4,7 +4,7 @@ import { createEmission, createStream, Receiver, Stream } from "../abstractions"
 export type RequestInterceptor = (request: Request) => Request | Promise<Request>;
 export type ResponseInterceptor = (response: Response) => Response | Promise<Response>;
 
-export type FetchStream = {
+export type HttpFetch = {
   (url: string, options?: RequestInit | undefined): Stream<any>;
   // Add a request interceptor
   addRequestInterceptor: (interceptor: RequestInterceptor) => void;
@@ -115,7 +115,7 @@ export function httpFetch(url: string, options?: RequestInit) {
   const stream = createStream("fetchStream", streamGenerator);
 
   // **Methods attached directly to `fetchStream` function**:
-  const fetchInstance = httpFetch as FetchStream;
+  const fetchInstance = httpFetch as HttpFetch;
 
   // Add a request interceptor
   fetchInstance.addRequestInterceptor = (interceptor: RequestInterceptor) => {
