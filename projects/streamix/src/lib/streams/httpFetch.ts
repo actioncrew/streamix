@@ -18,12 +18,12 @@ export type HttpFetch = {
   removeResponseInterceptor: (interceptor: ResponseInterceptor) => void;
 };
 
-// Main `fetchStream` function
-export function httpFetch(url: string, options?: RequestInit): HttpStream {
-  let requestInterceptors: RequestInterceptor[] = [];
-  let responseInterceptors: ResponseInterceptor[] = [];
-  let abortController: AbortController | undefined;
+let requestInterceptors: RequestInterceptor[] = [];
+let responseInterceptors: ResponseInterceptor[] = [];
 
+// Main `fetchStream` function
+export const httpFetch: HttpFetch = function(url: string, options?: RequestInit): HttpStream {
+  let abortController: AbortController | undefined;
   // Apply request interceptors before making the fetch request
   const applyRequestInterceptors = async (request: Request): Promise<Request> => {
     let updatedRequest = request;
@@ -44,7 +44,6 @@ export function httpFetch(url: string, options?: RequestInit): HttpStream {
 
   // Perform the fetch with interceptors
   const fetchWithInterceptors = async () => {
-
     if (abortController?.signal.aborted) {
       return new Response(
         JSON.stringify({ error: "Request aborted" }), // Custom error message
@@ -60,22 +59,22 @@ export function httpFetch(url: string, options?: RequestInit): HttpStream {
       ? new Request(url, { ...options, signal: abortController.signal })
       : updatedRequest;
 
-      try {
-        const response = await fetch(finalRequest);
-        return applyResponseInterceptors(response);
-      } catch (error: any) {
-        if (error.name === "AbortError") {
-          return new Response(
-            JSON.stringify({ error: "Request aborted" }), // Custom error message
-            { status: 408, statusText: "Request Aborted" }
-          );
-        }
-
+    try {
+      const response = await fetch(finalRequest);
+      return applyResponseInterceptors(response);
+    } catch (error: any) {
+      if (error.name === "AbortError") {
         return new Response(
-          JSON.stringify({ error: `Request failed with error: ${error.message}` }),
-          { status: 500, statusText: "Internal Server Error" }
+          JSON.stringify({ error: "Request aborted" }), // Custom error message
+          { status: 408, statusText: "Request Aborted" }
         );
       }
+
+      return new Response(
+        JSON.stringify({ error: `Request failed with error: ${error.message}` }),
+        { status: 500, statusText: "Internal Server Error" }
+      );
+    }
   };
 
   // Stream generator to handle small and large files
@@ -87,55 +86,49 @@ export function httpFetch(url: string, options?: RequestInit): HttpStream {
       throw new Error(`Request failed with status ${response.status}`);
     }
 
-    const reader = response.body?.getReader();
-    if (reader) {
-      // Handle non-trivial stream chunks (large file handling)
-      let done = false;
-      while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        done = readerDone;
+    // Extract content type and encoding from headers
+    const contentType = response.headers.get("Content-Type") || "";
+    const isText = contentType.includes("text") || contentType.includes("json");
 
-        if (abortController?.signal.aborted) {
-          console.warn("Request was aborted");
-          return;
-        }
+    // Default to UTF-8 but check for encoding in Content-Type
+    let encoding = "utf-8";
+    const match = contentType.match(/charset=([^;]+)/);
+    if (match) {
+      encoding = match[1].trim().toLowerCase();
+    }
 
-        if (value) {
-          yield createEmission({ value });
-        }
+    // If there's no body, read response as text or binary
+    if (!response.body) {
+      const value = isText ? await response.text() : new Uint8Array(await response.arrayBuffer());
+      yield createEmission({ value });
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder(encoding);
+
+    if (isText) {
+      let fullText = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
       }
+      yield createEmission({ value: fullText });
     } else {
-      // If the response body is not a stream, return the entire content as a single chunk
-      const text = await response.text();
-      yield createEmission({ value: new TextEncoder().encode(text) });
+      let allChunks: Uint8Array[] = [];
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        allChunks.push(value);
+      }
+      const fullBinary = new Uint8Array(allChunks.reduce<number[]>((acc, val) => acc.concat(Array.from(val)), []));
+      yield createEmission({ value: fullBinary });
     }
   }
 
   // The stream instance that will hold the subscriptions
   const stream = createStream("fetchStream", streamGenerator) as HttpStream;
-
-  // **Methods attached directly to `fetchStream` function**:
-  const fetchInstance = httpFetch as HttpFetch;
-
-  // Add a request interceptor
-  fetchInstance.addRequestInterceptor = (interceptor: RequestInterceptor) => {
-    requestInterceptors.push(interceptor);
-  };
-
-  // Remove a request interceptor
-  fetchInstance.removeRequestInterceptor = (interceptor: RequestInterceptor) => {
-    requestInterceptors = requestInterceptors.filter((i) => i !== interceptor);
-  };
-
-  // Add a response interceptor
-  fetchInstance.addResponseInterceptor = (interceptor: ResponseInterceptor) => {
-    responseInterceptors.push(interceptor);
-  };
-
-  // Remove a response interceptor
-  fetchInstance.removeResponseInterceptor = (interceptor: ResponseInterceptor) => {
-    responseInterceptors = responseInterceptors.filter((i) => i !== interceptor);
-  };
 
   // Abort method to cancel the ongoing request
   stream.abort = () => {
@@ -148,4 +141,24 @@ export function httpFetch(url: string, options?: RequestInit): HttpStream {
   };
 
   return stream;
-}
+} as HttpFetch;
+
+// Add a request interceptor
+httpFetch.addRequestInterceptor = (interceptor: RequestInterceptor) => {
+  requestInterceptors.push(interceptor);
+};
+
+// Remove a request interceptor
+httpFetch.removeRequestInterceptor = (interceptor: RequestInterceptor) => {
+  requestInterceptors = requestInterceptors.filter((i) => i !== interceptor);
+};
+
+// Add a response interceptor
+httpFetch.addResponseInterceptor = (interceptor: ResponseInterceptor) => {
+  responseInterceptors.push(interceptor);
+};
+
+// Remove a response interceptor
+httpFetch.removeResponseInterceptor = (interceptor: ResponseInterceptor) => {
+  responseInterceptors = responseInterceptors.filter((i) => i !== interceptor);
+};
