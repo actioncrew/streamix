@@ -20,6 +20,7 @@ export function retry<T = any>(
 
     // Helper function to handle retries
     const subscribeWithRetry = (sourceStream: Stream<T>) => {
+      queue.length = 0;
       return sourceStream.subscribe({
         next: (value: T) => {
           queue.push(value); // Queue the value
