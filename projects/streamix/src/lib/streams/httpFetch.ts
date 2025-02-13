@@ -4,8 +4,10 @@ import { createEmission, createStream, Stream } from "../abstractions";
 export type RequestInterceptor = (request: Request) => Request | Promise<Request>;
 export type ResponseInterceptor = (response: Response) => Response | Promise<Response>;
 
+export type HttpStream = Stream & { abort: () => void };
+
 export type HttpFetch = {
-  (url: string, options?: RequestInit | undefined): Stream<any>;
+  (url: string, options?: RequestInit | undefined): HttpStream;
   // Add a request interceptor
   addRequestInterceptor: (interceptor: RequestInterceptor) => void;
   // Remove a request interceptor
@@ -14,12 +16,10 @@ export type HttpFetch = {
   addResponseInterceptor: (interceptor: ResponseInterceptor) => void;
   // Remove a response interceptor
   removeResponseInterceptor: (interceptor: ResponseInterceptor) => void;
-  // Abort the ongoing fetch request
-  abort: () => void;
 };
 
 // Main `fetchStream` function
-export function httpFetch(url: string, options?: RequestInit) {
+export function httpFetch(url: string, options?: RequestInit): HttpStream {
   let requestInterceptors: RequestInterceptor[] = [];
   let responseInterceptors: ResponseInterceptor[] = [];
   let abortController: AbortController | undefined;
@@ -112,7 +112,7 @@ export function httpFetch(url: string, options?: RequestInit) {
   }
 
   // The stream instance that will hold the subscriptions
-  const stream = createStream("fetchStream", streamGenerator);
+  const stream = createStream("fetchStream", streamGenerator) as HttpStream;
 
   // **Methods attached directly to `fetchStream` function**:
   const fetchInstance = httpFetch as HttpFetch;
@@ -138,7 +138,7 @@ export function httpFetch(url: string, options?: RequestInit) {
   };
 
   // Abort method to cancel the ongoing request
-  fetchInstance.abort = () => {
+  stream.abort = () => {
     if (!abortController) {
       abortController = new AbortController();
     } else {
