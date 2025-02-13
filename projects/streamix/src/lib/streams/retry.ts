@@ -1,5 +1,5 @@
 import { createStream, Stream } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createSubject } from "../streams";
 import { createSemaphore } from "../utils";
 
 export function retry<T = any>(
@@ -24,7 +24,6 @@ export function retry<T = any>(
       return sourceStream.subscribe({
         next: (value: T) => {
           queue.push(value); // Queue the value
-          itemAvailable.release(); // Notify that an item is available
         },
         error: (error: any) => {
           if (retryCount < maxRetries) {
@@ -65,12 +64,8 @@ export function retry<T = any>(
         }
       }
     }
-
-    if (completed) {
-      subject.complete();
-    }
-
-    // Unsubscribe after processing
+      
+    subject.complete();
     subscription.unsubscribe();
   });
 }
