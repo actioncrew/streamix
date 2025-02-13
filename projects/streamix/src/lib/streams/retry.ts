@@ -1,8 +1,6 @@
-import { createEmission, createStream, Stream } from "../abstractions";
+import { createEmission, createStream, Stream, createSubject, Subject } from "../abstractions";
 import { createSemaphore } from "../utils";
-import { Subject } from "../abstractions";
 
-// Retry logic that uses a Subject for value emission
 export function retry<T = any>(
   factory: () => Stream<T>,
   maxRetries: number = 3,
@@ -10,53 +8,67 @@ export function retry<T = any>(
 ): Stream<T> {
   return createStream<T>("retry", async function* (this: Stream<T>) {
     const sourceStream = factory();
-    const subject: Subject<T> = createSubject<T>(); // Use subject for emission
-    const itemAvailable = createSemaphore(0); // Semaphore to handle item flow
-    const queue: T[] = []; // Queue to manage emitted values
+    const itemAvailable = createSemaphore(0); // Semaphore for controlling flow
+    const queue: T[] = []; // Queue to store emitted values
     let completed = false;
     let retryCount = 0;
+    let errorEmitted = false; // Flag to track if error is emitted
 
-    // Function to handle retries
+    // Create a subject to handle emissions, errors, and completion
+    const subject = createSubject<T>();
+
+    // Helper function to handle retries
     const subscribeWithRetry = (sourceStream: Stream<T>) => {
       return sourceStream.subscribe({
         next: (value: T) => {
-          queue.push(value);
-          itemAvailable.release(); // Signal an item is available
+          queue.push(value); // Queue the value
+          itemAvailable.release(); // Notify that an item is available
         },
         error: (error: any) => {
           if (retryCount < maxRetries) {
             retryCount++;
+            // Wait before retrying the source stream
             setTimeout(() => {
-              // Resubscribe to the source stream after the delay
-              subscription.unsubscribe();
-              subscribeWithRetry(sourceStream);
+              subscription.unsubscribe(); // Unsubscribe from current stream
+              subscription = subscribeWithRetry(sourceStream); // Retry subscription
             }, delay);
           } else {
-            subject.error(error); // Emit the error if max retries are exhausted
+            // Emit the error after exceeding max retries
+            if (!errorEmitted) {
+              subject.error(error);
+              errorEmitted = true; // Mark that error was emitted
+            }
+            completed = true; // Mark stream as completed due to error
+            itemAvailable.release(); // Release semaphore to finish loop
           }
         },
         complete: () => {
-          completed = true;
-          itemAvailable.release(); // Ensure loop finishes
+          completed = true; // Mark stream as completed successfully
+          itemAvailable.release(); // Ensure loop ends when stream completes
         },
       });
     };
 
-    // Initial subscription to the source stream
+    // Initial subscription to source stream
     let subscription = subscribeWithRetry(sourceStream);
 
-    // Yield values sequentially
+    // Yield values sequentially only after successful completion
     while (!completed || queue.length > 0) {
-      await itemAvailable.acquire(); // Wait until an item is available
+      await itemAvailable.acquire(); // Wait for an item to be available
 
-      if (queue.length > 0) {
-        // Emit the value using the subject
-        subject.next(queue.shift()!);
+      // Emit values only after the stream successfully completes
+      if (completed && !errorEmitted) {
+        while (queue.length > 0) {
+          subject.next(queue.shift()!); // Emit value to subject
+        }
       }
     }
 
-    // Complete the subject when done
-    subject.complete();
-    subscription.unsubscribe(); // Ensure we unsubscribe once done
+    if (completed) {
+      subject.complete();
+    }
+
+    // Unsubscribe after processing
+    subscription.unsubscribe();
   });
 }
