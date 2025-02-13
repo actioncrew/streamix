@@ -1,35 +1,38 @@
-import { createSubject } from '..';
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createSubject } from "../streams/subject";
 
-export const groupBy = <T = any>(keyFn: (value: T) => string | number): StreamOperator => {
-  const operator = (input: Stream) => {
-    const output = createSubject<Map<string | number, T[]>>(); // The output stream to emit grouped results
-    const partitions = new Map<string | number, T[]>(); // Store grouped partitions
+export function groupBy<T, K>(
+  keySelector: (value: T) => K // Function to extract the key from each value
+): StreamOperator {
+  const operator = (input: Stream<T>): Stream<Stream<T>> => {
+    const output = createSubject<Stream<T>>(); // Output stream of grouped streams
+    const groups = new Map<K, Stream<T>>(); // Map to store groups by key
 
-    const subscription = input.subscribe({
-      next: (value: T) => {
-        const key = keyFn(value); // Compute the partition key
+    input.subscribe({
+      next: (value) => {
+        const key = keySelector(value); // Get the key for the current value
 
-        // Add the value to the corresponding partition
-        if (!partitions.has(key)) {
-          partitions.set(key, []);
+        // Check if a group for this key already exists
+        if (!groups.has(key)) {
+          // Create a new group (stream) for this key
+          const group = createSubject<T>();
+          groups.set(key, group); // Store the group in the map
+          output.next(group); // Emit the new group to the output stream
         }
-        partitions.get(key)!.push(value); // Append value to the group
+
+        // Emit the value to the corresponding group
+        groups.get(key)!.next(value);
       },
+      error: (err) => output.error(err), // Propagate errors to the output stream
       complete: () => {
-        // Emit all partitions as a single Map when the stream completes
-        output.next(partitions);
+        // Complete all groups and the output stream
+        groups.forEach((group) => group.complete());
         output.complete();
-        subscription.unsubscribe();
-      },
-      error: (err) => {
-        // Forward errors to the output stream
-        output.error(err);
       },
     });
 
-    return output; // Return the output stream
+    return output;
   };
 
   return createStreamOperator('groupBy', operator);
-};
+}
