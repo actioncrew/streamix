@@ -81,7 +81,7 @@ describe("httpFetch functional tests", () => {
     expect(errors[0]).toBeInstanceOf(Error);
   });
 
-  test("should fetch data with progress notification successfully", (done) => {
+  xtest("should fetch data with progress notification successfully", (done) => {
     const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
     const targetUrl = 'https://nbg1-speed.hetzner.com/100MB.bin';
     const stream = httpFetch(proxyUrl + targetUrl,  {
