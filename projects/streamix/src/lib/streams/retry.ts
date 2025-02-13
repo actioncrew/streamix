@@ -1,26 +1,37 @@
-import { createStream, Stream } from "../abstractions";
+import { createEmission, createStream, Stream } from "../abstractions";
 
-export function retry<T = any>(source: Stream<T>, maxRetries = 3, delayMs = 1000): Stream<T> {
-  return createStream("retryStream", async function* () {
-    let attempt = 0;
+export function retry<T = any>(sourceStream: Stream<T>, maxRetries: number = 3, delay: number = 1000): Stream<T> {
+  return createStream<T>("retry", async function* (this: Stream<T>) {
+    let retryCount = 0;
+    let subscription: Subscription | undefined;
 
-    while (attempt <= maxRetries) {
-      try {
-        for await (const emission of source) {
-          yield emission;
-        }
-        return; // Stop retrying when source completes successfully
-      } catch (error) {
-        if (attempt === maxRetries) {
-          throw error; // Give up after max retries
-        }
+    const subscribeToSource = () => {
+      subscription = sourceStream.subscribe({
+        next: (value: T) => {
+          // Yield the value directly
+          yield createEmission({ value });
+        },
+        error: (error: any) => {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(() => {
+              // Resubscribe to the source stream after the delay
+              subscription?.unsubscribe();
+              subscribeToSource();
+            }, delay);
+          } else {
+            // Emit the error if max retries are exhausted
+            yield createEmission({ error });
+          }
+        },
+        complete: () => {
+          // Mark the stream as completed
+          yield createEmission({ completed: true });
+        },
+      });
+    };
 
-        attempt++;
-
-        if (delayMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
-      }
-    }
+    // Initial subscription to the source stream
+    subscribeToSource();
   });
 }
