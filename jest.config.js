@@ -12,11 +12,6 @@ export default {
       displayName: "streamix",
       preset: "jest-preset-angular",
       testMatch: ["<rootDir>/projects/streamix/**/*.spec.ts"],
-    },
-    {
-      displayName: "streamix-old",
-      preset: "jest-preset-angular",
-      testMatch: ["<rootDir>/projects/streamix-old/**/*.spec.ts"],
     }
   ]
 };
