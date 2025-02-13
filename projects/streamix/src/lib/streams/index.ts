@@ -19,6 +19,7 @@ export * from './onMediaQuery';
 export * from './onMutation';
 export * from './onResize';
 export * from './range';
+export * from './retry';
 export * from './subject';
 export * from './timer';
 export * from './zip';
