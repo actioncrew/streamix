@@ -1,5 +1,5 @@
 import { createEmission, createStream, Stream } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { Subject } from "../streams";
 
 // Type for interceptors
 export type RequestInterceptor = (request: Request) => Request | Promise<Request>;
@@ -8,7 +8,7 @@ export type ResponseInterceptor = (response: Response) => Response | Promise<Res
 export type HttpStream = Stream & { abort: () => void; progress: Subject<number> };
 
 export type HttpFetch = {
-  (url: string, options?: RequestInit | undefined): HttpStream;
+  (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream;
   addRequestInterceptor: (interceptor: RequestInterceptor) => void;
   removeRequestInterceptor: (interceptor: RequestInterceptor) => void;
   addResponseInterceptor: (interceptor: ResponseInterceptor) => void;
@@ -18,9 +18,8 @@ export type HttpFetch = {
 let requestInterceptors: RequestInterceptor[] = [];
 let responseInterceptors: ResponseInterceptor[] = [];
 
-export const httpFetch: HttpFetch = function(url: string, options?: RequestInit): HttpStream {
+export const httpFetch: HttpFetch = function(url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream {
   let abortController = new AbortController();
-  const progress$ = createSubject<number>(); // Progress tracking
 
   // Apply interceptors
   const applyRequestInterceptors = async (request: Request): Promise<Request> => {
@@ -74,12 +73,12 @@ export const httpFetch: HttpFetch = function(url: string, options?: RequestInit)
     const totalSize = contentLength ? parseInt(contentLength, 10) : null;
     let loaded = 0;
 
-    progress$.next(0);
+    onProgress?.(0);
 
     if (!response.body) {
       const value = isText ? await response.text() : new Uint8Array(await response.arrayBuffer());
-      progress$.next(1);
       yield createEmission({ value });
+      onProgress?.(1);
       return;
     }
 
@@ -92,11 +91,10 @@ export const httpFetch: HttpFetch = function(url: string, options?: RequestInit)
         const { value, done } = await reader.read();
         if (done) break;
         fullText += decoder.decode(value, { stream: true });
+        yield createEmission({ value: fullText });
 
         loaded += value.length;
-        progress$.next(totalSize ? loaded / totalSize : 0.5);
-
-        yield createEmission({ value: fullText });
+        onProgress?.(totalSize ? loaded / totalSize : 0.5);
       }
     } else {
       let allChunks: Uint8Array[] = [];
@@ -106,22 +104,20 @@ export const httpFetch: HttpFetch = function(url: string, options?: RequestInit)
         allChunks.push(value);
 
         loaded += value.length;
-        progress$.next(totalSize ? loaded / totalSize : 0.5);
+        onProgress?.(totalSize ? loaded / totalSize : 0.5);
       }
       const fullBinary = new Uint8Array(allChunks.reduce<number[]>((acc, val) => acc.concat([...val]), []));
       yield createEmission({ value: fullBinary });
     }
 
-    progress$.next(1); // Ensure progress is 100% at the end
+    onProgress?.(1); // Ensure progress is 100% at the end
   }
 
   const stream = createStream("fetchStream", streamGenerator) as HttpStream;
   stream.abort = () => {
     abortController.abort();
-    progress$.complete();
   };
 
-  stream.progress = progress$;
   return stream;
 } as HttpFetch;
 

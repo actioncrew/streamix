@@ -80,4 +80,23 @@ describe("httpFetch functional tests", () => {
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0]).toBeInstanceOf(Error);
   });
+
+  test("should fetch data with progress notification successfully", (done) => {
+    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+    const targetUrl = 'https://nbg1-speed.hetzner.com/100MB.bin';
+    const stream = httpFetch(proxyUrl + targetUrl,  {
+      method: 'GET',
+      headers: {
+        'Origin': window.location.origin,  // Add Origin header
+        'X-Requested-With': 'XMLHttpRequest',  // Optional but often required
+        'Accept': 'application/json',
+      }
+    }, (value) => console.log(value));
+
+    const subscription = stream.subscribe(value => {
+      subscription.unsubscribe();
+      expect(value.length).toBeGreaterThan(0);
+      done();
+    });
+  });
 });
