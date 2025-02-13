@@ -1,4 +1,4 @@
-import { createEmission, createStream, Receiver, Stream } from "../abstractions";
+import { createEmission, createStream, Stream } from "../abstractions";
 
 // Type for interceptors
 export type RequestInterceptor = (request: Request) => Request | Promise<Request>;
@@ -145,21 +145,6 @@ export function httpFetch(url: string, options?: RequestInit) {
       abortController.abort();
       abortController = new AbortController(); // Reset after abort
     }
-  };
-
-  // Override the `subscribe` method to handle aborting in `unsubscribe`
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: Uint8Array) => void) | Receiver<Uint8Array>) => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    const unsubscribe = subscription.unsubscribe;
-    subscription.unsubscribe = () => {
-      // Trigger abort when unsubscribing
-      fetchInstance.abort();
-      unsubscribe();
-    };
-
-    return subscription;
   };
 
   return stream;
