@@ -1,6 +1,6 @@
-import { from, groupBy, map, mergeMap } from '../lib';
+import { from, groupBy, map, merge, splitMap } from '../lib';
 
-describe('groupBy and custom partitioning', () => {
+describe('groupBy and splitMap operators', () => {
   let source$: any;
 
   beforeEach(() => {
@@ -18,7 +18,7 @@ describe('groupBy and custom partitioning', () => {
     source$.subscribe({
       next: (value: any) => { result = Array.from(value.values()).flat(); },
       complete: () => {
-        expect(result).toEqual([1, 3, 5, 2, 4, 6]); // odd numbers first, followed by even
+        expect(result).toEqual([ 1, 3, 5, 2, 4, 6]);  // odd numbers first, followed by even
         done();
       },
     });
@@ -27,7 +27,7 @@ describe('groupBy and custom partitioning', () => {
   it('should apply custom operators for each partition', (done) => {
     let result: any[] = [];
 
-    const customOperator = map((value: any) => `Processed ${value}`);
+    const customOperator = map(value =>`Processed ${value}`);
 
     const paths = {
       low: [customOperator],
@@ -40,14 +40,10 @@ describe('groupBy and custom partitioning', () => {
 
     const partitionedStreams = [lowPartition, highPartition];
 
-    // Use mergeMap to combine all partitioned streams into one observable
+    // Use merge to combine all partitioned streams into one observable
     const source$ = merge(...partitionedStreams).pipe(
       groupBy((value: string) => value.startsWith('Low') ? 'low' : 'high'),
-      mergeMap((group$) => {
-        const key = group$.key; // Get the group key ('low' or 'high')
-        const operators = paths[key] || []; // Get the operators for this group
-        return group$.pipe(...operators); // Apply the operators to the group
-      })
+      splitMap(paths)  // Apply splitMap with custom operators
     );
 
     source$.subscribe({
@@ -75,11 +71,7 @@ describe('groupBy and custom partitioning', () => {
     // Create partitioned stream and apply operators
     source$ = from([1, 3, 5, 7, 10]).pipe(
       groupBy((value: number) => (value <= 5 ? 'low' : 'high')),
-      mergeMap((group$) => {
-        const key = group$.key; // Get the group key ('low' or 'high')
-        const operators = paths[key] || []; // Get the operators for this group
-        return group$.pipe(...operators); // Apply the operators to the group
-      })
+      splitMap(paths)
     );
 
     source$.subscribe({
