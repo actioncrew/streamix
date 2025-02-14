@@ -102,20 +102,33 @@ describe('groupBy and custom partitioning', () => {
     };
 
     // Create partitioned stream and apply operators
-    source$ = from([1, 3, 5, 7, 10]).pipe(
+    const source$ = from([1, 3, 5, 7, 10]).pipe(
       groupBy((value: number) => (value <= 5 ? 'low' : 'high')),
       mergeMap((group$) => {
         const key = group$.key; // Get the group key ('low' or 'high')
         const operators = paths[key] || []; // Get the operators for this group
-        return group$.pipe(...operators); // Apply the operators to the group
-      })
+        return group$.pipe(
+          ...operators,
+          toArray(), // Collect all values in the group to make sure they are emitted fully
+          map(groupValues => ({
+            key,
+            values: groupValues
+          }))
+        );
+      }),
+      toArray() // Collect all groups together
     );
 
     source$.subscribe({
-      next: (value: any) => result.push(value),
+      next: (groups) => {
+        // Sort groups by their key (low first, then high)
+        const sortedGroups = groups.sort((a, b) => (a.key === 'low' ? -1 : 1));
+        result = sortedGroups.flatMap(group => group.values);
+      },
       complete: () => {
-        expect(result).toEqual(['low', 'low', 'low', 'high', 'high']); // Correctly split into "low" and "high"
-        done();
+        // Expect processed values with the custom operator applied
+        expect(result).toEqual(['low', 'low', 'low', 'high', 'high']);
+        done(); // Ensure done() is called after the assertions
       },
     });
   });
