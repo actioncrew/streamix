@@ -13,10 +13,12 @@ export function createSubject<T = any>(): Subject<T> {
   let completed = false; // Flag to indicate if the stream is completed
   let hasError = false; // Flag to indicate if an error has occurred
   let errorValue: any = null; // Store the error value
+  let emissionCounter = 0;
 
   // Emit a new value to all subscribers
   const next = (value: T) => {
     if (completed || hasError) return; // Prevent emitting if the stream is completed or in error state
+    emissionCounter++;
     currentValue = value;
     subscribers.forEach((subscriber) => subscriber.next?.(value));
     subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed);
@@ -71,7 +73,7 @@ export function createSubject<T = any>(): Subject<T> {
   const stream: Subject<T> = {
     type: "subject",
     name: "subject",
-    emissionCounter: 0,
+    emissionCounter,
     subscribe,
     pipe: (...steps: (Operator | StreamOperator)[]) => pipeStream(stream, ...steps),
     value: () => currentValue,
