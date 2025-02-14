@@ -90,12 +90,15 @@ export const httpFetch: HttpFetch = function(url: string, options?: RequestInit,
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        fullText += decoder.decode(value, { stream: true });
-        yield createEmission({ value: fullText });
+        fullText += decoder.decode(value); // No need for `{ stream: true }`
 
         loaded += value.length;
         onProgress?.(totalSize ? loaded / totalSize : 0.5);
       }
+
+      onProgress?.(1);
+      yield createEmission({ value: fullText });
+
     } else {
       let allChunks: Uint8Array[] = [];
       while (true) {
@@ -106,9 +109,13 @@ export const httpFetch: HttpFetch = function(url: string, options?: RequestInit,
         loaded += value.length;
         onProgress?.(totalSize ? loaded / totalSize : 0.5);
       }
+
+      onProgress?.(1);
+
       const fullBinary = new Uint8Array(allChunks.reduce<number[]>((acc, val) => acc.concat([...val]), []));
       yield createEmission({ value: fullBinary });
     }
+
 
     onProgress?.(1); // Ensure progress is 100% at the end
   }
