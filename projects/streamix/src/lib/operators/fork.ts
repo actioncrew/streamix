@@ -1,74 +1,54 @@
-import { createStreamOperator, Stream, StreamOperator, Subscription } from '../abstractions';
-import { createSubject } from '../streams';
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createSubject } from "../streams";
 
 export const fork = <T = any, R = T>(
-  options: Array<{ on: (value: T) => boolean; handler: () => Stream<R> }>
+  options: Array<{ on: (value: T) => boolean; handler: (value: T) => Stream<R> }>
 ): StreamOperator => {
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
-    let isOuterComplete = false;
-    let activeSubscriptions: Subscription[] = [];
-    const innerQueue: Array<Stream<R>> = [];
+    let activeInnerStreams = 0; // Track active inner streams
 
-    const subscribeToInner = (innerStream: Stream<R>) => {
-      if (innerStream.completed()) {
-        // If the inner stream is already completed, check if we can complete the outer stream
-        if (isOuterComplete && activeSubscriptions.length === 0) {
+    // Helper function to handle inner streams concurrently
+    const processInnerStream = async (innerStream: Stream<R>) => {
+      try {
+        for await (const innerEmission of innerStream) {
+          output.next(innerEmission.value!); // Forward value from the inner stream
+        }
+      } catch (innerErr) {
+        output.error(innerErr); // Propagate errors from the inner stream
+      } finally {
+        activeInnerStreams -= 1; // Decrease active inner stream count
+        // If all inner streams are done, complete the output stream
+        if (activeInnerStreams === 0 && input.completed()) {
           output.complete();
         }
-        return;
       }
-
-      const innerSub = innerStream.subscribe({
-        next: (value) => output.next(value),
-        error: (err) => {
-          output.error(err);
-          activeSubscriptions = activeSubscriptions.filter(
-            (sub) => sub !== innerSub
-          );
-          if (innerQueue.length > 0) {
-            subscribeToInner(innerQueue.shift()!);
-          } else if (isOuterComplete && activeSubscriptions.length === 0) {
-            output.complete();
-          }
-        },
-        complete: () => {
-          activeSubscriptions = activeSubscriptions.filter(
-            (sub) => sub !== innerSub
-          );
-          if (innerQueue.length > 0) {
-            subscribeToInner(innerQueue.shift()!);
-          } else if (isOuterComplete && activeSubscriptions.length === 0) {
-            output.complete();
-          }
-        },
-      });
-      activeSubscriptions.push(innerSub);
     };
 
-    input.subscribe({
-      next: (value) => {
-        const matchedOption = options.find(({ on }) => on(value));
-        if (matchedOption) {
-          const innerStream = matchedOption.handler();
-          if (activeSubscriptions.length > 0) {
-            innerQueue.push(innerStream);
-          } else {
-            subscribeToInner(innerStream);
-          }
-        } else {
-          output.error(new Error(`No handler found for value: ${value}`));
-        }
-      },
-      error: (err) => output.error(err),
-      complete: () => {
-        isOuterComplete = true;
-        if (innerQueue.length === 0 && activeSubscriptions.length === 0) {
-          output.complete();
-        }
-      },
-    });
+    // Async function to process the input stream and inner streams concurrently
+    (async () => {
+      try {
+        // Use a for-await loop to process the outer stream
+        for await (const emission of input) {
+          const matchedOption = options.find(({ on }) => on(emission.value!));
 
+          if (matchedOption) {
+            const innerStream = matchedOption.handler(emission.value!); // Create inner stream
+            activeInnerStreams += 1; // Increment active inner stream count
+
+            // Process the inner stream concurrently without awaiting each one
+            processInnerStream(innerStream);
+          } else {
+            // Log a warning if no handler is found (optional)
+            throw Error(`No handler found for value: ${emission.value!}`);
+          }
+        }
+      } catch (outerErr) {
+        output.error(outerErr); // Propagate errors from the outer stream
+      }
+    })();
+
+    // Return the output stream
     return output;
   };
 

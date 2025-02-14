@@ -1,6 +1,6 @@
 import { createEmission, createStream, Emission, Stream } from '../abstractions';
 
-export function loop<T = any>(
+export function loop<T>(
   initialValue: T,
   condition: (value: T) => boolean,
   iterateFn: (value: T) => T

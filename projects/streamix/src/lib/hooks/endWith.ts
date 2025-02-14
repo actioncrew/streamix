@@ -6,19 +6,20 @@ export const endWith = (value: any): StreamOperator => {
     const output = createSubject<any>(); // Create the output stream
 
     // Subscribe to the original stream
-    const subscription = input.subscribe({
-      next: (emission) => {
-        output.next(emission); // Forward emissions from the original stream
-      },
-      complete: () => {
-        output.next(value); // Emit the value at the end of the stream
-        output.complete();   // Complete the stream after emitting the value
-        subscription.unsubscribe();
-      },
-      error: (err) => {
-        output.error(err); // Forward errors if any
+    (async () => {
+      try {
+        // Iterate over the input stream asynchronously
+        for await (const emission of input) {
+          output.next(emission.value); // Forward emissions from the original stream
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        // Emit the value at the end of the stream and complete the stream
+        output.next(value);
+        output.complete();
       }
-    });
+    })();
 
     return output;
   };

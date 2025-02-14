@@ -1,27 +1,35 @@
 import { createSubject } from '..';
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createEmission, createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const toArray = (): StreamOperator => {
-  const operator = (stream: Stream): Stream => {
-    let accumulatedArray: any[] = []; // Array to store emission values
-    const output = createSubject(); // Create an output stream
+  const operator = (input: Stream): Stream => {
+    const output = createSubject<any>(); // Create an output stream
+    let accumulatedArray: any[] = [];  // Array to accumulate emission values
 
-    const subscription = stream.subscribe({
-      next: (value) => {
-        // Accumulate values from each emission
-        accumulatedArray.push(value);
-      },
-      complete: () => {
-        // Emit the accumulated array as a single emission when the stream completes
-        output.next(accumulatedArray);
-        output.complete();
-        subscription.unsubscribe();
-      },
-    });
+    const toArrayIterator = async function* () {
+      for await (const emission of input) {
+        // Collect each value emitted by the input stream into the array
+        accumulatedArray.push(emission.value);
+      }
+      // Once the stream completes, emit the accumulated array
+      yield createEmission({ value: accumulatedArray });
+    };
 
-    return output;
+    // Handle the stream using the iterator
+    (async () => {
+      try {
+        // Iterate over all emissions from the input stream
+        for await (const result of toArrayIterator()) {
+          output.next(result);  // Emit the accumulated array to the output stream
+        }
+        output.complete();  // Complete the output stream once all values are processed
+      } catch (err) {
+        output.error(err);  // Forward any errors from the stream
+      }
+    })();
+
+    return output;  // Return the output stream
   };
 
   return createStreamOperator('toArray', operator);
 };
-
