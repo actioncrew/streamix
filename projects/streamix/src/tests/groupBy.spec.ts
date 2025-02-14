@@ -13,17 +13,34 @@ describe('groupBy and custom partitioning', () => {
     // Create a stream that partitions numbers into "even" and "odd" groups
     const partitionOperator = groupBy((value: number) => (value % 2 === 0 ? 'even' : 'odd'));
 
-    source$ = from([1, 2, 3, 4, 5, 6]).pipe(partitionOperator);
+    const source$ = from([1, 2, 3, 4, 5, 6]).pipe(
+      partitionOperator,
+      mergeMap(group$ =>
+        group$.pipe(
+          toArray(), // Collect the values in each group
+          map(groupValues => ({
+            key: group$.key, // Keep the key for sorting later
+            values: groupValues,
+          }))
+        )
+      ),
+      toArray() // Collect all groups at once
+    );
 
     source$.subscribe({
-      next: (value: any) => { result = Array.from(value.values()).flat(); },
+      next: (groups) => {
+        // Sort groups by their key (odd first, then even)
+        const sortedGroups = groups.sort((a, b) => (a.key === 'odd' ? -1 : 1));
+        result = sortedGroups.flatMap(group => group.values);
+      },
       complete: () => {
-        expect(result).toEqual([1, 3, 5, 2, 4, 6]); // odd numbers first, followed by even
+        // Assert that the result contains odd numbers first, followed by even numbers
+        expect(result).toEqual([1, 3, 5, 2, 4, 6]); 
         done();
       },
     });
   });
-
+  
   it('should apply custom operators for each partition', (done) => {
     let result: any[] = [];
 
