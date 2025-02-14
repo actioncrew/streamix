@@ -1,0 +1,41 @@
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createSubject, Subject } from "../streams";
+
+export function groupBy<T = any, K = any>(
+  keySelector: (value: T) => K // Function to extract the key from each value
+): StreamOperator {
+  const operator = (input: Stream<T>): Stream<Stream<T>> => {
+    const output = createSubject<Stream<T>>(); // Output stream of grouped streams
+    const groups = new Map<K, Subject<T> & {key: K}>(); // Map to store groups by key
+
+    const subscription = input.subscribe({
+      next: (value) => {
+        const key = keySelector(value); // Get the key for the current value
+
+        // Check if a group for this key already exists
+        if (!groups.has(key)) {
+          // Create a new group (stream) for this key
+          const group = createSubject<T>() as any;
+          group.key = key;
+          groups.set(key, group); // Store the group in the map
+          output.next(group); // Emit the new group to the output stream
+        }
+
+        // Emit the value to the corresponding group
+        groups.get(key)!.next(value);
+      },
+      error: (err) => output.error(err), // Propagate errors to the output stream
+      complete: () => {
+        // Complete all groups and the output stream
+        groups.forEach((group) => group.complete());
+        output.complete();
+        groups.clear();  // Clear groups to avoid memory leaks
+        subscription.unsubscribe();
+      },
+    });
+
+    return output;
+  };
+
+  return createStreamOperator('groupBy', operator);
+}
