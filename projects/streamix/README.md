@@ -72,7 +72,7 @@ However, the complexity of asynchronous programming can sometimes feel overwhelm
 Streamix offers a simple, effective way to handle asynchronous data streams without the overhead of more advanced libraries like RxJS, while still maintaining robust features for dealing with async patterns.
 
 ## Key Concepts
-- Stream: A stream is a sequence of values over time, and it can be represented as an **async generator function**. So instead of familiar subscription you can use for await...of loop.
+- Stream: A stream is a sequence of values over time, and it can be represented as an **async generator function**. So instead of familiar subscription you can use **for await...of** loop.
 - Emission: The individual values emitted by a stream, along with metadata like whether the emission was canceled or if it encountered an error.
 - Operator: Functions that transform, filter, or combine streams of data.
 - Subject: A special type of stream that allows manually dispatching emissions. Subjects can also be used to share a single execution path among multiple subscribers.
