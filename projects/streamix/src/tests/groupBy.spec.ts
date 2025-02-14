@@ -1,4 +1,4 @@
-import { from, groupBy, map, mergeMap } from '../lib';
+import { from, groupBy, map, mergeMap, merge, toArray } from '../lib';
 
 describe('groupBy and custom partitioning', () => {
   let source$: any;
@@ -63,19 +63,31 @@ describe('groupBy and custom partitioning', () => {
       mergeMap((group$) => {
         const key = group$.key; // Get the group key ('low' or 'high')
         const operators = paths[key] || []; // Get the operators for this group
-        return group$.pipe(...operators); // Apply the operators to the group
-      })
+        return group$.pipe(
+          ...operators,
+          toArray(), // Collect all values in the group to make sure they are emitted fully
+          map(groupValues => ({
+            key,
+            values: groupValues
+          }))
+        );
+      }),
+      toArray() // Collect all groups together
     );
 
     source$.subscribe({
-      next: (value) => result.push(value),
+      next: (groups) => {
+        // Sort groups by their key (low first, then high)
+        const sortedGroups = groups.sort((a, b) => (a.key === 'low' ? -1 : 1));
+        result = sortedGroups.flatMap(group => group.values);
+      },
       complete: () => {
         // Expect processed values with the custom operator applied
         expect(result).toEqual([
           'Processed Low: 1', 'Processed Low: 2', 'Processed Low: 3',
           'Processed High: 10', 'Processed High: 20', 'Processed High: 30',
         ]);
-        done();
+        done(); // Ensure done() is called after the assertions
       },
     });
   });
