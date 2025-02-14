@@ -6,15 +6,17 @@ export type BehaviorSubject<T = any> = Subject<T>;
 // BehaviorSubject Stream Implementation
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
   let subscribers: Receiver<T>[] = [];
-  let latestValue: T = initialValue;  // Initialize with the provided value
+  let currentValue: T = initialValue;  // Initialize with the provided value
   let completed = false; // Flag to indicate if the stream is completed
   let hasError = false; // Flag to indicate if an error has occurred
   let errorValue: any = null; // Store the error value
+  let emissionCounter = 0;
 
   // Emit a new value to all subscribers
   const next = (value: T) => {
     if (completed || hasError) return; // Prevent emitting if the stream is completed or in error state
-    latestValue = value;
+    emissionCounter++;
+    currentValue = value;
     subscribers.forEach((subscriber) => subscriber.next?.(value));
     subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed);
   };
@@ -42,7 +44,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
 
     // Emit the current value to the new subscriber immediately
     if (!hasError) {
-      receiver.next?.(latestValue);
+      receiver.next?.(currentValue);
     }
 
     if (hasError) {
@@ -53,7 +55,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       receiver.complete?.(); // If completed, notify the subscriber
     }
 
-    return createSubscription(() => latestValue, () => {
+    return createSubscription(() => currentValue, () => {
       if (!receiver.unsubscribed) {
         receiver.unsubscribed = true;
         if (!completed && !hasError) {
@@ -67,12 +69,12 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   const stream: BehaviorSubject<T> = {
     type: "subject",
     name: "behaviorSubject",
-    emissionCounter: 0,
+    emissionCounter,
     subscribe,
     pipe: function (...steps: (Operator | StreamOperator)[]): Stream {
       return this.pipe(...steps); // Ensuring pipe correctly applies to the current stream
     },
-    value: () => latestValue,
+    value: () => currentValue,
     next, // Add next method
     complete, // Add complete
     completed: () => completed,
