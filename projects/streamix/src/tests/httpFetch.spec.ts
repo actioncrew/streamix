@@ -1,17 +1,4 @@
-import { rest } from "msw";
-import { setupServer } from "msw/node";
-import "whatwg-fetch";
 import { httpFetch } from "../lib"; // Adjust the import based on your project structure
-
-import { TextDecoder, TextEncoder } from "util";
-
-declare global {
-  var TextEncoder: typeof TextEncoder;
-  var TextDecoder: typeof TextDecoder;
-}
-
-global.TextEncoder = TextEncoder;
-global.TextDecoder = TextDecoder as any;
 
 describe("httpFetch functional tests", () => {
   const API_URL = "https://jsonplaceholder.typicode.com/posts/1";
@@ -87,42 +74,10 @@ describe("httpFetch functional tests", () => {
     // Create a mock large file (10MB)
     const largeFile = new Uint8Array(10 * 1024 * 1024).fill(1); // 10MB
 
-    // Mock server setup
-    const server = setupServer(
-      rest.get("http://localhost/large-file", async (_, res, ctx) => {
-        const chunkSize = 512 * 1024; // 512KB per chunk
-        const stream = new ReadableStream({
-          start(controller) {
-            let offset = 0;
-            function push() {
-              if (offset >= largeFile.length) {
-                controller.close();
-                return;
-              }
-              const chunk = largeFile.slice(offset, offset + chunkSize);
-              controller.enqueue(chunk);
-              offset += chunkSize;
-              setTimeout(push, 10); // Simulate network delay
-            }
-            push();
-          },
-        });
-
-        return res(
-          ctx.set("Content-Length", largeFile.length.toString()),
-          ctx.set("Content-Type", "application/octet-stream"),
-          ctx.body(stream)
-        );
-      })
-    );
-
-    // Start and stop server within the test
-    server.listen();
-
     let lastProgress = 0;
     const progressUpdates: number[] = [];
 
-    const stream = httpFetch("http://localhost/large-file", {}, (progress) => {
+    const stream = httpFetch("http://localhost:3000/large-file", {}, (progress) => {
       lastProgress = progress;
       progressUpdates.push(progress);
     });
@@ -133,7 +88,6 @@ describe("httpFetch functional tests", () => {
         chunks.push(value as Uint8Array);
       },
       complete: () => {
-        server.close();
         subscription.unsubscribe();
 
         // Verify received data matches the mock file
