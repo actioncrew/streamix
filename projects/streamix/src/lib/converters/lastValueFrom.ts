@@ -1,24 +1,22 @@
 import { Stream } from "../abstractions";
 
-export function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    let lastValue: T | undefined;
-    let hasValue = false;
+export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
+  let lastValue: T | undefined;
+  let hasValue = false;
 
-    const subscription = stream.subscribe({
-      next: (value) => {
-        lastValue = value;
-        hasValue = true;
-      },
-      error: (err) => reject(err),
-      complete: () => {
-        if (hasValue) {
-          resolve(lastValue as T); // Resolve with the last emitted value
-        } else {
-          reject(new Error("Stream completed without emitting a value"));
-        }
-        subscription.unsubscribe();
-      }
-    });
-  });
+  try {
+    // Use async iterator to iterate over the stream
+    for await (const emission of stream) {
+      lastValue = emission.value;
+      hasValue = true;
+    }
+
+    if (hasValue) {
+      return lastValue as T; // Return the last emitted value
+    } else {
+      throw new Error("Stream completed without emitting a value");
+    }
+  } catch (err) {
+    throw err; // Propagate any errors from the stream
+  }
 }

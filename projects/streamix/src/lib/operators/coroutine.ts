@@ -18,7 +18,6 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   const workerQueue: Array<(worker: Worker) => void> = [];
   let isFinalizing = false;
 
-  // Worker initialization
   const initWorkers = () => {
     const asyncPresent = functions.some(fn => fn.toString().includes("__async"));
     const [mainTask, ...dependencies] = functions;
@@ -77,41 +76,46 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  // Process task using an idle worker
-  const processTask = async (data: any): Promise<any> => {
-    const worker = await getIdleWorker();
-    return new Promise<any>((resolve, reject) => {
-      worker.onmessage = (event: MessageEvent) => {
-        if (event.data.error) {
-          reject(event.data.error);
-        } else {
-          resolve(event.data);
-        }
-        returnWorker(worker);  // Always return the worker after task is done
-      };
+  const processTask = async function* (input: Stream): AsyncGenerator<any, void, unknown> {
+    try {
+      for await (const emission of input) {
+        const worker = await getIdleWorker();
+        const data = await new Promise<any>((resolve, reject) => {
+          worker.onmessage = (event: MessageEvent) => {
+            if (event.data.error) {
+              reject(event.data.error);
+            } else {
+              resolve(event.data);
+            }
+            returnWorker(worker);
+          };
 
-      worker.onerror = (error: ErrorEvent) => {
-        reject(error.message);
-        returnWorker(worker);  // Return the worker even if an error occurs
-      };
+          worker.onerror = (error: ErrorEvent) => {
+            reject(error.message);
+            returnWorker(worker);
+          };
 
-      worker.postMessage(data);
-    });
+          worker.postMessage(emission.value);
+        });
+
+        yield createEmission({ value: data }); // Emit processed value sequentially
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
-  // Get an idle worker from the pool
   const getIdleWorker = (): Promise<Worker> => {
     return new Promise<Worker>((resolve) => {
       const idleWorker = workerPool.shift();
       if (idleWorker) {
         resolve(idleWorker);
       } else {
-        workerQueue.push(resolve);  // Queue resolve if no idle worker
+        workerQueue.push(resolve);
       }
     });
   };
 
-  // Return a worker back to the pool
   const returnWorker = (worker: Worker): void => {
     if (workerQueue.length > 0) {
       const resolve = workerQueue.shift()!;
@@ -121,40 +125,35 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  // Finalize by terminating all workers
   const finalize = async () => {
     if (isFinalizing) return;
     isFinalizing = true;
 
     workerPool.forEach(worker => worker.terminate());
-    workerPool.length = 0;  // Clear worker pool
-    workerQueue.length = 0;  // Clear worker queue
+    workerPool.length = 0;
+    workerQueue.length = 0;
   };
 
-  // Stream operator to transform the stream using the coroutine logic
   const operator = createStreamOperator('coroutine', (stream: Stream) => {
-    const subject = createSubject<any>() as Subject<any> & Coroutine; // Create a Subject to manage emissions
+    const subject = createSubject<any>() as Subject<any> & Coroutine;
 
-    // Subscribe to the original stream and process each emission using the coroutine task
-    stream.subscribe({
-      next: (value) => {
-        processTask(value).then((data) => {
-          subject.next(createEmission({ value: data })); // Emit the processed value
-        }).catch((error) => {
-          subject.error?.(error); // Handle errors by calling error method of Subject
-        });
-      },
-      complete: subject.complete,
-      error: subject.error,
-    });
+    (async () => {
+      try {
+        for await (const value of processTask(stream)) {
+          subject.next(value);
+        }
+        subject.complete();
+      } catch (error) {
+        subject.error?.(error);
+      }
+    })();
 
-    return subject; // Return the Subject as the result of the operator
+    return subject;
   }) as Coroutine;
 
   initWorkers();
 
   operator.finalize = finalize;
-  operator.processTask = processTask;
   operator.getIdleWorker = getIdleWorker;
   operator.returnWorker = returnWorker;
   return operator;

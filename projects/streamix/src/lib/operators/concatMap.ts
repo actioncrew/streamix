@@ -1,68 +1,54 @@
-import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
+import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
-export function concatMap<T, R>(
-  project: (value: T) => Stream<R>
-): StreamOperator {
+export function concatMap<T, R>(project: (value: T) => Stream<R>): StreamOperator {
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let isOuterComplete = false;
-    let activeSubscriptions: Subscription[] = [];
-    const innerQueue: Array<Stream<R>> = [];
+    let activeInnerStreams = 0; // Track active inner streams
 
-    const subscribeToInner = (innerStream: Stream<R>) => {
-      if (innerStream.completed()) {
-        // If the inner stream is already completed, check if we can complete the outer stream
-        if (isOuterComplete && activeSubscriptions.length === 0) {
-          output.complete();
+    // Async generator to process inner streams sequentially
+    const processInnerStream = async (innerStream: Stream<R>) => {
+      try {
+        for await (const emission of innerStream) {
+          output.next(emission.value!); // Forward value from inner stream
         }
-        return;
+      } catch (err) {
+        // Handle error in inner stream without affecting other emissions
+        output.error(err); // Propagate error from the inner stream
+      } finally {
+        activeInnerStreams -= 1;
+        if (isOuterComplete && activeInnerStreams === 0) {
+          output.complete(); // Complete the output stream when all inner streams are processed
+        }
       }
-
-      const innerSub = innerStream.subscribe({
-        next: (value) => output.next(value),
-        error: (err) => {
-          output.error(err);
-          activeSubscriptions = activeSubscriptions.filter(
-            (sub) => sub !== innerSub
-          );
-          if (innerQueue.length > 0) {
-            subscribeToInner(innerQueue.shift()!);
-          } else if (isOuterComplete && activeSubscriptions.length === 0) {
-            output.complete();
-          }
-        },
-        complete: () => {
-          activeSubscriptions = activeSubscriptions.filter(
-            (sub) => sub !== innerSub
-          );
-          if (innerQueue.length > 0) {
-            subscribeToInner(innerQueue.shift()!);
-          } else if (isOuterComplete && activeSubscriptions.length === 0) {
-            output.complete();
-          }
-        },
-      });
-      activeSubscriptions.push(innerSub);
     };
 
-    input.subscribe({
-      next: (value) => {
-        const innerStream = project(value);
-        if (activeSubscriptions.length > 0) {
-          innerQueue.push(innerStream);
-        } else {
-          subscribeToInner(innerStream);
+    // Iterate over the input stream using async iterator
+    (async () => {
+      try {
+        let hasValue = false;
+        for await (const emission of input) {
+          hasValue = true;
+          const innerStream = project(emission.value!); // Project input to inner stream
+          activeInnerStreams += 1;
+          processInnerStream(innerStream); // Process the inner stream sequentially
         }
-      },
-      error: (err) => output.error(err),
-      complete: () => {
-        isOuterComplete = true;
-        if (innerQueue.length === 0 && activeSubscriptions.length === 0) {
+
+        // If no values were emitted in the outer stream, complete immediately
+        if (!hasValue && !isOuterComplete) {
           output.complete();
         }
-      },
-    });
+      } catch (err) {
+        output.error(err);
+      } finally {
+        isOuterComplete = true;
+        // If all inner streams are done, complete the output stream
+        if (activeInnerStreams === 0) {
+          output.complete();
+        }
+      }
+    })();
 
     return output;
   };

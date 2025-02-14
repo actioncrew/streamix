@@ -6,6 +6,7 @@ export function switchMap<T, R>(project: (value: T) => Stream<R>): StreamOperato
     const output = createSubject<R>(); // The output stream
     let currentSubscription: Subscription | null = null;
     let isOuterComplete = false;
+    let activeInnerStreams = 0; // Track active inner streams
 
     const subscribeToInner = (innerStream: Stream<R>) => {
       // Unsubscribe from the previous inner subscription if any
@@ -14,30 +15,28 @@ export function switchMap<T, R>(project: (value: T) => Stream<R>): StreamOperato
         currentSubscription = null;
       }
 
-      if (!innerStream.completed()) {
-        // Subscribe to the new inner stream
-        currentSubscription = innerStream.subscribe({
-          next: (value) => {
-            output.next(value); // Forward values to the outer stream
-          },
-          error: (err) => {
-            output.error(err); // Forward errors to the outer stream
-            currentSubscription = null; // Mark the subscription as null
-            checkComplete(); // Check if we can complete the outer stream
-          },
-          complete: () => {
-            currentSubscription = null; // Mark the subscription as null
-            checkComplete(); // Check if we can complete the outer stream
-          },
-        });
-      } else {
-        checkComplete(); // Check if we can complete the outer stream
-      }
+      // Increment active inner streams count
+      activeInnerStreams += 1;
+
+      // Subscribe to the new inner stream
+      currentSubscription = innerStream.subscribe({
+        next: (value) => output.next(value), // Forward values to the outer stream
+        error: (err) => {
+          output.error(err); // Forward errors to the outer stream
+          currentSubscription = null; // Mark the subscription as null
+          checkComplete(); // Check if we can complete the outer stream
+        },
+        complete: () => {
+          activeInnerStreams -= 1; // Decrement active inner streams count
+          currentSubscription = null; // Mark the subscription as null
+          checkComplete(); // Check if we can complete the outer stream
+        },
+      });
     };
 
     const checkComplete = () => {
-      // Complete the outer stream if the outer stream is marked complete and there are no active subscriptions
-      if (isOuterComplete && !currentSubscription) {
+      // Complete the outer stream if the outer stream is marked complete and there are no active inner streams
+      if (isOuterComplete && activeInnerStreams === 0) {
         output.complete();
       }
     };

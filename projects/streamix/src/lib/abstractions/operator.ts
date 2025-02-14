@@ -1,4 +1,4 @@
-import { Emission, Stream } from '.';
+import { Emission, Stream } from '../abstractions';
 
 export type StreamOperator = Omit<Operator, "handle"> & {
   (stream: Stream): Stream;
