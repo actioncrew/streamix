@@ -1,7 +1,7 @@
+import { rest } from "msw";
+import { setupServer } from "msw/node";
 import "whatwg-fetch";
 import { httpFetch } from "../lib"; // Adjust the import based on your project structure
-import { setupServer } from "msw/node";
-import { rest } from "msw";
 
 import { TextDecoder, TextEncoder } from "util";
 
@@ -83,13 +83,13 @@ describe("httpFetch functional tests", () => {
     expect(errors[0]).toBeInstanceOf(Error);
   });
 
-  test("httpFetch should properly stream large files and update progress", async () => {
+  test("httpFetch should properly stream large files and update progress", (done) => {
     // Create a mock large file (10MB)
     const largeFile = new Uint8Array(10 * 1024 * 1024).fill(1); // 10MB
 
     // Mock server setup
     const server = setupServer(
-      rest.get("http://localhost/large-file", async (req, res, ctx) => {
+      rest.get("http://localhost/large-file", async (_, res, ctx) => {
         const chunkSize = 512 * 1024; // 512KB per chunk
         const stream = new ReadableStream({
           start(controller) {
@@ -128,19 +128,24 @@ describe("httpFetch functional tests", () => {
     });
 
     const chunks: Uint8Array[] = [];
-    for await (const emission of stream) {
-      chunks.push(emission.value as Uint8Array);
-    }
+    const subscription = stream.subscribe({
+      next : (value) => {
+        chunks.push(value as Uint8Array);
+      },
+      complete: () => {
+        server.close();
+        subscription.unsubscribe();
 
-    server.close();
+        // Verify received data matches the mock file
+        const receivedFile = new Uint8Array(chunks.reduce<number[]>((acc, val) => acc.concat([...val]), []));
+        expect(receivedFile.length).toBe(largeFile.length);
+        expect(receivedFile).toEqual(largeFile);
 
-    // Verify received data matches the mock file
-    const receivedFile = new Uint8Array(chunks.reduce<number[]>((acc, val) => acc.concat([...val]), []));
-    expect(receivedFile.length).toBe(largeFile.length);
-    expect(receivedFile).toEqual(largeFile);
-
-    // Ensure progress updates correctly
-    expect(lastProgress).toBe(1);
-    expect(progressUpdates.some(p => p > 0 && p < 1)).toBe(true);
+        // Ensure progress updates correctly
+        expect(lastProgress).toBe(1);
+        expect(progressUpdates.some(p => p > 0 && p < 1)).toBe(true);
+        done();
+      }
+    });
   });
 });
