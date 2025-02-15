@@ -89,7 +89,7 @@ export const http: HttpFetch = function(url: string, options?: RequestInit, onPr
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        fullText += decoder.decode(value); // No need for `{ stream: true }`
+        fullText += decoder.decode(value, { stream: true });
 
         loaded += value.length;
         onProgress?.(totalSize ? loaded / totalSize : 0.5);
