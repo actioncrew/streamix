@@ -48,11 +48,14 @@ describe('groupBy and custom partitioning', () => {
       mergeMap((groupItem: { key: string, value: string }) => {
         const key = groupItem.key; // Get the group key ('low' or 'high')
         const operators = paths[key] || []; // Get the operators for this group
-        groupsMap.set(key, []);
 
         return of(groupItem.value).pipe(
           ...operators,
-          tap(value => groupsMap.get(key)!.push(value))
+          tap(value => {
+            const groupValues = groupsMap.get(key) || [];
+            groupValues.push(value); // Add the current value to the group
+            groupsMap.set(groupItem.key, groupValues);
+          })
         );
       })
     );
@@ -93,11 +96,13 @@ describe('groupBy and custom partitioning', () => {
         const key = groupItem.key; // Get the group key ('low' or 'high')
         const operators = paths[key] || []; // Get the operators for this group
 
-        groupsMap.set(key, []);
-
-        return from([groupItem.value]).pipe(
+        return of(groupItem.value).pipe(
           ...operators,
-          tap(value => groupsMap.get(key)!.push(value))
+          tap(value => {
+            const groupValues = groupsMap.get(key) || [];
+            groupValues.push(value); // Add the current value to the group
+            groupsMap.set(groupItem.key, groupValues);
+          })
         );
       })
     );
