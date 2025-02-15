@@ -79,7 +79,6 @@ export const http: HttpFetch = function(url: string, options?: RequestInit, onPr
       const value = isText ? await response.text() : new Uint8Array(await response.arrayBuffer());
       onProgress?.(1);
       yield createEmission({ value });
-
       return;
     }
 
@@ -97,6 +96,7 @@ export const http: HttpFetch = function(url: string, options?: RequestInit, onPr
         onProgress?.(totalSize ? loaded / totalSize : 0.5);
       }
 
+      onProgress?.(1); // Ensure progress is 100% at the end
       yield createEmission({ value: fullText });
 
     } else {
@@ -110,11 +110,10 @@ export const http: HttpFetch = function(url: string, options?: RequestInit, onPr
         onProgress?.(totalSize ? loaded / totalSize : 0.5);
       }
 
+      onProgress?.(1); // Ensure progress is 100% at the end
       const fullBinary = new Uint8Array(allChunks.reduce<number[]>((acc, val) => acc.concat([...val]), []));
       yield createEmission({ value: fullBinary });
     }
-
-    onProgress?.(1); // Ensure progress is 100% at the end
   }
 
   const stream = createStream("fetchStream", streamGenerator) as HttpStream;
