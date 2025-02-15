@@ -18,7 +18,7 @@ export type HttpFetch = {
 let requestInterceptors: RequestInterceptor[] = [];
 let responseInterceptors: ResponseInterceptor[] = [];
 
-export const httpFetch: HttpFetch = function(url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream {
+export const http: HttpFetch = function(url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream {
   let abortController = new AbortController();
 
   // Apply interceptors
@@ -129,11 +129,11 @@ export const httpFetch: HttpFetch = function(url: string, options?: RequestInit,
 } as HttpFetch;
 
 // Interceptor functions
-httpFetch.addRequestInterceptor = (interceptor: RequestInterceptor) => requestInterceptors.push(interceptor);
-httpFetch.removeRequestInterceptor = (interceptor: RequestInterceptor) => {
+http.addRequestInterceptor = (interceptor: RequestInterceptor) => requestInterceptors.push(interceptor);
+http.removeRequestInterceptor = (interceptor: RequestInterceptor) => {
   requestInterceptors = requestInterceptors.filter(i => i !== interceptor);
 };
-httpFetch.addResponseInterceptor = (interceptor: ResponseInterceptor) => responseInterceptors.push(interceptor);
-httpFetch.removeResponseInterceptor = (interceptor: ResponseInterceptor) => {
+http.addResponseInterceptor = (interceptor: ResponseInterceptor) => responseInterceptors.push(interceptor);
+http.removeResponseInterceptor = (interceptor: ResponseInterceptor) => {
   responseInterceptors = responseInterceptors.filter(i => i !== interceptor);
 };

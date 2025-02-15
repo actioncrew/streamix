@@ -7,7 +7,7 @@ export * from './EMPTY';
 export * from './from';
 export * from './fromEvent';
 export * from './fromPromise';
-export * from './httpFetch';
+export * from './http';
 export * from './iif';
 export * from './interval';
 export * from './loop';
