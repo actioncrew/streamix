@@ -1,39 +1,37 @@
 import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createSubject } from "../streams";
 
-export type KeyedSubject<T = any, K = any> = Subject<T> & {
+export type Group<T = any, K = any> = {
+  values: T[];
   key: K;
 };
 
 export function groupBy<T = any, K = any>(
-  keySelector: (value: T) => K // Function to extract the key from each value
-): StreamOperator {
-  const operator = (input: Stream<T>): Stream<Stream<T>> => {
-    const output = createSubject<Stream<T>>(); // Output stream of grouped streams
-    const groups = new Map<K, KeyedSubject>(); // Map to store groups by key
+  keySelector: (value: T) => K
+): StreamOperator<T, Group<T, K>> {
+  const operator = (input: Stream<T>): Stream<Group<T, K>> => {
+    const output = createSubject<Group<T, K>>(); // Output stream of grouped objects
+    const groups = new Map<K, Group<T, K>>(); // Store groups as objects
 
     const subscription = input.subscribe({
       next: (value) => {
-        const key = keySelector(value); // Get the key for the current value
+        const key = keySelector(value);
 
-        // Check if a group for this key already exists
-        if (!groups.has(key)) {
-          // Create a new group (stream) for this key
-          const group = createSubject<T>() as KeyedSubject;
-          group.key = key;
-          groups.set(key, group); // Store the group in the map
-          output.next(group); // Emit the new group to the output stream
+        // Retrieve or create the group
+        let group = groups.get(key);
+        if (!group) {
+          group = { key, values: [] };
+          groups.set(key, group);
         }
 
-        // Emit the value to the corresponding group
-        groups.get(key)!.next(value);
+        // Add the value to its group
+        group.values.push(value);
+        output.next(group); // Emit group object containing `key` and `values`
       },
-      error: (err) => output.error(err), // Propagate errors to the output stream
+      error: (err: any) => output.error(err),
       complete: () => {
-        // Complete all groups and the output stream
-        groups.forEach((group) => group.complete());
         output.complete();
-        groups.clear();  // Clear groups to avoid memory leaks
+        groups.clear();
         subscription.unsubscribe();
       },
     });
