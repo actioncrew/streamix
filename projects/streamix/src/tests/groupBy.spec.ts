@@ -1,4 +1,4 @@
-import { from, Group, groupBy, map, merge, mergeMap, tap, toArray } from '../lib';
+import { from, groupBy, map, merge, mergeMap, tap, toArray } from '../lib';
 
 describe('groupBy and custom partitioning', () => {
   it('should partition values using groupBy and sort them by key', (done) => {
@@ -8,8 +8,11 @@ describe('groupBy and custom partitioning', () => {
     from([1, 2, 3, 4, 5, 6]).pipe(
       groupBy((value: number) => (value % 2 === 0 ? 'even' : 'odd'))
     ).subscribe({
-      next: (group) => {
-        groupsMap.set(group.key, group.values); // Update the latest group
+      next: (groupItem) => {
+        // Update the latest group with just the emitted value
+        const groupValues = groupsMap.get(groupItem.key) || [];
+        groupValues.push(groupItem.value); // Add the current value to the group
+        groupsMap.set(groupItem.key, groupValues); // Update the group values
       },
       complete: () => {
         // Ensure 'odd' group comes first
@@ -42,15 +45,14 @@ describe('groupBy and custom partitioning', () => {
     // Use mergeMap to combine all partitioned streams into one observable
     const source$ = merge(...partitionedStreams).pipe(
       groupBy((value: string) => value.startsWith('Low') ? 'low' : 'high'),
-      mergeMap((group: Group<string, "low" | "high">) => {
-        const key = group.key; // Get the group key ('low' or 'high')
+      mergeMap((groupItem: { key: string, value: string }) => {
+        const key = groupItem.key; // Get the group key ('low' or 'high')
         const operators = paths[key] || []; // Get the operators for this group
         groupsMap.set(key, []);
 
-        return from(group.values).pipe(
+        return of(groupItem.value).pipe(
           ...operators,
-          toArray(),
-          tap(values => groupsMap.set(key, values))
+          tap(value => groupsMap.get(key)!.push(value))
         );
       })
     );
@@ -87,16 +89,15 @@ describe('groupBy and custom partitioning', () => {
     // Create partitioned stream and apply operators
     const source$ = from([1, 3, 5, 7, 10]).pipe(
       groupBy((value: number) => (value <= 5 ? 'low' : 'high')),
-      mergeMap((group: Group<string, "low" | "high">) => {
-        const key = group.key; // Get the group key ('low' or 'high')
+      mergeMap((groupItem: { key: string, value: number }) => {
+        const key = groupItem.key; // Get the group key ('low' or 'high')
         const operators = paths[key] || []; // Get the operators for this group
 
         groupsMap.set(key, []);
 
-        return from(group.values).pipe(
+        return from([groupItem.value]).pipe(
           ...operators,
-          toArray(),
-          tap(values => groupsMap.set(key, values))
+          tap(value => groupsMap.get(key)!.push(value))
         );
       })
     );
