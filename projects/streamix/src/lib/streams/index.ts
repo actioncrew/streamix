@@ -10,6 +10,7 @@ export * from './fromPromise';
 export * from './http';
 export * from './iif';
 export * from './interval';
+export * from './jsonp';
 export * from './loop';
 export * from './merge';
 export * from './of';
