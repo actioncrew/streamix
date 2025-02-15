@@ -1,11 +1,10 @@
 import { createEmission, createStream, Stream } from "../abstractions";
-import { Subject } from "../streams";
 
 // Type for interceptors
 export type RequestInterceptor = (request: Request) => Request | Promise<Request>;
 export type ResponseInterceptor = (response: Response) => Response | Promise<Response>;
 
-export type HttpStream = Stream & { abort: () => void; progress: Subject<number> };
+export type HttpStream = Stream & { abort: () => void; };
 
 export type HttpFetch = {
   (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream;
