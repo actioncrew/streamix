@@ -2,13 +2,13 @@ import { createEmission, createStream, Stream } from '../abstractions';
 
 export function jsonp<T = any>(url: string, callbackName: string): Stream<T> {
   return createStream("jsonp", async function* () {
-    return new Promise((resolve, reject) => {
+    let data = await new Promise<T>((resolve, reject) => {
       const script = document.createElement("script");
       script.src = `${url}?callback=${callbackName}`;
 
       // Create the callback function
-      window[callbackName] = (data: T) => {
-        resolve(createEmission({ value: data }));
+      (window as any)[callbackName] = (data: T) => {
+        resolve(data);
         document.head.removeChild(script);
       };
 
@@ -19,5 +19,7 @@ export function jsonp<T = any>(url: string, callbackName: string): Stream<T> {
 
       document.head.appendChild(script);
     });
+
+    yield createEmission({ value: data });
   });
 }
