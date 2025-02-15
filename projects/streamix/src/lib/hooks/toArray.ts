@@ -1,5 +1,5 @@
 import { createSubject } from '..';
-import { createEmission, createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 
 export const toArray = (): StreamOperator => {
   const operator = (input: Stream): Stream => {
@@ -12,7 +12,7 @@ export const toArray = (): StreamOperator => {
         accumulatedArray.push(emission.value);
       }
       // Once the stream completes, emit the accumulated array
-      yield createEmission({ value: accumulatedArray });
+      yield accumulatedArray;
     };
 
     // Handle the stream using the iterator

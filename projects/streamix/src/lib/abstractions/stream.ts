@@ -11,17 +11,17 @@ export type Stream<T = any> = {
   emissionCounter: number;
   [Symbol.asyncIterator]: () => AsyncGenerator<Emission<T>, void, unknown>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
-  pipe: (...steps: (Operator | StreamOperator)[]) => Stream<T>;
+  pipe: <K = any>(...steps: (Operator | StreamOperator<T, K>)[]) => Stream<K>;
   value: () => T | undefined;
   completed: () => boolean;
 };
 
 // Functional composition to extend stream functionality
-export function pipeStream<T>(
+export function pipeStream<T = any, K = any>(
   stream: Stream<T>,
   ...steps: (Operator | StreamOperator)[]
-): Stream<T> {
-  let combinedStream: Stream<T> = stream;
+): Stream<K> {
+  let combinedStream: Stream<any> = stream;
   let operatorsGroup: Operator[] = [];
 
   for (const step of steps) {

@@ -1,7 +1,7 @@
 import { Emission, Stream } from '../abstractions';
 
-export type StreamOperator = Omit<Operator, "handle"> & {
-  (stream: Stream): Stream;
+export type StreamOperator<T = any, K = any> = Omit<Operator, "handle"> & {
+  (stream: Stream<T>): Stream<K>;
 }
 
 export type Operator = {
