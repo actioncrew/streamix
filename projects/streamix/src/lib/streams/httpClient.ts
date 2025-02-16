@@ -1,11 +1,10 @@
-import { createEmission, createStream, Stream } from "../abstractions";
+import { Stream } from "../abstractions";
 import { http, HttpStream } from "./http";
 import { jsonp } from "./jsonp";
 
 export interface HttpOptions {
   headers?: Record<string, string>;
   params?: Record<string, string>;
-  responseType?: "json" | "text" | "blob" | "arraybuffer";
   reportProgress?: (progress: number) => void;
   withCredentials?: boolean;
   body?: any;
@@ -34,107 +33,64 @@ export const createHttpClient = (baseUrl?: string): HttpClient => {
     return fullUrl;
   };
 
-  const handleResponseType = <T>(stream: HttpStream<Response>, responseType?: HttpOptions["responseType"]): HttpStream<T> => {
-    return createStream<T>("httpStream", async function* () {
-      for await (const emission of stream) {
-        const response = emission.value as Response;
-        let parsedData: T;
-
-        switch (responseType) {
-          case "json":
-            parsedData = (await response.json()) as T;
-            break;
-          case "text":
-            parsedData = (await response.text()) as T;
-            break;
-          case "blob":
-            parsedData = (await response.blob()) as T;
-            break;
-          case "arraybuffer":
-            parsedData = (await response.arrayBuffer()) as T;
-            break;
-          default:
-            parsedData = (await response.json()) as T; // Default to JSON
-            break;
-        }
-
-        yield createEmission({ value: parsedData });
-      }
-    }) as HttpStream<T>;
-  };
-
   return {
     get: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      handleResponseType<T>(
-        http(
-          resolveUrl(url, options.params),
-          {
-            method: "GET",
-            headers: options.headers,
-            credentials: options.withCredentials ? "include" : "same-origin",
-          },
-          options.reportProgress
-        ),
-        options.responseType
+      http(
+        resolveUrl(url, options.params),
+        {
+          method: "GET",
+          headers: options.headers,
+          credentials: options.withCredentials ? "include" : "same-origin",
+        },
+        options.reportProgress
       ),
 
+
     post: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      handleResponseType<T>(
-        http(
-          resolveUrl(url, options.params),
-          {
-            method: "POST",
-            headers: options.headers,
-            credentials: options.withCredentials ? "include" : "same-origin",
-            body: options.body ? JSON.stringify(options.body) : undefined,
-          },
-          options.reportProgress
-        ),
-        options.responseType
+      http(
+        resolveUrl(url, options.params),
+        {
+          method: "POST",
+          headers: options.headers,
+          credentials: options.withCredentials ? "include" : "same-origin",
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        },
+        options.reportProgress
       ),
 
     put: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      handleResponseType<T>(
-        http(
-          resolveUrl(url, options.params),
-          {
-            method: "PUT",
-            headers: options.headers,
-            credentials: options.withCredentials ? "include" : "same-origin",
-            body: options.body ? JSON.stringify(options.body) : undefined,
-          },
-          options.reportProgress
-        ),
-        options.responseType
+      http(
+        resolveUrl(url, options.params),
+        {
+          method: "PUT",
+          headers: options.headers,
+          credentials: options.withCredentials ? "include" : "same-origin",
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        },
+        options.reportProgress
       ),
 
     patch: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      handleResponseType<T>(
-        http(
-          resolveUrl(url, options.params),
-          {
-            method: "PATCH",
-            headers: options.headers,
-            credentials: options.withCredentials ? "include" : "same-origin",
-            body: options.body ? JSON.stringify(options.body) : undefined,
-          },
-          options.reportProgress
-        ),
-        options.responseType
+      http(
+        resolveUrl(url, options.params),
+        {
+          method: "PATCH",
+          headers: options.headers,
+          credentials: options.withCredentials ? "include" : "same-origin",
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        },
+        options.reportProgress
       ),
 
     delete: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      handleResponseType<T>(
-        http(
-          resolveUrl(url, options.params),
-          {
-            method: "DELETE",
-            headers: options.headers,
-            credentials: options.withCredentials ? "include" : "same-origin",
-          },
-          options.reportProgress
-        ),
-        options.responseType
+      http(
+        resolveUrl(url, options.params),
+        {
+          method: "DELETE",
+          headers: options.headers,
+          credentials: options.withCredentials ? "include" : "same-origin",
+        },
+        options.reportProgress
       ),
 
     jsonp: <T>(url: string, callbackName: string = `jsonp_callback_${Date.now()}`): Stream<T> =>
