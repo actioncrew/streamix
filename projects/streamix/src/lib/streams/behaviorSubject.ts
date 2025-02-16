@@ -1,4 +1,4 @@
-import { Subscription, Receiver } from '../abstractions';
+import { createReceiver, Receiver, Subscription } from '../abstractions';
 import { createSubject, Subject } from '../streams';
 
 export type BehaviorSubject<T = any> = Subject<T> & {
