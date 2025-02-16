@@ -1,4 +1,4 @@
-import { from, groupBy, map, merge, mergeMap, tap, toArray } from '../lib';
+import { from, groupBy, map, merge, mergeMap, of, tap } from '../lib';
 
 describe('groupBy and custom partitioning', () => {
   it('should partition values using groupBy and sort them by key', (done) => {
@@ -30,7 +30,7 @@ describe('groupBy and custom partitioning', () => {
 
     const customOperator = map((value: any) => `Processed ${value}`);
 
-    const paths = {
+    const paths: any = {
       low: [customOperator],
       high: [customOperator],
     };
@@ -82,7 +82,7 @@ describe('groupBy and custom partitioning', () => {
     let result: any[] = [];
 
     // Partition and split values into "low" and "high" ranges
-    const paths = {
+    const paths: any = {
       low: [map((value: number) => (value <= 5 ? 'low' : 'high'))],
       high: [map((value: number) => (value > 5 ? 'high' : 'low'))],
     };
