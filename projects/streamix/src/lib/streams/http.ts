@@ -4,7 +4,7 @@ import { createEmission, createStream, Stream } from "../abstractions";
 export type RequestInterceptor = (request: Request) => Request | Promise<Request>;
 export type ResponseInterceptor = (response: Response) => Response | Promise<Response>;
 
-export type HttpStream = Stream & { abort: () => void; };
+export type HttpStream<T = any> = Stream<T> & { abort: () => void; };
 
 export type HttpFetch = {
   (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream;
@@ -75,7 +75,9 @@ export const http: HttpFetch = function(url: string, options?: RequestInit, onPr
     onProgress?.(0);
 
     if (!response.body) {
-      const value = isText ? await response.text() : new Uint8Array(await response.arrayBuffer());
+      const contentType = response.headers.get("Content-Type") || "";
+      const isJson = contentType.includes("json");
+      const value = isJson ? await response.json() : isText ? await response.text() : new Uint8Array(await response.arrayBuffer());
       onProgress?.(1);
       yield createEmission({ value });
       return;
@@ -96,7 +98,10 @@ export const http: HttpFetch = function(url: string, options?: RequestInit, onPr
       }
 
       onProgress?.(1); // Ensure progress is 100% at the end
-      yield createEmission({ value: fullText });
+      const contentType = response.headers.get("Content-Type") || "";
+      const isJson = contentType.includes("json");
+      const value = isJson ? JSON.parse(fullText) : await response.text();
+      yield createEmission({ value });
 
     } else {
       let allChunks: Uint8Array[] = [];
