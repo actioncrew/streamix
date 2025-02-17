@@ -12,6 +12,8 @@ export type HttpConfig = {
     request?: RequestInterceptor[];
     response?: ResponseInterceptor[];
   }
+  withXsrfProtection?: boolean;
+  xsrfTokenHeader?: string;
 };
 
 export type HttpFetch = (
