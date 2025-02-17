@@ -103,8 +103,7 @@ export const httpInit = (
 
       if (!response.body) {
         // Determine the content type of the response
-        const contentType = response.headers.get("Content-Type") || "";
-        let value: any;
+        let value: any = undefined;
 
         if (contentType.includes("application/json")) {
           // Parse the response as JSON if the content type is JSON
