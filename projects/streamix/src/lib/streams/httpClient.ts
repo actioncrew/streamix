@@ -15,11 +15,11 @@ export type HttpClientConfig = {
 };
 
 export type HttpClient = {
-  get<T>(url: string, options?: HttpOptions): HttpStream<T>;
-  post<T>(url: string, options?: HttpOptions): HttpStream<T>;
-  put<T>(url: string, options?: HttpOptions): HttpStream<T>;
-  patch<T>(url: string, options?: HttpOptions): HttpStream<T>;
-  delete<T>(url: string, options?: HttpOptions): HttpStream<T>;
+  get<T = any>(url: string, options?: HttpOptions): HttpStream<T>;
+  post<T = any>(url: string, options?: HttpOptions): HttpStream<T>;
+  put<T = any>(url: string, options?: HttpOptions): HttpStream<T>;
+  patch<T = any>(url: string, options?: HttpOptions): HttpStream<T>;
+  delete<T = any>(url: string, options?: HttpOptions): HttpStream<T>;
 };
 
 export const createHttpClient = (config: HttpClientConfig = { http: httpInit() }): HttpClient => {
