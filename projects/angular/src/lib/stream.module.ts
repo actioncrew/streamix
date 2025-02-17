@@ -8,4 +8,4 @@ import { StreamPipe } from "./stream.pipe";
   imports: [CommonModule],
   exports: [StreamPipe, StreamDirective]
 })
-export class SharedModule {}
+export class StreamixModule {}
