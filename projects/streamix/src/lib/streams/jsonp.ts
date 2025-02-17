@@ -5,11 +5,8 @@ export function jsonp<T = any>(url: string, callbackName: string): Stream<T> {
     let data = await new Promise<T>((resolve, reject) => {
       const script = document.createElement("script");
       callbackName = `${callbackName}_${Math.random().toString(36).substring(2)}`;
-
-      script.src = url.endsWith("?")  
-        ? url + encodeURIComponent(callbackName)  
-        : url + (url.includes("?") ? "&" : "?") + `callback=${encodeURIComponent(callbackName)}`;
-
+      script.src = url + (url.endsWith("?") ? "" : url.includes("?") ? "&" : "?") + `callback=${encodeURIComponent(callbackName)}`;
+      
       // Create the callback function
       (window as any)[callbackName] = (data: T) => {
         resolve(data);
