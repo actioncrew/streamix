@@ -20,7 +20,8 @@ import { Pipe, PipeTransform } from '@angular/core';
  */
 @Pipe({
   name: 'stream',  // Name the pipe
-  pure: false       // Allow it to update every time the stream changes
+  pure: false,       // Allow it to update every time the stream changes
+  standalone: false
 })
 export class StreamPipe implements PipeTransform {
   private subscription: Subscription | null = null;  // Store the subscription
@@ -42,7 +43,7 @@ export class StreamPipe implements PipeTransform {
     }
 
     // Subscribe to the new stream
-    this.subscription = stream((value: any) => {
+    this.subscription = stream.subscribe((value: any) => {
       this.value = value;  // Update the value when a new emission occurs
     });
 

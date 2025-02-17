@@ -4,7 +4,9 @@ export function jsonp<T = any>(url: string, callbackName: string): Stream<T> {
   return createStream("jsonp", async function* () {
     let data = await new Promise<T>((resolve, reject) => {
       const script = document.createElement("script");
-      script.src = `${url}?callback=${callbackName}`;
+      callbackName = `${callbackName}_${Math.random().toString(36).substring(5)}`;
+      const callbackParam = url.includes('?') ? `&callback=${callbackName}` : `?callback=${callbackName}`;
+      script.src = `${url}${callbackParam}`;
 
       // Create the callback function
       (window as any)[callbackName] = (data: T) => {

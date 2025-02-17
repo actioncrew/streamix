@@ -22,7 +22,8 @@ import { Directive, Input, OnDestroy, OnInit, TemplateRef, ViewContainerRef } fr
  * - The `<span>` will automatically update whenever the stream emits a new value.
  */
 @Directive({
-  selector: '[stream]' // The selector to bind to the stream
+  selector: '[stream]', // The selector to bind to the stream
+  standalone: false
 })
 export class StreamDirective<T> implements OnInit, OnDestroy {
   @Input() stream!: Stream<T>; // Input to bind the stream
@@ -36,7 +37,7 @@ export class StreamDirective<T> implements OnInit, OnDestroy {
 
   ngOnInit() {
     if (this.stream) {
-      this.subscription = this.stream((value: T) => {
+      this.subscription = this.stream.subscribe((value: T) => {
         this._value = value; // Get the emitted value
         this.updateDOM();    // Update the DOM with the new value
       });
