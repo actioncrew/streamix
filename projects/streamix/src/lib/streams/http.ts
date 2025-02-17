@@ -4,136 +4,169 @@ import { createEmission, createStream, Stream } from "../abstractions";
 export type RequestInterceptor = (request: Request) => Request | Promise<Request>;
 export type ResponseInterceptor = (response: Response) => Response | Promise<Response>;
 
-export type HttpStream<T = any> = Stream<T> & { abort: () => void; };
+export type HttpStream<T = any> = Stream<T> & { abort: () => void };
 
-export type HttpFetch = {
-  (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream;
-  addRequestInterceptor: (interceptor: RequestInterceptor) => void;
-  removeRequestInterceptor: (interceptor: RequestInterceptor) => void;
-  addResponseInterceptor: (interceptor: ResponseInterceptor) => void;
-  removeResponseInterceptor: (interceptor: ResponseInterceptor) => void;
-};
+export type HttpFetch = (
+  url: string,
+  options?: RequestInit,
+  onProgress?: (progress: number) => void
+) => HttpStream;
 
-let requestInterceptors: RequestInterceptor[] = [];
-let responseInterceptors: ResponseInterceptor[] = [];
+export const httpInit = (
+  fetchFn: typeof fetch = fetch, // Allow custom fetch function
+  requestInterceptors: RequestInterceptor[] = [],
+  responseInterceptors: ResponseInterceptor[] = []
+): HttpFetch => {
+  return (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream => {
+    const abortController = new AbortController();
 
-export const http: HttpFetch = function(url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream {
-  let abortController = new AbortController();
+    // Apply request interceptors
+    const applyRequestInterceptors = async (request: Request): Promise<Request> => {
+      for (const interceptor of requestInterceptors) {
+        request = await interceptor(request);
+      }
+      return request;
+    };
 
-  // Apply interceptors
-  const applyRequestInterceptors = async (request: Request): Promise<Request> => {
-    for (let interceptor of requestInterceptors) {
-      request = await interceptor(request);
+    // Apply response interceptors
+    const applyResponseInterceptors = async (response: Response): Promise<Response> => {
+      for (const interceptor of responseInterceptors) {
+        response = await interceptor(response);
+      }
+      return response;
+    };
+
+    // Handle the body of the request depending on its type
+    let body: any;
+    const headers = new Headers(options?.headers || {});
+
+    if (options?.body instanceof FormData) {
+      // No need to set Content-Type for FormData, the browser will do it
+      body = options.body;
+    } else if (options?.body && options.body instanceof URLSearchParams) {
+      // For x-www-form-urlencoded, we use URLSearchParams to encode the body
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/x-www-form-urlencoded");
+      }
+      body = options.body.toString();
+    } else if (options?.body) {
+      // For JSON body, set Content-Type to application/json if not set
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+      }
+      body = JSON.stringify(options.body);
     }
-    return request;
-  };
 
-  const applyResponseInterceptors = async (response: Response): Promise<Response> => {
-    for (let interceptor of responseInterceptors) {
-      response = await interceptor(response);
-    }
-    return response;
-  };
-
-  // Fetch with interceptors
-  const fetchWithInterceptors = async () => {
-    if (abortController.signal.aborted) {
-      return new Response(JSON.stringify({ error: "Request aborted" }), { status: 408 });
-    }
-
-    let request = new Request(url, options);
-    request = await applyRequestInterceptors(request);
-    const finalRequest = new Request(request, { signal: abortController.signal });
-
-    try {
-      const response = await fetch(finalRequest);
-      return applyResponseInterceptors(response);
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    // Fetch with interceptors
+    const fetchWithInterceptors = async () => {
+      if (abortController.signal.aborted) {
         return new Response(JSON.stringify({ error: "Request aborted" }), { status: 408 });
       }
-      return new Response(JSON.stringify({ error: `Request failed: ${error.message}` }), { status: 500 });
-    }
-  };
 
-  // Stream generator
-  async function* streamGenerator() {
-    const response = await fetchWithInterceptors();
-    if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+      let request = new Request(url, {
+        ...options,
+        body,
+        signal: abortController.signal,
+      });
 
-    const contentType = response.headers.get("Content-Type") || "";
-    const isText = contentType.includes("text") || contentType.includes("json");
+      request = await applyRequestInterceptors(request);
+      const finalRequest = new Request(request, { signal: abortController.signal });
 
-    let encoding = "utf-8";
-    const match = contentType.match(/charset=([^;]+)/);
-    if (match) encoding = match[1].trim().toLowerCase();
+      try {
+        const response = await fetchFn(finalRequest);
+        return applyResponseInterceptors(response);
+      } catch (error: any) {
+        if (error.name === "AbortError") {
+          return new Response(JSON.stringify({ error: "Request aborted" }), { status: 408 });
+        }
+        return new Response(JSON.stringify({ error: `Request failed: ${error.message}` }), { status: 500 });
+      }
+    };
 
-    const contentLength = response.headers.get("Content-Length");
-    const totalSize = contentLength ? parseInt(contentLength, 10) : null;
-    let loaded = 0;
+    // Stream generator
+    async function* streamGenerator() {
+      const response = await fetchWithInterceptors();
+      if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
 
-    onProgress?.(0);
-
-    if (!response.body) {
       const contentType = response.headers.get("Content-Type") || "";
-      const isJson = contentType.includes("json");
-      const value = isJson ? await response.json() : isText ? await response.text() : new Uint8Array(await response.arrayBuffer());
-      onProgress?.(1);
-      yield createEmission({ value });
-      return;
-    }
+      const isText = contentType.includes("text") || contentType.includes("json");
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder(encoding);
+      let encoding = "utf-8";
+      const match = contentType.match(/charset=([^;]+)/);
+      if (match) encoding = match[1].trim().toLowerCase();
 
-    if (isText) {
-      let fullText = "";
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        fullText += decoder.decode(value, { stream: true });
+      const contentLength = response.headers.get("Content-Length");
+      const totalSize = contentLength ? parseInt(contentLength, 10) : null;
+      let loaded = 0;
 
-        loaded += value.length;
-        onProgress?.(totalSize ? loaded / totalSize : 0.5);
+      onProgress?.(0);
+
+      if (!response.body) {
+        // Determine the content type of the response
+        const contentType = response.headers.get("Content-Type") || "";
+        let value: any;
+
+        if (contentType.includes("application/json")) {
+          // Parse the response as JSON if the content type is JSON
+          value = await response.json();
+        } else if (contentType.includes("text") || contentType.includes("html")) {
+          // Parse the response as text if it's a textual content type
+          value = await response.text();
+        } else if (contentType.includes("application/x-www-form-urlencoded")) {
+          // If it's URL-encoded, decode the text content
+          value = decodeURIComponent(await response.text());
+        } else if (contentType.includes("multipart/form-data")) {
+          // If it's a multipart/form-data, convert it to FormData
+          value = await response.formData();
+        } else {
+          // Default case for binary data (e.g., images, PDFs)
+          value = new Uint8Array(await response.arrayBuffer());
+        }
+
+        onProgress?.(1);
+        yield createEmission({ value });
+        return;
       }
 
-      onProgress?.(1); // Ensure progress is 100% at the end
-      const contentType = response.headers.get("Content-Type") || "";
-      const isJson = contentType.includes("json");
-      const value = isJson ? JSON.parse(fullText) : await response.text();
-      yield createEmission({ value });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder(encoding);
 
-    } else {
-      let allChunks: Uint8Array[] = [];
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        allChunks.push(value);
+      if (isText) {
+        let fullText = "";
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          fullText += decoder.decode(value, { stream: true });
 
-        loaded += value.length;
-        onProgress?.(totalSize ? loaded / totalSize : 0.5);
+          loaded += value.length;
+          onProgress?.(totalSize ? loaded / totalSize : 0.5);
+        }
+
+        onProgress?.(1);
+        const isJson = contentType.includes("json");
+        yield createEmission({ value: isJson ? JSON.parse(fullText) : fullText });
+      } else {
+        let allChunks: Uint8Array[] = [];
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          allChunks.push(value);
+
+          loaded += value.length;
+          onProgress?.(totalSize ? loaded / totalSize : 0.5);
+        }
+
+        onProgress?.(1);
+        const fullBinary = new Uint8Array(allChunks.reduce<number[]>((acc, val) => acc.concat([...val]), []));
+        yield createEmission({ value: fullBinary });
       }
-
-      onProgress?.(1); // Ensure progress is 100% at the end
-      const fullBinary = new Uint8Array(allChunks.reduce<number[]>((acc, val) => acc.concat([...val]), []));
-      yield createEmission({ value: fullBinary });
     }
-  }
 
-  const stream = createStream("fetchStream", streamGenerator) as HttpStream;
-  stream.abort = () => {
-    abortController.abort();
+    const stream = createStream("fetchStream", streamGenerator) as HttpStream;
+    stream.abort = () => {
+      abortController.abort();
+    };
+
+    return stream;
   };
-
-  return stream;
-} as HttpFetch;
-
-// Interceptor functions
-http.addRequestInterceptor = (interceptor: RequestInterceptor) => requestInterceptors.push(interceptor);
-http.removeRequestInterceptor = (interceptor: RequestInterceptor) => {
-  requestInterceptors = requestInterceptors.filter(i => i !== interceptor);
-};
-http.addResponseInterceptor = (interceptor: ResponseInterceptor) => responseInterceptors.push(interceptor);
-http.removeResponseInterceptor = (interceptor: ResponseInterceptor) => {
-  responseInterceptors = responseInterceptors.filter(i => i !== interceptor);
 };

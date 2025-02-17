@@ -1,6 +1,4 @@
-import { Stream } from "../abstractions";
-import { http, HttpStream } from "./http";
-import { jsonp } from "./jsonp";
+import { HttpFetch, httpInit, HttpStream } from "./http";
 
 export interface HttpOptions {
   headers?: Record<string, string>;
@@ -10,16 +8,23 @@ export interface HttpOptions {
   body?: any;
 }
 
+export type HttpClientConfig = {
+  http?: HttpFetch;
+  baseUrl?: string;
+  defaultHeaders?: Record<string, string>;
+};
+
 export type HttpClient = {
   get<T>(url: string, options?: HttpOptions): HttpStream<T>;
   post<T>(url: string, options?: HttpOptions): HttpStream<T>;
   put<T>(url: string, options?: HttpOptions): HttpStream<T>;
   patch<T>(url: string, options?: HttpOptions): HttpStream<T>;
   delete<T>(url: string, options?: HttpOptions): HttpStream<T>;
-  jsonp<T>(url: string, callbackName?: string): Stream<T>;
 };
 
-export const createHttpClient = (baseUrl?: string): HttpClient => {
+export const createHttpClient = (config: HttpClientConfig = { http: httpInit() }): HttpClient => {
+  const { baseUrl, defaultHeaders = new Headers() } = config;
+
   const resolveUrl = (url: string, params?: Record<string, string>): string => {
     const fullUrl =
       url.startsWith("http://") || url.startsWith("https://") ? url : new URL(url, baseUrl).toString();
@@ -33,67 +38,63 @@ export const createHttpClient = (baseUrl?: string): HttpClient => {
     return fullUrl;
   };
 
+  const mergeHeaders = (defaultHeaders: Headers, customHeaders: Headers): Headers => {
+    return new Headers({
+      ...Object.fromEntries(defaultHeaders.entries()),
+      ...Object.fromEntries(customHeaders.entries()),
+    });
+  };
+
+  const toHeaders = (headers: Record<string, string> | Headers): Headers => {
+    return headers instanceof Headers ? headers : new Headers(headers);
+  };
+
+  const encodeUrlEncoded = (params: Record<string, any>): string => {
+    const urlSearchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      urlSearchParams.append(key, String(value));
+    });
+    return urlSearchParams.toString();
+  };
+
+  const request = (method: string, url: string, options: HttpOptions = {}): HttpStream => {
+    const headers = mergeHeaders(toHeaders(defaultHeaders), new Headers(options.headers || {}));
+
+    let body: any = undefined;
+    if (options.body instanceof FormData) {
+      // For FormData, no need to set Content-Type, browser will do it
+      body = options.body;
+    } else if (options.body instanceof URLSearchParams) {
+      // For x-www-form-urlencoded, we use URLSearchParams to encode the body
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/x-www-form-urlencoded");
+      }
+      body = encodeUrlEncoded(options.body as Record<string, any>); // Convert URLSearchParams to string
+    } else if (options.body) {
+      // For JSON body, set Content-Type to application/json if not set
+      if (!headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+      }
+      body = JSON.stringify(options.body); // Stringify the JSON body
+    }
+
+    return config.http!(
+      resolveUrl(url, options.params),
+      {
+        method,
+        headers,
+        credentials: options.withCredentials ? "include" : "same-origin",
+        body,
+      },
+      options.reportProgress
+    );
+  };
+
   return {
-    get: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      http(
-        resolveUrl(url, options.params),
-        {
-          method: "GET",
-          headers: options.headers,
-          credentials: options.withCredentials ? "include" : "same-origin",
-        },
-        options.reportProgress
-      ),
-
-
-    post: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      http(
-        resolveUrl(url, options.params),
-        {
-          method: "POST",
-          headers: options.headers,
-          credentials: options.withCredentials ? "include" : "same-origin",
-          body: options.body ? JSON.stringify(options.body) : undefined,
-        },
-        options.reportProgress
-      ),
-
-    put: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      http(
-        resolveUrl(url, options.params),
-        {
-          method: "PUT",
-          headers: options.headers,
-          credentials: options.withCredentials ? "include" : "same-origin",
-          body: options.body ? JSON.stringify(options.body) : undefined,
-        },
-        options.reportProgress
-      ),
-
-    patch: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      http(
-        resolveUrl(url, options.params),
-        {
-          method: "PATCH",
-          headers: options.headers,
-          credentials: options.withCredentials ? "include" : "same-origin",
-          body: options.body ? JSON.stringify(options.body) : undefined,
-        },
-        options.reportProgress
-      ),
-
-    delete: <T>(url: string, options: HttpOptions = {}): HttpStream<T> =>
-      http(
-        resolveUrl(url, options.params),
-        {
-          method: "DELETE",
-          headers: options.headers,
-          credentials: options.withCredentials ? "include" : "same-origin",
-        },
-        options.reportProgress
-      ),
-
-    jsonp: <T>(url: string, callbackName: string = `jsonp_callback_${Date.now()}`): Stream<T> =>
-      jsonp<T>(resolveUrl(url), callbackName),
+    get: <T>(url: string, options?: HttpOptions): HttpStream<T> => request("GET", url, options),
+    post: <T>(url: string, options?: HttpOptions): HttpStream<T> => request("POST", url, options),
+    put: <T>(url: string, options?: HttpOptions): HttpStream<T> => request("PUT", url, options),
+    patch: <T>(url: string, options?: HttpOptions): HttpStream<T> => request("PATCH", url, options),
+    delete: <T>(url: string, options?: HttpOptions): HttpStream<T> => request("DELETE", url, options),
   };
 };
