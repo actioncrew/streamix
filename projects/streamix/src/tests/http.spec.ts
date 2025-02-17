@@ -1,10 +1,10 @@
-import { http } from "../lib";
+import { httpInit } from "../lib";
 
 xdescribe("http stream functional tests", () => {
   const API_URL = "https://jsonplaceholder.typicode.com/posts/1";
 
   test("should fetch data successfully", (done) => {
-    const stream = http(API_URL);
+    const stream = httpInit()(API_URL);
 
     const subscription = stream.subscribe((value) => {
       subscription.unsubscribe();
@@ -16,12 +16,15 @@ xdescribe("http stream functional tests", () => {
   });
 
   test("should apply request interceptors", async () => {
-    const stream = http(API_URL);
+    const stream = httpInit({
+      interceptors: {
+        request: [(req) => {
+          expect(req.url).toBe(API_URL);
+          return req;
+        }]
+      }
+    })(API_URL);
 
-    http.addRequestInterceptor((req) => {
-      expect(req.url).toBe(API_URL);
-      return req;
-    });
 
     const subscription = stream.subscribe();
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -29,12 +32,16 @@ xdescribe("http stream functional tests", () => {
   });
 
   test("should apply response interceptors", async () => {
-    const stream = http(API_URL);
-
-    http.addResponseInterceptor(async (res) => {
-      expect(res.ok).toBe(true);
-      return res;
-    });
+    const stream = httpInit({
+      interceptors: {
+        response: [
+          async (res) => {
+            expect(res.ok).toBe(true);
+            return res;
+          }
+        ]
+      }
+    })(API_URL);
 
     const subscription = stream.subscribe();
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -42,7 +49,7 @@ xdescribe("http stream functional tests", () => {
   });
 
   test("should handle abort correctly", async () => {
-    const stream = http(API_URL);
+    const stream = httpInit()(API_URL);
     const subscription = stream.subscribe();
 
     setTimeout(() => {
@@ -54,7 +61,7 @@ xdescribe("http stream functional tests", () => {
   });
 
   test("should handle network error", async () => {
-    const stream = http("https://invalid.url");
+    const stream = httpInit()("https://invalid.url");
     const errors: any[] = [];
 
     const subscription = stream.subscribe({
@@ -77,7 +84,7 @@ xdescribe("http stream functional tests", () => {
     let lastProgress = 0;
     const progressUpdates: number[] = [];
 
-    const stream = http("http://localhost:3000/large-file", {}, (progress) => {
+    const stream = httpInit()("http://localhost:3000/large-file", {}, (progress) => {
       lastProgress = progress;
       progressUpdates.push(progress);
     });

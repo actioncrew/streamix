@@ -39,10 +39,17 @@ export const createHttpClient = (config: HttpClientConfig = { http: httpInit() }
   };
 
   const mergeHeaders = (defaultHeaders: Headers, customHeaders: Headers): Headers => {
-    return new Headers({
-      ...Object.fromEntries(defaultHeaders.entries()),
-      ...Object.fromEntries(customHeaders.entries()),
+    const mergedHeaders = new Headers();
+
+    defaultHeaders.forEach((value, key) => {
+      mergedHeaders.append(key, value);
     });
+
+    customHeaders.forEach((value, key) => {
+      mergedHeaders.append(key, value);
+    });
+
+    return mergedHeaders;
   };
 
   const toHeaders = (headers: Record<string, string> | Headers): Headers => {
@@ -58,7 +65,7 @@ export const createHttpClient = (config: HttpClientConfig = { http: httpInit() }
   };
 
   const request = (method: string, url: string, options: HttpOptions = {}): HttpStream => {
-    const headers = mergeHeaders(toHeaders(defaultHeaders), new Headers(options.headers || {}));
+    const headers = mergeHeaders(toHeaders(defaultHeaders), toHeaders(options.headers || {}));
 
     let body: any = undefined;
     if (options.body instanceof FormData) {
