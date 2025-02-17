@@ -6,32 +6,42 @@ export type ResponseInterceptor = (response: Response) => Response | Promise<Res
 
 export type HttpStream<T = any> = Stream<T> & { abort: () => void };
 
+export type HttpConfig = {
+  fetchFn?: typeof fetch;
+  interceptors?: {
+    request?: RequestInterceptor[];
+    response?: ResponseInterceptor[];
+  }
+};
+
 export type HttpFetch = (
   url: string,
   options?: RequestInit,
   onProgress?: (progress: number) => void
 ) => HttpStream;
 
-export const httpInit = (
-  fetchFn: typeof fetch = fetch, // Allow custom fetch function
-  requestInterceptors: RequestInterceptor[] = [],
-  responseInterceptors: ResponseInterceptor[] = []
-): HttpFetch => {
+export const httpInit = (config: HttpConfig = {}): HttpFetch => {
+  const { fetchFn = fetch, interceptors } = config;
+
   return (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream => {
     const abortController = new AbortController();
 
     // Apply request interceptors
     const applyRequestInterceptors = async (request: Request): Promise<Request> => {
-      for (const interceptor of requestInterceptors) {
-        request = await interceptor(request);
+      if (interceptors?.request) {
+        for (const interceptor of interceptors.request) {
+          request = await interceptor(request);
+        }
       }
       return request;
     };
 
     // Apply response interceptors
     const applyResponseInterceptors = async (response: Response): Promise<Response> => {
-      for (const interceptor of responseInterceptors) {
-        response = await interceptor(response);
+      if (interceptors?.response) {
+          for (const interceptor of interceptors.response) {
+          response = await interceptor(response);
+        }
       }
       return response;
     };
