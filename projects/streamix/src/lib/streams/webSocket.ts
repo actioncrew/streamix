@@ -1,4 +1,4 @@
-import { createEmission, Stream } from "../abstractions";
+import { Stream } from "../abstractions";
 import { createSubject } from '../streams';
 
 export interface WebSocketStream<T = any> extends Stream<T> {
