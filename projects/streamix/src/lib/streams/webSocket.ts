@@ -1,4 +1,4 @@
-import { createEmission, createStream, Stream } from "../abstractions";
+import { createEmission, Stream } from "../abstractions";
 import { createSubject } from '../streams';
 
 export interface WebSocketStream<T = any> extends Stream<T> {
@@ -35,7 +35,7 @@ export function webSocketStream<T = any>(url: string): WebSocketStream<T> {
   const handleMessage = (event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data);
-      output.next(createEmission({ value: data })); // Emit message via subject
+      output.next(data); // Emit message via subject
     } catch (error) {
       console.error("Failed to parse WebSocket message:", error);
     }
