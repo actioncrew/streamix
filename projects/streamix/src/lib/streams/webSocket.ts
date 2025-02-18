@@ -43,6 +43,7 @@ export function webSocketStream<T = any>(url: string): WebSocketStream<T> {
 
   const handleClose = () => {
     isOpen = false;
+    output.complete();
     console.warn("WebSocket closed.");
   };
 
