@@ -69,43 +69,42 @@ export function createSubject<T = any>(): Subject<T> {
   };
 
   // Implement AsyncIterator
-  const asyncIterator = async function* (): AsyncGenerator<Emission<T>, void, unknown> {
+  const asyncIterator = async function* (this: Subject<T>): AsyncGenerator<Emission<T>, void, unknown> {
     let resolveNext: ((value: IteratorResult<Emission<T>>) => void) | null = null;
     let rejectNext: ((reason?: any) => void) | null = null;
     let latestValue: T | undefined;
     let hasNewValue = false;
     let completedHandled = false;
 
-    const handleNext = (value: T) => {
-      latestValue = value;
-      hasNewValue = true;
-      if (resolveNext) {
-        const emission = createEmission({ value });
-        resolveNext({ value: emission, done: false });
-        resolveNext = null;
-        hasNewValue = false;
-      }
-    };
+    const receiver = createReceiver({
+      next: (value: T) => {
+        latestValue = value;
+        hasNewValue = true;
+        if (resolveNext) {
+          const emission = createEmission({ value });
+          resolveNext({ value: emission, done: false });
+          resolveNext = null;
+          hasNewValue = false;
+        }
+      },
 
-    const handleComplete = () => {
-      completedHandled = true;
-      if (resolveNext) {
-        resolveNext({ value: createEmission({ value: undefined }), done: true });
-      }
-    };
+      complete: () => {
+        completedHandled = true;
+        if (resolveNext) {
+          resolveNext({ value: createEmission({ value: undefined }), done: true });
+        }
+      },
 
-    const handleError = (err: Error) => {
-      if (rejectNext) {
-        rejectNext(err);
-        rejectNext = null;
+      error: (err: Error) => {
+        if (rejectNext) {
+          rejectNext(err);
+          rejectNext = null;
+        }
       }
-    };
+    })
 
-    const subscription = subscribe({
-      next: handleNext,
-      complete: handleComplete,
-      error: handleError,
-    });
+
+    const subscription = this.subscribe(receiver);
 
     try {
       while (!completedHandled || hasNewValue) {
