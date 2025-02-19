@@ -1,4 +1,7 @@
 # Streamix
+<p align="center">
+  <img src="https://github.com/actioncrew/streamix/blob/main/projects/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="300">
+<p>
 
 Streamix is a lightweight alternative to RxJS that implements reactive programming with a simplified concept of streams and emissions. If you're already familiar with RxJS, you’ll find Streamix easy to pick up, but with a fresh, minimalistic approach designed for modern, performance-oriented applications.
 
