@@ -39,6 +39,13 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
     
     // Apply request interceptors
     const applyRequestInterceptors = async (request: Request): Promise<Request> => {
+      if (withXsrfProtection && !request.headers.has(xsrfTokenHeader)) {
+        const xsrfToken = getXsrfToken();
+        if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+          request.headers.set(xsrfTokenHeader, xsrfToken);
+        }
+      }
+      
       if (interceptors?.request) {
         for (const interceptor of interceptors.request) {
           request = await interceptor(request);
@@ -56,13 +63,6 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
       }
       return response;
     };
-
-    if (withXsrfProtection && !request.headers.has(xsrfTokenHeader)) {
-      const xsrfToken = getXsrfToken();
-      if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-        request.headers.set(xsrfTokenHeader, xsrfToken);
-      }
-    }
     
     // Handle the body of the request depending on its type
     let body: any;
