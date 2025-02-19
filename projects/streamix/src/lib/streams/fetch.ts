@@ -23,7 +23,7 @@ export type HttpFetch = (
 ) => HttpStream;
 
 export const httpInit = (config: HttpConfig = {}): HttpFetch => {
-  const { fetchFn = fetch, interceptors } = config;
+  const { fetchFn = fetch, interceptors, withXsrfProtection, xsrfTokenHeader } = config;
 
   return (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream => {
     const abortController = new AbortController();
