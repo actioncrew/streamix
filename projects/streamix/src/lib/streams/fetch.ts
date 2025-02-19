@@ -173,7 +173,7 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
       }
     }
 
-    const stream = createStream("fetchStream", streamGenerator) as HttpStream;
+    const stream = createStream("fetch", streamGenerator) as HttpStream;
     stream.abort = () => {
       abortController.abort();
     };
