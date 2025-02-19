@@ -28,8 +28,24 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
   return (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream => {
     const abortController = new AbortController();
 
+    // Extract XSRF token
+    const getXsrfToken = (): string | null => {
+      if (!withXsrfProtection) return null;
+      return document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("XSRF-TOKEN="))
+        ?.split("=")[1] || localStorage.getItem("XSRF-TOKEN");
+    };
+    
     // Apply request interceptors
     const applyRequestInterceptors = async (request: Request): Promise<Request> => {
+      if (withXsrfProtection && !request.headers.has(xsrfTokenHeader)) {
+        const xsrfToken = getXsrfToken();
+        if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+          request.headers.set(xsrfTokenHeader, xsrfToken);
+        }
+      }
+      
       if (interceptors?.request) {
         for (const interceptor of interceptors.request) {
           request = await interceptor(request);
