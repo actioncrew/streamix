@@ -1,6 +1,6 @@
 {
   "name": "streamix",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "minify": "node terser.mjs",
     "bundle": "dts-bundle-generator --o ./dist/streamix/@actioncrew/streamix.d.ts ./dist/streamix/index.d.ts && npm run minify",
-    "clean": "eslint --config eslint.config.js --fix"
+    "clean": "eslint --config eslint.config.js --fix",
+    "release": "commit-and-tag-version"
   },
   "dependencies": {
     "@angular/animations": "^18.0.0",
@@ -36,6 +37,7 @@
     "@types/node": "^22.13.2",
     "@typescript-eslint/eslint-plugin": "^8.18.2",
     "@typescript-eslint/parser": "^8.18.2",
+    "commit-and-tag-version": "^12.5.0",
     "cors": "^2.8.5",
     "dts-bundle-generator": "^9.5.1",
     "ejs": "^3.1.10",
