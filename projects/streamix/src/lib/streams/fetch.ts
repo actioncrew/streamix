@@ -39,7 +39,7 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
     
     // Apply request interceptors
     const applyRequestInterceptors = async (request: Request): Promise<Request> => {
-      if (withXsrfProtection && !request.headers.has(xsrfTokenHeader)) {
+      if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
         const xsrfToken = getXsrfToken();
         if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
           request.headers.set(xsrfTokenHeader, xsrfToken);
