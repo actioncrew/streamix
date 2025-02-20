@@ -65,7 +65,7 @@ export const createHttpClient = (config: HttpClientConfig = { http: httpInit(), 
   };
 
   const request = (method: string, url: string, options: HttpOptions = {}): HttpStream => {
-    const headers = mergeHeaders(toHeaders(defaultHeaders), toHeaders(options.headers || {}));
+    const headers = mergeHeaders(toHeaders(defaultHeaders!), toHeaders(options.headers || {}));
 
     let body: any = undefined;
     if (options.body instanceof FormData) {
