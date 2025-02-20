@@ -22,8 +22,8 @@ export type HttpClient = {
   delete<T = any>(url: string, options?: HttpOptions): HttpStream<T>;
 };
 
-export const createHttpClient = (config: HttpClientConfig = { http: httpInit() }): HttpClient => {
-  const { baseUrl, defaultHeaders = new Headers() } = config;
+export const createHttpClient = (config: HttpClientConfig = { http: httpInit(), defaultHeaders: {'Content-Type': 'application/json'} }): HttpClient => {
+  const { baseUrl, defaultHeaders } = config;
 
   const resolveUrl = (url: string, params?: Record<string, string>): string => {
     const fullUrl =
