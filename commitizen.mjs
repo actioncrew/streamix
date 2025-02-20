@@ -17,7 +17,7 @@ async function runCommand(command, options = {}) { // Added options
 }
 
 async function getFirstCommit() {
-  const firstCommit = await runCommand('git log --reverse --format="%H" --limit=1');
+  const firstCommit = await runCommand('git log --reverse --format="%H" HEAD | tail -n 1');
   return firstCommit;
 }
 
