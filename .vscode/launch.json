@@ -3,14 +3,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Current File from Parent Directory",
-      "type": "node",
-      "request": "launch",
-      "program": "${file}",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/.."
-    },
-    {
       "name": "ng serve",
       "type": "chrome",
       "request": "launch",
