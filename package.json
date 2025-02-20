@@ -59,5 +59,10 @@
     "ts-node": "^10.9.2",
     "typescript": "~5.4.2"
   },
-  "type": "module"
+  "type": "module",
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  }
 }

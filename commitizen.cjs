@@ -1,3 +1,6 @@
+// npm install -g commitizen
+// commitizen init cz-conventional-changelog --save-dev --save-exact
+
 const { exec } = require('child_process');
 const inquirer = require('inquirer');
 const commitizen = require('commitizen');
@@ -35,7 +38,7 @@ const rebaseAndProcessCommits = async () => {
     await runCommand('git checkout main');
 
     // Start interactive rebase from root
-    // await runCommand('git rebase -i --root');
+    await runCommand('git rebase -i --root');
 
     // Get the list of commits to rebase
     const commits = await runCommand('git log --reverse --format=%H');
