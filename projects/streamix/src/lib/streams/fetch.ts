@@ -22,7 +22,7 @@ export type HttpFetch = (
   onProgress?: (progress: number) => void
 ) => HttpStream;
 
-export const httpInit = (config: HttpConfig = {}): HttpFetch => {
+export const initHttp = (config: HttpConfig = {}): HttpFetch => {
   const { fetchFn = fetch, interceptors, withXsrfProtection, xsrfTokenHeader } = config;
 
   return (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream => {
@@ -36,7 +36,7 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
         .find((row) => row.startsWith("XSRF-TOKEN="))
         ?.split("=")[1] || localStorage.getItem("XSRF-TOKEN");
     };
-    
+
     // Apply request interceptors
     const applyRequestInterceptors = async (request: Request): Promise<Request> => {
       if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
@@ -45,7 +45,7 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
           request.headers.set(xsrfTokenHeader, xsrfToken);
         }
       }
-      
+
       if (interceptors?.request) {
         for (const interceptor of interceptors.request) {
           request = await interceptor(request);
@@ -63,7 +63,7 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
       }
       return response;
     };
-    
+
     // Handle the body of the request depending on its type
     let body: any;
     const headers = new Headers(options?.headers || {});
