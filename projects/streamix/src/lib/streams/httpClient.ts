@@ -56,36 +56,10 @@ export const createHttpClient = (config: HttpClientConfig = { http: initHttp(), 
     return headers instanceof Headers ? headers : new Headers(headers);
   };
 
-  const encodeUrlEncoded = (params: Record<string, any>): string => {
-    const urlSearchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      urlSearchParams.append(key, String(value));
-    });
-    return urlSearchParams.toString();
-  };
+
 
   const request = (method: string, url: string, options: HttpOptions = {}): HttpStream => {
     const headers = mergeHeaders(toHeaders(defaultHeaders!), toHeaders(options.headers || {}));
-
-    let body: any = undefined;
-    if (options.body instanceof FormData) {
-      // For FormData, no need to set Content-Type, browser will do it
-      body = options.body;
-    } else if (options.body instanceof URLSearchParams) {
-      // For x-www-form-urlencoded, we use URLSearchParams to encode the body
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/x-www-form-urlencoded");
-      }
-      body = encodeUrlEncoded(options.body as Record<string, any>); // Convert URLSearchParams to string
-    } else if (options.body) {
-      // For JSON body, set Content-Type to application/json if not set
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-      }
-      body = JSON.stringify(options.body); // Stringify the JSON body
-    }
-
-    headers.set("Content-Length", body?.length || 0);
 
     return config.http!(
       resolveUrl(url, options.params),
@@ -93,7 +67,7 @@ export const createHttpClient = (config: HttpClientConfig = { http: initHttp(), 
         method,
         headers,
         credentials: options.withCredentials ? "include" : "same-origin",
-        body,
+        body: options.body,
       },
       options.reportProgress
     );

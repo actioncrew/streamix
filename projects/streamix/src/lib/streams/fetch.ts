@@ -37,6 +37,14 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
         ?.split("=")[1] || localStorage.getItem("XSRF-TOKEN");
     };
 
+    const encodeUrlEncoded = (params: Record<string, any>): string => {
+      const urlSearchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        urlSearchParams.append(key, String(value));
+      });
+      return urlSearchParams.toString();
+    };
+
     // Apply request interceptors
     const applyRequestInterceptors = async (request: Request): Promise<Request> => {
       if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
@@ -91,6 +99,33 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
 
     // Stream generator
     async function* streamGenerator() {
+      if(options) {
+        let body: any = undefined;
+        if (options.body instanceof FormData) {
+          // For FormData, no need to set Content-Type, browser will do it
+          body = options.body;
+        } else if (options.body instanceof URLSearchParams) {
+          // For x-www-form-urlencoded, we use URLSearchParams to encode the body
+          if (options.headers instanceof Headers && !options.headers.has("Content-Type")) {
+            options.headers.set("Content-Type", "application/x-www-form-urlencoded");
+          }
+          body = encodeUrlEncoded(options.body as Record<string, any>); // Convert URLSearchParams to string
+        } else if (options.body) {
+          // For JSON body, set Content-Type to application/json if not set
+          if (options.headers instanceof Headers && !options.headers.has("Content-Type")) {
+            options.headers.set("Content-Type", "application/json");
+          }
+
+          body = JSON.stringify(options.body); // Stringify the JSON body
+
+          if (options.headers instanceof Headers) {
+            options.headers.set("Content-Length", body?.length || 0);
+          }
+        }
+
+        options.body = body;
+      }
+
       const response = await fetchWithInterceptors();
       if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
 

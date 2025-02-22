@@ -1,7 +1,7 @@
 import { Stream } from "../abstractions";
 import { createSubject } from '../streams';
 
-export interface WebSocketStream<T = any> extends Stream<T> {
+export type WebSocketStream<T = any> = Stream<T> & {
   send: (message: T) => void;
 }
 
