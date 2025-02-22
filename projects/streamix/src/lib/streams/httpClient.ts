@@ -1,4 +1,4 @@
-import { HttpFetch, httpInit, HttpStream } from "./fetch";
+import { HttpFetch, HttpStream, initHttp } from "./fetch";
 
 export interface HttpOptions {
   headers?: Record<string, string>;
@@ -22,7 +22,7 @@ export type HttpClient = {
   delete<T = any>(url: string, options?: HttpOptions): HttpStream<T>;
 };
 
-export const createHttpClient = (config: HttpClientConfig = { http: httpInit(), defaultHeaders: {'Content-Type': 'application/json'} }): HttpClient => {
+export const createHttpClient = (config: HttpClientConfig = { http: initHttp(), defaultHeaders: {'Content-Type': 'application/json'} }): HttpClient => {
   const { baseUrl, defaultHeaders } = config;
 
   const resolveUrl = (url: string, params?: Record<string, string>): string => {
@@ -84,6 +84,8 @@ export const createHttpClient = (config: HttpClientConfig = { http: httpInit(), 
       }
       body = JSON.stringify(options.body); // Stringify the JSON body
     }
+
+    headers.set("Content-Length", body?.length || 0);
 
     return config.http!(
       resolveUrl(url, options.params),

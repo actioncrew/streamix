@@ -22,7 +22,7 @@ export type HttpFetch = (
   onProgress?: (progress: number) => void
 ) => HttpStream;
 
-export const httpInit = (config: HttpConfig = {}): HttpFetch => {
+export const initHttp = (config: HttpConfig = {}): HttpFetch => {
   const { fetchFn = fetch, interceptors, withXsrfProtection, xsrfTokenHeader } = config;
 
   return (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream => {
@@ -36,7 +36,7 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
         .find((row) => row.startsWith("XSRF-TOKEN="))
         ?.split("=")[1] || localStorage.getItem("XSRF-TOKEN");
     };
-    
+
     // Apply request interceptors
     const applyRequestInterceptors = async (request: Request): Promise<Request> => {
       if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
@@ -45,7 +45,7 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
           request.headers.set(xsrfTokenHeader, xsrfToken);
         }
       }
-      
+
       if (interceptors?.request) {
         for (const interceptor of interceptors.request) {
           request = await interceptor(request);
@@ -63,27 +63,6 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
       }
       return response;
     };
-    
-    // Handle the body of the request depending on its type
-    let body: any;
-    const headers = new Headers(options?.headers || {});
-
-    if (options?.body instanceof FormData) {
-      // No need to set Content-Type for FormData, the browser will do it
-      body = options.body;
-    } else if (options?.body && options.body instanceof URLSearchParams) {
-      // For x-www-form-urlencoded, we use URLSearchParams to encode the body
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/x-www-form-urlencoded");
-      }
-      body = options.body.toString();
-    } else if (options?.body) {
-      // For JSON body, set Content-Type to application/json if not set
-      if (!headers.has("Content-Type")) {
-        headers.set("Content-Type", "application/json");
-      }
-      body = JSON.stringify(options.body);
-    }
 
     // Fetch with interceptors
     const fetchWithInterceptors = async () => {
@@ -93,7 +72,6 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
 
       let request = new Request(url, {
         ...options,
-        body,
         signal: abortController.signal,
       });
 
@@ -170,8 +148,17 @@ export const httpInit = (config: HttpConfig = {}): HttpFetch => {
         }
 
         onProgress?.(1);
+
         const isJson = contentType.includes("json");
-        yield createEmission({ value: isJson ? JSON.parse(fullText) : fullText });
+        if (contentType.includes("x-ndjson")) {
+          // Parse all NDJSON lines and return as an array
+          const lines = fullText.trim().split("\n").filter(line => line.trim());
+          const parsedJson = lines.map(line => JSON.parse(line));
+          yield createEmission({ value: parsedJson }); // Yield the full array at once
+        } else {
+          // Regular JSON or plain text
+          yield createEmission({ value: isJson ? JSON.parse(fullText) : fullText });
+        }
       } else {
         let allChunks: Uint8Array[] = [];
         while (true) {
