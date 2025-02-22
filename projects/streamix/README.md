@@ -134,7 +134,7 @@ const subscription = onResize(this.canvas).pipe(
 | `fromEvent` | Creates a stream from DOM events. |
 | `fromPromise` | Converts a promise into a stream. |
 | `groupBy` | Groups emitted values based on a key selector. |
-| `httpInit` | Initializes an HTTP request stream. |
+| `initHttp` | Initializes an HTTP request stream. |
 | `iif` | Conditional stream creation based on a boolean condition. |
 | `interval` | Emits values at a set interval. |
 | `jsonp` | Makes a JSONP request and returns a stream. |
@@ -164,6 +164,7 @@ const subscription = onResize(this.canvas).pipe(
 | `timer` | Emits values after a delay. |
 | `toArray` | Collects emitted values into an array. |
 | `withLatestFrom` | Combines values from multiple streams. |
+| `webSocket` | Creates a stream from a WebSocket connection, emitting messages as they arrive in real time. | 
 | `zip` | Combines values from multiple streams in a one-to-one fashion. |
 
 ---
