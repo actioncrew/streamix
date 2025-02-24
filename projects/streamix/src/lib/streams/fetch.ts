@@ -14,6 +14,7 @@ export type HttpConfig = {
   }
   withXsrfProtection?: boolean;
   xsrfTokenHeader?: string;
+  readInChunks?: boolean;
 };
 
 export type HttpFetch = (
@@ -23,9 +24,9 @@ export type HttpFetch = (
 ) => HttpStream;
 
 export const initHttp = (config: HttpConfig = {}): HttpFetch => {
-  const { fetchFn = fetch, interceptors, withXsrfProtection, xsrfTokenHeader } = config;
+  const { fetchFn = fetch, interceptors = { request: [], response: [] }, withXsrfProtection = false, xsrfTokenHeader = "X-XSRF-TOKEN", readInChunks = false } = config;
 
-  return (url: string, options?: RequestInit, onProgress?: (progress: number) => void): HttpStream => {
+  return (url: string, options?: RequestInit): HttpStream => {
     const abortController = new AbortController();
 
     // Extract XSRF token
@@ -131,6 +132,7 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
 
       const contentType = response.headers.get("Content-Type") || "";
       const isText = contentType.includes("text") || contentType.includes("json");
+      const isNdjson = contentType.includes("x-ndjson");
 
       let encoding = "utf-8";
       const match = contentType.match(/charset=([^;]+)/);
@@ -140,74 +142,61 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
       const totalSize = contentLength ? parseInt(contentLength, 10) : null;
       let loaded = 0;
 
-      onProgress?.(0);
-
       if (!response.body) {
-        // Determine the content type of the response
-        let value: any = undefined;
-
+        let value: any;
         if (contentType.includes("application/json")) {
-          // Parse the response as JSON if the content type is JSON
           value = await response.json();
-        } else if (contentType.includes("text") || contentType.includes("html")) {
-          // Parse the response as text if it's a textual content type
+        } else if (isText) {
           value = await response.text();
         } else if (contentType.includes("application/x-www-form-urlencoded")) {
-          // If it's URL-encoded, decode the text content
           value = decodeURIComponent(await response.text());
         } else if (contentType.includes("multipart/form-data")) {
-          // If it's a multipart/form-data, convert it to FormData
           value = await response.formData();
         } else {
-          // Default case for binary data (e.g., images, PDFs)
           value = new Uint8Array(await response.arrayBuffer());
         }
 
-        onProgress?.(1);
         yield createEmission({ value });
         return;
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder(encoding);
+      let ndjsonBuffer = "";
 
-      if (isText) {
-        let fullText = "";
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          fullText += decoder.decode(value, { stream: true });
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-          loaded += value.length;
-          onProgress?.(totalSize ? loaded / totalSize : 0.5);
-        }
+        loaded += value.length;
+        const progress = totalSize ? loaded / totalSize : 0.5;
 
-        onProgress?.(1);
-
-        const isJson = contentType.includes("json");
-        if (contentType.includes("x-ndjson")) {
-          // Parse all NDJSON lines and return as an array
-          const lines = fullText.trim().split("\n").filter(line => line.trim());
-          const parsedJson = lines.map(line => JSON.parse(line));
-          yield createEmission({ value: parsedJson }); // Yield the full array at once
+        if (readInChunks) {
+          if (isNdjson) {
+            ndjsonBuffer += decoder.decode(value, { stream: true });
+            const lines = ndjsonBuffer.split("\n");
+            ndjsonBuffer = lines.pop() || "";
+            for (const line of lines) {
+              if (line.trim()) {
+                yield createEmission({ value: { chunk: JSON.parse(line), progress, done: false } });
+              }
+            }
+          } else {
+            const chunk = isText ? decoder.decode(value, { stream: true }) : value;
+            yield createEmission({ value: { chunk, progress, done: false } });
+          }
         } else {
-          // Regular JSON or plain text
-          yield createEmission({ value: isJson ? JSON.parse(fullText) : fullText });
+          const chunk = isText ? decoder.decode(value, { stream: true }) : value;
+          yield createEmission({ value: chunk });
         }
-      } else {
-        let allChunks: Uint8Array[] = [];
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          allChunks.push(value);
+      }
 
-          loaded += value.length;
-          onProgress?.(totalSize ? loaded / totalSize : 0.5);
-        }
+      if (isNdjson && ndjsonBuffer.trim()) {
+        yield createEmission({ value: { chunk: JSON.parse(ndjsonBuffer), progress: 1, done: false } });
+      }
 
-        onProgress?.(1);
-        const fullBinary = new Uint8Array(allChunks.reduce<number[]>((acc, val) => acc.concat([...val]), []));
-        yield createEmission({ value: fullBinary });
+      if (readInChunks) {
+        yield createEmission({ value: { chunk: null, progress: 1, done: true } });
       }
     }
 

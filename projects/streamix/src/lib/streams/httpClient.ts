@@ -68,8 +68,7 @@ export const createHttpClient = (config: HttpClientConfig = { http: initHttp(), 
         headers,
         credentials: options.withCredentials ? "include" : "same-origin",
         body: options.body,
-      },
-      options.reportProgress
+      }
     );
   };
 
