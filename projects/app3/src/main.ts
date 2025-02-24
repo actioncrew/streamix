@@ -1,159 +1,197 @@
 import {
+  debounce,
+  filter,
+  fromEvent,
   map,
   onAnimationFrame,
   onIntersection,
-  onMediaQuery,
   onResize,
+  slidingPair,
+  tap,
 } from '@actioncrew/streamix';
 
-  // Helper function for smooth interpolation
-  const interpolate = (
-    current: number,
-    target: number,
-    speed: number
-  ): number => {
-    return current + (target - current) * speed;
-  };
+// Helper function for smooth interpolation (same as before)
+const interpolate = (
+  current: number,
+  target: number,
+  speed: number
+): number => {
+  return current + (target - current) * speed;
+};
 
-  // Hero Section Animation
-  const hero = document.querySelector('.hero') as HTMLElement;
-  const heroTitle = hero.querySelector('h1') as HTMLElement;
-  const heroParagraph = hero.querySelector('p') as HTMLElement;
+// Hero Section Animation with GSAP-like smooth effects
+const hero = document.querySelector('.hero') as HTMLElement;
+const heroTitle = hero.querySelector('h1') as HTMLElement;
+const heroParagraph = hero.querySelector('p') as HTMLElement;
 
-  if (hero) {
-    let targetScale = 1;
-    let currentScale = 1;
-    let targetOpacity = 0;
-    let currentOpacity = 0;
-    let targetTitleOpacity = 0;
-    let currentTitleOpacity = 0;
-    let targetParagraphOpacity = 0;
-    let currentParagraphOpacity = 0;
-    let targetTitleTranslateY = 20; // Start 20px below
-    let currentTitleTranslateY = 20;
-    let targetParagraphTranslateY = 20; // Start 20px below
-    let currentParagraphTranslateY = 20;
+if (hero) {
+  let targetScale = 1;
+  let currentScale = 1;
+  let targetOpacity = 0;
+  let currentOpacity = 0;
+  let targetTitleOpacity = 0;
+  let currentTitleOpacity = 0;
+  let targetParagraphOpacity = 0;
+  let currentParagraphOpacity = 0;
+  let targetTitleTranslateY = 20;
+  let currentTitleTranslateY = 20;
+  let targetParagraphTranslateY = 20;
+  let currentParagraphTranslateY = 20;
 
-    // Add 'will-change' for optimization
-    hero.style.willChange = 'opacity, transform';
-    heroTitle.style.willChange = 'opacity, transform';
-    heroParagraph.style.willChange = 'opacity, transform';
+  hero.style.willChange = 'opacity, transform';
+  heroTitle.style.willChange = 'opacity, transform';
+  heroParagraph.style.willChange = 'opacity, transform';
 
-    // Smoothly animate hero section on every frame
-    onAnimationFrame().subscribe(() => {
-      currentScale = interpolate(currentScale, targetScale, 0.1);
-      currentOpacity = interpolate(currentOpacity, targetOpacity, 0.1);
-      currentTitleOpacity = interpolate(
-        currentTitleOpacity,
-        targetTitleOpacity,
-        0.1
-      );
-      currentParagraphOpacity = interpolate(
-        currentParagraphOpacity,
-        targetParagraphOpacity,
-        0.1
-      );
-      currentTitleTranslateY = interpolate(
-        currentTitleTranslateY,
-        targetTitleTranslateY,
-        0.1
-      );
-      currentParagraphTranslateY = interpolate(
-        currentParagraphTranslateY,
-        targetParagraphTranslateY,
-        0.1
-      );
-
-      // Update styles
-      hero.style.transform = `scale(${currentScale})`;
-      hero.style.opacity = `${currentOpacity}`;
-      heroTitle.style.opacity = `${currentTitleOpacity}`;
-      heroTitle.style.transform = `translateY(${currentTitleTranslateY}px)`;
-      heroParagraph.style.opacity = `${currentParagraphOpacity}`;
-      heroParagraph.style.transform = `translateY(${currentParagraphTranslateY}px)`;
-    });
-
-    // Trigger animation when hero section comes into view
-    onIntersection(hero, { threshold: 0.2 }).subscribe((isIntersecting) => {
-      if (isIntersecting) {
-        targetScale = 1.1;
-        targetOpacity = 1;
-        targetTitleOpacity = 1;
-        targetParagraphOpacity = 1;
-        targetTitleTranslateY = 0; // Slide up to original position
-        targetParagraphTranslateY = 0; // Slide up to original position
-      } else {
-        targetScale = 1;
-        targetOpacity = 0;
-        targetTitleOpacity = 0;
-        targetParagraphOpacity = 0;
-        targetTitleTranslateY = 20; // Reset to below
-        targetParagraphTranslateY = 20; // Reset to below
-      }
-    });
-  }
-
-
-  // Posts Visibility Animation
-  const posts = document.querySelectorAll('.post') as NodeListOf<HTMLElement>;
-  posts.forEach((post) => {
-    let targetOpacity = 0;
-    let currentOpacity = 0;
-
-    // Smoothly animate post opacity on every frame
-    onAnimationFrame().subscribe(() => {
-      currentOpacity = interpolate(currentOpacity, targetOpacity, 0.1);
-      post.style.opacity = `${currentOpacity}`;
-    });
-
-    // Trigger animation when post comes into view
-    onIntersection(post, { threshold: 0.3 }).subscribe((isIntersecting) => {
-      targetOpacity = isIntersecting ? 1 : 0;
-    });
-  });
-
-  // Window Resize Effects
-  onResize(window.document.documentElement)
-    .pipe(
-      map(({ width, height }) => {
-        console.log(`Window resized to ${width} x ${height}`);
-        return width;
-      })
-    )
-    .subscribe((width) => {
-      if (width < 600) {
-        // Adjust layout for small screens
-        const hero = document.querySelector('.hero') as HTMLElement;
-        if (hero) {
-          hero.style.fontSize = '2rem'; // Example: Adjust font size for small screens
-        }
-      } else {
-        // Reset layout for larger screens
-        const hero = document.querySelector('.hero') as HTMLElement;
-        if (hero) {
-          hero.style.fontSize = '3rem'; // Example: Reset font size
-        }
-      }
-    });
-
-  // Media Query Effects
-  onMediaQuery('(max-width: 600px)').subscribe((matches) => {
-    const hero = document.querySelector('.hero') as HTMLElement;
-    if (hero) {
-      hero.style.backgroundImage = matches
-        ? "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600')"
-        : "url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e')";
-    }
-  });
-
-  // Continuous Animation Example (e.g., Background Color Pulse)
+  // GSAP-like smooth animation onAnimationFrame using tap
   onAnimationFrame()
     .pipe(
-      map((time) => Math.sin(time * 0.005) * 0.5 + 0.5) // Generate a sine wave for smooth pulsing
+      tap(() => {
+        // Interpolate values smoothly (GSAP-like effect)
+        currentScale = interpolate(currentScale, targetScale, 0.1);
+        currentOpacity = interpolate(currentOpacity, targetOpacity, 0.1);
+        currentTitleOpacity = interpolate(
+          currentTitleOpacity,
+          targetTitleOpacity,
+          0.1
+        );
+        currentParagraphOpacity = interpolate(
+          currentParagraphOpacity,
+          targetParagraphOpacity,
+          0.1
+        );
+        currentTitleTranslateY = interpolate(
+          currentTitleTranslateY,
+          targetTitleTranslateY,
+          0.1
+        );
+        currentParagraphTranslateY = interpolate(
+          currentParagraphTranslateY,
+          targetParagraphTranslateY,
+          0.1
+        );
+
+        // Apply interpolated values to styles
+        hero.style.transform = `scale(${currentScale})`;
+        hero.style.opacity = `${currentOpacity}`;
+        heroTitle.style.opacity = `${currentTitleOpacity}`;
+        heroTitle.style.transform = `translateY(${currentTitleTranslateY}px)`;
+        heroParagraph.style.opacity = `${currentParagraphOpacity}`;
+        heroParagraph.style.transform = `translateY(${currentParagraphTranslateY}px)`;
+      })
     )
-    .subscribe((value) => {
+    .subscribe();
+
+  // Trigger animations on intersection with the hero element
+  onIntersection(hero, { threshold: 0.2 })
+    .pipe(
+      tap((isIntersecting) => {
+        if (isIntersecting) {
+          targetScale = 1.1;
+          targetOpacity = 1;
+          targetTitleOpacity = 1;
+          targetParagraphOpacity = 1;
+          targetTitleTranslateY = 0;
+          targetParagraphTranslateY = 0;
+        } else {
+          targetScale = 1;
+          targetOpacity = 0;
+          targetTitleOpacity = 0;
+          targetParagraphOpacity = 0;
+          targetTitleTranslateY = 20;
+          targetParagraphTranslateY = 20;
+        }
+      })
+    )
+    .subscribe();
+}
+
+// Posts Visibility and Caption Animation (with staggered opacity effect)
+const posts = document.querySelectorAll('.post') as NodeListOf<HTMLElement>;
+posts.forEach((post) => {
+  let targetOpacity = 0;
+  let currentOpacity = 0;
+  const caption = post.querySelector('.post-content') as HTMLElement;
+  let captionTargetTranslateY = 20;
+  let captionCurrentTranslateY = 20;
+  let captionTargetOpacity = 0;
+  let captionCurrentOpacity = 0;
+
+  onAnimationFrame()
+    .pipe(
+      tap(() => {
+        currentOpacity = interpolate(currentOpacity, targetOpacity, 0.1);
+        post.style.opacity = `${currentOpacity}`;
+        captionCurrentTranslateY = interpolate(
+          captionCurrentTranslateY,
+          captionTargetTranslateY,
+          0.1
+        );
+        captionCurrentOpacity = interpolate(
+          captionCurrentOpacity,
+          captionTargetOpacity,
+          0.1
+        );
+        if (caption) {
+          caption.style.transform = `translateY(${captionCurrentTranslateY}px)`;
+          caption.style.opacity = `${captionCurrentOpacity}`;
+        }
+      })
+    )
+    .subscribe();
+
+  onIntersection(post, { threshold: 0.3 })
+    .pipe(
+      tap((isIntersecting) => {
+        targetOpacity = isIntersecting ? 1 : 0;
+        captionTargetTranslateY = isIntersecting ? 0 : 20;
+        captionTargetOpacity = isIntersecting ? 1 : 0;
+      })
+    )
+    .subscribe();
+});
+
+// GSAP-like dynamic resize effects (adjust font size based on window width)
+onResize(window.document.documentElement)
+  .pipe(
+    map(({ width, height }) => {
+      console.log(`Window resized to ${width} x ${height}`);
+      return width;
+    }),
+    tap((width) => {
       const hero = document.querySelector('.hero') as HTMLElement;
       if (hero) {
-        hero.style.backgroundColor = `rgba(0, 100, 200, ${value})`; // Example: Pulsing background color
+        if (width < 600) {
+          hero.style.fontSize = '2rem';
+        } else {
+          hero.style.fontSize = '3rem';
+        }
       }
-    });
+    })
+  )
+  .subscribe();
+
+// Continuous Background Animation (Pulse)
+onAnimationFrame()
+  .pipe(
+    map((time) => Math.sin(time * 0.005) * 0.5 + 0.5),
+    tap((value) => {
+      const hero = document.querySelector('.hero') as HTMLElement;
+      if (hero) {
+        hero.style.backgroundColor = `rgba(0, 100, 200, ${value})`;
+      }
+    })
+  )
+  .subscribe();
+
+// Example Debounce on Scroll (GSAP-like logging effect)
+fromEvent(window, 'scroll')
+  .pipe(
+    debounce(250),
+    map(() => window.scrollY),
+    slidingPair(),
+    filter(([prev, curr]) => prev && Math.abs(prev - curr) > 50),
+    tap(([prev, curr]) => {
+      console.log(`Scroll Debounced: Previous ${prev}, Current ${curr}`);
+    })
+  )
+  .subscribe();

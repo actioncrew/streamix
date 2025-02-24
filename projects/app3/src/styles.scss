@@ -44,18 +44,16 @@ nav a:hover {
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
   transform-origin: center center;
   opacity: 0;
-  transition: opacity 0.6s ease-out, transform 0.8s ease-out;
 }
 
 .hero h1 {
   font-size: 4rem;
   text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
   opacity: 0;
-  transition: opacity 0.6s ease-out;
 }
 
 .hero p {
-  background: linear-gradient(90deg, #302f7c, #424052); /* Gradient colors */
+  background: linear-gradient(90deg, #302f7c, #424052);
   -webkit-background-clip: text;
   color: transparent;
   font-size: 1.5rem;
@@ -75,13 +73,6 @@ nav a:hover {
   overflow: hidden;
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
   opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-}
-
-.post.visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .post img {
@@ -129,14 +120,4 @@ footer a {
 
 footer a:hover {
   color: #388e3c;
-}
-
-@media (max-width: 600px) {
-  .hero h1 {
-    font-size: 3rem;
-  }
-
-  .posts {
-    grid-template-columns: 1fr;
-  }
 }
