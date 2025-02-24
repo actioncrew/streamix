@@ -2,11 +2,11 @@ import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
 export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamOperator {
+  let index = 0;
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let isOuterComplete = false;
     let activeInnerStreams = 0; // Track active inner streams
-    let index = 0;
 
     // Async generator to process inner streams sequentially
     const processInnerStream = async (innerStream: Stream<R>) => {

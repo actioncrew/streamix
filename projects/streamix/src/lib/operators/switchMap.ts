@@ -2,12 +2,13 @@ import { createStreamOperator, Stream, StreamOperator, Subscription } from "../a
 import { createSubject } from "../streams/subject";
 
 export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamOperator {
+  let index = 0;
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>(); // The output stream
     let currentSubscription: Subscription | null = null;
     let isOuterComplete = false;
     let activeInnerStreams = 0; // Track active inner streams
-    let index = 0;
+
 
     const subscribeToInner = (innerStream: Stream<R>) => {
       // Unsubscribe from the previous inner subscription if any

@@ -4,10 +4,11 @@ import { createSubject } from "../streams";
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T, index: number) => boolean; handler: (value: T) => Stream<R> }>
 ): StreamOperator => {
+  let index = 0;
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let activeInnerStreams = 0; // Track active inner streams
-    let index = 0;
+
 
     // Helper function to handle inner streams concurrently
     const processInnerStream = async (innerStream: Stream<R>) => {

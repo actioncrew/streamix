@@ -2,11 +2,11 @@ import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 import { createSubject } from '../streams/subject';
 
 export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamOperator {
+  let index = 0;
   return createStreamOperator('mergeMap', (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let activeInnerStreams = 0; // Track active inner streams
     let hasError = false; // Flag to track if an error has occurred
-    let index = 0;
 
     // Async function to handle inner streams
     const processInnerStream = async (innerStream: Stream<R>) => {
