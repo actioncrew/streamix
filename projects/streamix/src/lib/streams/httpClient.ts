@@ -3,7 +3,6 @@ import { HttpFetch, HttpStream, initHttp } from "./fetch";
 export interface HttpOptions {
   headers?: Record<string, string>;
   params?: Record<string, string>;
-  reportProgress?: (progress: number) => void;
   withCredentials?: boolean;
   body?: any;
 }

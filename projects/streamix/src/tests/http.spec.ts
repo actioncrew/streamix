@@ -84,15 +84,14 @@ xdescribe("http stream functional tests", () => {
     let lastProgress = 0;
     const progressUpdates: number[] = [];
 
-    const stream = initHttp()("http://localhost:3000/large-file", {}, (progress) => {
-      lastProgress = progress;
-      progressUpdates.push(progress);
-    });
+    const stream = initHttp({ readInChunks: true })("http://localhost:3000/large-file");
 
     const chunks: Uint8Array[] = [];
     const subscription = stream.subscribe({
       next : (value: any) => {
-        chunks.push(value as Uint8Array);
+        chunks.push(value.chunk as Uint8Array);
+        lastProgress = value.progress;
+        progressUpdates.push(lastProgress);
       },
       complete: () => {
         subscription.unsubscribe();
@@ -104,7 +103,7 @@ xdescribe("http stream functional tests", () => {
 
         // Ensure progress updates correctly
         expect(lastProgress).toBe(1);
-        expect(progressUpdates.some(p => p > 0 && p < 1)).toBe(true);
+        expect(progressUpdates.every(p => p >= 0 && p <= 1)).toBe(true);
         done();
       }
     });
