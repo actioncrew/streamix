@@ -177,7 +177,7 @@ Streamix is designed for those who need a straightforward way to manage asynchro
 To see Streamix in action, check out these sample projects:
 - [Simple animation](https://stackblitz.com/edit/stackblitz-starters-pkzdzmuk)
 - [Heavy computational task](https://stackblitz.com/edit/stackblitz-starters-73vspfzz)
-- [Travel blog](https://stackblitz.com/edit/stackblitz-starters-86fv7ymn)
+- [Travel blog](https://stackblitz.com/edit/stackblitz-starters-873uh85w)
 
 Interested in extending Streamix or using it in your project? Reach out to us! We’re excited to collaborate and help bring your ideas to life.
 
