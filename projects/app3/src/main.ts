@@ -10,6 +10,54 @@ import {
   tap,
 } from '@actioncrew/streamix';
 
+// Text animation setup
+const setupTextAnimation = (element: HTMLElement) => {
+  // Split text into spans
+  const text = element.textContent || '';
+  element.innerHTML = ''; // Clear existing content
+
+  const spans = text.split('').map((char, i) => {
+    const span = document.createElement('span');
+    span.textContent = char === ' ' ? '\u00A0' : char; // Use non-breaking space for spaces
+    span.style.display = 'inline-block';
+    span.style.opacity = '0';
+    span.style.transform = 'translateY(20px)';
+    span.style.transition = `all 0.5s ease ${i * 0.01}s`; // Add sequential delay
+    element.appendChild(span);
+    return span;
+  });
+
+  // Animation state
+  let isVisible = false;
+
+  // Intersection Observer animation
+  return onIntersection(element, { threshold: 0.5 })
+    .pipe(
+      tap((intersecting) => {
+        if (intersecting && !isVisible) {
+          isVisible = true;
+          spans.forEach((span) => {
+            span.style.opacity = '1';
+            span.style.transform = 'translateY(0)';
+          });
+        } else if (!intersecting && isVisible) {
+          isVisible = false;
+          spans.forEach((span) => {
+            span.style.opacity = '0';
+            span.style.transform = 'translateY(20px)';
+          });
+        }
+      })
+    );
+};
+
+// Initialize animation for all text elements
+document.querySelectorAll('.animate-text').forEach((element) => {
+  if (element instanceof HTMLElement) {
+    setupTextAnimation(element).subscribe();
+  }
+});
+
 // Helper function for smooth interpolation (same as before)
 const interpolate = (
   current: number,
