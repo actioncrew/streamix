@@ -7,6 +7,7 @@ import {
   onIntersection,
   onResize,
   slidingPair,
+  Stream,
   tap,
 } from '@actioncrew/streamix';
 
@@ -51,12 +52,35 @@ const setupTextAnimation = (element: HTMLElement) => {
     );
 };
 
-// Initialize animation for all text elements
-document.querySelectorAll('.animate-text').forEach((element) => {
-  if (element instanceof HTMLElement) {
-    setupTextAnimation(element).subscribe();
-  }
-});
+const setupBreathingEffect = (element: HTMLElement): Stream<void> => {
+  let targetScale = 1.05;
+  let currentScale = 1;
+  let direction = 1; // 1 for expanding, -1 for contracting
+
+  // Observable to handle breathing animation
+  const breathing$ = onAnimationFrame().pipe(
+    tap(() => {
+      // Smoothly interpolate scale values
+      currentScale = interpolate(currentScale, targetScale, 0.05);
+
+      // Reverse the direction when reaching the target
+      if (currentScale >= targetScale) {
+        direction = -1;
+      } else if (currentScale <= 1) {
+        direction = 1;
+      }
+
+      // Apply the calculated scale to the element
+      element.style.transform = `scale(${currentScale})`;
+
+      // Adjust the target scale for the next frame based on direction
+      targetScale = direction === 1 ? 1.05 : 0.95;
+    })
+  );
+
+  // Return the stream for external use
+  return breathing$;
+};
 
 // Helper function for smooth interpolation (same as before)
 const interpolate = (
@@ -79,12 +103,8 @@ if (hero) {
   let currentOpacity = 0;
   let targetTitleOpacity = 0;
   let currentTitleOpacity = 0;
-  let targetParagraphOpacity = 0;
-  let currentParagraphOpacity = 0;
   let targetTitleTranslateY = 20;
   let currentTitleTranslateY = 20;
-  let targetParagraphTranslateY = 20;
-  let currentParagraphTranslateY = 20;
 
   hero.style.willChange = 'opacity, transform';
   heroTitle.style.willChange = 'opacity, transform';
@@ -102,19 +122,10 @@ if (hero) {
           targetTitleOpacity,
           0.1
         );
-        currentParagraphOpacity = interpolate(
-          currentParagraphOpacity,
-          targetParagraphOpacity,
-          0.1
-        );
+
         currentTitleTranslateY = interpolate(
           currentTitleTranslateY,
           targetTitleTranslateY,
-          0.1
-        );
-        currentParagraphTranslateY = interpolate(
-          currentParagraphTranslateY,
-          targetParagraphTranslateY,
           0.1
         );
 
@@ -123,8 +134,6 @@ if (hero) {
         hero.style.opacity = `${currentOpacity}`;
         heroTitle.style.opacity = `${currentTitleOpacity}`;
         heroTitle.style.transform = `translateY(${currentTitleTranslateY}px)`;
-        heroParagraph.style.opacity = `${currentParagraphOpacity}`;
-        heroParagraph.style.transform = `translateY(${currentParagraphTranslateY}px)`;
       })
     )
     .subscribe();
@@ -137,16 +146,12 @@ if (hero) {
           targetScale = 1.1;
           targetOpacity = 1;
           targetTitleOpacity = 1;
-          targetParagraphOpacity = 1;
           targetTitleTranslateY = 0;
-          targetParagraphTranslateY = 0;
         } else {
           targetScale = 1;
           targetOpacity = 0;
           targetTitleOpacity = 0;
-          targetParagraphOpacity = 0;
           targetTitleTranslateY = 20;
-          targetParagraphTranslateY = 20;
         }
       })
     )
@@ -243,3 +248,17 @@ fromEvent(window, 'scroll')
     })
   )
   .subscribe();
+
+// Initialize the breathing effect for the paragraph element
+const paragraph = document.querySelector('.breathe-paragraph') as HTMLElement;
+if (paragraph) {
+  setupBreathingEffect(paragraph).subscribe();
+}
+
+// Initialize animation for all text elements
+document.querySelectorAll('.animate-text').forEach((element) => {
+  if (element instanceof HTMLElement) {
+    setupTextAnimation(element).subscribe();
+  }
+});
+
