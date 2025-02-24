@@ -9,7 +9,6 @@ export const fork = <T = any, R = T>(
     const output = createSubject<R>();
     let activeInnerStreams = 0; // Track active inner streams
 
-
     // Helper function to handle inner streams concurrently
     const processInnerStream = async (innerStream: Stream<R>) => {
       try {

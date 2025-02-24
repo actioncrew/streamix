@@ -9,7 +9,6 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
     let isOuterComplete = false;
     let activeInnerStreams = 0; // Track active inner streams
 
-
     const subscribeToInner = (innerStream: Stream<R>) => {
       // Unsubscribe from the previous inner subscription if any
       if (currentSubscription) {
