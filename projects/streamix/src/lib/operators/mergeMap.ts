@@ -1,11 +1,12 @@
 import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
 import { createSubject } from '../streams/subject';
 
-export function mergeMap<T, R>(project: (value: T) => Stream<R>): StreamOperator {
+export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamOperator {
   return createStreamOperator('mergeMap', (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let activeInnerStreams = 0; // Track active inner streams
     let hasError = false; // Flag to track if an error has occurred
+    let index = 0;
 
     // Async function to handle inner streams
     const processInnerStream = async (innerStream: Stream<R>) => {
@@ -35,7 +36,7 @@ export function mergeMap<T, R>(project: (value: T) => Stream<R>): StreamOperator
         for await (const emission of input) {
           if (hasError) return; // Stop processing if an error has occurred
 
-          const innerStream = project(emission.value!); // Project input to inner stream
+          const innerStream = project(emission.value!, index++); // Project input to inner stream
           activeInnerStreams += 1;
           processInnerStream(innerStream); // Process the inner stream concurrently
         }

@@ -2,11 +2,12 @@ import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
 import { createSubject } from "../streams";
 
 export const fork = <T = any, R = T>(
-  options: Array<{ on: (value: T) => boolean; handler: (value: T) => Stream<R> }>
+  options: Array<{ on: (value: T, index: number) => boolean; handler: (value: T) => Stream<R> }>
 ): StreamOperator => {
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let activeInnerStreams = 0; // Track active inner streams
+    let index = 0;
 
     // Helper function to handle inner streams concurrently
     const processInnerStream = async (innerStream: Stream<R>) => {
@@ -30,7 +31,7 @@ export const fork = <T = any, R = T>(
       try {
         // Use a for-await loop to process the outer stream
         for await (const emission of input) {
-          const matchedOption = options.find(({ on }) => on(emission.value!));
+          const matchedOption = options.find(({ on }) => on(emission.value!, index++));
 
           if (matchedOption) {
             const innerStream = matchedOption.handler(emission.value!); // Create inner stream

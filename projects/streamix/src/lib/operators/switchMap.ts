@@ -1,12 +1,13 @@
 import { createStreamOperator, Stream, StreamOperator, Subscription } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
-export function switchMap<T, R>(project: (value: T) => Stream<R>): StreamOperator {
+export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamOperator {
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>(); // The output stream
     let currentSubscription: Subscription | null = null;
     let isOuterComplete = false;
     let activeInnerStreams = 0; // Track active inner streams
+    let index = 0;
 
     const subscribeToInner = (innerStream: Stream<R>) => {
       // Unsubscribe from the previous inner subscription if any
@@ -44,7 +45,7 @@ export function switchMap<T, R>(project: (value: T) => Stream<R>): StreamOperato
     // Subscribe to the outer input stream
     input.subscribe({
       next: (value) => {
-        const innerStream = project(value); // Project to the inner stream
+        const innerStream = project(value, index++); // Project to the inner stream
         subscribeToInner(innerStream); // Subscribe to the inner stream
       },
       error: (err) => output.error(err), // Forward errors to the outer stream
