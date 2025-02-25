@@ -20,8 +20,7 @@ export type HttpConfig = {
 
 export type HttpFetch = (
   url: string,
-  options?: RequestInit,
-  onProgress?: (progress: number) => void
+  options?: RequestInit
 ) => HttpStream;
 
 export const initHttp = (config: HttpConfig = {}): HttpFetch => {
