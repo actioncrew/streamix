@@ -30,31 +30,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
     const mainTaskBody = mainTask.toString().replace(/function[\s]*\(/, `function ${mainTask.name}(`);
 
-    const workerBody = `${asyncPresent ? `function __async(thisArg, _arguments, generatorFunc) {
-      return new Promise((resolve, reject) => {
-        const generator = generatorFunc.apply(thisArg, _arguments || []);
-
-        function step(nextFunc) {
-          let result;
-          try {
-            result = nextFunc();
-          } catch (error) {
-            reject(error);
-            return;
-          }
-          if (result.done) {
-            resolve(result.value);
-          } else {
-            Promise.resolve(result.value).then(
-              (value) => step(() => generator.next(value)),
-              (error) => step(() => generator.throw(error))
-            );
-          }
-        }
-
-        step(() => generator.next());
-      });
-    };` : ''}
+    const workerBody = `${asyncPresent ? `var __defProp=Object.defineProperty,__defProps=Object.defineProperties,__getOwnPropDescs=Object.getOwnPropertyDescriptors,__getOwnPropSymbols=Object.getOwnPropertySymbols,__hasOwnProp=Object.prototype.hasOwnProperty,__propIsEnum=Object.prototype.propertyIsEnumerable,__knownSymbol=(e,r)=>(r=Symbol[e])?r:Symbol.for("Symbol."+e),__defNormalProp=(e,r,o)=>r in e?__defProp(e,r,{enumerable:!0,configurable:!0,writable:!0,value:o}):e[r]=o,__spreadValues=(e,r)=>{for(var o in r||={})__hasOwnProp.call(r,o)&&__defNormalProp(e,o,r[o]);if(__getOwnPropSymbols)for(var o of __getOwnPropSymbols(r))__propIsEnum.call(r,o)&&__defNormalProp(e,o,r[o]);return e},__spreadProps=(e,r)=>__defProps(e,__getOwnPropDescs(r)),__async=(e,r,o)=>new Promise((n,t)=>{var a=e=>{try{p(o.next(e))}catch(r){t(r)}},l=e=>{try{p(o.throw(e))}catch(r){t(r)}},p=e=>e.done?n(e.value):Promise.resolve(e.value).then(a,l);p((o=o.apply(e,r)).next())}),__await=function(e,r){this[0]=e,this[1]=r},__asyncGenerator=(e,r,o)=>{var n=(e,r,t,a)=>{try{var l=o[e](r),p=(r=l.value)instanceof __await,s=l.done;Promise.resolve(p?r[0]:r).then(o=>p?n("return"===e?e:"next",r[1]?{done:o.done,value:o.value}:o,t,a):t({value:o,done:s})).catch(e=>n("throw",e,t,a))}catch(y){a(y)}},t=e=>a[e]=r=>new Promise((o,t)=>n(e,r,o,t)),a={};return o=o.apply(e,r),a[__knownSymbol("asyncIterator")]=()=>a,t("next"),t("throw"),t("return"),a},__forAwait=(e,r,o)=>(r=e[__knownSymbol("asyncIterator")])?r.call(e):(e=e[__knownSymbol("iterator")](),r={},(o=(o,n)=>(n=e[o])&&(r[o]=r=>new Promise((o,t,a)=>(a=(r=n.call(e,r)).done,Promise.resolve(r.value).then(e=>o({value:e,done:a}),t)))))("next"),o("return"),r);` : ''}
 
     ${injectedDependencies};
     const mainTask = ${mainTaskBody};
