@@ -67,21 +67,9 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
     };
 
     // Fetch with interceptors
-    const fetchWithInterceptors = async () => {
+    const fetchWithInterceptors = async (request: Request) => {
       if (abortController.signal.aborted) {
         return new Response(JSON.stringify({ error: "Request aborted" }), { status: 408 });
-      }
-
-      let request = new Request(url, {
-        ...options,
-        signal: abortController.signal,
-      });
-
-      if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
-        const xsrfToken = getXsrfToken();
-        if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-          request.headers.set(xsrfTokenHeader, xsrfToken);
-        }
       }
 
       request = await applyRequestInterceptors(request);
@@ -100,8 +88,8 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
 
     // Stream generator
     async function* streamGenerator() {
+      let body: any = null;
       if(options) {
-        let body: any = undefined;
         if (options.body instanceof FormData) {
           // For FormData, no need to set Content-Type, browser will do it
           body = options.body;
@@ -123,11 +111,22 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
             options.headers.set("Content-Length", body?.length || 0);
           }
         }
-
-        options.body = body;
       }
 
-      const response = await fetchWithInterceptors();
+      let request = new Request(url, {
+        ...options,
+        body,
+        signal: abortController.signal,
+      });
+
+      if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
+        const xsrfToken = getXsrfToken();
+        if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+          request.headers.set(xsrfTokenHeader, xsrfToken);
+        }
+      }
+
+      const response = await fetchWithInterceptors(request);
       if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
 
       const contentType = response.headers.get("Content-Type") || "";
