@@ -124,7 +124,6 @@ const subscription = onResize(this.canvas).pipe(
 | `delay` | Delays emitted values by a specified time. |
 | `distinctUntilChanged` | Filters out consecutive duplicate values. |
 | `eachValueFrom` | Iterates over values in an async generator. |
-| `empty` | Emits nothing and completes immediately. |
 | `endWith` | Emits additional values at the end of a stream. |
 | `filter` | Filters values based on a predicate function. |
 | `finalize` | Runs a final action when the stream completes. |

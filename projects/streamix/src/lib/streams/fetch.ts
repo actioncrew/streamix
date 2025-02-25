@@ -15,6 +15,7 @@ export type HttpConfig = {
   withXsrfProtection?: boolean;
   xsrfTokenHeader?: string;
   readInChunks?: boolean;
+  useWebWorker?: boolean;
 };
 
 export type HttpFetch = (
@@ -48,13 +49,6 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
 
     // Apply request interceptors
     const applyRequestInterceptors = async (request: Request): Promise<Request> => {
-      if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
-        const xsrfToken = getXsrfToken();
-        if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-          request.headers.set(xsrfTokenHeader, xsrfToken);
-        }
-      }
-
       if (interceptors?.request) {
         for (const interceptor of interceptors.request) {
           request = await interceptor(request);
@@ -83,6 +77,13 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
         ...options,
         signal: abortController.signal,
       });
+
+      if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
+        const xsrfToken = getXsrfToken();
+        if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+          request.headers.set(xsrfTokenHeader, xsrfToken);
+        }
+      }
 
       request = await applyRequestInterceptors(request);
       const finalRequest = new Request(request, { signal: abortController.signal });
