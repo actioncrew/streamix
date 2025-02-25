@@ -1,4 +1,4 @@
-import { HttpFetch, HttpStream, initHttp } from "./fetch";
+import { HttpFetch, HttpStream, initHttp } from "./fetchWebWorker";
 
 export interface HttpOptions {
   headers?: Record<string, string>;
