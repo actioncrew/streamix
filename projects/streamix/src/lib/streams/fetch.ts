@@ -14,6 +14,7 @@ export type HttpConfig = {
   }
   withXsrfProtection?: boolean;
   xsrfTokenHeader?: string;
+  xsrfToken?: string;
   readInChunks?: boolean;
   useWebWorker?: boolean;
 };
@@ -24,19 +25,32 @@ export type HttpFetch = (
 ) => HttpStream;
 
 export const initHttp = (config: HttpConfig = {}): HttpFetch => {
-  const { fetchFn = fetch, interceptors = { request: [], response: [] }, withXsrfProtection = false, xsrfTokenHeader = "X-XSRF-TOKEN", readInChunks = false } = config;
+  let {
+    fetchFn = fetch,
+    interceptors = { request: [], response: [] },
+    withXsrfProtection = false,
+    xsrfTokenHeader = 'X-XSRF-TOKEN',
+    xsrfToken = null,
+    readInChunks = false
+  } = config;
+
+  // Extract XSRF token
+  const getXsrfToken = (): string | null => {
+    if (!withXsrfProtection) return null;
+    return document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("XSRF-TOKEN="))
+      ?.split("=")[1] || localStorage.getItem("XSRF-TOKEN");
+  };
+
+  if (xsrfToken) {
+    xsrfToken = getXsrfToken();
+  }
 
   return (url: string, options?: RequestInit): HttpStream => {
     const abortController = new AbortController();
 
-    // Extract XSRF token
-    const getXsrfToken = (): string | null => {
-      if (!withXsrfProtection) return null;
-      return document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("XSRF-TOKEN="))
-        ?.split("=")[1] || localStorage.getItem("XSRF-TOKEN");
-    };
+
 
     const encodeUrlEncoded = (params: Record<string, any>): string => {
       const urlSearchParams = new URLSearchParams();
@@ -119,9 +133,8 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
         signal: abortController.signal,
       });
 
-      if (withXsrfProtection && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
-        const xsrfToken = getXsrfToken();
-        if (xsrfToken && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+      if (withXsrfProtection && xsrfToken && xsrfTokenHeader && !request.headers.has(xsrfTokenHeader)) {
+        if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
           request.headers.set(xsrfTokenHeader, xsrfToken);
         }
       }
