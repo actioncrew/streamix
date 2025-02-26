@@ -1,7 +1,7 @@
 import { createEmission, createStream, Stream } from "../abstractions";
 
 export type HttpStream<T = any> = Stream<T> & { abort: () => void };
-  
+
 export type HttpOptions = {
   headers?: Record<string, string>;
   params?: Record<string, string>;
@@ -23,9 +23,19 @@ export type ResponseParser = {
   readFull<T = any>(): HttpStream<T>;
 };
 
+export type Context = {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body?: any;
+  params?: Record<string, string>;
+  response?: Response;
+  [key: string]: any;
+};
+
 export type Middleware = (
-  next: (request: Request) => Promise<Response>
-) => (request: Request) => Promise<Response>;
+  next: (context: Context) => Context
+) => (context: Context) => Context;
 
 export type HttpClient = {
   use(this: HttpClient, ...middlewares: Middleware[]): HttpClient;
@@ -38,95 +48,74 @@ export type HttpClient = {
 
 // --- Base Middleware ---
 export const base = (baseUrl: string): Middleware => {
-  return (next) => async (request: Request) => {
-    const url = request.url.startsWith('http://') || request.url.startsWith('https://')
-      ? request.url // If already absolute, use it directly
-      : new URL(request.url, baseUrl).toString();
+  return (next) => (context: Context) => {
+    const url = context.url.startsWith('http://') || context.url.startsWith('https://')
+      ? context.url // If already absolute, use it directly
+      : new URL(context.url, baseUrl).toString();
 
-    const modifiedRequest = new Request(url, {
-      ...request, // Clone request details
-      headers: new Headers(request.headers),
-    });
-
-    return await next(modifiedRequest);
+    context.url = url;
+    return next(context);
   };
 };
 
 // --- Accept Middleware ---
 export const accept = (contentType: string): Middleware => {
-  return (next) => async (request: Request) => {
-    request.headers.set("Accept", contentType);
-    return next(request);
+  return (next) => (context) => {
+    context.headers["Accept"] = contentType;
+    return next(context);
   };
 };
 
 // --- Auth Middleware ---
 export const oauthToken = (token: string): Middleware => {
-  return (next) => async (request: Request) => {
-    request.headers.set("Authorization", `Bearer ${token}`);
-    return next(request);
+  return (next) => (context) => {
+    context.headers["Authorization"] = `Bearer ${token}`;
+    return next(context);
   };
 };
 
 // --- Body Middleware ---
 export const body = (content: any, contentType: string): Middleware => {
-  return (next) => async (request: Request) => {
-    const modifiedRequest = new Request(request.url, {
-      ...request,
-      body: content,
-      headers: { ...request.headers, "Content-Type": contentType },
-    });
-    return next(modifiedRequest);
+  return (next) => (context) => {
+    context.body = content;
+    context.headers["Content-Type"] = contentType;
+    return next(context);
   };
 };
 
 // --- Redirect Middleware ---
 export const redirect = (maxRedirects: number = 5): Middleware => {
-  return (next) => async (request: Request) => {
+  return (next) => (context) => {
     let redirectCount = 0;
-    let currentRequest = request;
 
     while (redirectCount < maxRedirects) {
-      const response = await next(currentRequest);
+      context = next(context);  // synchronously pass context to next middleware
 
-      if ([301, 302, 303, 307, 308].includes(response.status)) {
-        const location = response.headers.get("Location");
+      if (!context.response) throw new Error("No response returned from middleware");
 
-        if (!location) {
-          throw new Error("Redirect response missing Location header");
+      if ([301, 302, 303, 307, 308].includes(context.response.status)) {
+        const location = context.response.headers.get("Location");
+        if (!location) throw new Error("Redirect response missing Location header");
+
+        context.url = new URL(location, context.url).toString();
+        if (context.response.status === 303) {
+          context.method = "GET";
+          context.body = undefined;
         }
-
-        let newMethod = currentRequest.method;
-        let newBody = currentRequest.body;
-
-        if (response.status === 303) {
-          newMethod = "GET";
-          newBody = null;
-        }
-
-        const newUrl = new URL(location, currentRequest.url).toString();
-        currentRequest = new Request(newUrl, {
-          method: newMethod,
-          headers: currentRequest.headers,
-          body: newBody,
-          signal: currentRequest.signal,
-        });
-
         redirectCount++;
       } else {
-        return response;
+        return context;
       }
     }
-
     throw new Error("Too many redirects");
   };
 };
 
 // --- Header Middleware ---
 export const header = (name: string, value: string): Middleware => {
-  return (next) => async (request: Request) => {
-    request.headers.set(name, value);
-    return next(request);
+  return (next) => (context) => {
+    context.headers[name] = value;
+    return next(context);
   };
 };
 
@@ -137,92 +126,67 @@ export const json = (object: any): Middleware => {
 
 // --- Params Middleware ---
 export const params = (data: Record<string, any>): Middleware => {
-  return (next) => async (request: Request) => {
-    const url = new URL(request.url);
-    const method = request.method.toUpperCase();
-
-    if (["GET", "HEAD"].includes(method)) {
-      Object.keys(data).forEach((key) => {
-        url.searchParams.append(key, data[key]);
-      });
-      request = new Request(url.toString(), {
-        method: request.method,
-        headers: request.headers,
-        body: request.body,
-        signal: request.signal,
-      });
-    } else {
-      const formData = new URLSearchParams();
-      Object.keys(data).forEach((key) => {
-        formData.append(key, data[key]);
-      });
-      request = new Request(request.url, {
-        method: request.method,
-        headers: request.headers,
-        body: formData,
-        signal: request.signal,
-      });
-    }
-
-    return next(request);
+  return (next) => (context) => {
+    const url = new URL(context.url);
+    Object.entries(data).forEach(([key, value]) => url.searchParams.append(key, String(value)));
+    context.url = url.toString();
+    return next(context);
   };
 };
 
 // --- Error Handling Middleware ---
-export const errorHandler = (handler: (error: any, request: Request) => Response | Promise<Response>): Middleware => {
-  return (next) => async (request: Request) => {
+export const errorHandler = (handler: (error: any, context: Context) => Context): Middleware => {
+  return (next) => (context) => {
     try {
-      return await next(request);
+      return next(context);
     } catch (error) {
-      return handler(error, request);
+      return handler(error, context);
     }
   };
 };
 
 // --- Logging Middleware ---
 export const logging = (logger: (message: string) => void = console.log): Middleware => {
-  return (next) => async (request: Request) => {
-    logger(`Request: ${request.method} ${request.url}`);
-    const response = await next(request);
-    logger(`Response: ${response.status} ${request.url}`);
-    return response;
+  return (next) => (context) => {
+    logger(`Request: ${context.method} ${context.url}`);
+    context = next(context);
+    logger(`Response: ${context.response?.status || "No Response"} ${context.url}`);
+    return context;
   };
 };
 
 // --- Caching Middleware ---
 const cache = new Map<string, Response>();
 export const caching = (): Middleware => {
-  return (next) => async (request: Request) => {
-    const cacheKey = `${request.method}:${request.url}`;
-    if (request.method === "GET" && cache.has(cacheKey)) {
-      return cache.get(cacheKey)!.clone();
+  return (next) => (context) => {
+    const cacheKey = `${context.method}:${context.url}`;
+    if (context.method === "GET" && cache.has(cacheKey)) {
+      context.response = cache.get(cacheKey)!.clone();
+      return context;
     }
-    const response = await next(request);
-    if (request.method === "GET" && response.ok) {
-      cache.set(cacheKey, response.clone());
+    context = next(context);
+    if (context.method === "GET" && context.response?.ok) {
+      cache.set(cacheKey, context.response.clone());
     }
-    return response;
+    return context;
   };
 };
 
 // --- Timeout Middleware ---
 export const timeout = (ms: number): Middleware => {
-  return (next) => async (request: Request) => {
+  return (next) => (context: Context) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), ms);
 
     // Combine existing signal with timeout signal
-    const combinedSignal = request.signal
-      ? AbortSignal.any([request.signal, controller.signal])
+    const combinedSignal = context['signal']
+      ? (AbortSignal as any).any([context['signal'], controller.signal])
       : controller.signal;
 
-    const modifiedRequest = new Request(request.url, {
-      ...request,
-      signal: combinedSignal, // Use the combined signal
-    });
+    context['signal'] = combinedSignal;
 
     try {
-      const response = await next(modifiedRequest);
+      const response = next(context);
       clearTimeout(timeoutId);
       return response;
     } catch (error: any) {
@@ -235,41 +199,11 @@ export const timeout = (ms: number): Middleware => {
   };
 };
 
-// --- XSRF/CSRF Protection Middleware ---
-export const xsrfProtection = (tokenHeader: string, token: string): Middleware => {
-  return (next) => async (request: Request) => {
-    if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-      request.headers.set(tokenHeader, token);
-    }
-    return next(request);
-  };
-};
-
-// --- Retry Middleware ---
-export const retry = (maxRetries: number = 3, retryDelay: number = 1000): Middleware => {
-  return (next) => async (request: Request) => {
-    let attempts = 0;
-    while (attempts < maxRetries) {
-      try {
-        return await next(request);
-      } catch (error) {
-        attempts++;
-        if (attempts >= maxRetries) {
-          throw error;
-        }
-        await new Promise((resolve) => setTimeout(resolve, retryDelay));
-      }
-    }
-    throw new Error("Max retries exceeded");
-  };
-};
 
 export const createHttpClient = (
-  config: HttpClientConfig = {
-    defaultHeaders: { "Content-Type": "application/json" },
-  }
+  config: HttpClientConfig = {}
 ): HttpClient => {
-  const { baseUrl, defaultHeaders } = config;
+  const { baseUrl, defaultHeaders = { "Content-Type": "application/json" } } = config;
   const middlewares: Middleware[] = [];
 
   const resolveUrl = (url: string, params?: Record<string, string>): string => {
@@ -301,28 +235,58 @@ export const createHttpClient = (
     return headers instanceof Headers ? headers : new Headers(headers);
   };
 
-  const chainMiddleware = middlewares.reduceRight(
-    (nextMiddleware, middleware) => middleware(nextMiddleware),
-    async (request: Request): Promise<Response> => {
-      return await fetch(request);
-    }
-  );
+  // Chain middlewares that work with context
+  const chainMiddleware = (middlewares: Middleware[]): Middleware => {
+    return middlewares.reduceRight(
+      (nextMiddleware, middleware) => {
+        return (next) => {
+          // Apply the current middleware to a function that will call the next middleware
+          return middleware((ctx) => nextMiddleware(next)(ctx));
+        };
+      },
+      (next) => next // The base case just calls the final next function
+    );
+  };
 
   const request = (method: string, url: string, options: HttpOptions = {}): ResponseParser => {
-    const headers = mergeHeaders(toHeaders(defaultHeaders || {}), toHeaders(options.headers || {}));
     const abortController = new AbortController();
 
-    const requestOptions: RequestInit = {
+    // Resolve URL with query parameters
+    const finalUrl = resolveUrl(url, options.params);
+
+    // Create initial context - the context should contain the requestInit properties
+    let context: Context = {
+      url,
       method,
-      headers,
+      headers: defaultHeaders,
       body: options.body,
       credentials: options.withCredentials ? "include" : "same-origin",
-      signal: abortController.signal,
+      signal: abortController.signal
     };
 
-    const finalUrl = resolveUrl(url, options.params);
-    const request = new Request(finalUrl, requestOptions);
-    const response = chainMiddleware(request);
+    // If there are middlewares to apply
+    if (middlewares && middlewares.length > 0) {
+      // Create a composed middleware from the array
+      const composedMiddleware = chainMiddleware(middlewares);
+
+      // Execute the middleware chain with an identity function as the final handler
+      const executeRequest = composedMiddleware((ctx) => ctx);
+
+      // Get the final context after middleware processing
+      context = executeRequest(context);
+    }
+
+    // Execute the fetch request with the final context
+    const response = fetch(finalUrl, {
+      method: context.method,
+      headers: mergeHeaders(toHeaders(context.headers), toHeaders(options.headers || {})),
+      body: context.body,
+      credentials: context['credentials'],
+      signal: context['signal']
+    });
+
+
+    // Create a response parser to process the response
     return createResponseParser(response);
   };
 
@@ -345,7 +309,7 @@ export const createHttpClient = (
 };
 
 const createResponseParser = (responsePromise: Promise<Response>): ResponseParser => {
-  const parseStream = (responsePromise: Promise<Response>, parseMethod: string): HttpStream => {
+  const parseStream = (parseMethod: string): HttpStream => {
     async function* streamGenerator() {
       try {
         const response = await responsePromise;
@@ -515,12 +479,12 @@ const createResponseParser = (responsePromise: Promise<Response>): ResponseParse
   }
 
   return {
-    arrayBuffer: () => parseStream(responsePromise, "arrayBuffer"),
-    blob: () => parseStream(responsePromise, "blob"),
-    json: <T>() => parseStream(responsePromise, "json") as HttpStream<T>,
-    text: () => parseStream(responsePromise, "text"),
-    readChunks: <T>() => parseStream(responsePromise, "readChunks") as HttpStream<T>,
-    readFull: <T>() => parseStream(responsePromise, "readFull") as HttpStream<T>,
+    arrayBuffer: () => parseStream("arrayBuffer"),
+    blob: () => parseStream("blob"),
+    json: <T>() => parseStream("json") as HttpStream<T>,
+    text: () => parseStream("text"),
+    readChunks: <T>() => parseStream("readChunks") as HttpStream<T>,
+    readFull: <T>() => parseStream("readFull") as HttpStream<T>,
   };
 };
 
