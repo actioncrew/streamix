@@ -9,11 +9,6 @@ export type HttpOptions = {
   body?: any;
 };
 
-export type HttpClientConfig = {
-  baseUrl?: string;
-  defaultHeaders?: Record<string, string>;
-};
-
 export type ResponseParser = {
   arrayBuffer(): HttpStream<ArrayBuffer>;
   blob(): HttpStream<Blob>;
@@ -29,6 +24,7 @@ export type Context = {
   headers: Record<string, string>;
   body?: any;
   params?: Record<string, string>;
+  response?: Response;
   [key: string]: any;
 };
 
@@ -200,16 +196,15 @@ export const timeout = (ms: number): Middleware => {
 
 
 export const createHttpClient = (
-  config: HttpClientConfig = {}
 ): HttpClient => {
-  const { baseUrl, defaultHeaders = { "Content-Type": "application/json" } } = config;
+  const defaultHeaders = { "Content-Type": "application/json" };
   const middlewares: Middleware[] = [];
 
   const resolveUrl = (url: string, params?: Record<string, string>): string => {
     const fullUrl =
       url.startsWith("http://") || url.startsWith("https://")
         ? url
-        : new URL(url, baseUrl || "").toString();
+        : new URL(url).toString();
 
     if (params) {
       const urlObj = new URL(fullUrl);
@@ -274,7 +269,7 @@ export const createHttpClient = (
 
 
     // Create a response parser to process the response
-    return createResponseParser(response);
+    return createResponseParser(context, response);
   };
 
   return {
@@ -295,11 +290,11 @@ export const createHttpClient = (
   };
 };
 
-const createResponseParser = (responsePromise: Promise<Response>): ResponseParser => {
+const createResponseParser = (context: Context, asyncResponse: Promise<Response>): ResponseParser => {
   const parseStream = (parseMethod: string): HttpStream => {
     async function* streamGenerator() {
       try {
-        const response = await responsePromise;
+        const response = await asyncResponse; context.response = response;
         if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
 
         const contentType = response.headers.get("Content-Type") || "";
