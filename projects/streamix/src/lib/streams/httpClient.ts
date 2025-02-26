@@ -7,7 +7,7 @@ export type HttpOptions = {
   params?: Record<string, string>;
   withCredentials?: boolean;
   body?: any;
-}
+};
 
 export type HttpClientConfig = {
   baseUrl?: string;
@@ -135,7 +135,7 @@ export const params = (data: Record<string, any>): Middleware => {
 };
 
 // --- Error Handling Middleware ---
-export const errorHandler = (handler: (error: any, context: Context) => Context): Middleware => {
+export const resilient = (handler: (error: any, context: Context) => Context): Middleware => {
   return (next) => (context) => {
     try {
       return next(context);
