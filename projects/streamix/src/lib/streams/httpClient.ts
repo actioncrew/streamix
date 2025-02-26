@@ -213,10 +213,17 @@ export const timeout = (ms: number): Middleware => {
   return (next) => async (request: Request) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), ms);
+
+    // Combine existing signal with timeout signal
+    const combinedSignal = request.signal
+      ? AbortSignal.any([request.signal, controller.signal])
+      : controller.signal;
+
     const modifiedRequest = new Request(request.url, {
       ...request,
-      signal: controller.signal,
+      signal: combinedSignal, // Use the combined signal
     });
+
     try {
       const response = await next(modifiedRequest);
       clearTimeout(timeoutId);
