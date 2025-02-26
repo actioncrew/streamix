@@ -1,15 +1,6 @@
 import { createEmission, createStream, Stream } from "../abstractions";
 
 export type HttpStream<T = any> = Stream<T> & { abort: () => void };
-
-export type HttpConfig = {
-  fetchFn?: typeof fetch;
-  withXsrfProtection?: boolean;
-  xsrfTokenHeader?: string;
-  xsrfToken?: string;
-  readInChunks?: boolean;
-  useWebWorker?: boolean;
-};
   
 export type HttpOptions = {
   headers?: Record<string, string>;
@@ -19,7 +10,6 @@ export type HttpOptions = {
 }
 
 export type HttpClientConfig = {
-  http?: HttpFetch;
   baseUrl?: string;
   defaultHeaders?: Record<string, string>;
 };
@@ -254,8 +244,6 @@ export const xsrfProtection = (tokenHeader: string, token: string): Middleware =
     return next(request);
   };
 };
-
-
 
 // --- Retry Middleware ---
 export const retry = (maxRetries: number = 3, retryDelay: number = 1000): Middleware => {
