@@ -50,8 +50,6 @@ export const initHttp = (config: HttpConfig = {}): HttpFetch => {
   return (url: string, options?: RequestInit): HttpStream => {
     const abortController = new AbortController();
 
-
-
     const encodeUrlEncoded = (params: Record<string, any>): string => {
       const urlSearchParams = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
