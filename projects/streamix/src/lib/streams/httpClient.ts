@@ -49,9 +49,16 @@ export type HttpClient = {
 // --- Base Middleware ---
 export const base = (baseUrl: string): Middleware => {
   return (next) => async (request: Request) => {
-    const finalUrl = baseUrl + request.url;
-    const modifiedRequest = new Request(finalUrl, request);
-    return next(modifiedRequest);
+    const url = request.url.startsWith('http://') || request.url.startsWith('https://')
+      ? request.url // If already absolute, use it directly
+      : new URL(request.url, baseUrl).toString();
+
+    const modifiedRequest = new Request(url, {
+      ...request, // Clone request details
+      headers: new Headers(request.headers),
+    });
+
+    return await next(modifiedRequest);
   };
 };
 
