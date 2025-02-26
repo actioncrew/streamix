@@ -135,7 +135,7 @@ export const params = (data: Record<string, any>): Middleware => {
 };
 
 // --- Error Handling Middleware ---
-export const resilient = (handler: (error: any, context: Context) => Context): Middleware => {
+export const fallback = (handler: (error: any, context: Context) => Context): Middleware => {
   return (next) => (context) => {
     try {
       return next(context);
