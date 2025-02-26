@@ -233,9 +233,6 @@ export const createHttpClient = (
   const request = (method: string, url: string, options: HttpOptions = {}): ResponseParser => {
     const abortController = new AbortController();
 
-    // Resolve URL with query parameters
-    const finalUrl = resolveUrl(url, options.params);
-
     // Create initial context - the context should contain the requestInit properties
     let context: Context = {
       url,
@@ -243,7 +240,8 @@ export const createHttpClient = (
       headers: { ...defaultHeaders, ...options.headers },
       body: options.body,
       credentials: options.withCredentials ? "include" : "same-origin",
-      signal: abortController.signal
+      signal: abortController.signal,
+      abortController: abortController
     };
 
     // If there are middlewares to apply
@@ -259,7 +257,7 @@ export const createHttpClient = (
     }
 
     // Execute the fetch request with the final context
-    const response = fetch(finalUrl, {
+    const response = fetch(resolveUrl(context.url, options.params), {
       method: context.method,
       headers: context.headers,
       body: context.body,
@@ -324,7 +322,9 @@ const createResponseParser = (context: Context, asyncResponse: Promise<Response>
       }
     }
 
-    return createStream("httpStream", streamGenerator) as HttpStream;
+    const stream = createStream("httpStream", streamGenerator) as HttpStream;
+    stream.abort = () => context['abortController'].abort();
+    return stream;
   };
 
   /** Handles non-stream (small) responses */
