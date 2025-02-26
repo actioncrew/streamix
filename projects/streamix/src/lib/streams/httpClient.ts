@@ -25,6 +25,8 @@ export type Context = {
   body?: any;
   params?: Record<string, string>;
   response?: Response;
+  request?: Request;
+  promise?: Promise<any>;
   [key: string]: any;
 };
 
@@ -83,26 +85,60 @@ export const redirect = (maxRedirects: number = 5): Middleware => {
   return (next) => (context) => {
     let redirectCount = 0;
 
-    while (redirectCount < maxRedirects) {
-      context = next(context);  // synchronously pass context to next middleware
-
-      if (!context.response) throw new Error("No response returned from middleware");
-
-      if ([301, 302, 303, 307, 308].includes(context.response.status)) {
-        const location = context.response.headers.get("Location");
-        if (!location) throw new Error("Redirect response missing Location header");
-
-        context.url = new URL(location, context.url).toString();
-        if (context.response.status === 303) {
-          context.method = "GET";
-          context.body = undefined;
-        }
-        redirectCount++;
-      } else {
-        return context;
+    // Helper function to handle the redirect logic
+    const handleRedirect = (context: Context): Context => {
+      if (redirectCount >= maxRedirects) {
+        throw new Error("Too many redirects");
       }
-    }
-    throw new Error("Too many redirects");
+
+      // Pass the context to the next middleware
+      const newContext = next(context);
+
+      // Ensure the promise is available in the context
+      if (!newContext['promise']) {
+        throw new Error("No response promise returned from middleware");
+      }
+
+      // Chain the promise to handle the response
+      newContext['promise'] = newContext['promise'].then((response: Response) => {
+        // Attach the resolved response to the context
+        newContext.response = response;
+
+        // Check if the response is a redirect
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+          const location = response.headers.get("Location");
+          if (!location) {
+            throw new Error("Redirect response missing Location header");
+          }
+
+          // Update the URL for the next request
+          newContext.url = new URL(location, newContext.url).toString();
+
+          // For 303, change the method to GET and remove the body
+          if (response.status === 303) {
+            newContext.method = "GET";
+            newContext.body = undefined;
+          }
+
+          redirectCount++;
+
+          // Recursively handle the next redirect
+          return handleRedirect(newContext)['promise'];
+        } else {
+          // If not a redirect, return the response
+          return response;
+        }
+      }).catch((error: any) => {
+        // Propagate errors to the caller
+        throw error;
+      });
+
+      // Return the context synchronously
+      return newContext;
+    };
+
+    // Start the redirect handling process
+    return handleRedirect(context);
   };
 };
 
@@ -241,7 +277,7 @@ export const createHttpClient = (
       body: options.body,
       credentials: options.withCredentials ? "include" : "same-origin",
       signal: abortController.signal,
-      abortController: abortController
+      abortController: abortController,
     };
 
     // If there are middlewares to apply
@@ -256,18 +292,21 @@ export const createHttpClient = (
       context = executeRequest(context);
     }
 
-    // Execute the fetch request with the final context
-    const response = fetch(resolveUrl(context.url, options.params), {
+    // Create Request object
+    context.request = new Request(resolveUrl(context.url, options.params), {
       method: context.method,
       headers: context.headers,
       body: context.body,
       credentials: context['credentials'],
       signal: context['signal']
-    });
+  });
 
+    // Execute the fetch request with the final context
+    const response = fetch(context.request);
+    context['promise'] = response;
 
     // Create a response parser to process the response
-    return createResponseParser(context, response);
+    return createResponseParser(context);
   };
 
   return {
@@ -288,11 +327,11 @@ export const createHttpClient = (
   };
 };
 
-const createResponseParser = (context: Context, asyncResponse: Promise<Response>): ResponseParser => {
+const createResponseParser = (context: Context): ResponseParser => {
   const parseStream = (parseMethod: string): HttpStream => {
     async function* streamGenerator() {
       try {
-        const response = await asyncResponse; context.response = response;
+        const response = await context['promise']; context.response = response;
         if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
 
         const contentType = response.headers.get("Content-Type") || "";
