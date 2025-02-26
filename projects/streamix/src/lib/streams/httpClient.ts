@@ -29,7 +29,6 @@ export type Context = {
   headers: Record<string, string>;
   body?: any;
   params?: Record<string, string>;
-  response?: Response;
   [key: string]: any;
 };
 
