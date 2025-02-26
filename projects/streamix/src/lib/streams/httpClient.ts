@@ -11,13 +11,8 @@ export type HttpConfig = {
   readInChunks?: boolean;
   useWebWorker?: boolean;
 };
-
-export type HttpFetch = (
-  url: string,
-  options?: RequestInit
-) => HttpStream;
-
-export interface HttpOptions {
+  
+export type HttpOptions = {
   headers?: Record<string, string>;
   params?: Record<string, string>;
   withCredentials?: boolean;
@@ -37,22 +32,21 @@ export type ResponseParser = {
   text(): HttpStream<string>;
   readChunks<T = any>(): HttpStream<T>;
   readFull<T = any>(): HttpStream<T>;
-}
-
-export type HttpClient = {
-  use(this: HttpClient, ...middlewares: Middleware[]): HttpClient;
-
-  get(url: string, options?: HttpOptions): ResponseParser;
-  post(url: string, options?: HttpOptions): ResponseParser;
-  put(url: string, options?: HttpOptions): ResponseParser;
-  patch(url: string, options?: HttpOptions): ResponseParser;
-  delete(url: string, options?: HttpOptions): ResponseParser;
 };
 
 // Middleware type definition for our system
 export type Middleware = (
   next: (request: Request) => Promise<Response>
 ) => (request: Request) => Promise<Response>;
+
+export type HttpClient = {
+  use(this: HttpClient, ...middlewares: Middleware[]): HttpClient;
+  get(url: string, options?: HttpOptions): ResponseParser;
+  post(url: string, options?: HttpOptions): ResponseParser;
+  put(url: string, options?: HttpOptions): ResponseParser;
+  patch(url: string, options?: HttpOptions): ResponseParser;
+  delete(url: string, options?: HttpOptions): ResponseParser;
+};
 
 // --- Base Middleware ---
 export const base = (baseUrl: string): Middleware => {
@@ -146,17 +140,6 @@ export const json = (object: any): Middleware => {
   return body(JSON.stringify(object), "application/json");
 };
 
-// --- Method Middleware ---
-export const method = (verb: string): Middleware => {
-  return (next) => async (request: Request) => {
-    const modifiedRequest = new Request(request.url, {
-      ...request,
-      method: verb,
-    });
-    return next(modifiedRequest);
-  };
-};
-
 // --- Params Middleware ---
 export const params = (data: Record<string, any>): Middleware => {
   return (next) => async (request: Request) => {
@@ -187,25 +170,6 @@ export const params = (data: Record<string, any>): Middleware => {
     }
 
     return next(request);
-  };
-};
-
-// --- Parse Middleware ---
-export const parse = (parser: "json" | "text" | "arrayBuffer", as = "body"): Middleware => {
-  return (next) => async (request: Request) => {
-    const response = await next(request);
-    let parsedResponse;
-
-    if (parser === "json") {
-      parsedResponse = await response.json();
-    } else if (parser === "text") {
-      parsedResponse = await response.text();
-    } else if (parser === "arrayBuffer") {
-      parsedResponse = await response.arrayBuffer();
-    }
-
-    (response as any)[as] = parsedResponse;
-    return response;
   };
 };
 
@@ -279,36 +243,7 @@ export const xsrfProtection = (tokenHeader: string, token: string): Middleware =
   };
 };
 
-// --- Progress Tracking Middleware ---
-export const progressTracking = (progressCallback: (progress: number) => void): Middleware => {
-  return (next) => async (request: Request) => {
-    const response = await next(request);
-    if (!response.body) {
-      return response;
-    }
-    const reader = response.body.getReader();
-    const contentLength = response.headers.get("Content-Length");
-    const total = contentLength ? parseInt(contentLength, 10) : null;
-    let loaded = 0;
-    const stream = new ReadableStream({
-      async start(controller) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            controller.close();
-            break;
-          }
-          loaded += value.length;
-          if (total) {
-            progressCallback(loaded / total);
-          }
-          controller.enqueue(value);
-        }
-      },
-    });
-    return new Response(stream, response);
-  };
-};
+
 
 // --- Retry Middleware ---
 export const retry = (maxRetries: number = 3, retryDelay: number = 1000): Middleware => {
@@ -392,6 +327,10 @@ export const createHttpClient = (
   };
 
   return {
+    use: function (this: HttpClient, ...newMiddlewares: Middleware[]) {
+      middlewares.push(...newMiddlewares);
+      return this;
+    },
     get: (url: string, options?: HttpOptions): ResponseParser =>
       request("GET", url, options),
     post: (url: string, options?: HttpOptions): ResponseParser =>
@@ -401,11 +340,7 @@ export const createHttpClient = (
     patch: (url: string, options?: HttpOptions): ResponseParser =>
       request("PATCH", url, options),
     delete: (url: string, options?: HttpOptions): ResponseParser =>
-      request("DELETE", url, options),
-    use: function (this: HttpClient, ...newMiddlewares: Middleware[]) {
-      middlewares.push(...newMiddlewares);
-      return this;
-    }
+      request("DELETE", url, options)
   };
 };
 
