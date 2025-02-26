@@ -223,18 +223,6 @@ export const createHttpClient = (
     return fullUrl;
   };
 
-  const mergeHeaders = (defaultHeaders: Headers, customHeaders: Headers): Headers => {
-    const mergedHeaders = new Headers(defaultHeaders);
-    customHeaders.forEach((value, key) => {
-      mergedHeaders.set(key, value);
-    });
-    return mergedHeaders;
-  };
-
-  const toHeaders = (headers: Record<string, string> | Headers): Headers => {
-    return headers instanceof Headers ? headers : new Headers(headers);
-  };
-
   // Chain middlewares that work with context
   const chainMiddleware = (middlewares: Middleware[]): Middleware => {
     return middlewares.reduceRight(
@@ -258,7 +246,7 @@ export const createHttpClient = (
     let context: Context = {
       url,
       method,
-      headers: defaultHeaders,
+      headers: { ...defaultHeaders, ...options.headers },
       body: options.body,
       credentials: options.withCredentials ? "include" : "same-origin",
       signal: abortController.signal
@@ -279,7 +267,7 @@ export const createHttpClient = (
     // Execute the fetch request with the final context
     const response = fetch(finalUrl, {
       method: context.method,
-      headers: mergeHeaders(toHeaders(context.headers), toHeaders(options.headers || {})),
+      headers: context.headers,
       body: context.body,
       credentials: context['credentials'],
       signal: context['signal']
