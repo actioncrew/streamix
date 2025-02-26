@@ -1,6 +1,5 @@
 import { createEmission, createStream, Stream } from "../abstractions";
 
-// For demonstration, let's create simple placeholder interfaces
 export type HttpStream<T = any> = Stream<T> & { abort: () => void };
 
 export type HttpConfig = {
@@ -34,7 +33,6 @@ export type ResponseParser = {
   readFull<T = any>(): HttpStream<T>;
 };
 
-// Middleware type definition for our system
 export type Middleware = (
   next: (request: Request) => Promise<Response>
 ) => (request: Request) => Promise<Response>;
