@@ -241,9 +241,9 @@ export const createHttpClient = (
       method,
       headers: { ...defaultHeaders, ...options.headers },
       body: options.body,
+      params: options.params,
       credentials: options.withCredentials ? "include" : "same-origin",
-      signal: abortController.signal,
-      abortController: abortController,
+      signal: abortController.signal
     };
 
     // If there are middlewares to apply
