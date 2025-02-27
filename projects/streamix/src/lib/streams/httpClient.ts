@@ -213,13 +213,30 @@ export const createHttpClient = (
   const defaultHeaders = { "Content-Type": "application/json" };
   const middlewares: Middleware[] = [];
 
+  const resolveUrl = (url: string, params?: Record<string, string>): string => {
+    const fullUrl =
+      url.startsWith("http://") || url.startsWith("https://")
+        ? url
+        : new URL(url).toString();
+
+    if (params) {
+      const urlObj = new URL(fullUrl);
+      Object.entries(params).forEach(([key, value]) =>
+        urlObj.searchParams.append(key, value)
+      );
+      return urlObj.toString();
+    }
+
+    return fullUrl;
+  };
+
   // Chain middlewares that work with context
   const chainMiddleware = (middlewares: Middleware[]): Middleware => {
     return middlewares.reduceRight((nextMiddleware, middleware) => {
       return (next) => middleware((ctx) => nextMiddleware(next)(ctx));
     }, () => async (context) => {
       // Final middleware to perform the fetch
-      const request = new Request(context.url, {
+      const request = new Request(resolveUrl(context.url, context.params), {
         method: context.method,
         headers: context.headers,
         body: context.body,
