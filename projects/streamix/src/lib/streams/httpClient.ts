@@ -284,7 +284,7 @@ export const createHttpClient = (
   };
 };
 
-const parseStream = (response: Response, parseMethod: string): HttpStream => {
+const parseStream = <T>(response: Response, parseMethod: string): HttpStream<T> => {
   async function* streamGenerator() {
     try {
       if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
@@ -316,7 +316,7 @@ const parseStream = (response: Response, parseMethod: string): HttpStream => {
     }
   }
 
-  return createStream("httpStream", streamGenerator) as HttpStream;
+  return createStream("httpStream", streamGenerator) as HttpStream<T>;
 };
 
 /** Handles non-stream (small) responses */
@@ -453,25 +453,25 @@ async function* handleTextResponse(
 }
 
 export const readJson = <T = any>(): ParserFunction<T> => (response) => {
-  return parseStream(response, 'json');
+  return parseStream<T>(response, 'json');
 };
 
-export const readText = (): ParserFunction<string> => (response) => {
-  return parseStream(response, 'text');
+export const readText: ParserFunction<string> = (response) => {
+  return parseStream<string>(response, 'text');
 };
 
-export const readArrayBuffer = (): ParserFunction<ArrayBuffer> => (response) => {
-  return parseStream(response, 'arrayBuffer');
+export const readArrayBuffer: ParserFunction<ArrayBuffer> = (response) => {
+  return parseStream<ArrayBuffer>(response, 'arrayBuffer');
 };
 
-export const readBlob = (): ParserFunction<Blob> => (response) => {
-  return parseStream(response, 'blob');
+export const readBlob: ParserFunction<Blob> = (response) => {
+  return parseStream<Blob>(response, 'blob');
 };
 
 export const readChunks = <T = any>(): ParserFunction<T> => (response) => {
-  return parseStream(response, 'readChunks');
+  return parseStream<T>(response, 'readChunks');
 };
 
 export const readFull = <T = any>(): ParserFunction<T> => (response) => {
-  return parseStream(response, 'readFull');
+  return parseStream<T>(response, 'readFull');
 };
