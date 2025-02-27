@@ -81,7 +81,7 @@ async function testBinary() {
 async function testNotFound() {
   const client = createHttpClient();
   client.use(base('http://localhost:3000'));
-  const responseStream = client.get('/not-found', readText);
+  const responseStream = client.get('/not-found', readText).pipe(catchError(() => console.log('Not found as expected')));;
   try {
     for await (const value of responseStream) {
       console.log('Not found response:', value);
@@ -135,6 +135,58 @@ async function testTimeout() {
   }
 }
 
+let typingQueue: (() => void)[] = [];
+
+function typeEffectOutput(message: string, isError: boolean = false) {
+  const outputContainer = document.getElementById('output');
+  if (!outputContainer) return;
+
+  const outputElement = document.createElement('div');
+  outputElement.style.whiteSpace = 'pre-wrap';  // Ensure line breaks
+  outputElement.style.color = isError ? 'red' : 'green';
+  outputElement.style.marginBottom = '10px';  // Add some spacing between rows
+  outputContainer.appendChild(outputElement);
+
+  let index = 0;
+  const typingSpeed = 10;  // Adjust typing speed here
+
+  function type() {
+    if (index < message.length) {
+      outputElement.innerText += message.charAt(index);
+      index++;
+      setTimeout(type, typingSpeed);
+    } else {
+      // Once typing finishes, call the next message in the queue (if any)
+      const nextMessage = typingQueue.shift();
+      if (nextMessage) {
+        nextMessage();
+      }
+    }
+  }
+
+  typingQueue.push(type);  // Add the typing function to the queue
+  if (typingQueue.length === 1) { // If it's the first message, start typing
+    typingQueue[0]();
+  }
+}
+
+console.log = (...args: any[]) => {
+  args.forEach(arg => {
+    const message = typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg);
+    typeEffectOutput(message, false);
+  });
+};
+
+console.error = (...args: any[]) => {
+  args.forEach(arg => {
+    const message = typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg);
+    typeEffectOutput(message, true);
+  });
+};
+
+// You can also add a container in HTML for the output to appear
+document.body.innerHTML += '<div id="output" style="font-family: monospace; padding: 20px;"></div>';
+
 (async () => {
   await fetchData();
   await postData();
@@ -144,3 +196,4 @@ async function testTimeout() {
   await testManualRedirect();
   await testTimeout();
 })();
+
