@@ -452,26 +452,26 @@ async function* handleTextResponse(
   }
 }
 
-export const readJson = <T = any>(): ParserFunction<T> => (response) => {
+export const readJson: ParserFunction = <T = any>(response: Response) => {
   return parseStream<T>(response, 'json');
 };
 
-export const readText: ParserFunction<string> = (response) => {
+export const readText: ParserFunction<string> = (response: Response) => {
   return parseStream<string>(response, 'text');
 };
 
-export const readArrayBuffer: ParserFunction<ArrayBuffer> = (response) => {
+export const readArrayBuffer: ParserFunction<ArrayBuffer> = (response: Response) => {
   return parseStream<ArrayBuffer>(response, 'arrayBuffer');
 };
 
-export const readBlob: ParserFunction<Blob> = (response) => {
+export const readBlob: ParserFunction<Blob> = (response: Response) => {
   return parseStream<Blob>(response, 'blob');
 };
 
-export const readChunks = <T = any>(): ParserFunction<T> => (response) => {
+export const readChunks: ParserFunction = <T = any>(response: Response) => {
   return parseStream<T>(response, 'readChunks');
 };
 
-export const readFull = <T = any>(): ParserFunction<T> => (response) => {
+export const readFull: ParserFunction = <T = any>(response: Response) => {
   return parseStream<T>(response, 'readFull');
 };
