@@ -7,7 +7,6 @@ export * from './EMPTY';
 export * from './from';
 export * from './fromEvent';
 export * from './fromPromise';
-export * from './httpClient';
 export * from './iif';
 export * from './interval';
 export * from './jsonp';

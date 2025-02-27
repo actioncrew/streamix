@@ -32,8 +32,9 @@
       "@streamix/angular": [
         "./dist/angular/index.d.ts"
       ],
-      "@actioncrew/streamix-old": [
-        "./dist/streamix-old/index.d.ts"
+      "@actioncrew/streamix/http": [
+        "./projects/streamix/http/src/public-api.ts",
+        "./dist/streamix/http/index.d.ts"
       ]
     }
   },

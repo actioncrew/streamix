@@ -1,6 +1,4 @@
-import { createEmission, createStream, Stream } from '../abstractions';
-import { concatMap } from '../operators';
-import { fromPromise } from './fromPromise';
+import { concatMap, createEmission, createStream, fromPromise, Stream } from '@actioncrew/streamix';
 
 /**
  * Represents a stream of HTTP responses.
