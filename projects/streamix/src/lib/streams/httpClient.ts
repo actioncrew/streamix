@@ -1,5 +1,5 @@
 import { createEmission, createStream, Stream } from "../abstractions";
-import { map } from "../operators";
+import { concatMap } from "../operators";
 import { fromPromise } from "./fromPromise";
 
 export type HttpStream<T = any> = Stream<T> & { abort: () => void };
@@ -9,15 +9,6 @@ export type HttpOptions = {
   params?: Record<string, string>;
   withCredentials?: boolean;
   body?: any;
-};
-
-export type ResponseParser = {
-  arrayBuffer(): HttpStream<ArrayBuffer>;
-  blob(): HttpStream<Blob>;
-  json<T = any>(): HttpStream<T>;
-  text(): HttpStream<string>;
-  readChunks<T = any>(): HttpStream<T>;
-  readFull<T = any>(): HttpStream<T>;
 };
 
 export type Context = {
@@ -39,11 +30,11 @@ export type ParserFunction<T = any> = (response: Response) => HttpStream<T>;
 
 export type HttpClient = {
   use(this: HttpClient, ...middlewares: Middleware[]): HttpClient;
-  get(url: string, parser: ParserFunction, options?: HttpOptions): HttpStream;
-  post(url: string, parser: ParserFunction, options?: HttpOptions): HttpStream;
-  put(url: string, parser: ParserFunction, options?: HttpOptions): HttpStream;
-  patch(url: string, parser: ParserFunction, options?: HttpOptions): HttpStream;
-  delete(url: string, parser: ParserFunction, options?: HttpOptions): HttpStream;
+  get<T = any>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T>;
+  post<T = any>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T>;
+  put<T = any>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T>;
+  patch<T = any>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T>;
+  delete<T = any>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T>;
 };
 
 // --- Base Middleware ---
@@ -241,7 +232,7 @@ export const createHttpClient = (
     });
   };
 
-  const request = (method: string, url: string, parser: ParserFunction, options: HttpOptions = {}): HttpStream => {
+  const request = <T = any>(method: string, url: string, parser: ParserFunction<T>, options: HttpOptions = {}): HttpStream<T> => {
     const abortController = new AbortController();
 
     // Create initial context - the context should contain the requestInit properties
@@ -256,12 +247,10 @@ export const createHttpClient = (
     };
 
     // If there are middlewares to apply
-    let promise = (middlewares && middlewares.length > 0)
-      ? chainMiddleware(middlewares)(async (ctx) => ctx)(context)
-      : Promise.resolve(context);
+    let promise = chainMiddleware(middlewares)(async (ctx) => ctx)(context);
 
     // Create a response parser to process the response
-    let stream = fromPromise(promise).pipe(map(ctx => parser(ctx.response))) as HttpStream;
+    let stream = fromPromise(promise).pipe(concatMap<Context, T>(ctx => parser(ctx.response!))) as HttpStream<T>;
     stream.abort = () => abortController.abort();
     return stream;
   };
@@ -271,20 +260,20 @@ export const createHttpClient = (
       middlewares.push(...newMiddlewares);
       return this;
     },
-    get: (url: string, parser: ParserFunction, options?: HttpOptions): HttpStream =>
-      request("GET", url, parser, options),
-    post: (url: string, parser: ParserFunction, options?: HttpOptions): HttpStream =>
-      request("POST", url, parser, options),
-    put: (url: string, parser: ParserFunction, options?: HttpOptions): HttpStream =>
-      request("PUT", url, parser, options),
-    patch: (url: string, parser: ParserFunction, options?: HttpOptions): HttpStream =>
-      request("PATCH", url, parser, options),
-    delete: (url: string, parser: ParserFunction, options?: HttpOptions): HttpStream =>
-      request("DELETE", url, parser, options)
+    get: <T>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T> =>
+      request<T>("GET", url, parser, options),
+    post: <T>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T> =>
+      request<T>("POST", url, parser, options),
+    put: <T>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T> =>
+      request<T>("PUT", url, parser, options),
+    patch: <T>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T> =>
+      request<T>("PATCH", url, parser, options),
+    delete: <T>(url: string, parser: ParserFunction<T>, options?: HttpOptions): HttpStream<T> =>
+      request<T>("DELETE", url, parser, options)
   };
 };
 
-const parseStream = <T>(response: Response, parseMethod: string): HttpStream<T> => {
+const parseStream = <T = any>(response: Response, parseMethod: string): HttpStream<T> => {
   async function* streamGenerator() {
     try {
       if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
