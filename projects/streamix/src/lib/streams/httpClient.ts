@@ -245,11 +245,7 @@ export const header = (name: string, value: string): Middleware => {
  */
 export const params = (data: Record<string, any>): Middleware => {
   return (next) => async (context) => {
-    const url = new URL(context.url);
-    Object.entries(data).forEach(([key, value]) =>
-      url.searchParams.append(key, String(value)),
-    );
-    context.url = url.toString();
+    context.params = { ...data, ...context.params };
     return await next(context);
   };
 };
