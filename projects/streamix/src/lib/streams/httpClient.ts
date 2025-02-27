@@ -29,7 +29,7 @@ export type Context = {
   body?: any;
   params?: Record<string, string>;
   response?: Response;
-  request?: Request;
+  fetch?: Function;
   [key: string]: any;
 };
 
@@ -135,6 +135,18 @@ export type HttpClient = {
 };
 
 /**
+ * Creates a middleware function that sets a custom fetch function within a context object.
+ * @param {function} customFetch - The custom fetch function to set in the context.
+ * @returns A middleware function.
+ */
+export const custom = (customFetch: Function): Middleware => {
+  return (next) => async (context: Context) => {
+    context.fetch = customFetch;
+    return next(context);
+  };
+}
+
+/**
  * Resolves relative URLs against a base URL.
  * @param baseUrl The base URL to resolve relative URLs against.
  * @returns A middleware function.
@@ -183,22 +195,21 @@ export const oauthToken = (token: string): Middleware => {
 export const redirect = (maxRedirects: number = 5): Middleware => {
   return (next) => async (context) => {
     let redirectCount = 0;
+    let originalRedirectResponse: Response | null = null; // Store original redirect response
 
-    const handleRedirect = async (context: Context): Promise<Response> => {
+    const handleRedirect = async (context: Context): Promise<Context> => {
       if (redirectCount >= maxRedirects) {
         throw new Error('Too many redirects');
       }
 
       const newContext = await next(context);
-
-      if (!newContext['promise']) {
-        throw new Error('No response promise returned from middleware');
-      }
-
-      const response: Response = await newContext['promise'];
-      newContext.response = response;
+      const response: Response = newContext.response!;
 
       if ([301, 302, 303, 307, 308].includes(response.status)) {
+        if (!originalRedirectResponse) {
+          originalRedirectResponse = response;
+        }
+
         const location = response.headers.get('Location');
         if (!location) {
           throw new Error('Redirect response missing Location header');
@@ -215,13 +226,17 @@ export const redirect = (maxRedirects: number = 5): Middleware => {
         return handleRedirect(newContext);
       }
 
-      return response;
+      return newContext;
     };
 
-    return {
-      ...context,
-      promise: handleRedirect(context),
-    };
+    const finalContext = await handleRedirect(context);
+
+    if (originalRedirectResponse) {
+      finalContext.response = originalRedirectResponse; // Set the original redirect response
+      finalContext['redirected'] = true;
+    }
+
+    return finalContext;
   };
 };
 
@@ -437,7 +452,7 @@ export const createHttpClient = (): HttpClient => {
           credentials: context['credentials'],
           signal: context['signal'],
         });
-        const response = await fetch(request);
+        const response = await (context.fetch ?? fetch)(request);
         context['response'] = response;
         return context;
       },
