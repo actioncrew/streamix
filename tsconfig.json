@@ -27,14 +27,12 @@
     "paths": {
       "@actioncrew/streamix": [
         "./projects/streamix/src/public-api.ts",
-        "./dist/streamix/index.d.ts"
       ],
       "@streamix/angular": [
-        "./dist/angular/index.d.ts"
+        "./projects/angular/src/public-api.ts",
       ],
       "@actioncrew/streamix/http": [
-        "./projects/streamix/http/src/public-api.ts",
-        "./dist/streamix/http/index.d.ts"
+        "./projects/streamix/http/src/public-api.ts"
       ]
     }
   },

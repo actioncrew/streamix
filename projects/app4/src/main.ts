@@ -1,7 +1,7 @@
+import { catchError } from '@actioncrew/streamix';
 import {
   accept,
   base,
-  catchError,
   createHttpClient,
   fallback,
   logging,
@@ -10,7 +10,7 @@ import {
   readText,
   redirect,
   timeout,
-} from '@actioncrew/streamix';
+} from '@actioncrew/streamix/http';
 
 async function fetchData() {
   const client = createHttpClient();
