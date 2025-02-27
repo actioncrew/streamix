@@ -256,12 +256,12 @@ export const createHttpClient = (
     };
 
     // If there are middlewares to apply
-    let response = (middlewares && middlewares.length > 0)
+    let promise = (middlewares && middlewares.length > 0)
       ? chainMiddleware(middlewares)(async (ctx) => ctx)(context)
       : Promise.resolve(context);
 
     // Create a response parser to process the response
-    let stream = fromPromise(response).pipe(map(response => parser(response))) as HttpStream;
+    let stream = fromPromise(promise).pipe(map(ctx => parser(ctx.response))) as HttpStream;
     stream.abort = () => abortController.abort();
     return stream;
   };
