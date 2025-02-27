@@ -445,10 +445,20 @@ export const createHttpClient = (): HttpClient => {
         return (next) => middleware((ctx) => nextMiddleware(next)(ctx));
       },
       () => async (context) => {
+        let body = context.body;
+
+        if (typeof body === 'object' && body !== null) {
+          if (body instanceof FormData || body instanceof URLSearchParams) {
+            // FormData or URLSearchParams: Use directly
+          } else if (context.headers['Content-Type'] === 'application/json') {
+            body = JSON.stringify(body);
+          }
+        }
+
         const request = new Request(resolveUrl(context.url, context.params), {
           method: context.method,
           headers: context.headers,
-          body: context.body,
+          body,
           credentials: context['credentials'],
           signal: context['signal'],
         });
