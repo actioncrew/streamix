@@ -5,4 +5,5 @@
 export * from './stream.directive';
 export * from './stream.module';
 export * from './stream.pipe';
+export * from './eventEmitter';
 
