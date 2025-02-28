@@ -25,7 +25,9 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   let createdWorkersCount = 0;
 
   let helperScriptCache: string | null = null;
+  let fetchingHelperScript = false;
   let blobUrlCache: string | null = null;
+  let helperScriptPromise: Promise<any> | null = null;
 
   const asyncPresent = functions.some((fn) =>
     fn.toString().includes('__async'),
@@ -34,23 +36,37 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   const createWorker = async (): Promise<Worker> => {
     let helperScript = '';
     if (asyncPresent) {
-      if (!helperScriptCache) {
-        try {
-          const response = await fetch(
-            'https://unpkg.com/@actioncrew/streamix@1.0.9/fesm2022/actioncrew-streamix-coroutine-async.mjs',
-          );
-          if (!response.ok) {
-            throw new Error(
-              `Failed to fetch helper script: ${response.statusText}`,
-            );
-          }
-          helperScriptCache = await response.text();
-        } catch (error) {
-          console.error('Error fetching helper script:', error);
-          throw error;
-        }
+      // If the helper script is not cached and not being fetched, start fetching
+      if (!helperScriptCache && !fetchingHelperScript) {
+        fetchingHelperScript = true; // Mark fetching as in progress
+        helperScriptPromise = fetch(
+          'https://unpkg.com/@actioncrew/streamix@1.0.10/fesm2022/actioncrew-streamix-coroutine-async.mjs',
+        )
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Failed to fetch helper script: ${response.statusText}`);
+            }
+            return response.text();
+          })
+          .then((script) => {
+            helperScriptCache = script; // Cache the helper script
+            return script;
+          })
+          .catch((error) => {
+            console.error('Error fetching helper script:', error);
+            throw error;
+          })
+          .finally(() => {
+            fetchingHelperScript = false; // Reset fetching flag
+          });
       }
-      helperScript = helperScriptCache;
+
+      // If the helper script is being fetched, wait for it to complete
+      if (fetchingHelperScript) {
+        helperScript = await helperScriptPromise;
+      } else {
+        helperScript = helperScriptCache || '';
+      }
     }
 
     const [mainTask, ...dependencies] = functions;
@@ -81,9 +97,10 @@ export const coroutine = (...functions: Function[]): Coroutine => {
             };
         `;
 
+    // Only create the Blob URL once
     if (!blobUrlCache) {
       const blob = new Blob([workerBody], { type: 'application/javascript' });
-      blobUrlCache = URL.createObjectURL(blob);
+      blobUrlCache = URL.createObjectURL(blob); // Cache the Blob URL
     }
 
     return new Worker(blobUrlCache, { type: 'module' });
@@ -155,7 +172,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     workerQueue.length = 0;
 
     if (blobUrlCache) {
-      URL.revokeObjectURL(blobUrlCache);
+      URL.revokeObjectURL(blobUrlCache); // Revoke the Blob URL
       blobUrlCache = null;
     }
   };
