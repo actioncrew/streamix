@@ -1,4 +1,4 @@
-import { Pipe, PipeTransform, ChangeDetectorRef, OnDestroy } from '@angular/core';
+import { AsyncPipe, Pipe, PipeTransform, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { Stream } from '@actioncrew/streamix';
 
 class StreamixAsyncPipe implements PipeTransform, OnDestroy {
@@ -51,3 +51,8 @@ class StreamixAsyncPipe implements PipeTransform, OnDestroy {
     this._latestValue = null;
   }
 }
+
+// Patch Angular's AsyncPipe
+Object.defineProperty(AsyncPipe, 'prototype', {
+  value: StreamixAsyncPipe.prototype,
+});
