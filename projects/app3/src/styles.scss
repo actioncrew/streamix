@@ -3,6 +3,7 @@ body {
   margin: 0;
   padding: 0;
   background-color: #f4f4f4;
+  line-height: 1.6;
 }
 
 header {
@@ -11,6 +12,9 @@ header {
   padding: 2rem;
   text-align: center;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
 nav {
@@ -109,6 +113,198 @@ nav a:hover {
   font-size: 1rem;
 }
 
+.featured-destinations, .newsletter {
+  padding: 3rem 2rem;
+  text-align: center;
+  background: #fff;
+  margin: 2rem auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.featured-destinations h2, .newsletter h2 {
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+.featured-destinations img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.travel-tips {
+  padding: 3rem 2rem;
+  text-align: center;
+  background: linear-gradient(135deg, #e0f7fa, #b2ebf2); /* Soft gradient background */
+  margin: 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); /* Enhanced shadow */
+  max-width: 800px; /* Adjust max width for larger screens */
+}
+
+.travel-tips h2 {
+  font-size: 2.5rem; /* Slightly larger heading */
+  color: #2c3e50; /* Darker, more professional color */
+  margin-bottom: 1.8rem;
+  font-weight: 600; /* Semi-bold for emphasis */
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1); /* Subtle text shadow */
+}
+
+.travel-tips p {
+  color: #555;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+  font-size: 1.1rem; /* Slightly larger paragraph text */
+}
+
+.travel-tips ul {
+  list-style-position: inside;
+  padding-left: 0;
+  text-align: left;
+  max-width: 600px;
+  margin: 0 auto;
+  list-style-type: none; /* Remove default bullets */
+}
+
+.travel-tips li {
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem; /* Space for custom bullet */
+  position: relative; /* For custom bullet positioning */
+  color: #333;
+  line-height: 1.6;
+}
+
+.travel-tips li::before {
+  content: "✓"; /* Checkmark as custom bullet */
+  position: absolute;
+  left: 0;
+  color: #4caf50; /* Green checkmark */
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .travel-tips {
+      padding: 2rem 1.5rem;
+  }
+
+  .travel-tips h2 {
+      font-size: 2.2rem;
+  }
+
+  .travel-tips p {
+      font-size: 1rem;
+  }
+}
+
+.tips-and-updates {
+  display: flex; /* Enable flexbox layout */
+  gap: 2rem; /* Space between the sections */
+  margin: 2rem auto; /* Center the container */
+  max-width: 1200px; /* Adjust as needed */
+}
+
+.latest-updates {
+  flex: 1;
+  padding: 3rem 2rem;
+  text-align: left; /* Align text to the left */
+  background: linear-gradient(135deg, #f0f8ff, #e1f5fe); /* Light blue gradient */
+  border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.latest-updates h2 {
+  font-size: 2.5rem;
+  color: #2c3e50;
+  margin-bottom: 1.8rem;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.latest-updates p {
+  color: #555;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+.update-item {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #eee; /* Subtle divider */
+}
+
+.update-item h3 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 0.8rem;
+}
+
+.update-item p {
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.update-item a {
+  color: #007bff; /* Blue link color */
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.update-item a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .latest-updates {
+      padding: 2rem 1.5rem;
+  }
+
+  .latest-updates h2 {
+      font-size: 2.2rem;
+  }
+
+  .latest-updates p, .update-item p {
+      font-size: 1rem;
+  }
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  .tips-and-updates {
+      flex-direction: column; /* Stack sections vertically */
+  }
+}
+
+.newsletter input[type="email"] {
+  padding: 0.8rem;
+  width: 80%;
+  max-width: 400px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-top: 1rem;
+}
+
+.newsletter button {
+  padding: 0.8rem 1.5rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.newsletter button:hover {
+  background-color: #388e3c;
+}
+
 footer {
   background-color: #333;
   color: white;
@@ -137,5 +333,21 @@ footer a:hover {
 @media (max-width: 600px) {
   .posts {
     grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding: 4rem 1rem;
+  }
+
+  .hero h1 {
+    font-size: 3rem;
+  }
+
+  .post-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .newsletter input[type="email"] {
+    width: 90%;
   }
 }

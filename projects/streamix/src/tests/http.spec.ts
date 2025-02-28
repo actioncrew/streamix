@@ -1,6 +1,6 @@
 import { initHttp } from "../lib";
 
-xdescribe("http stream functional tests", () => {
+describe("http stream functional tests", () => {
   const API_URL = "https://jsonplaceholder.typicode.com/posts/1";
 
   test("should fetch data successfully", (done) => {

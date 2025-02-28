@@ -2,42 +2,77 @@ import cors from "cors";
 import express from "express";
 
 const app = express();
-const PORT = 3000;
-const FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const CHUNK_SIZE = 512 * 1024; // 512KB per chunk
+const port = 3000;
 
-// Generate a 10MB buffer filled with 1s
-const largeFile = Buffer.alloc(FILE_SIZE, 1);
+const corsOptions = {
+  origin: 'http://localhost:4200', // Allow your Angular app
+  methods: ['GET', 'POST', 'OPTIONS'], // Add the methods you support
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
 
 // Enable CORS for Angular
-app.use(cors({
-  origin: "http://localhost:4200", // Adjust as needed
-  methods: "GET",
-}));
+app.use(cors(corsOptions));
 
-// Stream the large file from memory
-app.get("/large-file", (req, res) => {
-  res.setHeader("Content-Type", "application/octet-stream");
-  res.setHeader("Content-Length", FILE_SIZE);
+// Handle OPTIONS requests for preflight checks
+// Enable pre-flight CORS handling (for non-GET, non-POST requests or specific headers)
+app.options('*', cors(corsOptions));
 
-  let offset = 0;
+app.use(express.json()); // For parsing application/json
 
-  function sendChunk() {
-    if (offset >= largeFile.length) {
-      res.end();
-      return;
-    }
-
-    const chunk = largeFile.slice(offset, offset + CHUNK_SIZE);
-    res.write(chunk);
-    offset += CHUNK_SIZE;
-
-    setTimeout(sendChunk, 10); // Simulate network latency
-  }
-
-  sendChunk();
+// Example route for successful JSON response
+app.post('/items', (req, res) => {
+  res.sendStatus(201);
+});
+// Example route for successful JSON response
+app.get('/data', (req, res) => {
+    res.json({ message: 'Hello from the server!', data: { example: 42 } });
+});
+// Example route for successful text response
+app.get('/text', (req, res) => {
+    res.send('This is a plain text response.');
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+// Example route for binary data
+app.get('/binary', (req, res) => {
+    const buffer = Buffer.from([0x00, 0x01, 0x02, 0x03]);
+    res.send(buffer);
+});
+
+// Example route for 404 error
+app.get('/not-found', (req, res) => {
+    res.status(404).send('Not found');
+});
+
+// Example route for 500 error
+app.get('/server-error', (req, res) => {
+    res.status(500).send('Internal server error');
+});
+
+// Example route for redirects
+app.get('/auto-redirect', (req, res) => {
+    res.redirect('/data');
+});
+
+app.get('/manual-redirect', (req, res) => {
+  res.status(302)
+  .set('Location', '/data')
+  .end();
+});
+
+// Example route for post requests
+app.post('/items', (req, res) => {
+    console.log("Received post request with body:", req.body);
+    res.json({ message: 'Item created', received: req.body });
+});
+
+// Example route for timeout simulation
+app.get('/timeout', (req, res) => {
+    setTimeout(() => {
+        res.send('Timeout response');
+    }, 6000); // 6 seconds to trigger timeout
+});
+
+app.listen(port, () => {
+    console.log(`Test server listening at http://localhost:${port}`);
 });
