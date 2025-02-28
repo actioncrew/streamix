@@ -371,8 +371,8 @@ export const timeout = (ms: number): Middleware => {
  *   const responseStream = client.get("/data", readJson);
  *
  *   try {
- *     for await (const value of responseStream) {
- *       console.log("Received data:", value);
+ *     for await (const emission of responseStream) {
+ *       console.log("Received data:", emission.value);
  *     }
  *   } catch (error) {
  *     console.error("Unexpected error:", error);
@@ -394,8 +394,8 @@ export const timeout = (ms: number): Middleware => {
  *   const responseStream = client.post("/items");
  *
  *   try {
- *     for await (const value of responseStream) {
- *       console.log("Post response:", value);
+ *     for await (const emission of responseStream) {
+ *       console.log("Post response:", emission.value);
  *     }
  *   } catch (error) {
  *     console.error("Post request error:", error);

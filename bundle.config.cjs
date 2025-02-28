@@ -20,9 +20,16 @@ module.exports = {
         inlinedLibraries: [],
       }
     },
+    {
+      filePath: './dist/streamix/coroutine/async/index.d.ts',
+      outFile: './dist/streamix/coroutine/async/@actioncrew/index.d.ts',
+      output: {
+        inlineDeclareGlobals: false,
+        noBanner: true,
+      }
+    },
   ],
   compilationOptions: {
     preferredConfigPath: './tsconfig.json'
   }
-
 };

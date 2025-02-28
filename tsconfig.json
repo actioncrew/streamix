@@ -3,6 +3,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "allowJs": true,
+    "declaration": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist/out-tsc",
     "strict": true,
@@ -12,7 +13,6 @@
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "sourceMap": true,
-    "declaration": false,
     "experimentalDecorators": true,
     "moduleResolution": "bundler",
     "importHelpers": true,
@@ -29,11 +29,14 @@
       "@actioncrew/streamix": [
         "./projects/streamix/src/public-api.ts",
       ],
-      "@streamix/angular": [
-        "./projects/angular/src/public-api.ts",
-      ],
       "@actioncrew/streamix/http": [
         "./projects/streamix/http/src/public-api.ts"
+      ],
+      "@actioncrew/streamix/coroutine/async": [
+        "./projects/streamix/coroutine/async/src/public-api.ts"
+      ],
+      "@streamix/angular": [
+        "./projects/angular/src/public-api.ts",
       ]
     }
   },
