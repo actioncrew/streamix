@@ -630,7 +630,7 @@ export const readChunks = <T = Uint8Array>(
           for (const line of lines) {
             if (line.trim()) {
               try {
-                parsedChunk = chunkParser(JSON.parse(line));
+                parsedChunk = chunkParser(line);
                 yield { chunk: parsedChunk, progress, done: false };
               } catch (error) {
                 console.warn("Invalid NDJSON line:", line, error);
