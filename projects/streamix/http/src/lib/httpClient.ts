@@ -1,4 +1,4 @@
-import { concatMap, createEmission, createStream, fromPromise, Stream } from '@actioncrew/streamix';
+import { concatMap, from, fromPromise, Stream } from '@actioncrew/streamix';
 
 /**
  * Represents a stream of HTTP responses.
@@ -46,9 +46,9 @@ export type Middleware = (
  * @template T
  * @callback ParserFunction
  * @param {Response} response - The HTTP response object.
- * @returns {HttpStream<T>} The parsed HTTP stream.
+ * @returns {Stream<T>} The parsed HTTP stream.
  */
-export type ParserFunction<T = any> = (response: Response) => HttpStream<T>;
+export type ParserFunction<T = any> = (response: Response) => AsyncIterable<T>;
 
 /**
  * HTTP Client for making requests with middleware support.
@@ -497,7 +497,7 @@ export const createHttpClient = (): HttpClient => {
     let promise = chainMiddleware(middlewares)(async (ctx) => ctx)(context);
 
     let stream = fromPromise(promise).pipe(
-      concatMap<Context, T>((ctx) => parser(ctx.response!)),
+      concatMap<Context, T>((ctx) => from(parser(ctx.response!))),
     ) as HttpStream<T>;
     stream.abort = () => abortController.abort();
     return stream;
@@ -537,279 +537,235 @@ export const createHttpClient = (): HttpClient => {
 };
 
 /**
- * Parses a Response object into an HttpStream, handling different content types and parsing methods.
- * @template T The type of the parsed data.
- * @param response The Response object to parse.
- * @param parseMethod The parsing method to use (e.g., 'json', 'text', 'readChunks').
- * @returns An HttpStream of parsed data.
- */
-const parseStream = <T = any>(
-  response: Response,
-  parseMethod: string,
-): HttpStream<T> => {
-  async function* streamGenerator() {
-    try {
-      if (!response.ok)
-        throw new Error(`Request failed with status ${response.status}`);
-
-      const contentType = response.headers.get('Content-Type') || '';
-      const isTextResponse =
-        contentType.includes('text') || contentType.includes('json');
-      const isNdjson = contentType.includes('x-ndjson');
-      const isBinaryResponse = !isTextResponse && !isNdjson;
-
-      let encoding = 'utf-8';
-      const match = contentType.match(/charset=([^;]+)/);
-      if (match) encoding = match[1].trim().toLowerCase();
-
-      const contentLength = response.headers.get('Content-Length');
-      const totalSize = contentLength ? parseInt(contentLength, 10) : null;
-
-      if (!response.body) {
-        yield createEmission({
-          value: await handleRegularResponse(response, parseMethod),
-        });
-        return;
-      }
-
-      if (isBinaryResponse) {
-        yield* handleBinaryResponse(response, parseMethod, totalSize);
-      } else {
-        yield* handleTextResponse(
-          response,
-          parseMethod,
-          isNdjson,
-          encoding,
-          totalSize,
-        );
-      }
-    } catch (error: any) {
-      yield createEmission({ error: error.message });
-    }
-  }
-
-  return createStream('httpStream', streamGenerator) as HttpStream<T>;
-};
-
-/**
- * Handles non-stream (small) responses.
- * @param response The Response object.
- * @param parseMethod The parsing method to use.
- * @returns A Promise that resolves with the parsed data.
- */
-async function handleRegularResponse(
-  response: Response,
-  parseMethod: string,
-): Promise<any> {
-  switch (parseMethod) {
-    case 'json':
-      return await response.json();
-    case 'text':
-      return await response.text();
-    case 'arrayBuffer':
-    case 'readFull':
-      return new Uint8Array(await response.arrayBuffer());
-    case 'blob':
-      return await response.blob();
-    default:
-      throw new Error(`Unsupported parse method: ${parseMethod}`);
-  }
-}
-
-/**
- * Handles binary stream responses.
- * @param response The Response object.
- * @param parseMethod The parsing method to use.
- * @param totalSize The total size of the response, if available.
- * @returns An AsyncGenerator that yields parsed binary data.
- */
-async function* handleBinaryResponse(
-  response: Response,
-  parseMethod: string,
-  totalSize: number | null,
-) {
-  const reader = response.body!.getReader();
-  let loaded = 0;
-  let chunks: Uint8Array[] = [];
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-
-    if (value) {
-      loaded += value.length;
-      const progress = totalSize ? loaded / totalSize : 0.5;
-
-      if (parseMethod === 'readChunks') {
-        yield createEmission({
-          value: { chunk: value, progress, done: false },
-        });
-      } else {
-        chunks.push(value);
-      }
-    }
-  }
-
-  if (parseMethod === 'readChunks') {
-    yield createEmission({ value: { chunk: null, progress: 1, done: true } });
-  } else {
-    const fullResponse = chunks.length
-      ? new Uint8Array(
-          chunks.reduce((acc, chunk) => [...acc, ...chunk], [] as any[]),
-        )
-      : new Uint8Array(0);
-
-    yield createEmission({ value: fullResponse });
-  }
-}
-
-/**
- * Handles text-based stream responses.
- * @param response The Response object.
- * @param parseMethod The parsing method to use.
- * @param isNdjson Whether the response is NDJSON.
- * @param encoding The encoding of the text response.
- * @param totalSize The total size of the response, if available.
- * @returns An AsyncGenerator that yields parsed text data.
- */
-async function* handleTextResponse(
-  response: Response,
-  parseMethod: string,
-  isNdjson: boolean,
-  encoding: string,
-  totalSize: number | null,
-) {
-  const reader = response.body!.getReader();
-  const decoder = new TextDecoder(encoding);
-  let loaded = 0;
-  let ndjsonBuffer = '';
-  let fullResponse: any = isNdjson ? [] : '';
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-
-    if (value) {
-      loaded += value.length;
-      const progress = totalSize ? loaded / totalSize : 0.5;
-      const chunk = decoder.decode(value, { stream: true });
-
-      if (parseMethod === 'readChunks') {
-        if (isNdjson) {
-          ndjsonBuffer += chunk;
-          const lines = ndjsonBuffer.split('\n');
-          ndjsonBuffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.trim()) {
-              try {
-                yield createEmission({
-                  value: { chunk: JSON.parse(line), progress, done: false },
-                });
-              } catch (error) {
-                console.warn('Invalid NDJSON line:', error);
-              }
-            }
-          }
-        } else {
-          yield createEmission({ value: { chunk, progress, done: false } });
-        }
-      } else {
-        if (isNdjson) {
-          fullResponse.push(...chunk.split('\n').filter((line) => line.trim()));
-        } else {
-          fullResponse += chunk;
-        }
-      }
-    }
-  }
-
-  if (isNdjson && ndjsonBuffer.trim()) {
-    const lines = ndjsonBuffer.split('\n').filter((line) => line.trim());
-
-    for (const line of lines) {
-      try {
-        const progress = totalSize ? loaded / totalSize : 0.5;
-
-        yield createEmission({
-          value: { chunk: JSON.parse(line), progress, done: false },
-        });
-      } catch (error: any) {
-        console.warn('Invalid final NDJSON line:', error);
-      }
-    }
-  }
-
-  if (parseMethod === 'readChunks') {
-    yield createEmission({ value: { chunk: null, progress: 1, done: true } });
-  } else {
-    let finalValue = fullResponse as string;
-    if (parseMethod === 'json') {
-      try {
-        finalValue = JSON.parse(finalValue);
-      } catch (error) {
-        console.warn('Invalid JSON response:', error);
-      }
-    }
-    yield createEmission({ value: finalValue });
-  }
-}
-
-/**
  * Parses a Response object as JSON.
  * @template T The type of the parsed JSON data.
- * @param response The Response object to parse.
- * @returns An HttpStream of parsed JSON data.
+ * @returns A function that takes a Response and returns a stream of parsed JSON data.
  */
-export const readJson: ParserFunction = <T = any>(response: Response) => {
-  return parseStream<T>(response, 'json');
+export const readJson = <T = any>(): ParserFunction<T> => async function* (response) {
+  const data = await response.json();
+  yield data;
 };
 
 /**
  * Parses a Response object as text.
- * @param response The Response object to parse.
- * @returns An HttpStream of parsed text data.
+ * @returns A function that takes a Response and returns a stream of text data.
  */
-export const readText: ParserFunction<string> = (response: Response) => {
-  return parseStream<string>(response, 'text');
+export const readText = (): ParserFunction<string> => async function* (response) {
+  const data = await response.text();
+  yield data;
 };
 
 /**
  * Parses a Response object as an ArrayBuffer.
- * @param response The Response object to parse.
- * @returns An HttpStream of parsed ArrayBuffer data.
+ * @returns A function that takes a Response and returns a stream of ArrayBuffer data.
  */
-export const readArrayBuffer: ParserFunction<ArrayBuffer> = (
-  response: Response,
-) => {
-  return parseStream<ArrayBuffer>(response, 'arrayBuffer');
+export const readArrayBuffer = (): ParserFunction<ArrayBuffer> => async function* (response) {
+  const data = await response.arrayBuffer();
+  yield data;
 };
 
 /**
  * Parses a Response object as a Blob.
- * @param response The Response object to parse.
- * @returns An HttpStream of parsed Blob data.
+ * @returns A function that takes a Response and returns a stream of Blob data.
  */
-export const readBlob: ParserFunction<Blob> = (response: Response) => {
-  return parseStream<Blob>(response, 'blob');
+export const readBlob = (): ParserFunction<Blob> => async function* (response) {
+  const data = await response.blob();
+  yield data;
 };
 
 /**
- * Parses a Response object as chunks of data.
- * @template T The type of the chunks.
- * @param response The Response object to parse.
- * @returns An HttpStream of chunks.
+ * Type for the chunks emitted by the readChunks function.
+ * @template T The type of the parsed chunk data.
  */
-export const readChunks: ParserFunction = <T = any>(response: Response) => {
-  return parseStream<T>(response, 'readChunks');
+export type ChunkData<T> = {
+  chunk: T;
+  progress: number;
+  done: boolean;
 };
 
 /**
- * Parses a Response object as a single, full data object.
- * @template T The type of the full data object.
- * @param response The Response object to parse.
- * @returns An HttpStream containing the full parsed data object.
+ * Reads and processes streamed response chunks based on Content-Type.
+ *
+ * @template T The expected type of parsed data.
+ * @param {(chunk: any) => T} [chunkParser] Optional custom parser function.
+ * @returns {ParserFunction<ChunkData<T>>} A function that processes a response stream.
  */
-export const readFull: ParserFunction = <T = any>(response: Response) => {
-  return parseStream<T>(response, 'readFull');
+export const readChunks = <T = Uint8Array>(
+  chunkParser: (chunk: any) => T = (chunk) => chunk
+): ParserFunction<ChunkData<T>> => async function* (response) {
+  if (!response.body) {
+    throw new Error("Response body is not readable");
+  }
+
+  const contentLength = response.headers.get("Content-Length");
+  const totalSize = contentLength ? parseInt(contentLength, 10) : null;
+  let loaded = 0;
+
+  const reader = response.body.getReader();
+  const contentType = response.headers.get("Content-Type") || "";
+
+  let buffer = "";
+  const decoder = new TextDecoder(getEncoding(contentType));
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    if (value) {
+      loaded += value.length;
+      const progress = totalSize ? loaded / totalSize : 0.5;
+
+      let parsedChunk;
+
+      if (contentType.includes("text") || contentType.includes("json")) {
+        // Convert binary to text
+        const chunkText = decoder.decode(value, { stream: true });
+
+        if (contentType.includes("x-ndjson")) {
+          // NDJSON: Process line by line
+          buffer += chunkText;
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                parsedChunk = chunkParser(JSON.parse(line));
+                yield { chunk: parsedChunk, progress, done: false };
+              } catch (error) {
+                console.warn("Invalid NDJSON line:", line, error);
+              }
+            }
+          }
+          continue; // Skip standard yield for NDJSON
+        }
+
+        parsedChunk = chunkParser(chunkText);
+      } else {
+        // Binary/Base64/Other formats
+        parsedChunk = chunkParser(value);
+      }
+
+      yield {
+        chunk: parsedChunk,
+        progress,
+        done: false,
+      };
+    }
+  }
+
+  // Emit final completion signal
+  yield {
+    chunk: null as unknown as T,
+    progress: 1,
+    done: true,
+  };
+};
+
+/**
+ * Parses raw binary chunks (returns Uint8Array as-is).
+ *
+ * @param {Uint8Array} chunk - The raw binary chunk.
+ * @returns {Uint8Array} The unchanged binary data.
+ */
+export const readBinaryChunk = (chunk: Uint8Array): Uint8Array => chunk;
+
+/**
+ * Decodes a binary chunk into a text string.
+ *
+ * @param {Uint8Array} chunk - The binary chunk.
+ * @param {string} [encoding="utf-8"] - The text encoding format.
+ * @returns {string} The decoded text.
+ */
+export const readTextChunk = (chunk: Uint8Array, encoding: string = "utf-8"): string =>
+  new TextDecoder(encoding).decode(chunk);
+
+/**
+ * Parses a binary chunk as JSON.
+ *
+ * @param {string} chunk - The text chunk containing JSON data.
+ * @returns {any} The parsed JSON object.
+ */
+export const readJsonChunk = (chunk: string): any => {
+  try {
+    return JSON.parse(chunk);
+  } catch {
+    console.warn("Invalid JSON chunk:", chunk);
+    return null;
+  }
+};
+
+/**
+ * Parses a single NDJSON line.
+ *
+ * @param {string} line - A single JSON line from NDJSON.
+ * @returns {any} The parsed JSON object, or `null` if parsing fails.
+ */
+export const readNdjsonChunk = (line: string): any => {
+  try {
+    return JSON.parse(line);
+  } catch {
+    console.warn("Invalid NDJSON line:", line);
+    return null;
+  }
+};
+
+/**
+ * Converts a binary chunk to a Base64 string.
+ *
+ * @param {Uint8Array} chunk - The binary chunk to encode.
+ * @returns {string} The Base64-encoded string.
+ */
+export const readBase64Chunk = (chunk: Uint8Array): string =>
+  btoa(String.fromCharCode(...chunk));
+
+/**
+ * Parses a text chunk as CSV data.
+ *
+ * @param {string} chunk - The text chunk containing CSV data.
+ * @returns {string[][]} A 2D array representing CSV rows and columns.
+ */
+export const readCsvChunk = (chunk: string): string[][] => {
+  return chunk.split("\n").map((line) => line.split(","));
+};
+
+/**
+ * Gets the encoding from a Content-Type header.
+ * @param contentType The Content-Type header value.
+ * @returns The encoding string.
+ */
+function getEncoding(contentType: string): string {
+  const match = contentType.match(/charset=([^;]+)/);
+  return match ? match[1].trim().toLowerCase() : 'utf-8';
+}
+
+/**
+ * Reads and collects the entire response body from a ReadableStream.
+ * This function returns a stream that yields the full data as it's read.
+ *
+ * @returns {ParserFunction<Uint8Array>} A function that processes a response stream.
+ */
+export const readFull = (): ParserFunction<Uint8Array> => async function* (response) {
+  if (!response.body) {
+    throw new Error("Response body is not readable");
+  }
+
+  const reader = response.body.getReader();
+  let accumulatedData = new Uint8Array();
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    if (value) {
+      // Concatenate the new chunk with the accumulated data
+      const newData = new Uint8Array(accumulatedData.length + value.length);
+      newData.set(accumulatedData);
+      newData.set(value, accumulatedData.length);
+      accumulatedData = newData;
+    }
+  }
+
+  // Once all data is collected, yield the full response body as a single chunk
+  yield accumulatedData;
 };
