@@ -10,7 +10,7 @@
     "test:coverage": "jest --coverage --watchAll=false --selectProjects streamix",
     "test:watch": "jest --watch",
     "minify": "node terser.mjs",
-    "bundle": "dts-bundle-generator --config ./dts-bundle-generator.config.cjs && npm run minify",
+    "bundle": "dts-bundle-generator --config ./bundle.config.cjs && npm run minify",
     "clean": "eslint --config eslint.config.js --fix"
   },
   "dependencies": {

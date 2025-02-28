@@ -17,6 +17,7 @@ module.exports = {
       },
       libraries: {
         importedLibraries: ['@actioncrew/streamix'],
+        inlinedLibraries: [],
       }
     },
   ],

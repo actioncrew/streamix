@@ -65,8 +65,8 @@ await deleteFiles(definitions);
 
 fs.rmSync('./dist/streamix/esm2022', {recursive: true, force: true});
 fs.rmSync('./dist/streamix/lib', {recursive: true, force: true});
-fs.copyFileSync('./dist/streamix/@actioncrew/streamix.d.ts', './dist/streamix/index.d.ts');
+fs.copyFileSync('./dist/streamix/@actioncrew/index.d.ts', './dist/streamix/index.d.ts');
 fs.rmSync('./dist/streamix/@actioncrew', {recursive: true, force: true});
-fs.copyFileSync('./dist/streamix/http/@actioncrew/streamix.d.ts', './dist/streamix/http/index.d.ts');
+fs.copyFileSync('./dist/streamix/http/@actioncrew/index.d.ts', './dist/streamix/http/index.d.ts');
 fs.rmSync('./dist/streamix/http/lib', {recursive: true, force: true});
 fs.rmSync('./dist/streamix/http/@actioncrew', {recursive: true, force: true});
