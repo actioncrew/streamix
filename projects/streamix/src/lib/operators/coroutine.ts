@@ -18,6 +18,9 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   const workerQueue: Array<(worker: Worker) => void> = [];
   let isFinalizing = false;
 
+  // Track Blob URLs for revocation
+  const workerUrlMap = new Map<Worker, string>();
+
   const initWorkers = () => {
     const asyncPresent = functions.some(fn => fn.toString().includes("__async"));
     const [mainTask, ...dependencies] = functions;
@@ -26,7 +29,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
       let fnBody = fn.toString();
       fnBody = fnBody.replace(/function[\s]*\(/, `function ${fn.name}(`);
       return fnBody;
-    }).join(';');
+    }).join(';\n');
 
     const mainTaskBody = mainTask.toString().replace(/function[\s]*\(/, `function ${mainTask.name}(`);
 
@@ -48,7 +51,9 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     const workerUrl = URL.createObjectURL(blob);
 
     for (let i = 0; i < maxWorkers; i++) {
-      workerPool.push(new Worker(workerUrl));
+      const worker = new Worker(workerUrl);
+      workerPool.push(worker);
+      workerUrlMap.set(worker, workerUrl); // Track the worker and its URL
     }
   };
 
@@ -105,7 +110,16 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     if (isFinalizing) return;
     isFinalizing = true;
 
-    workerPool.forEach(worker => worker.terminate());
+    // Terminate all workers and revoke their Blob URLs
+    workerPool.forEach(worker => {
+      worker.terminate();
+      const workerUrl = workerUrlMap.get(worker);
+      if (workerUrl) {
+        URL.revokeObjectURL(workerUrl); // Revoke the Blob URL
+        workerUrlMap.delete(worker); // Remove the worker from the map
+      }
+    });
+
     workerPool.length = 0;
     workerQueue.length = 0;
   };
