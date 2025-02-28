@@ -541,8 +541,8 @@ export const createHttpClient = (): HttpClient => {
  * @template T The type of the parsed JSON data.
  * @returns A function that takes a Response and returns a stream of parsed JSON data.
  */
-export const readJson = <T = any>(): ParserFunction<T> => async function* (response) {
-  const data = await response.json();
+export const readJson: ParserFunction = async function* <T>(response: Response) {
+  const data = await response.json() as T;
   yield data;
 };
 
@@ -550,8 +550,8 @@ export const readJson = <T = any>(): ParserFunction<T> => async function* (respo
  * Parses a Response object as text.
  * @returns A function that takes a Response and returns a stream of text data.
  */
-export const readText = (): ParserFunction<string> => async function* (response) {
-  const data = await response.text();
+export const readText: ParserFunction<string> = async function* (response) {
+  const data = await response.text() as string;
   yield data;
 };
 
@@ -559,7 +559,7 @@ export const readText = (): ParserFunction<string> => async function* (response)
  * Parses a Response object as an ArrayBuffer.
  * @returns A function that takes a Response and returns a stream of ArrayBuffer data.
  */
-export const readArrayBuffer = (): ParserFunction<ArrayBuffer> => async function* (response) {
+export const readArrayBuffer: ParserFunction<ArrayBuffer> = async function* (response) {
   const data = await response.arrayBuffer();
   yield data;
 };
@@ -568,7 +568,7 @@ export const readArrayBuffer = (): ParserFunction<ArrayBuffer> => async function
  * Parses a Response object as a Blob.
  * @returns A function that takes a Response and returns a stream of Blob data.
  */
-export const readBlob = (): ParserFunction<Blob> => async function* (response) {
+export const readBlob: ParserFunction<Blob> = async function* (response) {
   const data = await response.blob();
   yield data;
 };
@@ -745,7 +745,7 @@ function getEncoding(contentType: string): string {
  *
  * @returns {ParserFunction<Uint8Array>} A function that processes a response stream.
  */
-export const readFull = (): ParserFunction<Uint8Array> => async function* (response) {
+export const readFull: ParserFunction<Uint8Array> = async function* (response) {
   if (!response.body) {
     throw new Error("Response body is not readable");
   }
