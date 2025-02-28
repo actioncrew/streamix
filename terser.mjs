@@ -70,3 +70,6 @@ fs.rmSync('./dist/streamix/@actioncrew', {recursive: true, force: true});
 fs.copyFileSync('./dist/streamix/http/@actioncrew/index.d.ts', './dist/streamix/http/index.d.ts');
 fs.rmSync('./dist/streamix/http/lib', {recursive: true, force: true});
 fs.rmSync('./dist/streamix/http/@actioncrew', {recursive: true, force: true});
+fs.copyFileSync('./dist/streamix/coroutine/async/@actioncrew/index.d.ts', './dist/streamix/coroutine/async/index.d.ts');
+fs.rmSync('./dist/streamix/coroutine/async/lib', {recursive: true, force: true});
+fs.rmSync('./dist/streamix/coroutine/async/@actioncrew', {recursive: true, force: true});
