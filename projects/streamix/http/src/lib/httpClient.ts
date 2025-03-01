@@ -174,14 +174,36 @@ export const accept = (contentType: string): Middleware => {
 };
 
 /**
- * Sets the Authorization header with an OAuth token.
- * @param token The OAuth token to use for authorization.
- * @returns A middleware function.
+ * OAuth 2.0 Middleware
+ * @param {Object} config - OAuth 2.0 configuration
+ * @param {() => Promise<string>} config.getToken - Function to get the current access token
+ * @param {() => Promise<string>} config.refreshToken - Function to refresh the access token
+ * @param {(context: Context) => boolean} [config.shouldRetry] - Optional function to determine if a request should be retried on failure
+ * @returns {Middleware} OAuth middleware function
  */
-export const oauthToken = (token: string): Middleware => {
+export const oauth = ({
+  getToken,
+  refreshToken,
+  shouldRetry = () => true, // Default to always retry
+}: {
+  getToken: () => Promise<string>;
+  refreshToken: () => Promise<string>;
+  shouldRetry?: (context: Context) => boolean;
+}): Middleware => {
   return (next) => async (context) => {
-    context.headers['Authorization'] = `Bearer ${token}`;
-    return await next(context);
+    // Set the initial token in the Authorization header
+    context.headers["Authorization"] = `Bearer ${await getToken()}`;
+
+    // Attempt the request
+    const responseContext = await next(context);
+
+    // If unauthorized and shouldRetry allows, refresh the token and retry
+    if (responseContext.response?.status === 401 && shouldRetry(context)) {
+      context.headers["Authorization"] = `Bearer ${await refreshToken()}`;
+      return await next(context); // Retry with the new token
+    }
+
+    return responseContext;
   };
 };
 
@@ -359,7 +381,6 @@ export const timeout = (ms: number): Middleware => {
  *   const client = createHttpClient().use(
  *     base("https://api.example.com"),
  *     accept("application/json"),
- *     oauthToken("your-oauth-token"),
  *     logging(),
  *     timeout(5000),
  *     fallback((error, context) => {
