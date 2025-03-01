@@ -13,6 +13,8 @@ export type Coroutine = StreamOperator & {
   returnWorker: (worker: Worker) => void;
 };
 
+let helperScriptCache: string | null = null;
+
 export const coroutine = (...functions: Function[]): Coroutine => {
   if (functions.length === 0) {
     throw new Error('At least one function (the main task) is required.');
@@ -24,7 +26,6 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   let isFinalizing = false;
   let createdWorkersCount = 0;
 
-  let helperScriptCache: string | null = null;
   let fetchingHelperScript = false;
   let blobUrlCache: string | null = null;
   let helperScriptPromise: Promise<any> | null = null;
