@@ -22,12 +22,13 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
   const maxWorkers = navigator.hardwareConcurrency || 4;
   const workerPool: Worker[] = [];
-  const workerQueue: Array<(worker: Worker) => void> = [];
-  let isFinalizing = false;
+  const waitingQueue: Array<(worker: Worker) => void> = [];
   let createdWorkersCount = 0;
+  
+  let blobUrlCache: string | null = null;
+  let isFinalizing = false;
 
   let fetchingHelperScript = false;
-  let blobUrlCache: string | null = null;
   let helperScriptPromise: Promise<any> | null = null;
 
   const asyncPresent = functions.some((fn) =>
@@ -118,13 +119,13 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
 
     return new Promise<Worker>((resolve) => {
-      workerQueue.push(resolve);
+      waitingQueue.push(resolve);
     });
   };
 
   const returnWorker = (worker: Worker): void => {
-    if (workerQueue.length > 0) {
-      const resolve = workerQueue.shift()!;
+    if (waitingQueue.length > 0) {
+      const resolve = waitingQueue.shift()!;
       resolve(worker);
     } else {
       workerPool.push(worker);
@@ -170,7 +171,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
 
     workerPool.forEach((worker) => worker.terminate());
     workerPool.length = 0;
-    workerQueue.length = 0;
+    waitingQueue.length = 0;
 
     if (blobUrlCache) {
       URL.revokeObjectURL(blobUrlCache); // Revoke the Blob URL
