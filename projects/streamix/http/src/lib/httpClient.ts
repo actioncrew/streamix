@@ -174,6 +174,18 @@ export const accept = (contentType: string): Middleware => {
 };
 
 /**
+ * Sets the Authorization header with an OAuth token.
+ * @param token The OAuth token to use for authorization.
+ * @returns A middleware function.
+ */
+export const oauthToken = (token: string): Middleware => {
+  return (next) => async (context) => {
+    context.headers['Authorization'] = `Bearer ${token}`;
+    return await next(context);
+  };
+};
+
+/**
  * OAuth 2.0 Middleware
  * @param {Object} config - OAuth 2.0 configuration
  * @param {() => Promise<string>} config.getToken - Function to get the current access token
