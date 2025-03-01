@@ -186,12 +186,9 @@ export const oauthToken = (token: string): Middleware => {
 };
 
 /**
- * OAuth 2.0 Middleware
- * @param {Object} config - OAuth 2.0 configuration
- * @param {() => Promise<string>} config.getToken - Function to get the current access token
- * @param {() => Promise<string>} config.refreshToken - Function to refresh the access token
- * @param {(context: Context) => boolean} [config.shouldRetry] - Optional function to determine if a request should be retried on failure
- * @returns {Middleware} OAuth middleware function
+ * Handles OAuth 2.0 authentication and token refresh.
+ * @param config Configuration for token retrieval and refresh.
+ * @returns A middleware function.
  */
 export const oauth = ({
   getToken,
