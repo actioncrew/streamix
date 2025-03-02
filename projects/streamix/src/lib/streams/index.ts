@@ -20,6 +20,7 @@ export * from './onMutation';
 export * from './onOrientation';
 export * from './onResize';
 export * from './range';
+export * from './replaySubject';
 export * from './retry';
 export * from './subject';
 export * from './timer';
