@@ -475,18 +475,18 @@ export const createHttpClient = (): HttpClient => {
         }
 
         cont url = resolveUrl(context.url, context.params);
-        const request = new Request(url, {
-          method: context.method,
-          headers: context.headers,
-          body,
-          credentials: context['credentials'],
-          signal: context['signal'],
-        });
-
         const cache = context['cache'];
         if (context.method === 'GET' && cache?.has(context.url)) {
           context.response = cache.get(cacheKey)!.clone();
         } else {
+          const request = new Request(url, {
+            method: context.method,
+            headers: context.headers,
+            body,
+            credentials: context['credentials'],
+            signal: context['signal'],
+          });
+          
           const response = await context.fetch(request);
           context.response = response;
           // Cache the response for GET requests if the response is successful
