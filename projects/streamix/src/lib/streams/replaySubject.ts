@@ -1,5 +1,5 @@
-import { createEmission, createReceiver, createSubscription, Emission, Operator, pipeStream, Receiver, Stream, StreamOperator, Subscription } from "../abstractions";
-import { Subject } from '../streams';
+import { createEmission, createReceiver, createSubscription, Receiver } from "../abstractions";
+import { Subject } from "../streams";
 
 export type ReplaySubject<T = any> = Subject<T>;
 
@@ -41,7 +41,7 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
     const receiver = createReceiver(callbackOrReceiver);
     subscribers.push(receiver);
 
-    // Replay the buffer to the new subscriber
+    // Replay buffer to new subscriber
     buffer.forEach((value) => receiver.next?.(value));
 
     if (hasError) {
@@ -55,10 +55,6 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
     return createSubscription(() => buffer[buffer.length - 1], () => {
       if (!receiver.unsubscribed) {
         receiver.unsubscribed = true;
-        if (!completed) {
-          completed = true;
-          subscribers.forEach((subscriber) => subscriber.complete?.());
-        }
         subscribers = subscribers.filter((sub) => sub !== receiver);
       }
     });
@@ -67,33 +63,31 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
   const asyncIterator = async function* (this: ReplaySubject<T>): AsyncGenerator<Emission<T>, void, unknown> {
     let resolveNext: ((value: IteratorResult<Emission<T>>) => void) | null = null;
     let rejectNext: ((reason?: any) => void) | null = null;
-    let latestValue: T | undefined;
-    let hasNewValue = false;
-    let completedHandled = false;
+
+    const queue: Emission<T>[] = buffer.map((value) => createEmission({ value }));
+    let isWaiting = false;
 
     const receiver = createReceiver({
       next: (value: T) => {
-        latestValue = value;
-        hasNewValue = true;
+        const emission = createEmission({ value });
+
         if (resolveNext) {
-          const emission = createEmission({ value });
           resolveNext({ value: emission, done: false });
           resolveNext = null;
-          hasNewValue = false;
+        } else {
+          queue.push(emission);
         }
       },
-
       complete: () => {
-        completedHandled = true;
         if (resolveNext) {
-          resolveNext({ value: createEmission({ value: undefined }), done: true });
+          resolveNext({ value: undefined as any, done: true });
+        } else {
+          queue.push(undefined as any);
         }
       },
-
       error: (err: Error) => {
         if (rejectNext) {
           rejectNext(err);
-          rejectNext = null;
         }
       }
     });
@@ -101,17 +95,24 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
     const subscription = this.subscribe(receiver);
 
     try {
-      while (!completedHandled || hasNewValue) {
-        if (hasNewValue) {
-          yield createEmission({ value: latestValue! });
-          hasNewValue = false;
+      while (true) {
+        if (queue.length > 0) {
+          const emission = queue.shift()!;
+          if (emission === undefined) break;
+          yield emission;
         } else {
-          const result = await new Promise<IteratorResult<Emission<T>>>((resolve, reject) => {
-            resolveNext = resolve;
-            rejectNext = reject;
+          isWaiting = true;
+          await new Promise<void>((resolve, reject) => {
+            resolveNext = (result) => {
+              if (!result.done) queue.push(result.value);
+              isWaiting = false;
+              resolve();
+            };
+            rejectNext = (error) => {
+              isWaiting = false;
+              reject(error);
+            };
           });
-          if (result.done) break;
-          yield result.value;
         }
       }
     } finally {
@@ -135,3 +136,4 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
 
   return stream;
 }
+                        
