@@ -9,6 +9,7 @@ export * from './fork';
 export * from './groupBy';
 export * from './map';
 export * from './mergeMap';
+export * from './shareReplay';
 export * from './scan';
 export * from './skip';
 export * from './slidingPair';
@@ -17,5 +18,6 @@ export * from './take';
 export * from './takeUntil';
 export * from './takeWhile';
 export * from './tap';
+export * from './throwError';
 export * from './withLatestFrom';
 
