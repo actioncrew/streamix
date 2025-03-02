@@ -489,13 +489,18 @@ export const createHttpClient = (): HttpClient => {
         } else {
           const response = await context.fetch(request);
           context.response = response;
-          if (context.method === 'GET' && context.response?.ok) {
-            cache.set(context.url, context.response.clone());
+          // Cache the response for GET requests if the response is successful
+          if (context.method === 'GET') {
+            context.response?.ok && cache.set(context.url, context.response.clone());
+          }
+          // Invalidate cache for change requests (POST, PUT, PATCH, DELETE, etc.)
+          else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(context.method)) {
+            cache.clear();
           }
         }
-      },
+      }
     );
-  };
+  }
 
   /**
    * Performs an HTTP request using the configured middlewares and streaming.
