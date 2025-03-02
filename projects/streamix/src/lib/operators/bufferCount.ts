@@ -1,6 +1,6 @@
 import { Emission, Operator, createOperator } from '../abstractions';
 
-export const bufferCount = (bufferSize: number): Operator => {
+export const bufferCount = (bufferSize: number = Infinity): Operator => {
   let buffer: any[] = [];
 
   const handle = (emission: Emission): Emission => {
