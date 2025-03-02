@@ -140,7 +140,7 @@ export type HttpClient = {
 export const custom = (customFetch: Function): Middleware => {
   return (next) => async (context: Context) => {
     context.fetch = customFetch;
-    return next(context);
+    return await next(context);
   };
 }
 
@@ -336,7 +336,7 @@ export const logging = (
 export const caching = (): Middleware => {
   return (next) => async (context) => {
     context['cache'] = context['cache'] || new Map<string, Response>();
-    return context;
+    return await next(context);
   };
 };
 
