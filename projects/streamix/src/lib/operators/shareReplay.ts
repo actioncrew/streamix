@@ -1,5 +1,5 @@
 import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
-import { createSubject, createReplaySubject } from "../streams";
+import { createReplaySubject } from "../streams";
 
 export function shareReplay<T>(bufferSize: number = Infinity): StreamOperator {
   const operator = (input: Stream<T>): Stream<T> => {
