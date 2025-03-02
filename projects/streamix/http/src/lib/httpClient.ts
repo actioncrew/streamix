@@ -1,4 +1,4 @@
-import { concatMap, EMPTY, from, fromPromise, Stream } from '@actioncrew/streamix';
+import { concatMap, createSubject, from, fromPromise, Stream } from '@actioncrew/streamix';
 
 /**
  * Represents a stream of HTTP responses.
@@ -488,14 +488,6 @@ export const createHttpClient = (): HttpClient => {
           });
 
           context.response = await context.fetch!(request);
-          // Cache the response for GET requests if the response is successful
-          if (context.method === 'GET') {
-            context.response?.ok && cache.set(context.url, context.response.clone());
-          }
-          // Invalidate cache for change requests (POST, PUT, PATCH, DELETE, etc.)
-          else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(context.method)) {
-            cache.clear();
-          }
         }
 
         return context;
@@ -528,19 +520,23 @@ export const createHttpClient = (): HttpClient => {
       params: options.params,
       credentials: options.withCredentials ? 'include' : 'same-origin',
       signal: abortController.signal,
-      fetch,
+      fetch: globalThis.fetch.bind(globalThis),
+      response: undefined
     };
 
-    let promise = chainMiddleware(middlewares)(async (ctx) => ctx)(context);
+    let promise = chainMiddleware(middlewares)(async (ctx) => ctx)({ ...context });
 
     let stream = fromPromise(promise).pipe(
-      concatMap<Context, Stream<T>>((ctx) => {
-        if (!ctx.response) {
-          return EMPTY;
+      concatMap<Context, T>((ctx) => {
+        // First check if response exists and is OK
+        if (!ctx.response || !ctx.response.ok) {
+          // Log error information
+          console.error(`Request failed: ${ctx.url}`, ctx.response?.status, ctx.response?.statusText);
+          throw new Error(`Request failed: ${ctx.response?.status} ${ctx.response?.statusText}`);
         }
 
         let cache = ctx['cache'];
-        if (ctx.method === 'GET' && ctx.response.ok && cache) {
+        if (ctx.method === 'GET' && cache) {
           let cachedData = cache.get(ctx.url);
 
           if (cachedData?.complete) {
@@ -549,34 +545,40 @@ export const createHttpClient = (): HttpClient => {
 
           if (!cachedData) {
             // Initialize cache entry
-            cachedData = { data: [] as T[], complete: false, stream: null };
+            cachedData = createSubject<T>();
             cache.set(ctx.url, cachedData);
 
-            // Create and store the async iterable
-            cachedData.stream = (async function* () {
+            // Push data into the Subject as it arrives
+            (async () => {
               try {
                 for await (const item of parser(ctx.response!)) {
-                  cachedData!.data.push(item);
-                  yield item;
+                  cachedData.next(item); // Push data into the Subject
                 }
-                cachedData!.complete = true;
               } catch (error) {
-                cache.delete(ctx.url);  // Clear cache on error
-                throw error;
+                console.error("Error parsing response:", error);
+                cache.delete(ctx.url); // Clear cache on error
+                cachedData.error(error); // Propagate the error
+              } finally {
+                cachedData.complete(); // Complete the Subject
               }
             })();
           }
 
           // Use fromAsyncIterable to process the AsyncIterable stream
-          return from(cachedData.stream);
+          return cachedData;
         }
 
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(ctx.method) && cache) {
           cache.clear();  // Invalidate cache for mutating methods
         }
 
-        // If not a GET or cache is unavailable, parse the response directly
-        return from(parser(ctx.response));
+        // If not a GET or cache is unavailable, parse the response directly with error handling
+        try {
+          return from(parser(ctx.response));
+        } catch (error) {
+          console.error("Error parsing response:", error);
+          throw error;
+        }
       })
     ) as HttpStream<T>;
 
