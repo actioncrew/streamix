@@ -1,4 +1,4 @@
-import { concatMap, createSubject, from, fromPromise, Stream } from '@actioncrew/streamix';
+import { concatMap, createReplaySubject, from, fromPromise, Stream } from '@actioncrew/streamix';
 
 /**
  * Represents a stream of HTTP responses.
@@ -545,10 +545,10 @@ export const createHttpClient = (): HttpClient => {
 
           if (!cachedData) {
             // Initialize cache entry
-            cachedData = createSubject<T>();
+            cachedData = createReplaySubject<T>();
             cache.set(ctx.url, cachedData);
 
-            // Push data into the Subject as it arrives
+            // Push data into the ReplaySubject as it arrives
             (async () => {
               try {
                 for await (const item of parser(ctx.response!)) {
