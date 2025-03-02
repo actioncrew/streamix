@@ -490,7 +490,7 @@ export const createHttpClient = (): HttpClient => {
           credentials: context['credentials'],
           signal: context['signal'],
         });
-        const response = await (context.fetch ?? fetch)(request);
+        const response = await context.fetch(request);
         context['response'] = response;
         return context;
       },
@@ -522,6 +522,7 @@ export const createHttpClient = (): HttpClient => {
       params: options.params,
       credentials: options.withCredentials ? 'include' : 'same-origin',
       signal: abortController.signal,
+      fetch
     };
 
     let promise = chainMiddleware(middlewares)(async (ctx) => ctx)(context);
