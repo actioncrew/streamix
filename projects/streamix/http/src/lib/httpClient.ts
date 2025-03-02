@@ -1,4 +1,4 @@
-import { concatMap, from, fromPromise, Stream } from '@actioncrew/streamix';
+import { concatMap, EMPTY, from, fromPromise, Stream } from '@actioncrew/streamix';
 
 /**
  * Represents a stream of HTTP responses.
@@ -474,10 +474,10 @@ export const createHttpClient = (): HttpClient => {
           }
         }
 
-        cont url = resolveUrl(context.url, context.params);
+        const url = resolveUrl(context.url, context.params);
         const cache = context['cache'];
         if (context.method === 'GET' && cache?.has(context.url)) {
-          context.response = cache.get(cacheKey)!.clone();
+          context.response = cache.get(url)!.clone();
         } else {
           const request = new Request(url, {
             method: context.method,
@@ -486,9 +486,8 @@ export const createHttpClient = (): HttpClient => {
             credentials: context['credentials'],
             signal: context['signal'],
           });
-          
-          const response = await context.fetch(request);
-          context.response = response;
+
+          context.response = await context.fetch!(request);
           // Cache the response for GET requests if the response is successful
           if (context.method === 'GET') {
             context.response?.ok && cache.set(context.url, context.response.clone());
@@ -498,6 +497,8 @@ export const createHttpClient = (): HttpClient => {
             cache.clear();
           }
         }
+
+        return context;
       }
     );
   }
@@ -527,17 +528,62 @@ export const createHttpClient = (): HttpClient => {
       params: options.params,
       credentials: options.withCredentials ? 'include' : 'same-origin',
       signal: abortController.signal,
-      fetch
+      fetch,
     };
 
     let promise = chainMiddleware(middlewares)(async (ctx) => ctx)(context);
 
     let stream = fromPromise(promise).pipe(
-      concatMap<Context, T>((ctx) => from(parser(ctx.response!))),
+      concatMap<Context, Stream<T>>((ctx) => {
+        if (!ctx.response) {
+          return EMPTY;
+        }
+
+        let cache = ctx['cache'];
+        if (ctx.method === 'GET' && ctx.response.ok && cache) {
+          let cachedData = cache.get(ctx.url);
+
+          if (cachedData?.complete) {
+            return from(cachedData.data);  // Return cached data if complete
+          }
+
+          if (!cachedData) {
+            // Initialize cache entry
+            cachedData = { data: [] as T[], complete: false, stream: null };
+            cache.set(ctx.url, cachedData);
+
+            // Create and store the async iterable
+            cachedData.stream = (async function* () {
+              try {
+                for await (const item of parser(ctx.response!)) {
+                  cachedData!.data.push(item);
+                  yield item;
+                }
+                cachedData!.complete = true;
+              } catch (error) {
+                cache.delete(ctx.url);  // Clear cache on error
+                throw error;
+              }
+            })();
+          }
+
+          // Use fromAsyncIterable to process the AsyncIterable stream
+          return from(cachedData.stream);
+        }
+
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(ctx.method) && cache) {
+          cache.clear();  // Invalidate cache for mutating methods
+        }
+
+        // If not a GET or cache is unavailable, parse the response directly
+        return from(parser(ctx.response));
+      })
     ) as HttpStream<T>;
+
     stream.abort = () => abortController.abort();
     return stream;
   };
+
 
   return {
     use: function (this: HttpClient, ...newMiddlewares: Middleware[]) {
