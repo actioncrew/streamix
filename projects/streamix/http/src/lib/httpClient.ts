@@ -334,17 +334,8 @@ export const logging = (
  * @returns A middleware function.
  */
 export const caching = (): Middleware => {
-  const cache = new Map<string, Response>();
   return (next) => async (context) => {
-    const cacheKey = `${context.method}:${context.url}`;
-    if (context.method === 'GET' && cache.has(cacheKey)) {
-      context.response = cache.get(cacheKey)!.clone();
-      return context;
-    }
-    context = await next(context);
-    if (context.method === 'GET' && context.response?.ok) {
-      cache.set(cacheKey, context.response.clone());
-    }
+    context['cache'] = context['cache'] || new Map<string, Response>();
     return context;
   };
 };
@@ -483,16 +474,25 @@ export const createHttpClient = (): HttpClient => {
           }
         }
 
-        const request = new Request(resolveUrl(context.url, context.params), {
+        cont url = resolveUrl(context.url, context.params);
+        const request = new Request(url, {
           method: context.method,
           headers: context.headers,
           body,
           credentials: context['credentials'],
           signal: context['signal'],
         });
-        const response = await context.fetch(request);
-        context['response'] = response;
-        return context;
+
+        const cache = context['cache'];
+        if (context.method === 'GET' && cache?.has(context.url)) {
+          context.response = cache.get(cacheKey)!.clone();
+        } else {
+          const response = await context.fetch(request);
+          context.response = response;
+          if (context.method === 'GET' && context.response?.ok) {
+            cache.set(context.url, context.response.clone());
+          }
+        }
       },
     );
   };
