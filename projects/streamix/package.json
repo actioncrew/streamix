@@ -11,9 +11,9 @@
   "dependencies": {
     "tslib": "^2.3.0"
   },
-  "sideEffects": false,
   "main": "public-api.ts",
   "type": "module",
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/actioncrew/streamix.git"
