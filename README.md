@@ -4,7 +4,7 @@
   <img src="https://github.com/actioncrew/streamix/blob/main/projects/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="300">
 </p>
 
-Streamix is a **lightweight alternative to RxJS** that implements reactive programming with a simplified concept of streams and emissions. Designed for modern, performance-oriented applications, Streamix combines simplicity with an ultra-light footprint, weighing in at just **5 KB (zipped)**. A cozy HTTP client is bundled in a separate package with a size of about **3 KB (zipped)**. It is designed to be easy to use, lightweight, and comfortable to work with.
+Streamix is a **lightweight alternative to RxJS** that implements reactive programming with a simplified concept of streams and emissions. Designed for modern, performance-oriented applications, Streamix combines simplicity with an ultra-light footprint, weighing in at just **6 KB (zipped)**. A cozy HTTP client is bundled in a separate package with a size of about **3 KB (zipped)**. It is designed to be easy to use, lightweight, and comfortable to work with.
 
 [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
 [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)

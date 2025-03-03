@@ -24,7 +24,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   const workerPool: Worker[] = [];
   const waitingQueue: Array<(worker: Worker) => void> = [];
   let createdWorkersCount = 0;
-  
+
   let blobUrlCache: string | null = null;
   let isFinalizing = false;
 
@@ -42,7 +42,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
       if (!helperScriptCache && !fetchingHelperScript) {
         fetchingHelperScript = true; // Mark fetching as in progress
         helperScriptPromise = fetch(
-          'https://unpkg.com/@actioncrew/streamix@1.0.10/fesm2022/actioncrew-streamix-coroutine-async.mjs',
+          'https://unpkg.com/@actioncrew/streamix@1.0.11/fesm2022/actioncrew-streamix-coroutine.mjs',
         )
           .then((response) => {
             if (!response.ok) {
