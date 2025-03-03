@@ -457,7 +457,7 @@ export const createHttpClient = (): HttpClient => {
 
         // **Check cache before making a request**
         if (context.method === 'GET' && cache) {
-          const cachedData = cache.get(context.url);
+          const cachedData = cache.get(url);
           if (cachedData) {
             context.data = cachedData; // Return cached stream immediately
             return context;
@@ -493,8 +493,8 @@ export const createHttpClient = (): HttpClient => {
         // **Set data as a Promise that resolves to a Stream**
         context.data = new Promise<Stream>((resolve) => {
           if (context.method === 'GET' && cache) {
-            let stream = cache.get(context.url) ?? createReplaySubject();
-            if (!cache.has(context.url)) cache.set(context.url, stream);
+            let stream = cache.get(url) ?? createReplaySubject();
+            if (!cache.has(url)) cache.set(url, stream);
 
             (async () => {
               try {
