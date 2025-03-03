@@ -4,12 +4,13 @@ body {
   padding: 0;
   background-color: #f4f4f4;
   line-height: 1.6;
+  overflow-x: hidden;
 }
 
 header {
   background-color: #4caf50;
   color: white;
-  padding: 2rem;
+  padding: 1rem 2rem;
   text-align: center;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   position: sticky;
@@ -17,11 +18,15 @@ header {
   z-index: 1000;
 }
 
+header h1 {
+  margin: 0;
+}
+
 nav {
   display: flex;
   justify-content: center;
   gap: 2rem;
-  margin-top: 1rem;
+  margin-top: 0;
   font-size: 1.1rem;
 }
 
@@ -43,7 +48,8 @@ nav a:hover {
   background-size: cover;
   background-position: center;
   color: white;
-  padding: 6rem 1rem;
+  margin: 0rem auto 1rem;
+  padding: 9rem 1rem;
   text-align: center;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
   transform-origin: center center;
@@ -68,7 +74,7 @@ nav a:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
-  padding: 3rem 2rem;
+  padding: 3rem 2rem 1rem;
 }
 
 .post {
@@ -77,8 +83,7 @@ nav a:hover {
   overflow: hidden;
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
   opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition: opacity 0.6s ease;
 }
 
 .post.visible {
@@ -114,25 +119,62 @@ nav a:hover {
 }
 
 .featured-destinations, .newsletter {
-  padding: 3rem 2rem;
+  padding: 2rem 1.5rem; /* Reduced padding */
   text-align: center;
   background: #fff;
-  margin: 2rem auto;
+  margin: 1.5rem; /* Reduced margin */
   border-radius: 12px;
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
 }
 
 .featured-destinations h2, .newsletter h2 {
-  font-size: 2rem;
+  font-size: 1.75rem; /* Slightly smaller font size */
   color: #333;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem; /* Reduced margin */
+}
+
+.featured-destinations p {
+  font-size: 1rem;
+  color: #666;
+  margin-bottom: 1.5rem; /* Adjusted margin */
+}
+
+.featured-destinations .destination-container {
+  position: relative;
+  padding-bottom: 40%; /* Adjusted aspect ratio (e.g., 5:2) for a smaller height */
+  height: 0;
+}
+
+.featured-destinations .image-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+}
+
+.featured-destinations .image-wrapper.active {
+  opacity: 1;
 }
 
 .featured-destinations img {
   width: 100%;
-  height: auto;
+  height: 100%; /* Full height of the container */
   border-radius: 10px;
-  margin-bottom: 1rem;
+  object-fit: cover; /* Ensure images cover the container */
+}
+
+.featured-destinations .overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .travel-tips {

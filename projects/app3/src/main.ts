@@ -1,12 +1,7 @@
 import {
-  debounce,
-  filter,
   fromEvent,
-  map,
   onAnimationFrame,
   onIntersection,
-  onResize,
-  slidingPair,
   Stream,
   tap,
 } from '@actioncrew/streamix';
@@ -82,174 +77,6 @@ const setupBreathingEffect = (element: HTMLElement): Stream<void> => {
   return breathing$;
 };
 
-// Helper function for smooth interpolation (same as before)
-const interpolate = (
-  current: number,
-  target: number,
-  speed: number
-): number => {
-  return current + (target - current) * speed;
-};
-
-// Hero Section Animation with GSAP-like smooth effects
-const hero = document.querySelector('.hero') as HTMLElement;
-const heroTitle = hero.querySelector('h1') as HTMLElement;
-const heroParagraph = hero.querySelector('p') as HTMLElement;
-
-if (hero) {
-  let targetScale = 1;
-  let currentScale = 1;
-  let targetOpacity = 0;
-  let currentOpacity = 0;
-  let targetTitleOpacity = 0;
-  let currentTitleOpacity = 0;
-  let targetTitleTranslateY = 20;
-  let currentTitleTranslateY = 20;
-
-  hero.style.willChange = 'opacity, transform';
-  heroTitle.style.willChange = 'opacity, transform';
-  heroParagraph.style.willChange = 'opacity, transform';
-
-  // GSAP-like smooth animation onAnimationFrame using tap
-  onAnimationFrame()
-    .pipe(
-      tap(() => {
-        // Interpolate values smoothly (GSAP-like effect)
-        currentScale = interpolate(currentScale, targetScale, 0.1);
-        currentOpacity = interpolate(currentOpacity, targetOpacity, 0.1);
-        currentTitleOpacity = interpolate(
-          currentTitleOpacity,
-          targetTitleOpacity,
-          0.1
-        );
-
-        currentTitleTranslateY = interpolate(
-          currentTitleTranslateY,
-          targetTitleTranslateY,
-          0.1
-        );
-
-        // Apply interpolated values to styles
-        hero.style.transform = `scale(${currentScale})`;
-        hero.style.opacity = `${currentOpacity}`;
-        heroTitle.style.opacity = `${currentTitleOpacity}`;
-        heroTitle.style.transform = `translateY(${currentTitleTranslateY}px)`;
-      })
-    )
-    .subscribe();
-
-  // Trigger animations on intersection with the hero element
-  onIntersection(hero, { threshold: 0.2 })
-    .pipe(
-      tap((isIntersecting) => {
-        if (isIntersecting) {
-          targetScale = 1.1;
-          targetOpacity = 1;
-          targetTitleOpacity = 1;
-          targetTitleTranslateY = 0;
-        } else {
-          targetScale = 1;
-          targetOpacity = 0;
-          targetTitleOpacity = 0;
-          targetTitleTranslateY = 20;
-        }
-      })
-    )
-    .subscribe();
-}
-
-// Posts Visibility and Caption Animation (with staggered opacity effect)
-const posts = document.querySelectorAll('.post') as NodeListOf<HTMLElement>;
-posts.forEach((post) => {
-  let targetOpacity = 0;
-  let currentOpacity = 0;
-  const caption = post.querySelector('.post-content') as HTMLElement;
-  let captionTargetTranslateY = 20;
-  let captionCurrentTranslateY = 20;
-  let captionTargetOpacity = 0;
-  let captionCurrentOpacity = 0;
-
-  onAnimationFrame()
-    .pipe(
-      tap(() => {
-        currentOpacity = interpolate(currentOpacity, targetOpacity, 0.1);
-        post.style.opacity = `${currentOpacity}`;
-        captionCurrentTranslateY = interpolate(
-          captionCurrentTranslateY,
-          captionTargetTranslateY,
-          0.1
-        );
-        captionCurrentOpacity = interpolate(
-          captionCurrentOpacity,
-          captionTargetOpacity,
-          0.1
-        );
-        if (caption) {
-          caption.style.transform = `translateY(${captionCurrentTranslateY}px)`;
-          caption.style.opacity = `${captionCurrentOpacity}`;
-        }
-      })
-    )
-    .subscribe();
-
-  onIntersection(post, { threshold: 0.3 })
-    .pipe(
-      tap((isIntersecting) => {
-        targetOpacity = isIntersecting ? 1 : 0;
-        captionTargetTranslateY = isIntersecting ? 0 : 20;
-        captionTargetOpacity = isIntersecting ? 1 : 0;
-      })
-    )
-    .subscribe();
-});
-
-// GSAP-like dynamic resize effects (adjust font size based on window width)
-onResize(window.document.documentElement)
-  .pipe(
-    map(({ width, height }) => {
-      console.log(`Window resized to ${width} x ${height}`);
-      return width;
-    }),
-    tap((width) => {
-      const hero = document.querySelector('.hero') as HTMLElement;
-      if (hero) {
-        if (width < 600) {
-          hero.style.fontSize = '2rem';
-        } else {
-          hero.style.fontSize = '3rem';
-        }
-      }
-    })
-  )
-  .subscribe();
-
-// Continuous Background Animation (Pulse)
-onAnimationFrame()
-  .pipe(
-    map((time) => Math.sin(time * 0.005) * 0.5 + 0.5),
-    tap((value) => {
-      const hero = document.querySelector('.hero') as HTMLElement;
-      if (hero) {
-        hero.style.backgroundColor = `rgba(0, 100, 200, ${value})`;
-      }
-    })
-  )
-  .subscribe();
-
-// Example Debounce on Scroll (GSAP-like logging effect)
-fromEvent(window, 'scroll')
-  .pipe(
-    debounce(250),
-    map(() => window.scrollY),
-    slidingPair(),
-    filter(([prev, curr]) => prev && Math.abs(prev - curr) > 50),
-    tap(([prev, curr]) => {
-      console.log(`Scroll Debounced: Previous ${prev}, Current ${curr}`);
-    })
-  )
-  .subscribe();
-
-// Initialize the breathing effect for the paragraph element
 const paragraph = document.querySelector('.breathe-paragraph') as HTMLElement;
 if (paragraph) {
   setupBreathingEffect(paragraph).subscribe();
@@ -262,3 +89,219 @@ document.querySelectorAll('.animate-text').forEach((element) => {
   }
 });
 
+// Helper function for smooth interpolation
+const interpolate = (current: number, target: number, speed: number): number =>
+  current + (target - current) * speed;
+
+// Hero Section Animation
+const hero = document.querySelector('.hero') as HTMLElement;
+if (hero) {
+  const heroTitle = hero.querySelector('h1') as HTMLElement;
+  const heroParagraph = hero.querySelector('p') as HTMLElement;
+
+  let state = {
+    scale: 1,
+    opacity: 0,
+    titleOpacity: 0,
+    titleTranslateY: 20,
+  };
+
+  hero.style.willChange = 'opacity, transform';
+  heroTitle.style.willChange = 'opacity, transform';
+  heroParagraph.style.willChange = 'opacity, transform';
+
+  // Smooth animation loop
+  onAnimationFrame()
+    .pipe(
+      tap(() => {
+        state = {
+          scale: interpolate(state.scale, hero.dataset['active'] ? 1.1 : 1, 0.1),
+          opacity: interpolate(state.opacity, hero.dataset['active'] ? 1 : 0, 0.1),
+          titleOpacity: interpolate(state.titleOpacity, hero.dataset['active'] ? 1 : 0, 0.1),
+          titleTranslateY: interpolate(state.titleTranslateY, hero.dataset['active'] ? 0 : 20, 0.1),
+        };
+
+        hero.style.transform = `scale(${state.scale})`;
+        hero.style.opacity = `${state.opacity}`;
+        heroTitle.style.opacity = `${state.titleOpacity}`;
+        heroTitle.style.transform = `translateY(${state.titleTranslateY}px)`;
+      })
+    )
+    .subscribe();
+
+  // Intersection Observer for triggering animation
+  onIntersection(hero, { threshold: 0.2 })
+    .pipe(tap((isIntersecting) => (hero.dataset['active'] = isIntersecting ? 'true' : 'false')))
+    .subscribe();
+}
+
+// Post Cards Animation
+const posts = document.querySelectorAll('.post') as NodeListOf<HTMLElement>;
+posts.forEach((post) => {
+  const caption = post.querySelector('.post-content') as HTMLElement;
+
+  let state = {
+    opacity: 0,
+    captionOpacity: 0,
+    captionTranslateY: 0,
+  };
+
+  onAnimationFrame()
+    .pipe(
+      tap(() => {
+        state = {
+          opacity: interpolate(state.opacity, post.dataset['active'] ? 1 : 0, 0.1),
+          captionOpacity: interpolate(state.captionOpacity, post.dataset['active'] ? 1 : 0, 0.1),
+          captionTranslateY: interpolate(state.captionTranslateY, post.dataset['active'] ? 0 : 20, 0.1),
+        };
+
+        post.style.opacity = `${state.opacity}`;
+        if (caption) {
+          caption.style.opacity = `${state.captionOpacity}`;
+          caption.style.transform = `translateY(${state.captionTranslateY}px)`;
+        }
+      })
+    )
+    .subscribe();
+
+  onIntersection(post, { threshold: 0.3 })
+    .pipe(tap((isIntersecting) => (post.dataset['active'] = isIntersecting ? 'true' : 'false')))
+    .subscribe();
+
+  // Hover effect for post cards
+  fromEvent(post, 'mouseenter')
+    .pipe(tap(() => (post.style.transform = 'scale(1.05)')))
+    .subscribe();
+
+  fromEvent(post, 'mouseleave')
+    .pipe(tap(() => (post.style.transform = 'scale(1)')))
+    .subscribe();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const featuredDestinations = document.querySelector('.featured-destinations') as HTMLElement;
+  const imageWrappers = featuredDestinations.querySelectorAll('.image-wrapper');
+  const canvas = featuredDestinations.querySelector('.overlay-canvas') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d') as any;
+
+  let activeIndex = 0;
+
+  function updateCanvasSize() {
+    canvas.width = featuredDestinations.clientWidth;
+    canvas.height = featuredDestinations.clientHeight;
+  }
+
+  function drawParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < 50; i++) {
+      const x = Math.random() * canvas.width;
+      const y = Math.random() * canvas.height;
+      const radius = Math.random() * 2;
+      const opacity = Math.random() * 0.5;
+
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+      ctx.fill();
+    }
+  }
+
+  function changeDestination() {
+    imageWrappers[activeIndex].classList.remove('active');
+    activeIndex = (activeIndex + 1) % imageWrappers.length;
+    imageWrappers[activeIndex].classList.add('active');
+  }
+
+  function animate() {
+    drawParticles();
+    requestAnimationFrame(animate);
+  }
+
+  updateCanvasSize();
+  window.addEventListener('resize', updateCanvasSize);
+
+  animate();
+  setInterval(changeDestination, 5000); // Change destination every 5 seconds
+});
+
+// Travel Tips & Latest Updates Animation
+const revealOnScroll = (selector: string) => {
+  const elements = document.querySelectorAll(selector) as NodeListOf<HTMLElement>;
+  elements.forEach((el, index) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = `all 0.5s ease ${index * 0.1}s`;
+
+    onIntersection(el, { threshold: 0.5 })
+      .pipe(
+        tap((isIntersecting) => {
+          el.style.opacity = isIntersecting ? '1' : '0';
+          el.style.transform = isIntersecting ? 'translateY(0)' : 'translateY(20px)';
+        })
+      )
+      .subscribe();
+  });
+};
+
+revealOnScroll('.travel-tips li');
+revealOnScroll('.latest-updates .update-item');
+
+// Newsletter Section Animation
+const newsletter = document.querySelector('.newsletter') as HTMLElement;
+if (newsletter) {
+  const input = newsletter.querySelector('input') as HTMLInputElement;
+  const button = newsletter.querySelector('button') as HTMLButtonElement;
+
+  fromEvent(input, 'focus')
+    .pipe(
+      tap(() => {
+        input.style.borderColor = '#007BFF';
+        input.style.boxShadow = '0 0 5px rgba(0, 123, 255, 0.5)';
+      })
+    )
+    .subscribe();
+
+  fromEvent(input, 'blur')
+    .pipe(
+      tap(() => {
+        input.style.borderColor = '#ccc';
+        input.style.boxShadow = 'none';
+      })
+    )
+    .subscribe();
+
+  fromEvent(button, 'mouseenter')
+    .pipe(tap(() => (button.style.transform = 'scale(1.1)')))
+    .subscribe();
+
+  fromEvent(button, 'mouseleave')
+    .pipe(tap(() => (button.style.transform = 'scale(1)')))
+    .subscribe();
+}
+
+// Footer Wave Animation
+const footer = document.querySelector('footer') as HTMLElement;
+if (footer) {
+  footer.style.overflow = 'hidden';
+  footer.style.position = 'relative';
+
+  const wave = document.createElement('div');
+  wave.style.position = 'absolute';
+  wave.style.bottom = '0';
+  wave.style.left = '0';
+  wave.style.width = '200%';
+  wave.style.height = '100px';
+  wave.style.background = 'url("wave.svg") repeat-x';
+  wave.style.animation = 'wave 10s linear infinite';
+  footer.appendChild(wave);
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes wave {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+  `;
+  document.head.appendChild(style);
+}
