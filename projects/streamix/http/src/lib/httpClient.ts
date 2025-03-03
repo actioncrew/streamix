@@ -1,4 +1,4 @@
-import { createReplaySubject, createStream, from, Stream } from '@actioncrew/streamix';
+import { createReplaySubject, createStream, Stream } from '@actioncrew/streamix';
 
 /**
  * Represents a stream of HTTP responses.
@@ -453,9 +453,10 @@ export const createHttpClient = (): HttpClient => {
 
       const url = resolveUrl(context.url, context.params);
       const cache = context['cache'] ?? null;
-
+      const method = context.method;
+      
       // **Check cache before making a request**
-      if (context.method === 'GET' && cache) {
+      if (method === 'GET' && cache) {
         const cachedData = cache.get(url);
         if (cachedData) {
           context.data = cachedData; // Return cached stream immediately
@@ -464,7 +465,7 @@ export const createHttpClient = (): HttpClient => {
       }
 
       const request = new Request(url, {
-        method: context.method,
+        method,
         headers: context.headers,
         body,
         credentials: context['credentials'],
@@ -494,7 +495,7 @@ export const createHttpClient = (): HttpClient => {
         : createReplaySubject();
 
       if (cache && method === 'GET' && !cache.has(url)) {
-        cache.set(url, context.data);
+        cache.set(url, data);
       } else if (cache && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
         cache.clear();
       }
