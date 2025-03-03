@@ -8,39 +8,51 @@ body {
 }
 
 header {
-  background-color: #4caf50;
-  color: white;
+  background-color: rgba(255, 255, 255, 0.75); /* Transparent background */
+  color: #333; /* Darker text for contrast */
   padding: 1rem 2rem;
-  text-align: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: left; /* Align to the left */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow */
   position: sticky;
   top: 0;
   z-index: 1000;
+  display: flex; /* Use flexbox */
+  align-items: center; /* Vertically align items */
+  justify-content: space-between; /* Space title and nav */
+  transition: box-shadow 0.3s ease; /* Smooth transition */
 }
 
 header h1 {
   margin: 0;
+  font-size: 2rem; /* Adjusted font size */
+  font-weight: 600; /* Semi-bold */
 }
 
-nav {
+header nav {
   display: flex;
-  justify-content: center;
-  gap: 2rem;
+  gap: 1.5rem; /* Reduced gap */
   margin-top: 0;
-  font-size: 1.1rem;
+  font-size: 1rem; /* Adjusted font size */
 }
 
-nav a {
-  color: white;
+header nav a {
+  color: #333; /* Darker link color */
   text-decoration: none;
-  font-weight: bold;
+  font-weight: 500; /* Medium weight */
   padding: 0.5rem 1rem;
   border-radius: 5px;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transitions */
 }
 
-nav a:hover {
-  background-color: #388e3c;
+header nav a:hover {
+  background-color: #f0f0f0; /* Light hover background */
+  color: #007bff; /* Blue hover color */
+}
+
+/* Sticky header shadow on scroll */
+header.sticky {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background-color: white;
 }
 
 .hero {
@@ -48,26 +60,42 @@ nav a:hover {
   background-size: cover;
   background-position: center;
   color: white;
-  margin: 0rem auto 1rem;
-  padding: 9rem 1rem;
+  margin: 1rem auto; /* Adjusted margin */
+  padding: 6rem 1rem; /* Reduced padding */
   text-align: center;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
-  transform-origin: center center;
+  position: relative; /* For overlay positioning */
   opacity: 0;
   transition: opacity 0.6s ease-out, transform 0.8s ease-out;
 }
 
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3); /* Semi-transparent overlay */
+  /* background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6)); /* Gradient overlay */
+}
+
+.hero * {
+  position: relative; /* Bring text to the front */
+  z-index: 1; /* Ensure text is above the overlay */
+}
+
 .hero h1 {
-  font-size: 4rem;
-  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+  font-size: 3.5rem; /* Adjusted font size */
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3); /* Subtle text shadow */
   opacity: 0;
   transition: opacity 0.6s ease-out;
+  font-weight: 700;
 }
 
 .hero p {
   color: white;
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1.3rem; /* Adjusted font size */
+  font-weight: 500; /* Medium weight */
 }
 
 .posts {
