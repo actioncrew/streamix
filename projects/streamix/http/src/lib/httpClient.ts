@@ -210,6 +210,49 @@ export const oauth = ({
 };
 
 /**
+ * Retry middleware for handling transient errors.
+ * @param maxRetries The maximum number of retries (default: 3).
+ * @param backoffBase The base delay for exponential backoff in milliseconds (default: 1000).
+ * @param shouldRetry A function to determine if an error should be retried (default: retry all errors).
+ * @returns A middleware function.
+ */
+export const retry = (
+  maxRetries: number = 3,
+  backoffBase: number = 1000,
+  shouldRetry: (error: any, context: Context) => boolean = () => true,
+): Middleware => {
+  return (next) => async (context) => {
+    let retryCount = 0;
+
+    while (retryCount <= maxRetries) {
+      try {
+        return await next(context); // Attempt the request
+      } catch (error) {
+        if (!shouldRetry(error, context) {
+          throw error; // Do not retry if the error is not retryable
+        }
+
+        if (retryCount === maxRetries) {
+          throw error; // Max retries reached, rethrow the error
+        }
+
+        // Calculate exponential backoff delay
+        const delay = backoffBase * Math.pow(2, retryCount);
+        console.warn(`Retry ${retryCount + 1}/${maxRetries} after ${delay}ms due to error:`, error);
+
+        // Wait for the delay before retrying
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        retryCount++;
+      }
+    }
+
+    // This line should never be reached, but TypeScript requires a return statement
+    throw new Error('Retry middleware failed unexpectedly');
+  };
+};
+
+/**
  * Handles HTTP redirects.
  * @param maxRedirects The maximum number of redirects to follow. Defaults to 5.
  * @returns A middleware function.
