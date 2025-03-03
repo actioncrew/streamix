@@ -453,7 +453,7 @@ export const createHttpClient = (): HttpClient => {
 
       const url = resolveUrl(context.url, context.params);
       const cache = context['cache'] ?? null;
-      const method = context.method;
+      const { method, parser } = context;
       
       // **Check cache before making a request**
       if (method === 'GET' && cache) {
