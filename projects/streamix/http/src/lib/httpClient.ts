@@ -489,33 +489,32 @@ export const createHttpClient = (): HttpClient => {
         throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
       }
 
-      // **Set data as a Stream directly (no Promise)**
-      if (context.method === 'GET' && cache) {
-        let stream = cache.get(url) ?? createReplaySubject();
-        if (!cache.has(url)) cache.set(url, stream);
+      const data = cache && method === 'GET' && cache.get(url) 
+        ? cache.get(url) 
+        : createReplaySubject();
 
-        (async () => {
-          try {
-            for await (const item of context.parser(response)) {
-              stream.next(item);
-            }
-          } catch (error) {
-            cache.delete(context.url);
-            stream.error(error);
-          } finally {
-            stream.complete();
-          }
-        })();
-
-        context.data = stream; // Assign the stream directly
-      } else {
-        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(context.method) && cache) {
-          cache.clear(); // Invalidate cache for mutating methods
-        }
-
-        context.data = from(context.parser(response)); // Assign the stream directly
+      if (cache && method === 'GET' && !cache.has(url)) {
+        cache.set(url, context.data);
+      } else if (cache && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        cache.clear();
       }
 
+      (async () => {
+        try {
+          for await (const item of parser(response)) {
+            data.next(item);
+          }
+        } catch (error) {
+          if (cache && method === 'GET') {
+            cache.delete(url);
+          }
+          data.error(error);
+        } finally {
+          data.complete();
+        }
+      })();
+      
+      context.data = data;
       return context;
     });
   }
