@@ -4,7 +4,7 @@
   <img src="https://github.com/actioncrew/streamix/blob/main/projects/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="300">
 </p>
 
-Streamix is a **lightweight alternative to RxJS** that implements reactive programming with a simplified concept of streams and emissions. Designed for modern, performance-oriented applications, Streamix combines simplicity with an ultra-light footprint, weighing in at just **5 KB (zipped)**.
+Streamix is a **lightweight alternative to RxJS** that implements reactive programming with a simplified concept of streams and emissions. Designed for modern, performance-oriented applications, Streamix combines simplicity with an ultra-light footprint, weighing in at just **5 KB (zipped)**. A cozy HTTP client is bundled in a separate package with a size of about **3 KB (zipped)**. It is designed to be easy to use, lightweight, and comfortable to work with.
 
 [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
 [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
@@ -133,7 +133,6 @@ const subscription = onResize(this.canvas).pipe(
 | `fromEvent` | Creates a stream from DOM events. |
 | `fromPromise` | Converts a promise into a stream. |
 | `groupBy` | Groups emitted values based on a key selector. |
-| `initHttp` | Initializes an HTTP request stream. |
 | `iif` | Conditional stream creation based on a boolean condition. |
 | `interval` | Emits values at a set interval. |
 | `jsonp` | Makes a JSONP request and returns a stream. |
@@ -152,6 +151,7 @@ const subscription = onResize(this.canvas).pipe(
 | `reduce` | Accumulates values into a single result. |
 | `retry` | Retries a failed stream operation. |
 | `scan` | Accumulates values, emitting intermediate results. |
+| `shareReplay` | Shares and replays the last emitted value to new subscribers. |
 | `skip` | Skips a specified number of emitted values. |
 | `slidingPair` | Emits pairs of consecutive values. |
 | `startWith` | Prepends initial values before the stream starts. |
@@ -162,6 +162,7 @@ const subscription = onResize(this.canvas).pipe(
 | `tap` | Performs side effects without modifying emissions. |
 | `timer` | Emits values after a delay. |
 | `toArray` | Collects emitted values into an array. |
+| `throwException` | Emits an error in the observable stream. |
 | `withLatestFrom` | Combines values from multiple streams. |
 | `webSocket` | Creates a stream from a WebSocket connection, emitting messages as they arrive in real time. | 
 | `zip` | Combines values from multiple streams in a one-to-one fashion. |

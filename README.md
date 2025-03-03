@@ -151,6 +151,7 @@ const subscription = onResize(this.canvas).pipe(
 | `reduce` | Accumulates values into a single result. |
 | `retry` | Retries a failed stream operation. |
 | `scan` | Accumulates values, emitting intermediate results. |
+| `shareReplay` | Shares and replays the last emitted value to new subscribers. |
 | `skip` | Skips a specified number of emitted values. |
 | `slidingPair` | Emits pairs of consecutive values. |
 | `startWith` | Prepends initial values before the stream starts. |
@@ -161,6 +162,7 @@ const subscription = onResize(this.canvas).pipe(
 | `tap` | Performs side effects without modifying emissions. |
 | `timer` | Emits values after a delay. |
 | `toArray` | Collects emitted values into an array. |
+| `throwException` | Emits an error in the observable stream. |
 | `withLatestFrom` | Combines values from multiple streams. |
 | `webSocket` | Creates a stream from a WebSocket connection, emitting messages as they arrive in real time. | 
 | `zip` | Combines values from multiple streams in a one-to-one fashion. |
