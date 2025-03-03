@@ -1,4 +1,4 @@
-import { concatMap, createReplaySubject, from, fromPromise, Stream } from '@actioncrew/streamix';
+import { createReplaySubject, createStream, from, Stream } from '@actioncrew/streamix';
 
 /**
  * Represents a stream of HTTP responses.
@@ -26,8 +26,13 @@ export type Context = {
   headers: Record<string, string>;
   body?: any;
   params?: Record<string, string>;
-  response?: Response;
   fetch?: Function;
+  parser: ParserFunction;
+  ok?: boolean;
+  status?: number;
+  statusText?: string;
+  redirectTo?: string;
+  data?: Promise<Stream>;
   [key: string]: any;
 };
 
@@ -174,18 +179,6 @@ export const accept = (contentType: string): Middleware => {
 };
 
 /**
- * Sets the Authorization header with an OAuth token.
- * @param token The OAuth token to use for authorization.
- * @returns A middleware function.
- */
-export const oauthToken = (token: string): Middleware => {
-  return (next) => async (context) => {
-    context.headers['Authorization'] = `Bearer ${token}`;
-    return await next(context);
-  };
-};
-
-/**
  * Handles OAuth 2.0 authentication and token refresh.
  * @param config Configuration for token retrieval and refresh.
  * @returns A middleware function.
@@ -204,15 +197,15 @@ export const oauth = ({
     context.headers["Authorization"] = `Bearer ${await getToken()}`;
 
     // Attempt the request
-    const responseContext = await next(context);
+    const newContext = await next(context);
 
     // If unauthorized and shouldRetry allows, refresh the token and retry
-    if (responseContext.response?.status === 401 && shouldRetry(context)) {
-      context.headers["Authorization"] = `Bearer ${await refreshToken()}`;
+    if (newContext.status === 401 && shouldRetry(newContext)) {
+      newContext.headers["Authorization"] = `Bearer ${await refreshToken()}`;
       return await next(context); // Retry with the new token
     }
 
-    return responseContext;
+    return newContext;
   };
 };
 
@@ -224,7 +217,6 @@ export const oauth = ({
 export const redirect = (maxRedirects: number = 5): Middleware => {
   return (next) => async (context) => {
     let redirectCount = 0;
-    let originalRedirectResponse: Response | null = null; // Store original redirect response
 
     const handleRedirect = async (context: Context): Promise<Context> => {
       if (redirectCount >= maxRedirects) {
@@ -232,21 +224,16 @@ export const redirect = (maxRedirects: number = 5): Middleware => {
       }
 
       const newContext = await next(context);
-      const response: Response = newContext.response!;
 
-      if ([301, 302, 303, 307, 308].includes(response.status)) {
-        if (!originalRedirectResponse) {
-          originalRedirectResponse = response;
-        }
-
-        const location = response.headers.get('Location');
+      if(newContext.redirectTo !== undefined) {
+        const location = newContext.redirectTo;
         if (!location) {
           throw new Error('Redirect response missing Location header');
         }
 
         newContext.url = new URL(location, newContext.url).toString();
 
-        if (response.status === 303) {
+        if (newContext.status === 303) {
           newContext.method = 'GET';
           newContext.body = undefined;
         }
@@ -255,17 +242,10 @@ export const redirect = (maxRedirects: number = 5): Middleware => {
         return handleRedirect(newContext);
       }
 
-      return newContext;
+      return await next(newContext);
     };
 
-    const finalContext = await handleRedirect(context);
-
-    if (originalRedirectResponse) {
-      finalContext.response = originalRedirectResponse; // Set the original redirect response
-      finalContext['redirected'] = true;
-    }
-
-    return finalContext;
+    return await handleRedirect(context);
   };
 };
 
@@ -323,7 +303,7 @@ export const logging = (
     logger(`Request: ${context.method} ${context.url}`);
     context = await next(context);
     logger(
-      `Response: ${context.response?.status || 'No Response'} ${context.url}`,
+      `Response: ${context.status || 'No Response'} ${context.url}`,
     );
     return context;
   };
@@ -335,7 +315,7 @@ export const logging = (
  */
 export const caching = (): Middleware => {
   return (next) => async (context) => {
-    context['cache'] = context['cache'] || new Map<string, Response>();
+    context['cache'] = context['cache'] || new Map<string, Promise<Stream>>();
     return await next(context);
   };
 };
@@ -357,9 +337,9 @@ export const timeout = (ms: number): Middleware => {
     context['signal'] = combinedSignal;
 
     try {
-      const response = await next(context);
+      context = await next(context);
       clearTimeout(timeoutId);
-      return response;
+      return context;
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
@@ -460,40 +440,89 @@ export const createHttpClient = (): HttpClient => {
    */
   const chainMiddleware = (middlewares: Middleware[]): Middleware => {
     return middlewares.reduceRight(
-      (nextMiddleware, middleware) => {
-        return (next) => middleware((ctx) => nextMiddleware(next)(ctx));
-      },
+      (nextMiddleware, middleware) =>
+        (next) => (ctx) => middleware(nextMiddleware(next))(ctx),
       () => async (context) => {
         let body = context.body;
-
         if (typeof body === 'object' && body !== null) {
-          if (body instanceof FormData || body instanceof URLSearchParams) {
-            // FormData or URLSearchParams: Use directly
-          } else if (context.headers['Content-Type'] === 'application/json') {
-            body = JSON.stringify(body);
+          if (!(body instanceof FormData || body instanceof URLSearchParams)) {
+            if (context.headers['Content-Type'] === 'application/json') {
+              body = JSON.stringify(body);
+            }
           }
         }
 
         const url = resolveUrl(context.url, context.params);
-        const cache = context['cache'];
-        if (context.method === 'GET' && cache?.has(context.url)) {
-          context.response = cache.get(url)!.clone();
-        } else {
-          const request = new Request(url, {
-            method: context.method,
-            headers: context.headers,
-            body,
-            credentials: context['credentials'],
-            signal: context['signal'],
-          });
+        const cache = context['cache'] ?? null;
 
-          context.response = await context.fetch!(request);
+        // **Check cache before making a request**
+        if (context.method === 'GET' && cache) {
+          const cachedData = cache.get(context.url);
+          if (cachedData) {
+            context.data = cachedData; // Return cached stream immediately
+            return context;
+          }
         }
+
+        const request = new Request(url, {
+          method: context.method,
+          headers: context.headers,
+          body,
+          credentials: context['credentials'],
+          signal: context['signal'],
+        });
+
+        const response = await context.fetch!(request) as Response;
+
+        // Update context with response details
+        context.ok = response.ok;
+        context.status = response.status;
+        context.statusText = response.statusText;
+
+        // Handle redirects
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+          context.redirectTo = response.headers.get('Location') || undefined;
+          return context;
+        }
+
+        // **Handle errors before processing response**
+        if (!response.ok) {
+          throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+        }
+
+        // **Set data as a Promise that resolves to a Stream**
+        context.data = new Promise<Stream>((resolve) => {
+          if (context.method === 'GET' && cache) {
+            let stream = cache.get(context.url) ?? createReplaySubject();
+            if (!cache.has(context.url)) cache.set(context.url, stream);
+
+            (async () => {
+              try {
+                for await (const item of context.parser(response)) {
+                  stream.next(item);
+                }
+                stream.complete();
+              } catch (error) {
+                console.error("Error parsing response:", error);
+                cache.delete(context.url);
+                stream.error(error);
+              }
+            })();
+
+            resolve(stream);
+          } else {
+            if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(context.method) && cache) {
+              cache.clear(); // Invalidate cache for mutating methods
+            }
+
+            resolve(from(context.parser(response)));
+          }
+        });
 
         return context;
       }
     );
-  }
+  };
 
   /**
    * Performs an HTTP request using the configured middlewares and streaming.
@@ -508,7 +537,7 @@ export const createHttpClient = (): HttpClient => {
     method: string,
     url: string,
     parser: ParserFunction<T>,
-    options: HttpOptions = {},
+    options: HttpOptions = {}
   ): HttpStream<T> => {
     const abortController = new AbortController();
 
@@ -521,66 +550,15 @@ export const createHttpClient = (): HttpClient => {
       credentials: options.withCredentials ? 'include' : 'same-origin',
       signal: abortController.signal,
       fetch: globalThis.fetch.bind(globalThis),
-      response: undefined
+      parser
     };
 
-    let promise = chainMiddleware(middlewares)(async (ctx) => ctx)({ ...context });
+    let promise = chainMiddleware(middlewares)(async (ctx) => ctx)(context);
 
-    let stream = fromPromise(promise).pipe(
-      concatMap<Context, T>((ctx) => {
-        // First check if response exists and is OK
-        if (!ctx.response || !ctx.response.ok) {
-          // Log error information
-          console.error(`Request failed: ${ctx.url}`, ctx.response?.status, ctx.response?.statusText);
-          throw new Error(`Request failed: ${ctx.response?.status} ${ctx.response?.statusText}`);
-        }
-
-        let cache = ctx['cache'];
-        if (ctx.method === 'GET' && cache) {
-          let cachedData = cache.get(ctx.url);
-
-          if (cachedData?.complete) {
-            return from(cachedData.data);  // Return cached data if complete
-          }
-
-          if (!cachedData) {
-            // Initialize cache entry
-            cachedData = createReplaySubject<T>();
-            cache.set(ctx.url, cachedData);
-
-            // Push data into the ReplaySubject as it arrives
-            (async () => {
-              try {
-                for await (const item of parser(ctx.response!)) {
-                  cachedData.next(item); // Push data into the Subject
-                }
-              } catch (error) {
-                console.error("Error parsing response:", error);
-                cache.delete(ctx.url); // Clear cache on error
-                cachedData.error(error); // Propagate the error
-              } finally {
-                cachedData.complete(); // Complete the Subject
-              }
-            })();
-          }
-
-          // Use fromAsyncIterable to process the AsyncIterable stream
-          return cachedData;
-        }
-
-        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(ctx.method) && cache) {
-          cache.clear();  // Invalidate cache for mutating methods
-        }
-
-        // If not a GET or cache is unavailable, parse the response directly with error handling
-        try {
-          return from(parser(ctx.response));
-        } catch (error) {
-          console.error("Error parsing response:", error);
-          throw error;
-        }
-      })
-    ) as HttpStream<T>;
+    const stream = createStream('httpData', async function* () {
+      const ctx = await promise;
+      yield* await ctx.data!;
+    }) as HttpStream<T>;
 
     stream.abort = () => abortController.abort();
     return stream;
