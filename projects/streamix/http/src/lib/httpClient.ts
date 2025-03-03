@@ -228,7 +228,7 @@ export const retry = (
       try {
         return await next(context); // Attempt the request
       } catch (error) {
-        if (!shouldRetry(error, context) {
+        if (!shouldRetry(error, context)) {
           throw error; // Do not retry if the error is not retryable
         }
 
@@ -482,7 +482,7 @@ export const createHttpClient = (): HttpClient => {
    * @returns {Middleware} A composed middleware function.
    */
   const chainMiddleware = (middlewares: Middleware[]): Middleware => {
-    return middlewares.reduceRight((nextMiddleware, middleware) => 
+    return middlewares.reduceRight((nextMiddleware, middleware) =>
       (next) => (ctx) => middleware(nextMiddleware(next))(ctx),
     () => async (context) => {
       let body = context.body;
@@ -497,7 +497,7 @@ export const createHttpClient = (): HttpClient => {
       const url = resolveUrl(context.url, context.params);
       const cache = context['cache'] ?? null;
       const { method, parser } = context;
-      
+
       // **Check cache before making a request**
       if (method === 'GET' && cache) {
         const cachedData = cache.get(url);
@@ -533,8 +533,8 @@ export const createHttpClient = (): HttpClient => {
         throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
       }
 
-      const data = cache && method === 'GET' && cache.get(url) 
-        ? cache.get(url) 
+      const data = cache && method === 'GET' && cache.get(url)
+        ? cache.get(url)
         : createReplaySubject();
 
       if (cache && method === 'GET' && !cache.has(url)) {
@@ -557,7 +557,7 @@ export const createHttpClient = (): HttpClient => {
           data.complete();
         }
       })();
-      
+
       context.data = data;
       return context;
     });
