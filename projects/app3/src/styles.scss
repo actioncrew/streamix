@@ -102,7 +102,7 @@ header.sticky {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
-  padding: 3rem 2rem 1rem;
+  padding: 3rem 1.5rem 1rem;
 }
 
 .post {
@@ -205,6 +205,14 @@ header.sticky {
   pointer-events: none;
 }
 
+.tips-and-updates {
+  display: grid; /* Change to grid */
+  grid-template-columns: 1fr 1fr; /* Two equal columns */
+  gap: 2rem; /* Space between columns */
+  margin: 0rem;
+  padding: 1.5rem; /* Standard padding */
+}
+
 .travel-tips {
   padding: 3rem 2rem;
   text-align: center;
@@ -212,7 +220,6 @@ header.sticky {
   margin: 0 auto;
   border-radius: 12px;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); /* Enhanced shadow */
-  max-width: 800px; /* Adjust max width for larger screens */
 }
 
 .travel-tips h2 {
@@ -271,15 +278,7 @@ header.sticky {
   }
 }
 
-.tips-and-updates {
-  display: flex; /* Enable flexbox layout */
-  gap: 2rem; /* Space between the sections */
-  margin: 2rem auto; /* Center the container */
-  max-width: 1200px; /* Adjust as needed */
-}
-
 .latest-updates {
-  flex: 1;
   padding: 3rem 2rem;
   text-align: left; /* Align text to the left */
   background: linear-gradient(135deg, #f0f8ff, #e1f5fe); /* Light blue gradient */
