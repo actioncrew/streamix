@@ -65,7 +65,6 @@ if (paragraph) {
   setupBreathingEffect(paragraph).subscribe();
 }
 
-// Initialize animation for all text elements
 document.querySelectorAll('.animate-text').forEach((element) => {
   if (element instanceof HTMLElement) {
     setupTextAnimation(element).subscribe();
@@ -144,9 +143,6 @@ posts.forEach((post) => {
   onIntersection(post, { threshold: 0.3 }).pipe(
     tap((isIntersecting) => (post.dataset['active'] = isIntersecting ? 'true' : 'false'))
   ).subscribe();
-
-  fromEvent(post, 'mouseenter').pipe(tap(() => (post.style.transform = 'scale(1.05)'))).subscribe();
-  fromEvent(post, 'mouseleave').pipe(tap(() => (post.style.transform = 'scale(1)'))).subscribe();
 });
 
 // Canvas animation for featured destinations with Streamix
@@ -232,6 +228,6 @@ if (newsletter) {
     })
   ).subscribe();
 
-  fromEvent(button, 'mouseenter').pipe(tap(() => (button.style.transform = 'scale(1.1)'))).subscribe();
+  fromEvent(button, 'mouseenter').pipe(tap(() => (button.style.transform = 'scale(1.01)'))).subscribe();
   fromEvent(button, 'mouseleave').pipe(tap(() => (button.style.transform = 'scale(1)'))).subscribe();
 }
