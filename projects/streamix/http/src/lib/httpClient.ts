@@ -353,17 +353,6 @@ export const logging = (
 };
 
 /**
- * Caches GET requests.
- * @returns A middleware function.
- */
-export const caching = (): Middleware => {
-  return (next) => async (context) => {
-    context['cache'] = context['cache'] || new Map<string, Promise<Stream>>();
-    return await next(context);
-  };
-};
-
-/**
  * Sets a timeout for the request.
  * @param ms The timeout in milliseconds.
  * @returns A middleware function.
@@ -495,17 +484,7 @@ export const createHttpClient = (): HttpClient => {
       }
 
       const url = resolveUrl(context.url, context.params);
-      const cache = context['cache'] ?? null;
       const { method, parser } = context;
-
-      // **Check cache before making a request**
-      if (method === 'GET' && cache) {
-        const cachedData = cache.get(url);
-        if (cachedData) {
-          context.data = cachedData; // Return cached stream immediately
-          return context;
-        }
-      }
 
       const request = new Request(url, {
         method,
@@ -533,15 +512,7 @@ export const createHttpClient = (): HttpClient => {
         throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
       }
 
-      const data = cache && method === 'GET' && cache.get(url)
-        ? cache.get(url)
-        : createReplaySubject();
-
-      if (cache && method === 'GET' && !cache.has(url)) {
-        cache.set(url, data);
-      } else if (cache && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-        cache.clear();
-      }
+      const data = createReplaySubject();
 
       (async () => {
         try {
@@ -549,9 +520,6 @@ export const createHttpClient = (): HttpClient => {
             data.next(item);
           }
         } catch (error) {
-          if (cache && method === 'GET') {
-            cache.delete(url);
-          }
           data.error(error);
         } finally {
           data.complete();
