@@ -4,7 +4,7 @@
   <img src="https://github.com/actioncrew/streamix/blob/main/projects/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="300">
 </p>
 
-Streamix is a **lightweight alternative to RxJS** that implements reactive programming with a simplified concept of streams and emissions. Designed for modern, performance-oriented applications, Streamix combines simplicity with an ultra-light footprint, weighing in at just **6 KB (zipped)**. A cozy HTTP client is bundled in a separate package with a size of about **3 KB (zipped)**. It is designed to be easy to use, lightweight, and comfortable to work with.
+Streamix is a **lightweight alternative to RxJS**, offering a streamlined approach to reactive programming through a simplified concept of streams and emissions. Built for modern, performance-driven applications, Streamix strikes a balance between simplicity and efficiency, boasting an ultra-light footprint of just **6 KB (zipped)**. For added convenience, a compact HTTP client is included as a separate package, weighing approximately **3 KB (zipped)**. 
 
 [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
 [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
@@ -13,15 +13,9 @@ Streamix is a **lightweight alternative to RxJS** that implements reactive progr
 
 ---
 
-## Why Streamix?
+## Benefits of using Generators for Reactive Programming
 
-Streamix is designed for developers who need a **simple, lightweight solution** for managing asynchronous data streams. It provides many of the core features of RxJS but with a **minimalistic approach**, making it ideal for:
-
-- Modern web applications.
-- Performance-critical tasks.
-- Projects where simplicity and small bundle size are priorities.
-
----
+Generators (function* and async function* in JavaScript) offer a **pull-based** model for iteration, contrasting with the **push-based** model used in RxJS and similar libraries. With generators, values are only produced when requested via .next(), allowing for more efficient execution by avoiding unnecessary computations. In contrast, traditional RxJS observables push values to subscribers regardless of whether they are ready to handle them, potentially leading to wasted processing or memory usage.
 
 ## Key Features
 
