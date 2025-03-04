@@ -21,8 +21,8 @@ module.exports = {
       }
     },
     {
-      filePath: './dist/streamix/coroutine/async/index.d.ts',
-      outFile: './dist/streamix/coroutine/async/@actioncrew/index.d.ts',
+      filePath: './dist/streamix/coroutine/index.d.ts',
+      outFile: './dist/streamix/coroutine/@actioncrew/index.d.ts',
       output: {
         inlineDeclareGlobals: false,
         noBanner: true,
