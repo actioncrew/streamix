@@ -1,5 +1,5 @@
 import { createEmission, createStream, Stream } from '../abstractions';
-
+import { createSemaphore } from '../utils';
 /**
  * Creates a Stream using `IntersectionObserver` to detect element visibility.
  *
@@ -7,36 +7,12 @@ import { createEmission, createStream, Stream } from '../abstractions';
  * @param options - Optional configuration for `IntersectionObserver`.
  * @returns A Stream emitting `true` when visible and `false` when not.
  */
-
-// Semaphore for event synchronization
-class Semaphore {
-  private value = 0;
-  private queue: (() => void)[] = [];
-
-  async acquire(): Promise<void> {
-    if (this.value > 0) {
-      this.value--;
-      return;
-    }
-    return new Promise((resolve) => this.queue.push(resolve));
-  }
-
-  release(): void {
-    if (this.queue.length > 0) {
-      const resolve = this.queue.shift()!;
-      resolve();
-    } else {
-      this.value++;
-    }
-  }
-}
-
 export function onIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
   return createStream<boolean>('onIntersection', async function* (this: Stream<boolean>) {
-    const itemAvailable = new Semaphore();
+    const itemAvailable = createSemaphore(0);
     let buffer: boolean | undefined;
     let eventsCaptured = 0;
     let eventsProcessed = 0;
