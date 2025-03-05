@@ -1,10 +1,10 @@
 
-export interface Subscription {
+export type Subscription = {
   (): any;
   subscribed: number;
   unsubscribed: number | undefined;
   unsubscribe(): void;
-}
+};
 
 export const createSubscription = function <T>(getValue: () => T, unsubscribe?: () => void): Subscription {
 
