@@ -1,4 +1,5 @@
-import { createSubject, createSubscription } from '../abstractions';
+import { createSubscription } from '../abstractions';
+import { createSubject } from '../streams';
 
 /**
  * Creates a subscription using `IntersectionObserver` to detect element visibility.
