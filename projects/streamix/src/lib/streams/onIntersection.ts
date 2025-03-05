@@ -1,45 +1,29 @@
-import { createEmission, createStream, Stream } from '../abstractions';
-import { createSemaphore } from '../utils';
+import { createSubject, createSubscription } from '../abstractions';
+
 /**
- * Creates a Stream using `IntersectionObserver` to detect element visibility.
+ * Creates a subscription using `IntersectionObserver` to detect element visibility.
  *
  * @param element - The DOM element to observe.
  * @param options - Optional configuration for `IntersectionObserver`.
- * @returns A Stream emitting `true` when visible and `false` when not.
+ * @returns A Subscription function that returns the latest intersection state.
  */
 export function onIntersection(
   element: Element,
   options?: IntersectionObserverInit
-): Stream<boolean> {
-  return createStream<boolean>('onIntersection', async function* (this: Stream<boolean>) {
-    const itemAvailable = createSemaphore(0);
-    let buffer: boolean | undefined;
-    let eventsCaptured = 0;
-    let eventsProcessed = 0;
+) {
+  const subject = createSubject<boolean>();
+  let latestValue: boolean | undefined;
 
-    const callback = (entries: IntersectionObserverEntry[]) => {
-      if (!this.completed()) {
-        eventsCaptured++;
-      }
-      buffer = entries[0]?.isIntersecting ?? false;
-      itemAvailable.release(); // Notify that a new event is available
-    };
+  const observer = new IntersectionObserver((entries) => {
+    latestValue = entries[0]?.isIntersecting ?? false;
+    subject.next(latestValue);
+  }, options);
 
-    const observer = new IntersectionObserver(callback, options);
-    observer.observe(element);
+  observer.observe(element);
 
-    try {
-      while (!(this.completed() && eventsCaptured === eventsProcessed)) {
-        await itemAvailable.acquire(); // Wait for an event to be available
-
-        if (buffer !== undefined) {
-          yield createEmission({ value: buffer });
-          eventsProcessed++;
-        }
-      }
-    } finally {
-      observer.unobserve(element);
-      observer.disconnect();
-    }
+  return createSubscription(() => subject.value, () => {
+    observer.unobserve(element);
+    observer.disconnect();
+    subject.complete();
   });
 }
