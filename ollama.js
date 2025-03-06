@@ -121,7 +121,11 @@ async function generateChangelog(gitLogs) {
 // Generate a description for a tag using the LLM
 async function generateTagDescription(tagName, commits) {
   const prompt = `
-    You are an expert software engineer summarizing changes for a release of a reactive stream library Streamix written in TypeScript.
+    You are an expert software engineer summarizing changes for a release of a reactive library Streamix written in TypeScript.
+    Streamix is a **lightweight alternative to RxJS**, offering a streamlined approach to reactive programming
+    through a simplified concept of streams and emissions. Built for modern, performance-driven applications,
+    Streamix strikes a balance between simplicity and efficiency, boasting an ultra-light footprint of
+    just **6 KB (zipped)**. For added convenience, a compact HTTP client is included as a separate package, weighing approximately **3 KB (zipped)**.
 
     Analyze the following list of commit messages for the release tag "${tagName}". Focus on the key changes and improvements made in this release.
 
