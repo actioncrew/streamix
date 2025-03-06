@@ -1,7 +1,18 @@
-import { fromEvent, onAnimationFrame, onIntersection, Stream, tap } from '@actioncrew/streamix';
+import {
+  concatMap,
+  debounce,
+  filter,
+  fromEvent,
+  map,
+  merge,
+  onAnimationFrame,
+  onIntersection,
+  Stream,
+  tap,
+} from '@actioncrew/streamix';
 
 // Text animation setup with Streamix
-const setupTextAnimation = (element: HTMLElement) => {
+const setupTextAnimation = (element: HTMLElement): Stream<void> => {
   const text = element.textContent || '';
   element.innerHTML = '';
 
@@ -19,20 +30,23 @@ const setupTextAnimation = (element: HTMLElement) => {
   let isVisible = false;
 
   return onIntersection(element, { threshold: 0.5 }).pipe(
-    tap((intersecting) => {
-      if (intersecting && !isVisible) {
-        isVisible = true;
-        spans.forEach((span) => {
-          span.style.opacity = '1';
-          span.style.transform = 'translateY(0)';
-        });
-      } else if (!intersecting && isVisible) {
-        isVisible = false;
-        spans.forEach((span) => {
-          span.style.opacity = '0';
-          span.style.transform = 'translateY(20px)';
-        });
-      }
+    map((intersecting) => intersecting && !isVisible),
+    filter((shouldAnimate) => shouldAnimate),
+    tap(() => {
+      isVisible = true;
+      spans.forEach((span) => {
+        span.style.opacity = '1';
+        span.style.transform = 'translateY(0)';
+      });
+    }),
+    debounce(1000), // Add debounce to control frequent changes
+    filter(() => !isVisible),
+    tap(() => {
+      isVisible = false;
+      spans.forEach((span) => {
+        span.style.opacity = '0';
+        span.style.transform = 'translateY(20px)';
+      });
     })
   );
 };
@@ -44,7 +58,7 @@ const setupBreathingEffect = (element: HTMLElement): Stream<void> => {
   let direction = 1;
 
   return onAnimationFrame().pipe(
-    tap(() => {
+    map(() => {
       currentScale = interpolate(currentScale, targetScale, 0.05);
 
       if (currentScale >= targetScale) {
@@ -56,7 +70,17 @@ const setupBreathingEffect = (element: HTMLElement): Stream<void> => {
       element.style.transform = `scale(${currentScale})`;
 
       targetScale = direction === 1 ? 1.05 : 0.95;
-    })
+    }),
+    concatMap(() =>
+      merge(
+        fromEvent(element, 'mouseenter').pipe(
+          map(() => (targetScale = 1.1)) // Trigger scale increase on mouse enter
+        ),
+        fromEvent(element, 'mouseleave').pipe(
+          map(() => (targetScale = 1.05)) // Reset scale on mouse leave
+        )
+      )
+    )
   );
 };
 
@@ -92,25 +116,48 @@ if (hero) {
   heroTitle.style.willChange = 'opacity, transform';
   heroParagraph.style.willChange = 'opacity, transform';
 
-  onAnimationFrame().pipe(
-    tap(() => {
-      state = {
-        scale: interpolate(state.scale, hero.dataset['active'] ? 1.1 : 1, 0.1),
-        opacity: interpolate(state.opacity, hero.dataset['active'] ? 1 : 0, 0.1),
-        titleOpacity: interpolate(state.titleOpacity, hero.dataset['active'] ? 1 : 0, 0.1),
-        titleTranslateY: interpolate(state.titleTranslateY, hero.dataset['active'] ? 0 : 20, 0.1),
-      };
+  onAnimationFrame()
+    .pipe(
+      map(() => {
+        state = {
+          scale: interpolate(
+            state.scale,
+            hero.dataset['active'] ? 1.1 : 1,
+            0.1
+          ),
+          opacity: interpolate(
+            state.opacity,
+            hero.dataset['active'] ? 1 : 0,
+            0.1
+          ),
+          titleOpacity: interpolate(
+            state.titleOpacity,
+            hero.dataset['active'] ? 1 : 0,
+            0.1
+          ),
+          titleTranslateY: interpolate(
+            state.titleTranslateY,
+            hero.dataset['active'] ? 0 : 20,
+            0.1
+          ),
+        };
 
-      hero.style.transform = `scale(${state.scale})`;
-      hero.style.opacity = `${state.opacity}`;
-      heroTitle.style.opacity = `${state.titleOpacity}`;
-      heroTitle.style.transform = `translateY(${state.titleTranslateY}px)`;
-    })
-  ).subscribe();
+        hero.style.transform = `scale(${state.scale})`;
+        hero.style.opacity = `${state.opacity}`;
+        heroTitle.style.opacity = `${state.titleOpacity}`;
+        heroTitle.style.transform = `translateY(${state.titleTranslateY}px)`;
+      })
+    )
+    .subscribe();
 
-  onIntersection(hero, { threshold: 0.2 }).pipe(
-    tap((isIntersecting) => (hero.dataset['active'] = isIntersecting ? 'true' : 'false'))
-  ).subscribe();
+  onIntersection(hero, { threshold: 0.2 })
+    .pipe(
+      map((isIntersecting) => (isIntersecting ? 'true' : 'false')),
+      tap((activeState) => {
+        hero.dataset['active'] = activeState;
+      })
+    )
+    .subscribe();
 }
 
 // Post Cards Animation with Streamix operators
@@ -124,32 +171,55 @@ posts.forEach((post) => {
     captionTranslateY: 0,
   };
 
-  onAnimationFrame().pipe(
-    tap(() => {
-      state = {
-        opacity: interpolate(state.opacity, post.dataset['active'] ? 1 : 0, 0.1),
-        captionOpacity: interpolate(state.captionOpacity, post.dataset['active'] ? 1 : 0, 0.1),
-        captionTranslateY: interpolate(state.captionTranslateY, post.dataset['active'] ? 0 : 20, 0.1),
-      };
+  onAnimationFrame()
+    .pipe(
+      map(() => {
+        state = {
+          opacity: interpolate(
+            state.opacity,
+            post.dataset['active'] ? 1 : 0,
+            0.1
+          ),
+          captionOpacity: interpolate(
+            state.captionOpacity,
+            post.dataset['active'] ? 1 : 0,
+            0.1
+          ),
+          captionTranslateY: interpolate(
+            state.captionTranslateY,
+            post.dataset['active'] ? 0 : 20,
+            0.1
+          ),
+        };
 
-      post.style.opacity = `${state.opacity}`;
-      if (caption) {
-        caption.style.opacity = `${state.captionOpacity}`;
-        caption.style.transform = `translateY(${state.captionTranslateY}px)`;
-      }
-    })
-  ).subscribe();
+        post.style.opacity = `${state.opacity}`;
+        if (caption) {
+          caption.style.opacity = `${state.captionOpacity}`;
+          caption.style.transform = `translateY(${state.captionTranslateY}px)`;
+        }
+      })
+    )
+    .subscribe();
 
-  onIntersection(post, { threshold: 0.3 }).pipe(
-    tap((isIntersecting) => (post.dataset['active'] = isIntersecting ? 'true' : 'false'))
-  ).subscribe();
+  onIntersection(post, { threshold: 0.3 })
+    .pipe(
+      map((isIntersecting) => (isIntersecting ? 'true' : 'false')),
+      tap((activeState) => {
+        post.dataset['active'] = activeState;
+      })
+    )
+    .subscribe();
 });
 
 // Canvas animation for featured destinations with Streamix
 document.addEventListener('DOMContentLoaded', function () {
-  const featuredDestinations = document.querySelector('.featured-destinations') as HTMLElement;
+  const featuredDestinations = document.querySelector(
+    '.featured-destinations'
+  ) as HTMLElement;
   const imageWrappers = featuredDestinations.querySelectorAll('.image-wrapper');
-  const canvas = featuredDestinations.querySelector('.overlay-canvas') as HTMLCanvasElement;
+  const canvas = featuredDestinations.querySelector(
+    '.overlay-canvas'
+  ) as HTMLCanvasElement;
   const ctx = canvas.getContext('2d') as any;
 
   let activeIndex = 0;
@@ -184,24 +254,43 @@ document.addEventListener('DOMContentLoaded', function () {
   updateCanvasSize();
   window.addEventListener('resize', updateCanvasSize);
 
-  onAnimationFrame().pipe(tap(drawParticles)).subscribe();
+  onAnimationFrame()
+    .pipe(
+      tap(drawParticles),
+      concatMap(() =>
+        merge(
+          fromEvent(window, 'resize').pipe(
+            debounce(200), // Debounce resize events
+            map(updateCanvasSize)
+          )
+        )
+      )
+    )
+    .subscribe();
+
   setInterval(changeDestination, 5000); // Change destination every 5 seconds
 });
 
 // Reveal on scroll effect with Streamix
 const revealOnScroll = (selector: string) => {
-  const elements = document.querySelectorAll(selector) as NodeListOf<HTMLElement>;
+  const elements = document.querySelectorAll(
+    selector
+  ) as NodeListOf<HTMLElement>;
   elements.forEach((el, index) => {
     el.style.opacity = '0';
     el.style.transform = 'translateY(20px)';
     el.style.transition = `all 0.5s ease ${index * 0.1}s`;
 
-    onIntersection(el, { threshold: 0.5 }).pipe(
-      tap((isIntersecting) => {
-        el.style.opacity = isIntersecting ? '1' : '0';
-        el.style.transform = isIntersecting ? 'translateY(0)' : 'translateY(20px)';
-      })
-    ).subscribe();
+    onIntersection(el, { threshold: 0.5 })
+      .pipe(
+        tap((isIntersecting) => {
+          el.style.opacity = isIntersecting ? '1' : '0';
+          el.style.transform = isIntersecting
+            ? 'translateY(0)'
+            : 'translateY(20px)';
+        })
+      )
+      .subscribe();
   });
 };
 
@@ -214,20 +303,28 @@ if (newsletter) {
   const input = newsletter.querySelector('input') as HTMLInputElement;
   const button = newsletter.querySelector('button') as HTMLButtonElement;
 
-  fromEvent(input, 'focus').pipe(
-    tap(() => {
-      input.style.borderColor = '#007BFF';
-      input.style.boxShadow = '0 0 5px rgba(0, 123, 255, 0.5)';
-    })
-  ).subscribe();
+  fromEvent(input, 'focus')
+    .pipe(
+      tap(() => {
+        input.style.borderColor = '#007BFF';
+        input.style.boxShadow = '0 0 5px rgba(0, 123, 255, 0.5)';
+      })
+    )
+    .subscribe();
 
-  fromEvent(input, 'blur').pipe(
-    tap(() => {
-      input.style.borderColor = '#ccc';
-      input.style.boxShadow = 'none';
-    })
-  ).subscribe();
+  fromEvent(input, 'blur')
+    .pipe(
+      tap(() => {
+        input.style.borderColor = '#ccc';
+        input.style.boxShadow = 'none';
+      })
+    )
+    .subscribe();
 
-  fromEvent(button, 'mouseenter').pipe(tap(() => (button.style.transform = 'scale(1.01)'))).subscribe();
-  fromEvent(button, 'mouseleave').pipe(tap(() => (button.style.transform = 'scale(1)'))).subscribe();
+  fromEvent(button, 'mouseenter')
+    .pipe(tap(() => (button.style.transform = 'scale(1.01)')))
+    .subscribe();
+  fromEvent(button, 'mouseleave')
+    .pipe(tap(() => (button.style.transform = 'scale(1)')))
+    .subscribe();
 }
