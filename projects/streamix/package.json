@@ -1,12 +1,15 @@
 {
   "name": "@actioncrew/streamix",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Reactive TypeScript library",
   "license": "MIT",
   "keywords": [
     "RxJS",
     "reactive programming",
     "data streams"
+  ],
+  "files": [
+    "CHANGELOG.md"
   ],
   "dependencies": {
     "tslib": "^2.3.0"
