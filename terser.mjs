@@ -73,3 +73,4 @@ fs.rmSync('./dist/streamix/http/@actioncrew', {recursive: true, force: true});
 fs.copyFileSync('./dist/streamix/coroutine/@actioncrew/index.d.ts', './dist/streamix/coroutine/index.d.ts');
 fs.rmSync('./dist/streamix/coroutine/lib', {recursive: true, force: true});
 fs.rmSync('./dist/streamix/coroutine/@actioncrew', {recursive: true, force: true});
+fs.copyFileSync('./CHANGELOG.md', './dist/streamix/CHANGELOG.md');
