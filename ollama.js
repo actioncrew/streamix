@@ -254,7 +254,7 @@ async function main() {
   console.log("Changelog generated successfully. Saved to summary_changelog.json.");
 
   generateChangelogFromSummary();
-  fs.rmSync(outputFilePath);
+  fs.rmSync('summary_changelog.json');
 }
 
 function generateChangelogFromSummary(summaryFilePath = 'summary_changelog.json', outputFilePath = './projects/streamix/CHANGELOG.md') {
