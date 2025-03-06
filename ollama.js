@@ -281,3 +281,4 @@ function generateChangelogFromSummary(summaryFilePath = 'summary_changelog.json'
   fs.rmSync(outputFilePath);
 }
 
+main();
