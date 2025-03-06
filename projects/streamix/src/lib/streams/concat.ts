@@ -1,35 +1,36 @@
-import { createEmission, createStream, Stream } from "../abstractions";
-import { createSemaphore } from "../utils";
+import { Stream, Subscription } from "../abstractions"; // Assuming you have these types
+import { createSubject } from "../streams"; // Assuming createSubject is in utils.
 
 export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
-  return createStream<T>("concat", async function* (this: Stream<T>) {
-    for (const source of sources) {
-      const itemAvailable = createSemaphore(0); // Controls when items are available
-      const queue: T[] = []; // Event queue
-      let completed = false;
+  const resultSubject = createSubject<T>();
+  let currentSourceIndex = 0;
+  let currentSubscription: Subscription | null = null;
 
-      // Subscribe to the source and collect its emissions
-      const subscription = source.subscribe({
-        next: (value) => {
-          queue.push(value);
-          itemAvailable.release(); // Signal that an item is available
-        },
-        complete: () => {
-          completed = true; // Mark as completed when the stream finishes
-          itemAvailable.release(); // Ensure loop doesn't hang if no values were emitted
-        },
-      });
-
-      // Process queued values sequentially
-      while (!completed || queue.length > 0) {
-        await itemAvailable.acquire(); // Wait until an event is available
-
-        if (queue.length > 0) {
-          yield createEmission({ value: queue.shift()! });
-        }
-      }
-
-      subscription.unsubscribe(); // Unsubscribe when done with this source
+  const subscribeToNextSource = () => {
+    if (currentSourceIndex >= sources.length) {
+      resultSubject.complete();
+      return;
     }
-  });
+
+    const currentSource = sources[currentSourceIndex];
+    currentSubscription = currentSource.subscribe({
+      next: (value) => {
+        resultSubject.next(value);
+      },
+      complete: () => {
+        currentSubscription?.unsubscribe();
+        currentSubscription = null;
+        currentSourceIndex++;
+        subscribeToNextSource();
+      },
+      error: (error) => {
+        resultSubject.error(error);
+      }
+    });
+  };
+
+  subscribeToNextSource();
+
+  resultSubject.name = 'concat';
+  return resultSubject;
 }
