@@ -1,4 +1,4 @@
-import { createSubscription } from '../abstractions';
+import { createSubscription, Receiver } from '../abstractions';
 import { createSubject } from '../streams';
 
 /**
@@ -24,8 +24,16 @@ export function onMediaQuery(mediaQueryString: string) {
 
   mediaQueryList.addEventListener("change", listener);
 
-  return createSubscription(() => subject.value(), () => {
-    mediaQueryList.removeEventListener("change", listener);
-    subject.complete();
-  });
+  const originalSubscribe = subject.subscribe;
+  const subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
+    const subscription = originalSubscribe.call(subject, callback);
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      mediaQueryList.removeEventListener("change", listener);
+    });
+  }
+
+  subject.name = 'onMediaQuery';
+  subject.subscribe = subscribe;
+  return subject;
 }

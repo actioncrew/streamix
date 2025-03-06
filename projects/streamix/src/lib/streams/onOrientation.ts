@@ -1,4 +1,4 @@
-import { createSubscription } from '../abstractions';
+import { createSubscription, Receiver } from '../abstractions';
 import { createSubject } from '../streams';
 /**
  * Creates a subscription that emits orientation changes.
@@ -26,8 +26,16 @@ export function onOrientation() {
 
   window.screen.orientation.addEventListener("change", listener);
 
-  return createSubscription(() => subject.value(), () => {
-    window.screen.orientation.removeEventListener("change", listener);
-    subject.complete();
-  });
+  const originalSubscribe = subject.subscribe;
+  const subscribe = (callback?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">) => {
+    const subscription = originalSubscribe.call(subject, callback);
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      window.screen.orientation.removeEventListener("change", listener);
+    });
+  }
+
+  subject.name = 'onOrientation';
+  subject.subscribe = subscribe;
+  return subject;
 }

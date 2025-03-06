@@ -1,4 +1,4 @@
-import { createSubscription } from '../abstractions';
+import { createSubscription, Receiver } from '../abstractions';
 import { createSubject } from '../streams';
 
 /**
@@ -22,8 +22,16 @@ export function onMutation(
 
   observer.observe(element, options);
 
-  return createSubscription(() => subject.value(), () => {
-    observer.disconnect();
-    subject.complete();
-  });
+  const originalSubscribe = subject.subscribe;
+  const subscribe = (callback?: ((value: MutationRecord[]) => void) | Receiver<MutationRecord[]>) => {
+    const subscription = originalSubscribe.call(subject, callback);
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      observer.disconnect();
+    });
+  }
+
+  subject.name = 'onMutation';
+  subject.subscribe = subscribe;
+  return subject;
 }

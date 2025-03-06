@@ -11,15 +11,17 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   const subject = createSubject<T>() as Subject<T>;
 
   // Override the `next` method to update the current value
-  const next = (value: T) => {
+  const originalNext = subject.next;
+  subject.next = (value: T) => {
     currentValue = value; // Update the current value
-    subject.next(value); // Emit the value to all subscribers
+    originalNext.call(subject, value); // Emit the value to all subscribers
   };
 
   // Override the `subscribe` method to emit the current value to new subscribers
-  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  const originalSubscribe = subject.subscribe;
+  subject.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const subscription = subject.subscribe(receiver);
+    const subscription = originalSubscribe.call(subject, receiver);
 
     // Emit the current value to the new subscriber immediately
     receiver.next?.(currentValue);
@@ -28,14 +30,12 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   };
 
   // Create the BehaviorSubject
-  const behaviorSubject = {
-    ...subject,
-    next,
-    subscribe,
-    get value() {
-      return currentValue; // Expose the current value
-    },
-  };
+  Object.defineProperty(subject, 'value', {
+    get: () => currentValue,
+    configurable: false,
+    enumerable: false,
+  });
 
-  return behaviorSubject as BehaviorSubject<T>;
+  subject.name = 'behaviorSubject';
+  return subject as BehaviorSubject<T>;
 }

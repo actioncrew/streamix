@@ -1,4 +1,4 @@
-import { createSubscription } from '../abstractions';
+import { createSubscription, Receiver } from '../abstractions';
 import { createSubject } from '../streams';
 
 /**
@@ -20,9 +20,17 @@ export function onResize(element: Element) {
   const resizeObserver = new ResizeObserver(callback);
   resizeObserver.observe(element);
 
-  return createSubscription(() => subject.value(), () => {
-    resizeObserver.unobserve(element);
-    resizeObserver.disconnect();
-    subject.complete();
-  });
+  const originalSubscribe = subject.subscribe;
+  const subscribe = (callback?: ((value: { width: number; height: number; }) => void) | Receiver<{ width: number; height: number; }>) => {
+    const subscription = originalSubscribe.call(subject, callback);
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      resizeObserver.unobserve(element);
+      resizeObserver.disconnect();
+    });
+  }
+
+  subject.name = 'onResize';
+  subject.subscribe = subscribe;
+  return subject;
 }

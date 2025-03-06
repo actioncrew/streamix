@@ -1,4 +1,4 @@
-import { createSubscription } from '../abstractions';
+import { createSubscription, Receiver } from '../abstractions';
 import { createSubject } from '../streams';
 
 /**
@@ -22,9 +22,18 @@ export function onIntersection(
 
   observer.observe(element);
 
-  return createSubscription(() => subject.value(), () => {
-    observer.unobserve(element);
-    observer.disconnect();
-    subject.complete();
-  });
+  const originalSubscribe = subject.subscribe;
+  const subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
+    const subscription = originalSubscribe.call(subject, callback);
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      observer.unobserve(element);
+      observer.disconnect();
+    });
+  }
+
+  subject.name = 'onIntersection';
+  subject.subscribe = subscribe;
+
+  return subject;
 }
