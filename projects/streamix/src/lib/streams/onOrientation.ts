@@ -24,11 +24,11 @@ export function onOrientation() {
     subject.next(latestOrientation);
   };
 
-  window.screen.orientation.addEventListener("change", listener);
-
   const originalSubscribe = subject.subscribe;
   const subscribe = (callback?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">) => {
     const subscription = originalSubscribe.call(subject, callback);
+
+    window.screen.orientation.addEventListener("change", listener);
     return createSubscription(subscription, () => {
       subscription.unsubscribe();
       window.screen.orientation.removeEventListener("change", listener);

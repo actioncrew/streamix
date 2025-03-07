@@ -14,6 +14,7 @@ export function onMediaQuery(mediaQueryString: string) {
   }
 
   const subject = createSubject<boolean>();
+
   const mediaQueryList = window.matchMedia(mediaQueryString);
   let latestValue = mediaQueryList.matches; // Initial state
 
@@ -22,11 +23,12 @@ export function onMediaQuery(mediaQueryString: string) {
     subject.next(latestValue);
   };
 
-  mediaQueryList.addEventListener("change", listener);
-
   const originalSubscribe = subject.subscribe;
   const subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
     const subscription = originalSubscribe.call(subject, callback);
+
+    mediaQueryList.addEventListener("change", listener);
+
     return createSubscription(subscription, () => {
       subscription.unsubscribe();
       mediaQueryList.removeEventListener("change", listener);

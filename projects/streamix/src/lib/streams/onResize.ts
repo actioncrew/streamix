@@ -9,20 +9,22 @@ import { createSubject } from '../streams';
  */
 export function onResize(element: Element) {
   const subject = createSubject<{ width: number; height: number }>();
-  let latestSize = { width: 0, height: 0 };
-
-  const callback = (entries: ResizeObserverEntry[]) => {
-    const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
-    latestSize = { width, height };
-    subject.next(latestSize);
-  };
-
-  const resizeObserver = new ResizeObserver(callback);
-  resizeObserver.observe(element);
 
   const originalSubscribe = subject.subscribe;
   const subscribe = (callback?: ((value: { width: number; height: number; }) => void) | Receiver<{ width: number; height: number; }>) => {
     const subscription = originalSubscribe.call(subject, callback);
+
+    let latestSize = { width: 0, height: 0 };
+
+    const listener = (entries: ResizeObserverEntry[]) => {
+      const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 };
+      latestSize = { width, height };
+      subject.next(latestSize);
+    };
+
+    const resizeObserver = new ResizeObserver(listener);
+    resizeObserver.observe(element);
+
     return createSubscription(subscription, () => {
       subscription.unsubscribe();
       resizeObserver.unobserve(element);

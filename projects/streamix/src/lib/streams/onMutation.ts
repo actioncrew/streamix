@@ -13,17 +13,18 @@ export function onMutation(
   options?: MutationObserverInit
 ) {
   const subject = createSubject<MutationRecord[]>();
-  let latestMutations: MutationRecord[] = [];
-
-  const observer = new MutationObserver((mutations) => {
-    latestMutations = [...mutations]; // Store latest mutations
-    subject.next(latestMutations);
-  });
-
-  observer.observe(element, options);
 
   const originalSubscribe = subject.subscribe;
   const subscribe = (callback?: ((value: MutationRecord[]) => void) | Receiver<MutationRecord[]>) => {
+    let latestMutations: MutationRecord[] = [];
+
+    const observer = new MutationObserver((mutations) => {
+      latestMutations = [...mutations]; // Store latest mutations
+      subject.next(latestMutations);
+    });
+
+    observer.observe(element, options);
+
     const subscription = originalSubscribe.call(subject, callback);
     return createSubscription(subscription, () => {
       subscription.unsubscribe();
