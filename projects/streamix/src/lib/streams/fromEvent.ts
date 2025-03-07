@@ -1,41 +1,37 @@
-import { createEmission, createStream, Stream } from "../abstractions";
-import { createSemaphore } from "../utils";
+import { createSubscription, Receiver, Stream } from "../abstractions";
+import { createSubject } from '../streams';
 
-
+/**
+ * Creates a stream from an event target, where events trigger emissions in the stream.
+ *
+ * @param target - The EventTarget (e.g., DOM element or window).
+ * @param event - The event type (e.g., 'click', 'resize').
+ * @returns A stream that emits the event when it occurs.
+ */
 export function fromEvent<T>(target: EventTarget, event: string): Stream<T> {
-  return createStream("fromEvent", async function* (this: Stream<T>) {
-    const itemAvailable = createSemaphore(0); // Semaphore to signal when an event is ready to be processed
-    const spaceAvailable = createSemaphore(1); // Semaphore to manage concurrent event handling
+  const subject = createSubject<T>(); // Create a subject to emit event values.
 
-    let buffer: Event | undefined; // Queue to hold events
-    let eventsCaptured = 0;
-    let eventsProcessed = 0;
+  const originalSubscribe = subject.subscribe; // Capture original subscribe method.
+
+  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+    const subscription = originalSubscribe.call(subject, callback);
 
     const listener = (ev: Event) => {
-      if (!this.completed()) {
-        eventsCaptured++;
+      if (!subject.completed()) {
+        subject.next(ev as T); // Emit the event directly into the subject's stream
       }
-      spaceAvailable.acquire().then(() => {
-        buffer = ev; // Push event into the queue
-        itemAvailable.release(); // Signal that an event is available
-      });
     };
 
     target.addEventListener(event, listener);
 
-    try {
-      while (!this.completed() || eventsCaptured > eventsProcessed) {
-        await itemAvailable.acquire(); // Wait until an event is available
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe(); // Unsubscribe when done
+      target.removeEventListener(event, listener); // Cleanup listener on unsubscribe
+    });
+  };
 
-        // Process and yield the event
-        if (eventsCaptured > eventsProcessed) {
-          yield createEmission({ value: buffer as T });
-          eventsProcessed++;
-          spaceAvailable.release();
-        }
-      }
-    } finally {
-      target.removeEventListener(event, listener);
-    }
-  });
+  subject.name = 'fromEvent';
+  subject.subscribe = subscribe; // Override the subject's subscribe method
+
+  return subject;
 }
