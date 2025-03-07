@@ -45,5 +45,6 @@ export function compute(task: Coroutine, params: any): Stream<any> {
 
   runTask(); // Start the task
 
+  subject.name = 'compute';
   return subject; // Return the Subject
 }

@@ -6,6 +6,5 @@ export function range(start: number, end: number, step: number = 1): Stream<numb
   const stream = loop(start, current => current < end, current => current + step);
 
   stream.name = 'range';
-  // Create the stream using createStream and the custom run function
   return stream;
 }

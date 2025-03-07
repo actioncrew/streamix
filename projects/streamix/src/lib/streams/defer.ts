@@ -1,35 +1,39 @@
-import { createEmission, createStream, Stream } from "../abstractions";
-import { createSemaphore } from "../utils";
+import { createSubscription, Receiver, Stream } from "../abstractions";
+import { createSubject, Subject } from "../streams/subject";
 
-export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
-  return createStream<T>('defer', async function* (this: Stream<T>) {
-    const innerStream = factory(); // Create the inner stream from the factory
+export function defer<T = any>(factory: () => Stream<T>): Subject<T> {
+  const subject = createSubject<T>(); // Create a subject to hold emitted values
 
-    const itemAvailable = createSemaphore(0); // Controls when items are available
-    const queue: T[] = []; // Event queue
-    let completed = false;
+  // Redefine subscribe to lazily initialize the inner stream
+  const originalSubscribe = subject.subscribe;
+  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+    // Lazily create the inner stream when the subject is subscribed to
+    const innerStream = factory();
 
-    // Subscribe to the inner stream
-    const subscription = innerStream.subscribe({
+    const subscription = originalSubscribe.call(subject, callback);
+
+    // Subscribe to the inner stream and emit its values
+    const innerSubscription = innerStream.subscribe({
       next: (value: T) => {
-        queue.push(value);
-        itemAvailable.release(); // Signal that an item is available
+        subject.next(value); // Emit values from the inner stream to the subject
       },
       complete: () => {
-        completed = true; // Mark as completed when the stream finishes
-        itemAvailable.release(); // Ensure loop doesn't hang if no values were emitted
+        subject.complete(); // Complete the subject when the inner stream completes
+        innerSubscription.unsubscribe();
+      },
+      error: (err: any) => {
+        subject.error(err); // Propagate errors from the inner stream to the subject
+        innerSubscription.unsubscribe();
       },
     });
 
-    // Yield values sequentially
-    while (!completed || queue.length > 0) {
-      await itemAvailable.acquire(); // Wait until an event is available
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      innerSubscription.unsubscribe(); // Cleanup both inner and outer subscriptions
+    });
+  };
 
-      if (queue.length > 0) {
-        yield createEmission({ value: queue.shift()! });
-      }
-    }
-
-    subscription.unsubscribe(); // Unsubscribe when done with the inner stream
-  });
+  subject.name = 'defer';
+  subject.subscribe = subscribe;
+  return subject;
 }

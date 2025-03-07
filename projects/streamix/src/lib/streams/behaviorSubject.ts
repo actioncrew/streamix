@@ -21,7 +21,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   const originalSubscribe = subject.subscribe;
   subject.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const subscription = originalSubscribe.call(subject, receiver);
+    const subscription = originalSubscribe.call(subject, callbackOrReceiver);
 
     // Emit the current value to the new subscriber immediately
     receiver.next?.(currentValue);

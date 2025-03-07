@@ -33,5 +33,6 @@ export function combineLatest<T = any>(
     });
   }
 
+  subject.name = 'combineLatest';
   return subject;  // Return the subject stream
 }

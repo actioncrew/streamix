@@ -1,39 +1,43 @@
-import { createEmission, createStream, Stream } from "../abstractions";
-import { createSemaphore } from "../utils";
+import { createSubscription, Receiver, Stream } from "../abstractions";
+import { createSubject, Subject } from "../streams/subject";
 
 export function iif<T = any>(
   condition: () => boolean,
   trueStream: Stream<T>,
   falseStream: Stream<T>
-): Stream<T> {
-  return createStream<T>("iif", async function* (this: Stream<T>) {
-    const source = condition() ? trueStream : falseStream;
-    const itemAvailable = createSemaphore(0); // Controls when items are available
-    let latestValue: T | undefined;
-    let completed = false;
+): Subject<T> {
+  const subject = createSubject<T>(); // Create a subject to emit values
 
-    // Subscribe to the source and collect its emissions
-    const subscription = source.subscribe({
-      next: (value) => {
-        latestValue = value;
-        itemAvailable.release(); // Signal that an item is available
+  // Redefine subscribe to lazily initialize the stream based on condition
+  const originalSubscribe = subject.subscribe;
+  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+    // Choose the stream based on the condition
+    const sourceStream = condition() ? trueStream : falseStream;
+
+    const subscription = originalSubscribe.call(subject, callback);
+
+    // Subscribe to the chosen stream
+    const innerSubscription = sourceStream.subscribe({
+      next: (value: T) => {
+        subject.next(value); // Emit values from the chosen stream
       },
       complete: () => {
-        completed = true; // Mark as completed when the stream finishes
-        itemAvailable.release(); // Ensure loop doesn't hang if no values were emitted
+        subject.complete(); // Complete the subject when the inner stream completes
+        innerSubscription.unsubscribe();
+      },
+      error: (err: any) => {
+        subject.error(err); // Propagate errors to the subject
+        innerSubscription.unsubscribe();
       },
     });
 
-    // Process latest value only
-    while (!completed || latestValue !== undefined) {
-      await itemAvailable.acquire(); // Wait until an event is available
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      innerSubscription.unsubscribe(); // Clean up both subscriptions
+    });
+  };
 
-      if (latestValue !== undefined) {
-        yield createEmission({ value: latestValue });
-        latestValue = undefined; // Reset latest value after yielding it
-      }
-    }
-
-    subscription.unsubscribe(); // Unsubscribe when done with this source
-  });
+  subject.name = 'iif';
+  subject.subscribe = subscribe;
+  return subject;
 }

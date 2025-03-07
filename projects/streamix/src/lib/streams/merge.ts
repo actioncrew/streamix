@@ -1,36 +1,41 @@
-import { createEmission, createStream, Stream, Subscription } from "../abstractions";
-import { createSemaphore } from "../utils";
+import { createSubscription, Receiver, Stream } from "../abstractions";
+import { createSubject, Subject } from "../streams/subject";
 
-export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
-  return createStream<T>('merge', async function* (this: Stream<T>) {
-    const itemAvailable = createSemaphore(0); // Controls when an item is available
-    const queue: T[] = [];
+export function merge<T = any>(...sources: Stream<T>[]): Subject<T> {
+  const subject = createSubject<T>();
+
+  const originalSubscribe = subject.subscribe;
+
+  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+    const subscription = originalSubscribe.call(subject, callback);
+
     let completedCount = 0;
 
-    // Subscribe to each source and push emissions to the queue
-    const subscriptions: Subscription[] = sources.map((source) =>
+    // Subscribe to each source stream
+    const subscriptions = sources.map((source) =>
       source.subscribe({
         next: (value) => {
-          queue.push(value);
-          itemAvailable.release(); // Signal availability
+          subject.next(value); // Emit value directly to the subject
         },
         complete: () => {
           completedCount++;
-          itemAvailable.release(); // Ensure loop progresses when a source completes
+          if (completedCount === sources.length) {
+            subject.complete(); // Complete when all sources have completed
+          }
+        },
+        error: (err) => {
+          subject.error(err); // Propagate error to the subject
         },
       })
     );
 
-    // Yield values from the queue as they become available
-    while (completedCount < sources.length || queue.length > 0) {
-      await itemAvailable.acquire(); // Wait until an event is available
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      subscriptions.forEach((sub) => sub.unsubscribe()); // Cleanup all subscriptions
+    });
+  };
 
-      if (queue.length > 0) {
-        yield createEmission({ value: queue.shift()! });
-      }
-    }
-
-    // Cleanup subscriptions
-    subscriptions.forEach((sub) => sub.unsubscribe());
-  });
+  subject.name = 'merge';
+  subject.subscribe = subscribe;
+  return subject;
 }

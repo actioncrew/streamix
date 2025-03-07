@@ -1,26 +1,41 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createSubscription, Receiver } from "../abstractions";
+import { createSubject, Subject } from "../streams/subject";
 
-export function jsonp<T = any>(url: string, callbackName: string): Stream<T> {
-  return createStream("jsonp", async function* () {
-    let data = await new Promise<T>((resolve, reject) => {
-      const script = document.createElement("script");
-      callbackName = `${callbackName}_${Math.random().toString(36).substring(2)}`;
-      script.src = url + (url.endsWith("?") ? "" : url.includes("?") ? "&" : "?") + `callback=${encodeURIComponent(callbackName)}`;
-      
-      // Create the callback function
-      (window as any)[callbackName] = (data: T) => {
-        resolve(data);
-        document.head.removeChild(script);
-      };
+export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
+  const subject = createSubject<T>();
 
-      script.onerror = (error) => {
-        reject(new Error(`JSONP request failed: ${error}`));
-        document.head.removeChild(script);
-      };
+  const originalSubscribe = subject.subscribe;
+  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+    const subscription = originalSubscribe.call(subject, callback);
 
-      document.head.appendChild(script);
+    const uniqueCallbackName = `${callbackName}_${Math.random().toString(36).substring(2)}`;
+    const script = document.createElement("script");
+
+    // Create the callback function
+    (window as any)[uniqueCallbackName] = (data: T) => {
+      subject.next(data); // Emit the data once the script loads
+      subject.complete(); // Complete the subject
+      document.head.removeChild(script); // Clean up the script element
+    };
+
+    // Handle script errors
+    script.onerror = (error) => {
+      subject.error(new Error(`JSONP request failed: ${error}`)); // Emit error if JSONP request fails
+      document.head.removeChild(script); // Clean up the script element
+    };
+
+    // Append the script element to the document head
+    script.src = `${url}${url.includes('?') ? '&' : '?'}callback=${encodeURIComponent(uniqueCallbackName)}`;
+    document.head.appendChild(script);
+
+    return createSubscription(subscription, () => {
+      subscription.unsubscribe();
+      document.head.removeChild(script); // Remove the script if the subscription is unsubscribed
+      delete (window as any)[uniqueCallbackName]; // Clean up the callback function
     });
+  };
 
-    yield createEmission({ value: data });
-  });
+  subject.name = 'jsonp';
+  subject.subscribe = subscribe;
+  return subject;
 }

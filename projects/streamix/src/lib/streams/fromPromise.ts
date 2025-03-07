@@ -14,5 +14,6 @@ export function fromPromise<T = any>(promise: Promise<T>): Subject<T> {
       subject.error(error); // Handle promise rejection by passing the error
     }).finally(() => subject.complete());
 
+  subject.name = 'fromPromise';
   return subject;
 }

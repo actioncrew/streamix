@@ -34,5 +34,6 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
     });
   });
 
+  subject.name = 'zip';
   return subject;  // Return the subject that acts as a combined stream
 }
