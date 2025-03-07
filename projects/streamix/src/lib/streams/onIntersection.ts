@@ -15,7 +15,7 @@ export function onIntersection(
   const subject = createSubject<boolean>();
 
   const originalSubscribe = subject.subscribe;
-  const subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
+  subject.subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
     const subscription = originalSubscribe.call(subject, callback);
 
     let latestValue: boolean | undefined;
@@ -35,7 +35,5 @@ export function onIntersection(
   }
 
   subject.name = 'onIntersection';
-  subject.subscribe = subscribe;
-
   return subject;
 }

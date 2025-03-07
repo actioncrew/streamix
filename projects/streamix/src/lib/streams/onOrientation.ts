@@ -25,7 +25,7 @@ export function onOrientation() {
   };
 
   const originalSubscribe = subject.subscribe;
-  const subscribe = (callback?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">) => {
+  subject.subscribe = (callback?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">) => {
     const subscription = originalSubscribe.call(subject, callback);
 
     window.screen.orientation.addEventListener("change", listener);
@@ -36,6 +36,5 @@ export function onOrientation() {
   }
 
   subject.name = 'onOrientation';
-  subject.subscribe = subscribe;
   return subject;
 }

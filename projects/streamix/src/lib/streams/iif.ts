@@ -10,7 +10,7 @@ export function iif<T = any>(
 
   // Redefine subscribe to lazily initialize the stream based on condition
   const originalSubscribe = subject.subscribe;
-  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+  subject.subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
     // Choose the stream based on the condition
     const sourceStream = condition() ? trueStream : falseStream;
 
@@ -38,6 +38,5 @@ export function iif<T = any>(
   };
 
   subject.name = 'iif';
-  subject.subscribe = subscribe;
   return subject;
 }

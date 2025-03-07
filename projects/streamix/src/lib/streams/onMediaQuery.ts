@@ -24,7 +24,7 @@ export function onMediaQuery(mediaQueryString: string) {
   };
 
   const originalSubscribe = subject.subscribe;
-  const subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
+  subject.subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
     const subscription = originalSubscribe.call(subject, callback);
 
     mediaQueryList.addEventListener("change", listener);
@@ -36,6 +36,5 @@ export function onMediaQuery(mediaQueryString: string) {
   }
 
   subject.name = 'onMediaQuery';
-  subject.subscribe = subscribe;
   return subject;
 }

@@ -15,7 +15,7 @@ export function onMutation(
   const subject = createSubject<MutationRecord[]>();
 
   const originalSubscribe = subject.subscribe;
-  const subscribe = (callback?: ((value: MutationRecord[]) => void) | Receiver<MutationRecord[]>) => {
+  subject.subscribe = (callback?: ((value: MutationRecord[]) => void) | Receiver<MutationRecord[]>) => {
     let latestMutations: MutationRecord[] = [];
 
     const observer = new MutationObserver((mutations) => {
@@ -33,6 +33,5 @@ export function onMutation(
   }
 
   subject.name = 'onMutation';
-  subject.subscribe = subscribe;
   return subject;
 }

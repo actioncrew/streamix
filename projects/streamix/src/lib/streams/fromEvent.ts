@@ -5,7 +5,7 @@ export function fromEvent(target: EventTarget, event: string): Stream<Event> {
   const subject = createSubject<Event>(); // Create a subject to emit event values.
 
   const originalSubscribe = subject.subscribe; // Capture original subscribe method.
-  const subscribe = (callback?: ((value: Event) => void) | Receiver<Event>) => {
+  subject.subscribe = (callback?: ((value: Event) => void) | Receiver<Event>) => {
     const subscription = originalSubscribe.call(subject, callback);
 
     const listener = (ev: Event) => {
@@ -23,7 +23,5 @@ export function fromEvent(target: EventTarget, event: string): Stream<Event> {
   };
 
   subject.name = 'fromEvent';
-  subject.subscribe = subscribe; // Override the subject's subscribe method
-
   return subject;
 }

@@ -11,7 +11,7 @@ export function onResize(element: Element) {
   const subject = createSubject<{ width: number; height: number }>();
 
   const originalSubscribe = subject.subscribe;
-  const subscribe = (callback?: ((value: { width: number; height: number; }) => void) | Receiver<{ width: number; height: number; }>) => {
+  subject.subscribe = (callback?: ((value: { width: number; height: number; }) => void) | Receiver<{ width: number; height: number; }>) => {
     const subscription = originalSubscribe.call(subject, callback);
 
     let latestSize = { width: 0, height: 0 };
@@ -33,6 +33,5 @@ export function onResize(element: Element) {
   }
 
   subject.name = 'onResize';
-  subject.subscribe = subscribe;
   return subject;
 }

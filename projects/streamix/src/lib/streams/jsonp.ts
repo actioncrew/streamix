@@ -5,7 +5,7 @@ export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
   const subject = createSubject<T>();
 
   const originalSubscribe = subject.subscribe;
-  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+  subject.subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
     const subscription = originalSubscribe.call(subject, callback);
 
     const uniqueCallbackName = `${callbackName}_${Math.random().toString(36).substring(2)}`;
@@ -36,6 +36,5 @@ export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
   };
 
   subject.name = 'jsonp';
-  subject.subscribe = subscribe;
   return subject;
 }

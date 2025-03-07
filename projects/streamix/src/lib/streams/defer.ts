@@ -6,7 +6,7 @@ export function defer<T = any>(factory: () => Stream<T>): Subject<T> {
 
   // Redefine subscribe to lazily initialize the inner stream
   const originalSubscribe = subject.subscribe;
-  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+  subject.subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
     // Lazily create the inner stream when the subject is subscribed to
     const innerStream = factory();
 
@@ -34,6 +34,5 @@ export function defer<T = any>(factory: () => Stream<T>): Subject<T> {
   };
 
   subject.name = 'defer';
-  subject.subscribe = subscribe;
   return subject;
 }

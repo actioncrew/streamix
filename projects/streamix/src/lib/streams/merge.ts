@@ -5,8 +5,7 @@ export function merge<T = any>(...sources: Stream<T>[]): Subject<T> {
   const subject = createSubject<T>();
 
   const originalSubscribe = subject.subscribe;
-
-  const subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
+  subject.subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
     const subscription = originalSubscribe.call(subject, callback);
 
     let completedCount = 0;
@@ -36,6 +35,5 @@ export function merge<T = any>(...sources: Stream<T>[]): Subject<T> {
   };
 
   subject.name = 'merge';
-  subject.subscribe = subscribe;
   return subject;
 }
