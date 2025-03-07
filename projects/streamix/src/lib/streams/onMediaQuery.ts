@@ -23,15 +23,17 @@ export function onMediaQuery(mediaQueryString: string) {
     subject.next(latestValue);
   };
 
+  mediaQueryList.addEventListener("change", listener);
+
   const originalSubscribe = subject.subscribe;
   subject.subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
     const subscription = originalSubscribe.call(subject, callback);
 
-    mediaQueryList.addEventListener("change", listener);
-
     return createSubscription(subscription, () => {
       subscription.unsubscribe();
-      mediaQueryList.removeEventListener("change", listener);
+      if (subject.completed()) {
+        mediaQueryList.removeEventListener("change", listener);
+      }
     });
   }
 
