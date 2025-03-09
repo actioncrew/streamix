@@ -13,7 +13,7 @@ Streamix is a **lightweight alternative to RxJS**, offering a streamlined approa
 
 ---
 
-## Benefits of using Generators for Reactive Programming
+## Benefits of Using Generators
 
 Generators (function* and async function* in JavaScript) offer a **pull-based** model for iteration, contrasting with the **push-based** model used in RxJS and similar libraries. With generators, values are only produced when requested via .next(), allowing for more efficient execution by avoiding unnecessary computations. In contrast, traditional RxJS observables push values to subscribers regardless of whether they are ready to handle them, potentially leading to wasted processing or memory usage.
 
