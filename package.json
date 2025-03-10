@@ -6,10 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "jest --verbose",
-    "test:coverage": "jest --coverage --watchAll=false --selectProjects streamix",
-    "test:watch": "jest --watch",
+    "test": "npm run transpile && node ./jasmine.mjs",
     "minify": "node terser.mjs",
+    "transpile": "npx esbuild projects/streamix/**/*.ts --format=esm --bundle --outdir=dist --sourcemap --platform=browser",
     "bundle": "dts-bundle-generator --config ./bundle.config.cjs && npm run minify",
     "clean": "eslint --config eslint.config.js --fix"
   },
