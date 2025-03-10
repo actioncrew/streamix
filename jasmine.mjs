@@ -114,9 +114,7 @@ async function generateHtmlFile() {
             console.error(`stderr: ${stderr}`);
         });
 
-        httpServerProcess.on('exit', (code) => {
-            console.log(`http-server exited with code ${code}`);
-        });
+        console.log("Server is running on http://127.0.0.1:8080. Press Ctrl+C to stop.");
 
     } catch (error) {
         console.error('Error generating index.html:', error);
