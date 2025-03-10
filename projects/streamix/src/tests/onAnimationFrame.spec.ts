@@ -65,7 +65,7 @@ describe('fromAnimationFrame - Functional Test', () => {
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Adjust time for the frames to emit
 
     // Ensure the stream emitted values and stopped after a set number of frames
-    expect(emittedValues).toHaveLength(11); // Expect 11 values: 0 to 10
+    expect(emittedValues.length).toBe(11); // Expect 11 values: 0 to 10
     expect(emittedValues[0]).toBeLessThan(100); // First value should be 0
     expect(emittedValues[10]).toBeLessThan(100); // Last value should be 10
   });

@@ -1,7 +1,7 @@
 import { concatMap, createSubject, defaultIfEmpty, EMPTY, of } from '../lib';
 
 describe('DefaultIfEmptyOperator', () => {
-  test('should emit the default value if no values are emitted', (done) => {
+  it('should emit the default value if no values are emitted', (done) => {
     const stream = createSubject();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(defaultIfEmpty(defaultValue));
@@ -18,7 +18,7 @@ describe('DefaultIfEmptyOperator', () => {
     stream.complete();
   });
 
-  test('should not emit the default value if values are emitted', (done) => {
+  it('should not emit the default value if values are emitted', (done) => {
     const stream = createSubject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(defaultIfEmpty(defaultValue));
@@ -37,7 +37,7 @@ describe('DefaultIfEmptyOperator', () => {
     stream.complete();
   });
 
-  test('should emit default value when one operator returns EMPTY', (done) => {
+  it('should emit default value when one operator returns EMPTY', (done) => {
     const stream = createSubject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(
@@ -60,7 +60,7 @@ describe('DefaultIfEmptyOperator', () => {
     stream.complete();
   });
 
-  test('should not emit default value if values are emitted before', (done) => {
+  it('should not emit default value if values are emitted before', (done) => {
     const stream = createSubject<string>();
     const defaultValue = 'Default Value';
     const processedStream = stream.pipe(

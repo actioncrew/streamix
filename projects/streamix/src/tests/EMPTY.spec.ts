@@ -9,7 +9,7 @@ describe('EmptyStream', () => {
       next: (value: any) => emittedValues.push(value),
       complete: () => {
         // Ensure no values were emitted
-        expect(emittedValues).toHaveLength(0);
+        expect(emittedValues.length).toBe(0);
 
         // Ensure the stream is auto-completed
         expect(emptyStream.completed()).toBe(true);
@@ -27,7 +27,7 @@ describe('EMPTY constant', () => {
       next:(value: any) => emittedValues.push(value),
       complete: () => {
         // Ensure no values were emitted
-        expect(emittedValues).toHaveLength(0);
+        expect(emittedValues.length).toBe(0);
 
         // Ensure the stream is auto-completed
         expect(EMPTY.completed()).toBe(true);

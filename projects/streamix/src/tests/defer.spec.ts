@@ -1,54 +1,49 @@
-import { createSubject, defer, Emission, Stream } from '../lib';
+import { createSubject, defer, Stream } from '../lib';
 
 // Mocking Stream class
 export function mockStream(values: any[], completed = false, error?: Error): Stream<any> {
-  // Create the Subject stream for the mock
   const subject = createSubject<any>();
 
-  // Simulate async behavior using setTimeout or similar
   setTimeout(() => {
     if (error) {
       subject.error(error);
       return;
     }
 
-    // Emit all values
     values.forEach(value => subject.next(value));
 
-    // Complete if the completed flag is true
     if (completed) {
       subject.complete();
     }
-  }, 0); // Simulate asynchronous behavior
+  }, 0);
 
   return subject;
 }
 
-
 describe('DeferStream', () => {
   it('should create a new stream each time it is subscribed to', (done) => {
     const emissions: any[] = [1, 2, 3];
-    const factory = jest.fn(() => mockStream(emissions, true));
+    const factory = jasmine.createSpy('factory').and.callFake(() => mockStream(emissions, true));
 
     const deferStream = defer(factory);
 
-    // Collect emissions from the deferred stream
-    const collectedEmissions: Emission[] = [];
+    const collectedEmissions: number[] = [];
     const subscription = deferStream.subscribe({
       next: (value: any) => collectedEmissions.push(value),
       complete: () => {
-        expect(factory).toHaveBeenCalled(); // Check if factory was called
-        expect(collectedEmissions).toHaveLength(3); // Verify all emissions are collected
-        expect(collectedEmissions).toEqual([1, 2, 3]); // Check emission values
+        expect(factory).toHaveBeenCalled();
+        expect(collectedEmissions.length).toBe(3);
+        expect(collectedEmissions).toEqual([1, 2, 3]);
 
         subscription.unsubscribe();
-        done()
-      }
+        done();
+      },
+      error: done.fail,
     });
   });
 
   it('should handle stream completion', (done) => {
-    const factory = jest.fn(() => mockStream([], true));
+    const factory = jasmine.createSpy('factory').and.callFake(() => mockStream([], true));
 
     const deferStream = defer(factory);
 
@@ -56,24 +51,26 @@ describe('DeferStream', () => {
       complete: () => {
         expect(factory).toHaveBeenCalled();
         done();
-      }
+      },
+      error: done.fail,
     });
   });
 
-  it('should handle stream errors', async () => {
+  it('should handle stream errors', (done) => {
     const error = new Error('Test Error');
-    const factory = jest.fn(() => mockStream([], false, error));
+    const factory = jasmine.createSpy('factory').and.callFake(() => mockStream([], false, error));
 
     const deferStream = defer(factory);
 
     deferStream.subscribe({
       error: (e: Error) => {
-        if (e !== error)  {
-          throw new Error('Expected error not received');
-        }
+        expect(e).toEqual(error);
       },
       complete: () => {
-        expect(factory).toHaveBeenCalled();
+        done();
+      },
+      next: () => {
+        fail('Should not emit');
       }
     });
   });
