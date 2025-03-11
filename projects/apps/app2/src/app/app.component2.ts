@@ -105,7 +105,7 @@ export class AppComponent implements OnInit {
     const data = imageData.data;
 
     this.fractal$ = range(0, this.width * this.height).pipe(
-      concatMap(i => {
+      concatMap((i: number) => {
         const px = i % this.width;
         const py = Math.floor(i / this.width);
         // Process sub-pixels and calculate average color

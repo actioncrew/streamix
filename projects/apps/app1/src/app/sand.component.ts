@@ -90,7 +90,7 @@ export class AppSandComponent implements AfterViewInit, OnDestroy {
   private setupEventStreams() {
     const canvas = this.canvasRef.nativeElement;
 
-    const mouseMove$ = fromEvent<MouseEvent>(canvas, 'mousemove').pipe(
+    const mouseMove$ = fromEvent(canvas, 'mousemove').pipe(
       tap(e => {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
