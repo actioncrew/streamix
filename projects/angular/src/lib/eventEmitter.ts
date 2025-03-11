@@ -1,19 +1,19 @@
+import { createSubject, Subject } from '@actioncrew/streamix';
 import { EventEmitter } from '@angular/core';
-import { Stream } from 'streamix';
 
 class StreamixEventEmitter<T> {
-  private stream: Stream<T>;
+  private stream: Subject<T>;
 
   constructor() {
-    this.stream = (emission) => {};
+    this.stream = createSubject();
   }
 
   emit(value: T) {
-    this.stream({ value });
+    this.stream.next(value);
   }
 
   subscribe(callback: (value: T) => void) {
-    return this.stream.forward(({ value }) => callback(value));
+    return this.stream.subscribe(value => callback(value));
   }
 }
 

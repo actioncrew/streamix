@@ -1,17 +1,17 @@
-import { AsyncPipe, Pipe, PipeTransform, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { Stream } from '@actioncrew/streamix';
+import { AsyncPipe } from '@angular/common';
+import { ChangeDetectorRef, OnDestroy, PipeTransform } from '@angular/core';
 
 class StreamixAsyncPipe implements PipeTransform, OnDestroy {
   private _latestValue: any = null;
   private _streamixSubscription: any = null;
-  private _promise: Promise<any> | null = null;
 
   constructor(private _ref: ChangeDetectorRef) {}
 
   transform(input: Promise<any> | Stream<any>): any {
     this._dispose(); // Clean up previous subscriptions
 
-    if (input instanceof Stream) {
+    if ('type' in input && (input?.type === 'stream' || input?.type === 'subject')) {
       // Handle Streamix Stream
       this._streamixSubscription = input.subscribe({
         next: (value) => {
@@ -23,7 +23,6 @@ class StreamixAsyncPipe implements PipeTransform, OnDestroy {
       });
     } else if (input instanceof Promise) {
       // Handle Promise
-      this._promise = input;
       input.then(
         (value) => {
           this._latestValue = value;
@@ -47,7 +46,6 @@ class StreamixAsyncPipe implements PipeTransform, OnDestroy {
       this._streamixSubscription.unsubscribe();
       this._streamixSubscription = null;
     }
-    this._promise = null;
     this._latestValue = null;
   }
 }
