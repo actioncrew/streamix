@@ -5,13 +5,13 @@ export default {
   testTimeout: 30000,
   testEnvironment: 'jsdom',
   moduleNameMapper: {
-    '^@actioncrew/streamix$': '<rootDir>/projects/streamix/src/lib/index.ts'
+    '^@actioncrew/streamix$': '<rootDir>/projects/libraries/streamix/src/lib/index.ts'
   },
   projects: [
     {
       displayName: "streamix",
       preset: "jest-preset-angular",
-      testMatch: ["<rootDir>/projects/streamix/**/*.spec.ts"],
+      testMatch: ["<rootDir>/projects/libraries/streamix/**/*.spec.ts"],
     }
   ]
 };

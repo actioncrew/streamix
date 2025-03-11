@@ -27,16 +27,16 @@
     ],
     "paths": {
       "@actioncrew/streamix": [
-        "./projects/streamix/src/public-api.ts",
+        "./projects/libraries/streamix/src/public-api.ts",
       ],
       "@actioncrew/streamix/http": [
-        "./projects/streamix/http/src/public-api.ts"
+        "./projects/libraries/streamix/http/src/public-api.ts"
       ],
       "@actioncrew/streamix/coroutine/async": [
-        "./projects/streamix/coroutine/async/src/public-api.ts"
+        "./projects/libraries/streamix/coroutine/async/src/public-api.ts"
       ],
       "@streamix/angular": [
-        "./projects/angular/src/public-api.ts",
+        "./projects/libraries/angular/src/public-api.ts",
       ]
     }
   },
