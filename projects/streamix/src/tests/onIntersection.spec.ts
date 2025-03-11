@@ -1,44 +1,45 @@
 import { onIntersection } from '../lib';
 
 // Set up Jest environment with jsdom
+let testContainer: any;
+
 beforeAll(() => {
-  // Ensure the DOM environment is ready
-  document.body.innerHTML = `<div style="height: 1000px;"></div>`;
+  // Create a dedicated test container to avoid modifying the body directly
+  testContainer = document.createElement('div');
+  testContainer.style.height = '1000px';
+  document.body.appendChild(testContainer);
 });
 
 afterEach(() => {
-  document.body.innerHTML = ''; // Clean up DOM after each test
+  // Remove only the test container's children to preserve the body
+  testContainer.innerHTML = '';
 });
 
 xdescribe('Functional tests for fromIntersectionObserver', () => {
-  let element: HTMLElement;
-  let visibilityStream: any;
+  let element: any;
+  let visibilityStream;
 
   test('should emit true when element is visible', (done) => {
     element = document.createElement('div');
-    element.style.height = '100px';
-    element.style.width = '100px';
-    element.style.background = 'red';
-    element.style.position = 'absolute';
-    element.style.top = '500px';
-
-    document.body.appendChild(element);
+    Object.assign(element.style, {
+      height: '100px',
+      width: '100px',
+      background: 'red',
+      position: 'absolute',
+      top: '500px'
+    });
+    testContainer.appendChild(element);
 
     visibilityStream = onIntersection(element);
-
-    const emittedValues: boolean[] = [];
+    const emittedValues: any[] = [];
     const subscription = visibilityStream.subscribe({
-      next: (isVisible: boolean) => {
-        emittedValues.push(isVisible);
-      },
+      next: (isVisible) => emittedValues.push(isVisible),
       complete: () => console.log('hurra')
     });
 
-    // Wait a moment to let IntersectionObserver detect visibility
     setTimeout(() => {
       expect(emittedValues).toContain(true);
-      // Cleanup DOM
-      document.body.removeChild(element);
+      testContainer.removeChild(element);
       subscription.unsubscribe();
       done();
     }, 100);
@@ -46,57 +47,47 @@ xdescribe('Functional tests for fromIntersectionObserver', () => {
 
   test('should emit false when element is scrolled out of view', async () => {
     element = document.createElement('div');
-    element.style.height = '100px';
-    element.style.width = '100px';
-    element.style.background = 'blue';
-    element.style.position = 'absolute';
-    element.style.top = '-100px'; // Element is off-screen by default
-
-    document.body.appendChild(element);
+    Object.assign(element.style, {
+      height: '100px',
+      width: '100px',
+      background: 'blue',
+      position: 'absolute',
+      top: '-100px'
+    });
+    testContainer.appendChild(element);
 
     visibilityStream = onIntersection(element);
-
-    const emittedValues: boolean[] = [];
+    const emittedValues: any[] = [];
     const subscription = visibilityStream.subscribe({
-      next: (isVisible: boolean) => {
-        emittedValues.push(isVisible);
-      },
+      next: (isVisible) => emittedValues.push(isVisible)
     });
 
     await new Promise((resolve) => setTimeout(resolve, 100));
-
     expect(emittedValues).toContain(false);
 
-    // Cleanup DOM
-    document.body.removeChild(element);
+    testContainer.removeChild(element);
     subscription.unsubscribe();
   });
 
   test('should properly clean up observer when element is removed', async () => {
     element = document.createElement('div');
-    element.style.height = '100px';
-    element.style.width = '100px';
-    element.style.background = 'green';
-    element.style.position = 'absolute';
-    element.style.top = '500px';
-
-    document.body.appendChild(element);
+    Object.assign(element.style, {
+      height: '100px',
+      width: '100px',
+      background: 'green',
+      position: 'absolute',
+      top: '500px'
+    });
+    testContainer.appendChild(element);
 
     visibilityStream = onIntersection(element);
+    const subscription = visibilityStream.subscribe(() => {});
 
-    const subscription = visibilityStream();
-
-    // Wait for observer to initialize
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    testContainer.removeChild(element);
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Remove the element
-    document.body.removeChild(element);
-
-    // Wait for cleanup
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    expect(subscription.closed).toBe(true);
-
+    expect(visibilityStream.completed()).toBe(true);
     subscription.unsubscribe();
   });
 });
