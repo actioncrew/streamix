@@ -6,6 +6,7 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "jasmine": "npx ts-node --experimental-specifier-resolution=node node_modules/jasmine/bin/jasmine.js",
     "test": "jest --verbose",
     "test:coverage": "jest --coverage --watchAll=false --selectProjects streamix",
     "test:watch": "jest --watch",
