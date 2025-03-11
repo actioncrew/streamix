@@ -163,6 +163,36 @@ const subscription = onResize(this.canvas).pipe(
 
 ---
 
+## HTTP Client
+
+The HttpClient provided by this library is a powerful tool for making HTTP requests with middleware support and streaming capabilities. It allows you to chain middleware functions to modify requests and handle responses in a flexible manner. Below is an example of how to use the HttpClient to make a GET request and process the response as a JSON stream:
+
+```typescript
+import { createHttpClient, readJson, useBase, useLogger, useTimeout } from './httpClient';
+
+async function fetchData() {
+  // Create an HTTP client with middleware for base URL, logging, and timeout
+  const client = createHttpClient().withDefaults(
+    useBase("https://api.example.com"), // Set the base URL
+    useLogger(), // Log requests and responses
+    useTimeout(5000), // Set a 5-second timeout
+  );
+
+  // Make a GET request to the "/data" endpoint and parse the response as JSON
+  const responseStream = client.get("/data", readJson);
+
+  try {
+    // Iterate over the response stream and log each value
+    for await (const value of eachValueFrom(responseStream)) {
+      console.log("Received data:", value);
+    }
+  } catch (error) {
+    console.error("Unexpected error:", error);
+  }
+}
+
+fetchData();
+```
 
 ## Why Streamix?
 Streamix is designed for those who need a straightforward way to manage asynchronous data without the complexity of larger frameworks. It's a great alternative to RxJS for simpler use cases, offering all the core functionality you need in a more lightweight, efficient package.
