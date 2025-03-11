@@ -1,7 +1,7 @@
-import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createStreamOperator, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams";
 
-export function takeWhile<T>(predicate: (value: T) => boolean): StreamOperator {
+export function takeWhile<T>(predicate: (value: T) => boolean): Transformer {
   const operator = (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
 

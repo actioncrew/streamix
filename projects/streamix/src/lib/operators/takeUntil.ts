@@ -1,7 +1,7 @@
-import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createStreamOperator, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams";
 
-export function takeUntil<T>(notifier: Stream<any>): StreamOperator {
+export function takeUntil<T>(notifier: Stream<any>): Transformer {
   const operator = (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
     let notifierEmitted = false;

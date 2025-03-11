@@ -1,13 +1,13 @@
 import {
-  createEmission,
-  createReceiver,
-  createSubscription,
-  Emission,
-  Operator,
-  pipeStream,
-  Receiver,
-  StreamOperator,
-  Subscription,
+    createEmission,
+    createReceiver,
+    createSubscription,
+    Emission,
+    Operator,
+    pipeStream,
+    Receiver,
+    Subscription,
+    Transformer,
 } from "../abstractions";
 import { Subject } from "../streams";
 
@@ -159,7 +159,7 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
     emissionCounter,
     [Symbol.asyncIterator]: asyncIterator,
     subscribe,
-    pipe: (...steps: (Operator | StreamOperator)[]) => pipeStream(stream, ...steps),
+    pipe: (...steps: (Operator | Transformer)[]) => pipeStream(stream, ...steps),
     value: () => buffer[buffer.length - 1], // Get the latest value
     next,
     complete,

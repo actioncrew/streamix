@@ -1,7 +1,7 @@
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, Transformer } from '../abstractions';
 import { createSubject } from '../streams/subject';
 
-export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamOperator {
+export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): Transformer {
   let index = 0;
   return createStreamOperator('mergeMap', (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();

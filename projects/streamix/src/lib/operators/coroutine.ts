@@ -2,11 +2,11 @@ import {
   createEmission,
   createStreamOperator,
   Stream,
-  StreamOperator,
+  Transformer,
 } from '../abstractions';
 import { createSubject, Subject } from '../streams';
 
-export type Coroutine = StreamOperator & {
+export type Coroutine = Transformer & {
   finalize: () => Promise<void>;
   processTask: (data: any) => Promise<any>;
   getIdleWorker: () => Promise<Worker>;

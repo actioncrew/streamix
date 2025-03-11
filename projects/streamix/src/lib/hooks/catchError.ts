@@ -1,8 +1,8 @@
-import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createStreamOperator, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
 // Define the catchError operator
-export const catchError = (handler: (error: any) => void): StreamOperator => {
+export const catchError = (handler: (error: any) => void): Transformer => {
   const operator = (inputStream: Stream<any>): Stream<any> => {
     const output = createSubject<any>();
 

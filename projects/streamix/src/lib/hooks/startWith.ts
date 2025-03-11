@@ -1,7 +1,7 @@
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, Transformer } from '../abstractions';
 import { createBehaviorSubject } from '../streams';
 
-export const startWith = (value: any): StreamOperator => {
+export const startWith = (value: any): Transformer => {
   const operator = (input: Stream): Stream => {
     const output = createBehaviorSubject<any>(value); // Create the output stream
 

@@ -1,6 +1,6 @@
 import { Emission, Stream } from '../abstractions';
 
-export type StreamOperator<T = any, K = any> = Omit<Operator, "handle"> & {
+export type Transformer<T = any, K = any> = Omit<Operator, "handle"> & {
   (stream: Stream<T>): Stream<K>;
 }
 
@@ -18,8 +18,8 @@ export const createOperator = (name: string, handleFn: (emission: Emission) => E
   };
 };
 
-export const createStreamOperator = (name: string, handleFn: (stream: Stream) => Stream): StreamOperator => {
-  const operator = handleFn as StreamOperator;
+export const createStreamOperator = (name: string, handleFn: (stream: Stream) => Stream): Transformer => {
+  const operator = handleFn as Transformer;
   Object.defineProperty(operator, 'name', { writable: true, enumerable: true, configurable: true });
   operator.name = name;
   operator.type = 'operator';

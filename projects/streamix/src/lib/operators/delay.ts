@@ -1,7 +1,7 @@
-import { createStreamOperator, Stream, StreamOperator } from '../abstractions';
+import { createStreamOperator, Stream, Transformer } from '../abstractions';
 import { createSubject } from '../streams';
 
-export function delay<T>(ms: number): StreamOperator {
+export function delay<T>(ms: number): Transformer {
   return createStreamOperator('delay', (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
 

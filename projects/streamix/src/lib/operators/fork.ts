@@ -1,9 +1,9 @@
-import { createStreamOperator, Stream, StreamOperator } from "../abstractions";
+import { createStreamOperator, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams";
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T, index: number) => boolean; handler: (value: T) => Stream<R> }>
-): StreamOperator => {
+): Transformer => {
   let index = 0;
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();

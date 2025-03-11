@@ -1,6 +1,6 @@
 import { createSubject } from "../streams/subject";
 import { createEmission, Emission } from "./emission";
-import { Operator, StreamOperator } from "./operator";
+import { Operator, Transformer } from "./operator";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
@@ -11,7 +11,7 @@ export type Stream<T = any> = {
   emissionCounter: number;
   [Symbol.asyncIterator]: () => AsyncGenerator<Emission<T>, void, unknown>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
-  pipe: <K = any>(...steps: (Operator | StreamOperator<T, K>)[]) => Stream<K>;
+  pipe: <K = any>(...steps: (Operator | Transformer<T, K>)[]) => Stream<K>;
   value: () => T | undefined;
   completed: () => boolean;
 };
@@ -19,7 +19,7 @@ export type Stream<T = any> = {
 // Functional composition to extend stream functionality
 export function pipeStream<T = any, K = any>(
   stream: Stream<T>,
-  ...steps: (Operator | StreamOperator)[]
+  ...steps: (Operator | Transformer)[]
 ): Stream<K> {
   let combinedStream: Stream<any> = stream;
   let operatorsGroup: Operator[] = [];
@@ -153,7 +153,7 @@ export function createStream<T>(
       }
     },
     subscribe,
-    pipe: (...steps: (Operator | StreamOperator)[]) => pipeStream(stream, ...steps),
+    pipe: (...steps: (Operator | Transformer)[]) => pipeStream(stream, ...steps),
     value: () => currentValue,
     completed: () => completed,
   };
