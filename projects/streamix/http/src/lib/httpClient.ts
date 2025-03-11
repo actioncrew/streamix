@@ -64,7 +64,7 @@ export type HttpClient = {
    * @param {...Middleware} middlewares - The middleware functions to add.
    * @returns {HttpClient} The updated HTTP client instance.
    */
-  use(this: HttpClient, ...middlewares: Middleware[]): HttpClient;
+  withDefaults(this: HttpClient, ...middlewares: Middleware[]): HttpClient;
 
   /**
    * Performs an HTTP GET request.
@@ -142,7 +142,7 @@ export type HttpClient = {
  * @param {function} customFetch - The custom fetch function to set in the context.
  * @returns A middleware function.
  */
-export const custom = (customFetch: Function): Middleware => {
+export const useCustom = (customFetch: Function): Middleware => {
   return (next) => async (context: Context) => {
     context.fetch = customFetch;
     return await next(context);
@@ -154,7 +154,7 @@ export const custom = (customFetch: Function): Middleware => {
  * @param baseUrl The base URL to resolve relative URLs against.
  * @returns A middleware function.
  */
-export const base = (baseUrl: string): Middleware => {
+export const useBase = (baseUrl: string): Middleware => {
   return (next) => async (context: Context) => {
     const url =
       context.url.startsWith('http://') || context.url.startsWith('https://')
@@ -171,7 +171,7 @@ export const base = (baseUrl: string): Middleware => {
  * @param contentType The content type to set in the Accept header.
  * @returns A middleware function.
  */
-export const accept = (contentType: string): Middleware => {
+export const useAccept = (contentType: string): Middleware => {
   return (next) => async (context) => {
     context.headers['Accept'] = contentType;
     return await next(context);
@@ -183,7 +183,7 @@ export const accept = (contentType: string): Middleware => {
  * @param config Configuration for token retrieval and refresh.
  * @returns A middleware function.
  */
-export const oauth = ({
+export const useOauth = ({
   getToken,
   refreshToken,
   shouldRetry = () => true, // Default to always retry
@@ -216,7 +216,7 @@ export const oauth = ({
  * @param shouldRetry A function to determine if an error should be retried (default: retry all errors).
  * @returns A middleware function.
  */
-export const retry = (
+export const useRetry = (
   maxRetries: number = 3,
   backoffBase: number = 1000,
   shouldRetry: (error: any, context: Context) => boolean = () => true,
@@ -257,7 +257,7 @@ export const retry = (
  * @param maxRedirects The maximum number of redirects to follow. Defaults to 5.
  * @returns A middleware function.
  */
-export const redirect = (maxRedirects: number = 5): Middleware => {
+export const useRedirect = (maxRedirects: number = 5): Middleware => {
   return (next) => async (context) => {
     let redirectCount = 0;
 
@@ -298,7 +298,7 @@ export const redirect = (maxRedirects: number = 5): Middleware => {
  * @param value The header value.
  * @returns A middleware function.
  */
-export const header = (name: string, value: string): Middleware => {
+export const useHeader = (name: string, value: string): Middleware => {
   return (next) => async (context) => {
     context.headers[name] = value;
     return await next(context);
@@ -310,7 +310,7 @@ export const header = (name: string, value: string): Middleware => {
  * @param data The query parameters as a key-value object.
  * @returns A middleware function.
  */
-export const params = (data: Record<string, any>): Middleware => {
+export const useParams = (data: Record<string, any>): Middleware => {
   return (next) => async (context) => {
     context.params = { ...data, ...context.params };
     return await next(context);
@@ -322,7 +322,7 @@ export const params = (data: Record<string, any>): Middleware => {
  * @param handler The error handler function.
  * @returns A middleware function.
  */
-export const fallback = (
+export const useFallback = (
   handler: (error: any, context: Context) => Context,
 ): Middleware => {
   return (next) => async (context) => {
@@ -339,7 +339,7 @@ export const fallback = (
  * @param logger The logger function. Defaults to console.log.
  * @returns A middleware function.
  */
-export const logging = (
+export const useLogger = (
   logger: (message: string) => void = console.log,
 ): Middleware => {
   return (next) => async (context) => {
@@ -357,7 +357,7 @@ export const logging = (
  * @param ms The timeout in milliseconds.
  * @returns A middleware function.
  */
-export const timeout = (ms: number): Middleware => {
+export const useTimeout = (ms: number): Middleware => {
   return (next) => async (context: Context) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), ms);
@@ -390,12 +390,12 @@ export const timeout = (ms: number): Middleware => {
  * @example
  * ```typescript
  * async function fetchData() {
- *   const client = createHttpClient().use(
- *     base("https://api.example.com"),
- *     accept("application/json"),
- *     logging(),
- *     timeout(5000),
- *     fallback((error, context) => {
+ *   const client = createHttpClient().withDefaults(
+ *     useBase("https://api.example.com"),
+ *     useAccept("application/json"),
+ *     useLogger(),
+ *     useTimeout(5000),
+ *     useFallback((error, context) => {
  *       console.error("Request failed:", error);
  *       return context;
  *     })
@@ -404,8 +404,8 @@ export const timeout = (ms: number): Middleware => {
  *   const responseStream = client.get("/data", readJson);
  *
  *   try {
- *     for await (const emission of responseStream) {
- *       console.log("Received data:", emission.value);
+ *     for await (const value of eachValueFrom(responseStream)) {
+ *       console.log("Received data:", value);
  *     }
  *   } catch (error) {
  *     console.error("Unexpected error:", error);
@@ -416,9 +416,9 @@ export const timeout = (ms: number): Middleware => {
  *
  * async function postData() {
  *   const client = createHttpClient().use(
- *     base("https://api.example.com"),
- *     logging(),
- *     fallback((error, context) => {
+ *     useBase("https://api.example.com"),
+ *     useLogger(),
+ *     useFallback((error, context) => {
  *       console.error("Post request failed:", error);
  *       return context;
  *     })
@@ -427,8 +427,8 @@ export const timeout = (ms: number): Middleware => {
  *   const responseStream = client.post("/items");
  *
  *   try {
- *     for await (const emission of responseStream) {
- *       console.log("Post response:", emission.value);
+ *     for await (const value of eachValueFrom(responseStream)) {
+ *       console.log("Post response:", value);
  *     }
  *   } catch (error) {
  *     console.error("Post request error:", error);
@@ -573,7 +573,7 @@ export const createHttpClient = (): HttpClient => {
 
 
   return {
-    use: function (this: HttpClient, ...newMiddlewares: Middleware[]) {
+    withDefaults: function (this: HttpClient, ...newMiddlewares: Middleware[]) {
       middlewares.push(...newMiddlewares);
       return this;
     },

@@ -1,30 +1,30 @@
 import { catchError } from '@actioncrew/streamix';
 import {
-  accept,
-  base,
-  createHttpClient,
-  fallback,
-  header,
-  logging,
-  readChunks,
-  readFull,
-  readJson,
-  readNdjsonChunk,
-  readText,
-  redirect,
-  timeout,
+    createHttpClient,
+    readChunks,
+    readFull,
+    readJson,
+    readNdjsonChunk,
+    readText,
+    useAccept,
+    useBase,
+    useFallback,
+    useHeader,
+    useLogger,
+    useRedirect,
+    useTimeout,
 } from '@actioncrew/streamix/http';
 
 async function fetchData() {
   const client = createHttpClient();
 
   client
-    .use(base('http://localhost:3000'))
-    .use(accept('application/json'))
-    .use(logging())
-    .use(timeout(5000))
-    .use(
-      fallback((error, context) => {
+    .withDefaults(useBase('http://localhost:3000'))
+    .withDefaults(useAccept('application/json'))
+    .withDefaults(useLogger())
+    .withDefaults(useTimeout(5000))
+    .withDefaults(
+      useFallback((error, context) => {
         console.error('Request failed:', error);
         return context;
       }),
@@ -46,10 +46,10 @@ async function postData() {
   const client = createHttpClient();
 
   client
-    .use(base('http://localhost:3000'))
-    .use(logging())
-    .use(
-      fallback((error, context) => {
+    .withDefaults(useBase('http://localhost:3000'))
+    .withDefaults(useLogger())
+    .withDefaults(
+      useFallback((error, context) => {
         console.error('Post request failed:', error);
         return context;
       }),
@@ -70,7 +70,7 @@ async function postData() {
 
 async function testBinary() {
   const client = createHttpClient();
-  client.use(base('http://localhost:3000'));
+  client.withDefaults(useBase('http://localhost:3000'));
   const responseStream = client.get('/binary', readFull);
   try {
     for await (const emission of responseStream) {
@@ -83,7 +83,7 @@ async function testBinary() {
 
 async function testNotFound() {
   const client = createHttpClient();
-  client.use(base('http://localhost:3000'));
+  client.withDefaults(useBase('http://localhost:3000'));
   const responseStream = client.get('/not-found', readText).pipe(catchError(() => console.log('Not found as expected')));;
   try {
     for await (const emission of responseStream) {
@@ -96,8 +96,8 @@ async function testNotFound() {
 
 async function testRedirect() {
   const client = createHttpClient();
-  client.use(base('http://localhost:3000'));
-  client.use(redirect(2));
+  client.withDefaults(useBase('http://localhost:3000'));
+  client.withDefaults(useRedirect(2));
 
   const responseStream = client.get('/auto-redirect', readJson);
   try {
@@ -111,8 +111,8 @@ async function testRedirect() {
 
 async function testManualRedirect() {
   const client = createHttpClient();
-  client.use(base('http://localhost:3000'));
-  client.use(redirect(2));
+  client.withDefaults(useBase('http://localhost:3000'));
+  client.withDefaults(useRedirect(2));
 
   const responseStream = client.get('/manual-redirect', readJson);
   try {
@@ -126,8 +126,8 @@ async function testManualRedirect() {
 
 async function testTimeout() {
   const client = createHttpClient();
-  client.use(base('http://localhost:3000'));
-  client.use(timeout(1000));
+  client.withDefaults(useBase('http://localhost:3000'));
+  client.withDefaults(useTimeout(1000));
   const responseStream = client.get('/timeout', readText).pipe(catchError(() => console.log('Timeout as expected')));
   try {
     for await (const emission of responseStream) {
@@ -142,12 +142,12 @@ async function testOllama() {
   const client = createHttpClient();
 
   client
-    .use(base('http://localhost:11434')) // Ollama server
-    .use(logging())
-    .use(header("Content-Type", "application/json"))
-    .use(accept('application/json'))
-    .use(
-      fallback((error, context) => {
+    .withDefaults(useBase('http://localhost:11434')) // Ollama server
+    .withDefaults(useLogger())
+    .withDefaults(useHeader("Content-Type", "application/json"))
+    .withDefaults(useAccept('application/json'))
+    .withDefaults(
+      useFallback((error, context) => {
         console.error('Ollama request failed:', error);
         return context;
       }),

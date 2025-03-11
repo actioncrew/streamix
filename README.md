@@ -13,7 +13,7 @@ Streamix is a **lightweight alternative to RxJS**, offering a streamlined approa
 
 ---
 
-## Benefits of using Generators for Reactive Programming
+## Benefits of using Generators
 
 Generators (function* and async function* in JavaScript) offer a **pull-based** model for iteration, contrasting with the **push-based** model used in RxJS and similar libraries. With generators, values are only produced when requested via .next(), allowing for more efficient execution by avoiding unnecessary computations. In contrast, traditional RxJS observables push values to subscribers regardless of whether they are ready to handle them, potentially leading to wasted processing or memory usage.
 
@@ -156,7 +156,7 @@ const subscription = onResize(this.canvas).pipe(
 | `tap` | Performs side effects without modifying emissions. |
 | `timer` | Emits values after a delay. |
 | `toArray` | Collects emitted values into an array. |
-| `throwException` | Emits an error in the observable stream. |
+| `throwError` | Emits an error in the observable stream. |
 | `withLatestFrom` | Combines values from multiple streams. |
 | `webSocket` | Creates a stream from a WebSocket connection, emitting messages as they arrive in real time. | 
 | `zip` | Combines values from multiple streams in a one-to-one fashion. |

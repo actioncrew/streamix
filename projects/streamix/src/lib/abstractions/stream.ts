@@ -99,9 +99,11 @@ export function createStream<T>(
 
   async function* generator() {
     for await (const emission of generatorFn.call(stream)) {
-      emissionCounter++;
-      currentValue = emission.value;
-      yield emission;
+      if (!emission.error && !emission.phantom) {
+        emissionCounter++;
+        currentValue = emission.value;
+        yield emission;
+      }
     }
   }
 
