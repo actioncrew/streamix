@@ -167,11 +167,7 @@ async function generateTagDescription(tagName, commits) {
 
         // Validate and parse the JSON response
         try {
-            const jsonResponse = JSON.parse(responseText);
-            if (!jsonResponse.tagName || !jsonResponse.description) {
-                throw new Error("Invalid JSON structure");
-            }
-            return jsonResponse;
+            return JSON.parse(responseText);
         } catch (parseError) {
             console.error("Error parsing LLM response as JSON:", parseError);
             return {
