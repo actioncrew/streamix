@@ -7,6 +7,24 @@
       "request": "launch",
       "name": "Run Jasmine Test",
       "program": "${workspaceFolder}/node_modules/jasmine/bin/jasmine.js",
+      "args": ["${file}"], // Runs the current file
+      "cwd": "${workspaceFolder}", // Sets the working directory to the workspace folder
+      "runtimeArgs": [
+        "--loader",
+        "ts-node/esm", // Enables TypeScript support with ES modules
+        "--experimental-specifier-resolution=node" // Allows directory imports
+      ],
+      "console": "integratedTerminal", // Shows output in the integrated terminal
+      "internalConsoleOptions": "neverOpen", // Prevents opening the internal console
+      "sourceMaps": false, // Enables source maps for debugging TypeScript
+      "skipFiles": ["<node_internals>/**"], // Skips Node.js internal files
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"] // Maps compiled JS files to TS source files (if applicable)
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Jasmine Test",
+      "program": "${workspaceFolder}/node_modules/jasmine/bin/jasmine.js",
       "args": ["${file}"],
       "cwd": "${workspaceFolder}",
       "runtimeArgs": [
