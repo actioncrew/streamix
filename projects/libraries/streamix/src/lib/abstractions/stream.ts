@@ -4,7 +4,7 @@ import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
 // Basic Stream type definition
-export type Stream<T = any> = {
+export interface Stream<T = any> {
   type: "stream" | "subject";
   name?: string;
   emissionCounter: number;
