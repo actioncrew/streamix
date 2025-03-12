@@ -1,4 +1,4 @@
-import { createEmission, createStream, retry } from "../lib";
+import { createStream, retry } from "../lib";
 
 describe('retry stream', () => {
   it('should retry the stream once on error and emit correct values', async () => {
@@ -7,12 +7,12 @@ describe('retry stream', () => {
       attempt++;
       return createStream<number>('testStream', async function* () {
         if (attempt === 1) {
-          yield createEmission({ value: 1 });
-          yield createEmission({ value: 2 });
+          yield 1;
+          yield 2;
           throw new Error('Test Error');
         } else {
-          yield createEmission({ value: 3 });
-          yield createEmission({ value: 4 });
+          yield 3;
+          yield 4;
         }
       });
     });
@@ -20,8 +20,8 @@ describe('retry stream', () => {
     const result: number[] = [];
     const stream$ = retry(factory, 3, 1000);
 
-    for await (const emission of stream$) {
-      result.push(emission.value!);
+    for await (const value of stream$) {
+      result.push(value);
     }
 
     expect(result).toEqual([3, 4]);
@@ -31,16 +31,16 @@ describe('retry stream', () => {
   it('should not retry if stream completes successfully on first try', async () => {
     const factory = jasmine.createSpy('factory').and.callFake(() => {
       return createStream<number>('testStream', async function* () {
-        yield createEmission({ value: 1 });
-        yield createEmission({ value: 2 });
+        yield 1;
+        yield 2;
       });
     });
 
     const result: number[] = [];
     const stream$ = retry(factory, 3, 1000);
 
-    for await (const emission of stream$) {
-      result.push(emission.value!);
+    for await (const value of stream$) {
+      result.push(value);
     }
 
     expect(result).toEqual([1, 2]);
@@ -75,12 +75,12 @@ describe('retry stream', () => {
       attempt++;
       return createStream<number>('testStream', async function* () {
         if (attempt === 1) {
-          yield createEmission({ value: 1 });
-          yield createEmission({ value: 2 });
+          yield 1;
+          yield 2;
           throw new Error('Test Error');
         } else {
-          yield createEmission({ value: 3 });
-          yield createEmission({ value: 4 });
+          yield 3;
+          yield 4;
         }
       });
     });
@@ -88,8 +88,8 @@ describe('retry stream', () => {
     const result: number[] = [];
     const stream$ = retry(factory, 3, 1000);
 
-    for await (const emission of stream$) {
-      result.push(emission.value!);
+    for await (const value of stream$) {
+      result.push(value);
     }
 
     expect(result).toEqual([3, 4]);

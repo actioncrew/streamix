@@ -11,8 +11,8 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
     // Async generator to process inner streams sequentially
     const processInnerStream = async (innerStream: Stream<R>) => {
       try {
-        for await (const emission of innerStream) {
-          output.next(emission.value!); // Forward value from inner stream
+        for await (const value of innerStream) {
+          output.next(value); // Forward value from inner stream
         }
       } catch (err) {
         // Handle error in inner stream without affecting other emissions
@@ -29,9 +29,9 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
     (async () => {
       try {
         let hasValue = false;
-        for await (const emission of input) {
+        for await (const value of input) {
           hasValue = true;
-          const innerStream = project(emission.value!, index++); // Project input to inner stream
+          const innerStream = project(value, index++); // Project input to inner stream
           activeInnerStreams += 1;
           processInnerStream(innerStream); // Process the inner stream sequentially
         }

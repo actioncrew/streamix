@@ -7,9 +7,9 @@ export function delay<T>(ms: number): Transformer {
 
     (async () => {
       try {
-        for await (const emission of input) {
+        for await (const value of input) {
           await new Promise((resolve) => setTimeout(resolve, ms)); // Delay before forwarding
-          output.next(emission.value!);
+          output.next(value);
         }
       } catch (err) {
         output.error(err);

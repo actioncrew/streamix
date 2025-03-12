@@ -11,9 +11,9 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
     // Async function to handle inner streams
     const processInnerStream = async (innerStream: Stream<R>) => {
       try {
-        for await (const innerEmission of innerStream) {
+        for await (const value of innerStream) {
           if (hasError) return; // Stop processing if an error has occurred
-          output.next(innerEmission.value!);
+          output.next(value);
         }
       } catch (err) {
         if (!hasError) {
@@ -33,10 +33,10 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
     // Process the outer stream emissions
     (async () => {
       try {
-        for await (const emission of input) {
+        for await (const value of input) {
           if (hasError) return; // Stop processing if an error has occurred
 
-          const innerStream = project(emission.value!, index++); // Project input to inner stream
+          const innerStream = project(value, index++); // Project input to inner stream
           activeInnerStreams += 1;
           processInnerStream(innerStream); // Process the inner stream concurrently
         }

@@ -8,8 +8,8 @@ export function shareReplay<T>(bufferSize: number = Infinity): Transformer {
     // Async generator to handle the input stream with shareReplay logic
     (async () => {
       try {
-        for await (const emission of input) {
-          output.next(emission.value!); // Replay the value from the input stream
+        for await (const value of input) {
+          output.next(value); // Replay the value from the input stream
         }
       } catch (err) {
         output.error(err); // Propagate any error

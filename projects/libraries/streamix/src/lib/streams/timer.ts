@@ -1,4 +1,4 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
@@ -15,7 +15,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
 
     // Emit the first value immediately
     if (!this.completed()) {
-      yield createEmission({ value: timerValue++ });
+      yield timerValue++;
     }
 
     // Emit subsequent values at intervals
@@ -23,7 +23,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       await new Promise(resolve => setTimeout(resolve, actualIntervalMs));
 
       if (!this.completed()) {
-        yield createEmission({ value: timerValue++ });
+        yield timerValue++;
       }
     }
   });

@@ -9,9 +9,9 @@ export function takeUntil<T>(notifier: Stream<any>): Transformer {
     // Async generator to handle the input stream with takeUntil logic
     const processInputStream = async () => {
       try {
-        for await (const emission of input) {
+        for await (const value of input) {
           if (notifierEmitted) return; // Stop processing if the notifier has emitted
-          output.next(emission.value!); // Forward the value from the input stream
+          output.next(value); // Forward the value from the input stream
         }
       } catch (err) {
         output.error(err); // Propagate any error

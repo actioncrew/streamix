@@ -1,7 +1,7 @@
-import { createEmission, createStream, Stream } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
-export function onAnimationFrame<T = number>(): Stream<T> {
-  return createStream<T>('onAnimationFrame', async function* (this: Stream<T>) {
+export function onAnimationFrame(): Stream<number> {
+  return createStream<number>('onAnimationFrame', async function* (this: Stream<number>) {
     let lastFrameTime = performance.now();
 
     while (!this.completed()) {
@@ -12,7 +12,7 @@ export function onAnimationFrame<T = number>(): Stream<T> {
       const elapsedTime = currentTime - lastFrameTime;
       lastFrameTime = currentTime;
 
-      yield createEmission({ value: elapsedTime });
+      yield elapsedTime;
     }
   });
 }

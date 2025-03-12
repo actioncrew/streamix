@@ -6,8 +6,8 @@ export async function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
 
   try {
     // Use async iterator to iterate over the stream
-    for await (const emission of stream) {
-      lastValue = emission.value;
+    for await (const value of stream) {
+      lastValue = value;
       hasValue = true;
     }
 

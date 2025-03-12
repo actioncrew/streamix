@@ -1,5 +1,5 @@
 import { createSubject } from '..';
-import { createEmission, createStreamOperator, Stream, Transformer } from '../abstractions';
+import { createStreamOperator, Stream, Transformer } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Transformer => {
   const operator = (input: Stream): Stream => {
@@ -8,13 +8,13 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): T
 
     // Use async iterator to iterate over the input stream
     const reduceIterator = async function* () {
-      for await (const emission of input) {
+      for await (const value of input) {
         // Apply the accumulator function on each emission
-        accumulatedValue = accumulator(accumulatedValue, emission.value);
+        accumulatedValue = accumulator(accumulatedValue, value);
       }
 
       // Emit the final accumulated value after stream completion
-      yield createEmission({ value: accumulatedValue });
+      yield accumulatedValue;
     };
 
     // Handle the input stream and process values

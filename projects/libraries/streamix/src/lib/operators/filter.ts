@@ -1,19 +1,18 @@
-import { createOperator, Emission, Operator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 
 export const filter = <T = any>(
   predicateOrValue: ((value: any) => boolean) | T | T[]
 ): Operator => {
-  const handle = (emission: Emission): Emission => {
+  const handle = (value: any): any => {
     const phantom =
       predicateOrValue instanceof Function
-        ? !predicateOrValue(emission.value)
+        ? !predicateOrValue(value)
         : Array.isArray(predicateOrValue)
-        ? !predicateOrValue.includes(emission.value)
-        : emission.value !== predicateOrValue;
+        ? !predicateOrValue.includes(value)
+        : value !== predicateOrValue;
 
-    if (phantom) emission.phantom = true;
-    else delete emission.phantom;
-    return emission;
+    if (phantom) return undefined;
+    else return value;
   };
 
   return createOperator('filter', handle);

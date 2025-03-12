@@ -12,8 +12,8 @@ export const fork = <T = any, R = T>(
     // Helper function to handle inner streams concurrently
     const processInnerStream = async (innerStream: Stream<R>) => {
       try {
-        for await (const innerEmission of innerStream) {
-          output.next(innerEmission.value!); // Forward value from the inner stream
+        for await (const value of innerStream) {
+          output.next(value); // Forward value from the inner stream
         }
       } catch (innerErr) {
         output.error(innerErr); // Propagate errors from the inner stream
@@ -30,18 +30,18 @@ export const fork = <T = any, R = T>(
     (async () => {
       try {
         // Use a for-await loop to process the outer stream
-        for await (const emission of input) {
-          const matchedOption = options.find(({ on }) => on(emission.value!, index++));
+        for await (const value of input) {
+          const matchedOption = options.find(({ on }) => on(value, index++));
 
           if (matchedOption) {
-            const innerStream = matchedOption.handler(emission.value!); // Create inner stream
+            const innerStream = matchedOption.handler(value); // Create inner stream
             activeInnerStreams += 1; // Increment active inner stream count
 
             // Process the inner stream concurrently without awaiting each one
             processInnerStream(innerStream);
           } else {
             // Log a warning if no handler is found (optional)
-            throw Error(`No handler found for value: ${emission.value!}`);
+            throw Error(`No handler found for value: ${value}`);
           }
         }
       } catch (outerErr) {

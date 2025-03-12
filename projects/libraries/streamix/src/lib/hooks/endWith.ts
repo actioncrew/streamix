@@ -9,8 +9,8 @@ export const endWith = (value: any): Transformer => {
     (async () => {
       try {
         // Iterate over the input stream asynchronously
-        for await (const emission of input) {
-          output.next(emission.value); // Forward emissions from the original stream
+        for await (const value of input) {
+          output.next(value); // Forward emissions from the original stream
         }
       } catch (err) {
         output.error(err);

@@ -12,9 +12,9 @@ export function debounce<T>(duration: number): Transformer {
       let emissionCount = 0;
 
       try {
-        for await (const emission of input) {
+        for await (const value of input) {
           emissionCount++;
-          latestValue = emission.value!;
+          latestValue = value;
 
           if (timeoutId !== null) {
             clearTimeout(timeoutId);

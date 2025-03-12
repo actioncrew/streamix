@@ -1,5 +1,4 @@
 import {
-  createEmission,
   createStreamOperator,
   Stream,
   Transformer,
@@ -136,7 +135,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     input: Stream,
   ): AsyncGenerator<any, void, unknown> {
     try {
-      for await (const emission of input) {
+      for await (const value of input) {
         const worker = await getIdleWorker();
         try {
           const data = await new Promise<any>((resolve, reject) => {
@@ -152,10 +151,10 @@ export const coroutine = (...functions: Function[]): Coroutine => {
               reject(error.message);
             };
 
-            worker.postMessage(emission.value);
+            worker.postMessage(value);
           });
 
-          yield createEmission({ value: data });
+          yield data;
         } finally {
           returnWorker(worker);
         }

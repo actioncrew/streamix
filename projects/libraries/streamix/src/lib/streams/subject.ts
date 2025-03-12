@@ -1,4 +1,4 @@
-import { createEmission, createReceiver, createSubscription, Emission, Operator, pipeStream, Receiver, Stream, Subscription, Transformer } from "../abstractions";
+import { createReceiver, createSubscription, Operator, pipeStream, Receiver, Stream, Subscription, Transformer } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
@@ -71,8 +71,8 @@ export function createSubject<T = any>(): Subject<T> {
   };
 
   // Implement AsyncIterator
-  const asyncIterator = async function* (this: Subject<T>): AsyncGenerator<Emission<T>, void, unknown> {
-    let resolveNext: ((value: IteratorResult<Emission<T>>) => void) | null = null;
+  const asyncIterator = async function* (this: Subject<T>): AsyncGenerator<T, void, unknown> {
+    let resolveNext: ((value: IteratorResult<T>) => void) | null = null;
     let rejectNext: ((reason?: any) => void) | null = null;
     let latestValue: T | undefined;
     let hasNewValue = false;
@@ -83,8 +83,7 @@ export function createSubject<T = any>(): Subject<T> {
         latestValue = value;
         hasNewValue = true;
         if (resolveNext) {
-          const emission = createEmission({ value });
-          resolveNext({ value: emission, done: false });
+          resolveNext({ value, done: false });
           resolveNext = null;
           hasNewValue = false;
         }
@@ -93,7 +92,7 @@ export function createSubject<T = any>(): Subject<T> {
       complete: () => {
         completedHandled = true;
         if (resolveNext) {
-          resolveNext({ value: createEmission({ value: undefined }), done: true });
+          resolveNext({ value: undefined, done: true });
         }
       },
 
@@ -111,10 +110,10 @@ export function createSubject<T = any>(): Subject<T> {
     try {
       while (!completedHandled || hasNewValue) {
         if (hasNewValue) {
-          yield createEmission({ value: latestValue! });
+          yield latestValue!;
           hasNewValue = false;
         } else {
-          const result = await new Promise<IteratorResult<Emission<T>>>((resolve, reject) => {
+          const result = await new Promise<IteratorResult<T>>((resolve, reject) => {
             resolveNext = resolve;
             rejectNext = reject;
           });

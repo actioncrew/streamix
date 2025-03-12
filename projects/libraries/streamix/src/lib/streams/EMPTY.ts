@@ -1,9 +1,9 @@
-import { createReceiver, createStream, Emission, Receiver, Stream, Subscription } from '../abstractions';
+import { createReceiver, createStream, Receiver, Stream, Subscription } from '../abstractions';
 
 // Function to create an EmptyStream as a generator
 export const empty = <T = any>(): Stream<T> => {
   // Custom run function for the EmptyStream using generator
-  const stream = createStream<T>('EMPTY', async function* (this: Stream<T>): AsyncGenerator<Emission<T>> {
+  const stream = createStream<T>('EMPTY', async function* (this: Stream<T>): AsyncGenerator<T> {
     // No emissions, just complete immediately
   });
 

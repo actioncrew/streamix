@@ -1,15 +1,14 @@
-import { createOperator, Emission, Operator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 
 export const skip = (count: number): Operator => {
   let counter = count;
 
-  const handle = (emission: Emission): Emission => {
+  const handle = (value: any): any => {
     if (counter <= 0) {
-      return emission;
+      return value;
     } else {
       counter--;
-      emission.phantom = true;
-      return emission;
+      return undefined;
     }
   };
 

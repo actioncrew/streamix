@@ -1,20 +1,19 @@
-import { createOperator, Emission, Operator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 
 export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) => boolean): Operator => {
   let lastEmittedValue: T | undefined = undefined;
 
-  const handle = (emission: Emission): Emission => {
-    const currentValue = emission.value;
+  const handle = (value: any): any => {
+    const currentValue = value;
 
     const isDistinct = lastEmittedValue === undefined ||
       (comparator ? !comparator(lastEmittedValue, currentValue) : lastEmittedValue !== currentValue);
 
     if (isDistinct) {
       lastEmittedValue = currentValue;
-      return emission;
+      return currentValue;
     } else {
-      emission.phantom = true;
-      return emission;
+      return undefined;
     }
   };
 

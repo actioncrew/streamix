@@ -1,5 +1,4 @@
 import { createSubject } from "../streams/subject";
-import { createEmission, Emission } from "./emission";
 import { Operator, Transformer } from "./operator";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
@@ -9,7 +8,7 @@ export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
   emissionCounter: number;
-  [Symbol.asyncIterator]: () => AsyncGenerator<Emission<T>, void, unknown>;
+  [Symbol.asyncIterator]: () => AsyncGenerator<T, void, unknown>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   pipe: <K = any>(...steps: (Operator | Transformer<T, K>)[]) => Stream<K>;
   value: () => T | undefined;
@@ -56,24 +55,24 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
 
   const subscription = stream.subscribe({
     next: (value: any) => {
-      let emission = createEmission({ value });
+      let errorCatched = false;
       for (let i = 0; i < operators.length; i++) {
         const operator = operators[i];
 
         try {
-          emission = operator.handle(emission);
+          value = operator.handle(value);
         } catch (error) {
-          emission.error = error;
+          errorCatched = true;
           output.error(error);
         }
 
-        if (emission.error || emission.phantom) {
+        if (errorCatched || value === undefined) {
           break;
         }
       }
 
-      if (!emission.error && !emission.phantom) {
-        output.next(emission.value);
+      if (!errorCatched && value !== undefined) {
+        output.next(value);
       }
     },
     complete: () => {
@@ -91,18 +90,18 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
 // The stream factory function
 export function createStream<T>(
   name: string,
-  generatorFn: (this: Stream<T>) => AsyncGenerator<Emission<T>, void, unknown>
+  generatorFn: (this: Stream<T>) => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
   let emissionCounter = 0;
   let completed = false;
   let currentValue: T | undefined;
 
   async function* generator() {
-    for await (const emission of generatorFn.call(stream)) {
-      if (!emission.error && !emission.phantom) {
+    for await (const value of generatorFn.call(stream)) {
+      if (value !== undefined) {
         emissionCounter++;
-        currentValue = emission.value;
-        yield emission;
+        currentValue = value;
+        yield value;
       }
     }
   }
@@ -122,8 +121,8 @@ export function createStream<T>(
 
     (async () => {
       try {
-        for await (const emission of iter) {
-          receiver.next?.(emission.value!);
+        for await (const value of iter) {
+          receiver.next?.(value);
         }
       } catch (err: any) {
         receiver.error?.(err);
@@ -142,9 +141,9 @@ export function createStream<T>(
     emissionCounter,
     async *[Symbol.asyncIterator]() {
       try {
-        for await (const emission of generator()) {
-          currentValue = emission.value;
-          yield emission;
+        for await (const value of generator()) {
+          currentValue = value;
+          yield value;
         }
       } catch (err) {
         throw err;

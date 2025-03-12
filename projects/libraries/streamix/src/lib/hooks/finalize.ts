@@ -10,8 +10,8 @@ export const finalize = (callback: () => void | Promise<void>): Transformer => {
     (async () => {
       try {
         // Iterate over the stream asynchronously
-        for await (const emission of stream) {
-          output.next(emission.value);
+        for await (const value of stream) {
+          output.next(value);
         }
       } catch (err) {
         // If an error occurs, forward the error and trigger the finalize callback

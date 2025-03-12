@@ -7,9 +7,9 @@ export const toArray = (): Transformer => {
     let accumulatedArray: any[] = [];  // Array to accumulate emission values
 
     const toArrayIterator = async function* () {
-      for await (const emission of input) {
+      for await (const value of input) {
         // Collect each value emitted by the input stream into the array
-        accumulatedArray.push(emission.value);
+        accumulatedArray.push(value);
       }
       // Once the stream completes, emit the accumulated array
       yield accumulatedArray;

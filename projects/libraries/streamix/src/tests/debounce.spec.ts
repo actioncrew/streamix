@@ -1,4 +1,4 @@
-import { createEmission, createStream, debounce, from, interval, take } from "../lib";
+import { createStream, debounce, from, interval, take } from "../lib";
 
 describe('debounce operator', () => {
   it('should debounce values from an array stream', (done) => {
@@ -37,7 +37,7 @@ describe('debounce operator', () => {
     const values = [1, 2, 3, 4, 5];
     const intervalStream = createStream<number>("interval", async function* () {
       for (const value of values) {
-        yield createEmission({ value });
+        yield value;
         await new Promise(resolve => setTimeout(resolve, 50));
       }
     });

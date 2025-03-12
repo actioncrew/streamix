@@ -9,14 +9,14 @@ export function takeWhile<T>(predicate: (value: T) => boolean): Transformer {
       let isCompleted = false;
 
       try {
-        for await (const emission of input) {
+        for await (const value of input) {
           // If predicate returns false, complete the stream
-          if (!predicate(emission.value!)) {
+          if (!predicate(value)) {
             output.complete();
             isCompleted = true;
             break;
           }
-          output.next(emission.value!);
+          output.next(value);
         }
       } catch (err) {
         output.error(err);

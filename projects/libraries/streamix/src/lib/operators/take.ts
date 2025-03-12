@@ -10,10 +10,10 @@ export function take<T>(count: number): Transformer {
     // Async function to iterate through the input stream and take `count` values
     (async () => {
       try {
-        for await (const emission of input) {
+        for await (const value of input) {
           if (emittedCount < count) {
             emittedCount++;
-            output.next(emission.value!);
+            output.next(value);
             if (emittedCount === count) {
               isCompleted = true;
               output.complete();

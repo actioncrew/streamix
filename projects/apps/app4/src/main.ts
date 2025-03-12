@@ -1,18 +1,18 @@
 import { catchError } from '@actioncrew/streamix';
 import {
-    createHttpClient,
-    readChunks,
-    readFull,
-    readJson,
-    readNdjsonChunk,
-    readText,
-    useAccept,
-    useBase,
-    useFallback,
-    useHeader,
-    useLogger,
-    useRedirect,
-    useTimeout,
+  createHttpClient,
+  readChunks,
+  readFull,
+  readJson,
+  readNdjsonChunk,
+  readText,
+  useAccept,
+  useBase,
+  useFallback,
+  useHeader,
+  useLogger,
+  useRedirect,
+  useTimeout,
 } from '@actioncrew/streamix/http';
 
 async function fetchData() {
@@ -33,8 +33,8 @@ async function fetchData() {
   const responseStream = client.get('/data', readJson);
 
   try {
-    for await (const emission of responseStream) {
-      console.log('Received data:', emission.value);
+    for await (const value of responseStream) {
+      console.log('Received data:', value);
     }
   } catch (error) {
     console.error('An unexpected error occurred:', error);
@@ -60,8 +60,8 @@ async function postData() {
   });
 
   try {
-    for await (const emission of responseStream) {
-      console.log('Post response:', emission.value);
+    for await (const value of responseStream) {
+      console.log('Post response:', value);
     }
   } catch (error) {
     console.error('Post request error', error);
@@ -73,8 +73,8 @@ async function testBinary() {
   client.withDefaults(useBase('http://localhost:3000'));
   const responseStream = client.get('/binary', readFull);
   try {
-    for await (const emission of responseStream) {
-      console.log('Binary data:', emission.value);
+    for await (const value of responseStream) {
+      console.log('Binary data:', value);
     }
   } catch (error) {
     console.error('Binary test error', error);
@@ -86,8 +86,8 @@ async function testNotFound() {
   client.withDefaults(useBase('http://localhost:3000'));
   const responseStream = client.get('/not-found', readText).pipe(catchError(() => console.log('Not found as expected')));;
   try {
-    for await (const emission of responseStream) {
-      console.log('Not found response:', emission.value);
+    for await (const value of responseStream) {
+      console.log('Not found response:', value);
     }
   } catch (error) {
     console.error('Not found test error', error);
@@ -101,8 +101,8 @@ async function testRedirect() {
 
   const responseStream = client.get('/auto-redirect', readJson);
   try {
-    for await (const emission of responseStream) {
-      console.log('Redirect response:', emission.value);
+    for await (const value of responseStream) {
+      console.log('Redirect response:', value);
     }
   } catch (error) {
     console.error('Redirect test error', error);
@@ -116,8 +116,8 @@ async function testManualRedirect() {
 
   const responseStream = client.get('/manual-redirect', readJson);
   try {
-    for await (const emission of responseStream) {
-      console.log('Redirect response:', emission.value);
+    for await (const value of responseStream) {
+      console.log('Redirect response:', value);
     }
   } catch (error) {
     console.error('Redirect test error', error);
@@ -130,8 +130,8 @@ async function testTimeout() {
   client.withDefaults(useTimeout(1000));
   const responseStream = client.get('/timeout', readText).pipe(catchError(() => console.log('Timeout as expected')));
   try {
-    for await (const emission of responseStream) {
-      console.error('Error timeout response:', emission.value);
+    for await (const value of responseStream) {
+      console.error('Error timeout response:', value);
     }
   } catch (error) {
     console.log('Timeout', error);
@@ -157,9 +157,9 @@ async function testOllama() {
   let fullResponse = "";
 
   try {
-    for await (const emission of responseStream) {
-      if (emission && emission.value?.chunk?.response) {
-        fullResponse += emission.value.chunk.response;
+    for await (const value of responseStream) {
+      if (value && value?.chunk?.response) {
+        fullResponse += value.chunk.response;
       };
     }
     console.log(fullResponse);

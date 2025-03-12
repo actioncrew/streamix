@@ -3,8 +3,8 @@ import { Stream } from "../abstractions";
 export async function firstValueFrom<T>(stream: Stream<T>): Promise<T> {
   try {
     // Use the async iterator to get the first value
-    for await (const emission of stream) {
-      return emission.value!; // Return the first emitted value
+    for await (const value of stream) {
+      return value; // Return the first emitted value
     }
   } catch (err) {
     throw err; // Propagate any errors from the stream

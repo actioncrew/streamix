@@ -1,13 +1,11 @@
 import {
-    createEmission,
-    createReceiver,
-    createSubscription,
-    Emission,
-    Operator,
-    pipeStream,
-    Receiver,
-    Subscription,
-    Transformer,
+  createReceiver,
+  createSubscription,
+  Operator,
+  pipeStream,
+  Receiver,
+  Subscription,
+  Transformer,
 } from "../abstractions";
 import { Subject } from "../streams";
 
@@ -78,31 +76,30 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
   };
 
   // Async Iterator Implementation
-  const asyncIterator = async function* (this: ReplaySubject<T>): AsyncGenerator<Emission<T>, void, unknown> {
-    let resolveNext: ((value: IteratorResult<Emission<T>>) => void) | null = null;
+  const asyncIterator = async function* (this: ReplaySubject<T>): AsyncGenerator<T, void, unknown> {
+    let resolveNext: ((value: IteratorResult<T>) => void) | null = null;
     let rejectNext: ((reason?: any) => void) | null = null;
 
-    const queue: Emission<T>[] = [];
+    const queue: T[] = [];
     let isCompleted = false;
 
     const receiver = createReceiver({
       next: (value: T) => {
-        const emission = createEmission({ value });
 
         if (resolveNext) {
           // If there's a pending promise, resolve it with the new emission
-          resolveNext({ value: emission, done: false });
+          resolveNext({ value, done: false });
           resolveNext = null;
         } else {
           // Otherwise, add the emission to the queue
-          queue.push(emission);
+          queue.push(value);
         }
       },
       complete: () => {
         isCompleted = true;
         if (resolveNext) {
           // Resolve the pending promise with a done signal
-          resolveNext({ value: undefined as any, done: true });
+          resolveNext({ value: undefined, done: true });
           resolveNext = null;
         }
       },
@@ -121,7 +118,7 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
     try {
       // Replay the buffer to the async iterator
       for (const value of buffer) {
-        yield createEmission({ value });
+        yield value;
       }
 
       // Process new emissions
@@ -135,7 +132,7 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
           break;
         } else {
           // Wait for new emissions
-          const result = await new Promise<IteratorResult<Emission<T>>>((resolve, reject) => {
+          const result = await new Promise<IteratorResult<T>>((resolve, reject) => {
             resolveNext = resolve;
             rejectNext = reject;
           });

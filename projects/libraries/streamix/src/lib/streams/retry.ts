@@ -1,4 +1,4 @@
-import { createStream, Emission, Stream } from "../abstractions";
+import { createStream, Stream } from "../abstractions";
 
 /**
  * Retry a stream with a maximum retry count and delay, buffering values and checking for errors first.
@@ -18,7 +18,7 @@ export function retry<T = any>(
     let errorEmitted = false; // Flag to track if error is emitted
 
     // Buffer to store emitted values temporarily
-    let buffer: Emission<T>[] = [];
+    let buffer: T[] = [];
 
     while (retryCount <= maxRetries && !errorEmitted) {
       try {
@@ -27,13 +27,13 @@ export function retry<T = any>(
         const sourceStream = factory();
 
         // Collect all values from the stream into the buffer
-        for await (const emission of sourceStream) {
-          buffer.push(emission); // Buffer the value
+        for await (const value of sourceStream) {
+          buffer.push(value); // Buffer the value
         }
 
         // If no error was thrown, emit the buffered values
-        for (const emission of buffer) {
-          yield emission;
+        for (const value of buffer) {
+          yield value;
         }
 
         // If successful, break out of the retry loop

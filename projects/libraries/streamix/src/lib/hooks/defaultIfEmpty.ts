@@ -8,9 +8,9 @@ export const defaultIfEmpty = (defaultValue: any): Transformer => {
 
     (async () => {
       try {
-        for await (const emission of input) {
+        for await (const value of input) {
           hasEmitted = true; // Mark that a value has been emitted
-          output.next(emission.value); // Pass the value to the output stream
+          output.next(value); // Pass the value to the output stream
         }
 
         // After the stream finishes emitting values, check if any values were received

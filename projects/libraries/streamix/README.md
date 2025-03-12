@@ -35,7 +35,7 @@ Generators (function* and async function* in JavaScript) offer a **pull-based** 
 ## Core Concepts
 
 - **Stream**: A sequence of values over time, represented as an async generator function.
-- **Emission**: Individual values emitted by a stream, along with metadata (e.g., cancellation, errors).
+- **Emission**: Individual values emitted by a stream.
 - **Operator**: Functions that transform, filter, or combine streams.
 - **Subject**: A special type of stream that allows manual dispatching of emissions.
 

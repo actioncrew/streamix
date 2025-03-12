@@ -20,7 +20,7 @@ export const withLatestFrom = (...streams: Stream<any>[]): Transformer => {
           // Collect the values
           nextValues.forEach((result, index) => {
             if (!result.done) {
-              latestValues[index] = result.value.value;
+              latestValues[index] = result.value;
               hasValue[index] = true;
             }
           });
@@ -30,9 +30,9 @@ export const withLatestFrom = (...streams: Stream<any>[]): Transformer => {
         }
 
         // Process the input stream while collecting the latest values
-        for await (const mainValue of inputStream) {
+        for await (const value of inputStream) {
           if (allStreamsHaveEmitted) {
-            output.next([mainValue.value, ...latestValues]); // Emit the main value along with the latest values
+            output.next([value, ...latestValues]); // Emit the main value along with the latest values
           }
         }
       } catch (err) {
