@@ -1,0 +1,6 @@
+{
+  "spec_dir": "projects/libraries/streamix/src",
+  "spec_files": ["**/*.spec.ts"],
+  "stopSpecOnExpectationFailure": false,
+  "random": false
+}

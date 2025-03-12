@@ -1,7 +1,7 @@
 import { onResize } from "../lib";
 
 xdescribe('Functional tests for fromResizeObserver', () => {
-  test('should detect element resize changes', (done) => {
+  it('should detect element resize changes', (done) => {
     const divToTest = document.createElement('div');
     divToTest.style.width = '100px';
     divToTest.style.height = '100px';
@@ -20,7 +20,7 @@ xdescribe('Functional tests for fromResizeObserver', () => {
           done.fail(error);
         }
       },
-      complete: () => console.log('hurra')
+      complete: () => {}
     });
 
     // Simulate resize by modifying the mocked ResizeObserver's contentRect

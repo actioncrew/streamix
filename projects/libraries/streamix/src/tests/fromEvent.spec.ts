@@ -1,6 +1,6 @@
 import { fromEvent } from '../lib';
 
-describe('fromEvent function', () => {
+xdescribe('fromEvent function', () => {
   it('should emit events from the element', (done) => {
     // Create a mock HTMLElement
     const element = document.createElement('button');

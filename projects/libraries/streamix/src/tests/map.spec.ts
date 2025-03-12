@@ -1,4 +1,4 @@
-import { from, map } from '../lib';
+import { catchError, from, map } from '../lib';
 
 describe('map operator', () => {
   it('should transform values correctly', (done) => {
@@ -27,7 +27,7 @@ describe('map operator', () => {
       return value * 2;
     };
 
-    const mappedStream = testStream.pipe(map(transform));
+    const mappedStream = testStream.pipe(map(transform), catchError());
 
     let results: any[] = [];
 

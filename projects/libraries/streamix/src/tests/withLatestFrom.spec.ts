@@ -13,16 +13,17 @@ describe('withLatestFrom operator', () => {
       next: (value) => results.push(value),
       complete: () => {
         expect(results).toEqual([
-          [1, expect.any(String)],
-          [2, expect.any(String)],
-          [3, expect.any(String)]
+          [1, jasmine.any(String)],
+          [2, jasmine.any(String)],
+          [3, jasmine.any(String)],
         ]);
 
         expect(['A', 'B', 'C', 'D', 'E']).toContain(results[0][1]);
         expect(['A', 'B', 'C', 'D', 'E']).toContain(results[1][1]);
         expect(['A', 'B', 'C', 'D', 'E']).toContain(results[2][1]);
         done();
-      }
+      },
+      error: done.fail,
     });
   });
 
@@ -40,10 +41,11 @@ describe('withLatestFrom operator', () => {
         expect(results).toEqual([
           [1, 'A'],
           [2, 'A'],
-          [3, 'A']
+          [3, 'A'],
         ]);
         done();
-      }
+      },
+      error: done.fail,
     });
   });
 
@@ -60,7 +62,8 @@ describe('withLatestFrom operator', () => {
       complete: () => {
         expect(results).toEqual([]);
         done();
-      }
+      },
+      error: done.fail,
     });
 
     subscription.unsubscribe();

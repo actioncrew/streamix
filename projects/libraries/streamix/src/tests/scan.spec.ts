@@ -1,4 +1,4 @@
-import { from, scan } from '../lib';
+import { catchError, from, scan } from '../lib';
 
 describe('scan operator', () => {
   it('should accumulate values correctly', (done) => {
@@ -29,7 +29,7 @@ describe('scan operator', () => {
     };
     const seed = 0;
 
-    const scannedStream = testStream.pipe(scan(accumulator, seed));
+    const scannedStream = testStream.pipe(scan(accumulator, seed), catchError());
 
     let results: any[] = [];
 

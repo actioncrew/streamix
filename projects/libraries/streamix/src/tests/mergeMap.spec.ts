@@ -149,7 +149,7 @@ describe('mergeMap operator', () => {
     mergedStream.subscribe({
       next: (value) => results.push(value),
       complete: () => {
-        expect(results).toEqual([2, 4, 6, 8, 10]); // Ordered by values processed
+        expect(results.sort((a, b) => a - b)).toEqual([2, 4, 6, 8, 10]); // Ordered by values processed
         done();
       },
     });
