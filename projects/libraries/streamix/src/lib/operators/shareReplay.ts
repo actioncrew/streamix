@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from "../abstractions";
+import { createTransformer, Stream, Transformer } from "../abstractions";
 import { createReplaySubject } from "../streams";
 
 export function shareReplay<T>(bufferSize: number = Infinity): Transformer {
@@ -21,5 +21,5 @@ export function shareReplay<T>(bufferSize: number = Infinity): Transformer {
     return output;
   };
 
-  return createStreamOperator('shareReplay', operator);
+  return createTransformer('shareReplay', operator);
 }

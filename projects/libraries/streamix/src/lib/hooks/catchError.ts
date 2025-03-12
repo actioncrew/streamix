@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from "../abstractions";
+import { createTransformer, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
 // Define the catchError operator
@@ -26,5 +26,5 @@ export const catchError = (handler: ((error: any) => void) = () => {}): Transfor
     return output;
   };
 
-  return createStreamOperator('catchError', operator);
+  return createTransformer('catchError', operator);
 };

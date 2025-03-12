@@ -1,5 +1,5 @@
 import { createSubject } from '..';
-import { createStreamOperator, Stream, Transformer } from '../abstractions';
+import { createTransformer, Stream, Transformer } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Transformer => {
   const operator = (input: Stream): Stream => {
@@ -33,5 +33,5 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): T
     return output; // Return the output stream
   };
 
-  return createStreamOperator('reduce', operator);
+  return createTransformer('reduce', operator);
 };

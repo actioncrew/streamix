@@ -1,8 +1,8 @@
-import { createStreamOperator, Stream, Transformer } from '../abstractions';
+import { createTransformer, Stream, Transformer } from '../abstractions';
 import { createSubject } from '../streams';
 
 export function delay<T>(ms: number): Transformer {
-  return createStreamOperator('delay', (input: Stream<T>): Stream<T> => {
+  return createTransformer('delay', (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
 
     (async () => {

@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from "../abstractions";
+import { createTransformer, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams";
 
 export type GroupItem<T = any, K = any> = {
@@ -8,7 +8,7 @@ export type GroupItem<T = any, K = any> = {
 
 export function groupBy<T = any, K = any>(
   keySelector: (value: T) => K
-): Transformer<T, GroupItem<T, K>> {
+): Transformer {
   const operator = (input: Stream<T>): Stream<GroupItem<T, K>> => {
     const output = createSubject<GroupItem<T, K>>();
 
@@ -27,5 +27,5 @@ export function groupBy<T = any, K = any>(
     return output;
   };
 
-  return createStreamOperator('groupBy', operator);
+  return createTransformer('groupBy', operator);
 }

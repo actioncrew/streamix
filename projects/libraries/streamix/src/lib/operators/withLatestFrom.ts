@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from "../abstractions";
+import { createTransformer, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
 export const withLatestFrom = (...streams: Stream<any>[]): Transformer => {
@@ -49,5 +49,5 @@ export const withLatestFrom = (...streams: Stream<any>[]): Transformer => {
     return output;
   };
 
-  return createStreamOperator('withLatestFrom', operator);
+  return createTransformer('withLatestFrom', operator);
 };

@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from "../abstractions";
+import { createTransformer, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams";
 
 export function takeUntil<T>(notifier: Stream<any>): Transformer {
@@ -39,5 +39,5 @@ export function takeUntil<T>(notifier: Stream<any>): Transformer {
     return output;
   };
 
-  return createStreamOperator('takeUntil', operator);
+  return createTransformer('takeUntil', operator);
 }

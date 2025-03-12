@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from "../abstractions";
+import { createTransformer, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
 export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>): Transformer {
@@ -54,5 +54,5 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
     return output;
   };
 
-  return createStreamOperator('concatMap', operator);
+  return createTransformer('concatMap', operator);
 }

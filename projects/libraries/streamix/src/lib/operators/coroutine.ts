@@ -1,5 +1,5 @@
 import {
-  createStreamOperator,
+  createTransformer,
   Stream,
   Transformer,
 } from '../abstractions';
@@ -41,7 +41,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
       if (!helperScriptCache && !fetchingHelperScript) {
         fetchingHelperScript = true; // Mark fetching as in progress
         helperScriptPromise = fetch(
-          'https://unpkg.com/@actioncrew/streamix@1.0.12/fesm2022/actioncrew-streamix-coroutine.mjs',
+          'https://unpkg.com/@actioncrew/streamix@1.0.14/fesm2022/actioncrew-streamix-coroutine.mjs',
         )
           .then((response) => {
             if (!response.ok) {
@@ -178,7 +178,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  const operator = createStreamOperator('coroutine', (stream: Stream) => {
+  const operator = createTransformer('coroutine', (stream: Stream) => {
     const subject = createSubject<any>() as Subject<any> & Coroutine;
 
     (async () => {

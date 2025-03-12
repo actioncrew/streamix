@@ -1,8 +1,8 @@
-import { createStreamOperator, Stream, Transformer } from "../abstractions";
+import { createTransformer, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
 export function take<T>(count: number): Transformer {
-  return createStreamOperator("take", (input: Stream<T>): Stream<T> => {
+  return createTransformer("take", (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
     let emittedCount = 0;
     let isCompleted = false;

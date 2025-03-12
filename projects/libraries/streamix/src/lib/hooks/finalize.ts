@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from '../abstractions';
+import { createTransformer, Stream, Transformer } from '../abstractions';
 import { createSubject } from '../streams';
 
 export const finalize = (callback: () => void | Promise<void>): Transformer => {
@@ -33,5 +33,5 @@ export const finalize = (callback: () => void | Promise<void>): Transformer => {
     return output;
   };
 
-  return createStreamOperator('finalize', operator);
+  return createTransformer('finalize', operator);
 };

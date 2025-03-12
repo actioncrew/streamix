@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from '../abstractions';
+import { createTransformer, Stream, Transformer } from '../abstractions';
 import { createSubject } from '../streams';
 
 export const defaultIfEmpty = (defaultValue: any): Transformer => {
@@ -27,5 +27,5 @@ export const defaultIfEmpty = (defaultValue: any): Transformer => {
     return output;
   };
 
-  return createStreamOperator('defaultIfEmpty', operator);
+  return createTransformer('defaultIfEmpty', operator);
 };

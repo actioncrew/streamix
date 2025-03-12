@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from "../abstractions";
+import { createTransformer, Stream, Transformer } from "../abstractions";
 import { createSubject } from "../streams";
 
 export const fork = <T = any, R = T>(
@@ -53,5 +53,5 @@ export const fork = <T = any, R = T>(
     return output;
   };
 
-  return createStreamOperator('fork', operator);
+  return createTransformer('fork', operator);
 };

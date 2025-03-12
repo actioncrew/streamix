@@ -1,4 +1,4 @@
-import { createStreamOperator, Stream, Transformer } from '../abstractions';
+import { createTransformer, Stream, Transformer } from '../abstractions';
 import { createBehaviorSubject } from '../streams';
 
 export const startWith = (value: any): Transformer => {
@@ -23,5 +23,5 @@ export const startWith = (value: any): Transformer => {
     return output;
   };
 
-  return createStreamOperator('startWith', operator);
+  return createTransformer('startWith', operator);
 };
