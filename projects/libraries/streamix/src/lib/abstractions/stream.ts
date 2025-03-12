@@ -1,32 +1,7 @@
+import { Operator, Transformer } from "../abstractions";
 import { createSubject } from "../streams/subject";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
-
-export type Operator = {
-  handle: (value: any) => any;
-  type: string;
-  name?: string;
-};
-
-export const createOperator = (name: string, handleFn: (value: any) => any): Operator => {
-  return {
-    name,
-    handle: handleFn,
-    type: 'operator'
-  };
-};
-
-export type Transformer = Omit<Operator, "handle"> & {
-  (stream: Stream<any>): Stream<any>;
-}
-
-export const createTransformer = (name: string, handleFn: (stream: Stream) => Stream): Transformer => {
-  const operator = handleFn as Transformer;
-  Object.defineProperty(operator, 'name', { writable: true, enumerable: true, configurable: true });
-  operator.name = name;
-  operator.type = 'operator';
-  return operator;
-};
 
 // Basic Stream type definition
 export type Stream<T = any> = {
