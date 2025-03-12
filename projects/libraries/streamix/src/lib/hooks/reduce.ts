@@ -1,7 +1,7 @@
 import { createSubject } from '..';
-import { createTransformer, Stream, Transformer } from '../abstractions';
+import { createMapper, Stream, StreamMapper } from '../abstractions';
 
-export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): Transformer => {
+export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): StreamMapper => {
   const operator = (input: Stream): Stream => {
     const output = createSubject();
     let accumulatedValue = seed;
@@ -33,5 +33,5 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): T
     return output; // Return the output stream
   };
 
-  return createTransformer('reduce', operator);
+  return createMapper('reduce', operator);
 };

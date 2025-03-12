@@ -1,7 +1,7 @@
-import { createTransformer, Stream, Transformer } from '../abstractions';
+import { createMapper, Stream, StreamMapper } from '../abstractions';
 import { createBehaviorSubject } from '../streams';
 
-export const startWith = (value: any): Transformer => {
+export const startWith = (value: any): StreamMapper => {
   const operator = (input: Stream): Stream => {
     const output = createBehaviorSubject<any>(value); // Create the output stream
 
@@ -23,5 +23,5 @@ export const startWith = (value: any): Transformer => {
     return output;
   };
 
-  return createTransformer('startWith', operator);
+  return createMapper('startWith', operator);
 };

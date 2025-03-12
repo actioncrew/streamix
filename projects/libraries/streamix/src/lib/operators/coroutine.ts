@@ -1,11 +1,11 @@
 import {
-  createTransformer,
+  createMapper,
   Stream,
-  Transformer,
+  StreamMapper,
 } from '../abstractions';
 import { createSubject, Subject } from '../streams';
 
-export type Coroutine = Transformer & {
+export type Coroutine = StreamMapper & {
   finalize: () => Promise<void>;
   processTask: (data: any) => Promise<any>;
   getIdleWorker: () => Promise<Worker>;
@@ -178,7 +178,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     }
   };
 
-  const operator = createTransformer('coroutine', (stream: Stream) => {
+  const operator = createMapper('coroutine', (stream: Stream) => {
     const subject = createSubject<any>() as Subject<any> & Coroutine;
 
     (async () => {

@@ -1,9 +1,9 @@
-import { createTransformer, Stream, Transformer } from "../abstractions";
+import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { createSubject } from "../streams";
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T, index: number) => boolean; handler: (value: T) => Stream<R> }>
-): Transformer => {
+): StreamMapper => {
   let index = 0;
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
@@ -53,5 +53,5 @@ export const fork = <T = any, R = T>(
     return output;
   };
 
-  return createTransformer('fork', operator);
+  return createMapper('fork', operator);
 };

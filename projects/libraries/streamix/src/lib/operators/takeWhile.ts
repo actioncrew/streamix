@@ -1,7 +1,7 @@
-import { createTransformer, Stream, Transformer } from "../abstractions";
+import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { createSubject } from "../streams";
 
-export function takeWhile<T>(predicate: (value: T) => boolean): Transformer {
+export function takeWhile<T>(predicate: (value: T) => boolean): StreamMapper {
   const operator = (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
 
@@ -30,5 +30,5 @@ export function takeWhile<T>(predicate: (value: T) => boolean): Transformer {
     return output;
   };
 
-  return createTransformer('takeWhile', operator);
+  return createMapper('takeWhile', operator);
 }

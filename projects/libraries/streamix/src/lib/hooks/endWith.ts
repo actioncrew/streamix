@@ -1,7 +1,7 @@
-import { createTransformer, Stream, Transformer } from '../abstractions';
+import { createMapper, Stream, StreamMapper } from '../abstractions';
 import { createSubject } from '../streams';
 
-export const endWith = (value: any): Transformer => {
+export const endWith = (value: any): StreamMapper => {
   const operator = (input: Stream): Stream => {
     const output = createSubject<any>(); // Create the output stream
 
@@ -24,5 +24,5 @@ export const endWith = (value: any): Transformer => {
     return output;
   };
 
-  return createTransformer('endWith', operator);
+  return createMapper('endWith', operator);
 };

@@ -1,7 +1,7 @@
 import { createSubject } from '..';
-import { createTransformer, Stream, Transformer } from '../abstractions';
+import { createMapper, Stream, StreamMapper } from '../abstractions';
 
-export const toArray = (): Transformer => {
+export const toArray = (): StreamMapper => {
   const operator = (input: Stream): Stream => {
     const output = createSubject<any>(); // Create an output stream
     let accumulatedArray: any[] = [];  // Array to accumulate emission values
@@ -31,5 +31,5 @@ export const toArray = (): Transformer => {
     return output;  // Return the output stream
   };
 
-  return createTransformer('toArray', operator);
+  return createMapper('toArray', operator);
 };

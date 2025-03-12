@@ -1,9 +1,9 @@
-import { createTransformer, Stream, Transformer } from '../abstractions';
+import { createMapper, Stream, StreamMapper } from '../abstractions';
 import { createSubject } from '../streams/subject';
 
-export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): Transformer {
+export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
   let index = 0;
-  return createTransformer('mergeMap', (input: Stream<T>): Stream<R> => {
+  return createMapper('mergeMap', (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let activeInnerStreams = 0; // Track active inner streams
     let hasError = false; // Flag to track if an error has occurred

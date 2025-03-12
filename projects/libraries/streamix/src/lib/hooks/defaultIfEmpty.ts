@@ -1,7 +1,7 @@
-import { createTransformer, Stream, Transformer } from '../abstractions';
+import { createMapper, Stream, StreamMapper } from '../abstractions';
 import { createSubject } from '../streams';
 
-export const defaultIfEmpty = (defaultValue: any): Transformer => {
+export const defaultIfEmpty = (defaultValue: any): StreamMapper => {
   const operator = (input: Stream) => {
     const output = createSubject<any>(); // The stream that will emit values, including the default value
     let hasEmitted: boolean = false; // To track emitted values
@@ -27,5 +27,5 @@ export const defaultIfEmpty = (defaultValue: any): Transformer => {
     return output;
   };
 
-  return createTransformer('defaultIfEmpty', operator);
+  return createMapper('defaultIfEmpty', operator);
 };

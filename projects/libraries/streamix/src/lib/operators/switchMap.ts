@@ -1,7 +1,7 @@
-import { createTransformer, Stream, Subscription, Transformer } from "../abstractions";
+import { createMapper, Stream, StreamMapper, Subscription } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
-export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>): Transformer {
+export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
   let index = 0;
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>(); // The output stream
@@ -58,5 +58,5 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
     return output; // Return the resulting stream
   };
 
-  return createTransformer("switchMap", operator); // Return the switchMap operator
+  return createMapper("switchMap", operator); // Return the switchMap operator
 }

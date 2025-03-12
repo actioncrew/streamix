@@ -4,8 +4,8 @@ import {
   Operator,
   pipeStream,
   Receiver,
+  StreamMapper,
   Subscription,
-  Transformer,
 } from "../abstractions";
 import { Subject } from "../streams";
 
@@ -156,7 +156,7 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
     emissionCounter,
     [Symbol.asyncIterator]: asyncIterator,
     subscribe,
-    pipe: (...steps: (Operator | Transformer)[]) => pipeStream(stream, ...steps),
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
     value: () => buffer[buffer.length - 1], // Get the latest value
     next,
     complete,

@@ -1,4 +1,4 @@
-import { createReceiver, createSubscription, Operator, pipeStream, Receiver, Stream, Subscription, Transformer } from "../abstractions";
+import { createReceiver, createSubscription, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
@@ -132,7 +132,7 @@ export function createSubject<T = any>(): Subject<T> {
     emissionCounter,
     [Symbol.asyncIterator]: asyncIterator,
     subscribe,
-    pipe: (...steps: (Operator | Transformer)[]) => pipeStream(stream, ...steps),
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
     value: () => currentValue,
     next,
     complete,

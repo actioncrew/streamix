@@ -1,7 +1,7 @@
-import { createTransformer, Stream, Transformer } from "../abstractions";
+import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
-export const withLatestFrom = (...streams: Stream<any>[]): Transformer => {
+export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
   const operator = (inputStream: Stream<any>): Stream<any> => {
     const output = createSubject<any>();
     const latestValues: any[] = new Array(streams.length).fill(undefined);
@@ -49,5 +49,5 @@ export const withLatestFrom = (...streams: Stream<any>[]): Transformer => {
     return output;
   };
 
-  return createTransformer('withLatestFrom', operator);
+  return createMapper('withLatestFrom', operator);
 };

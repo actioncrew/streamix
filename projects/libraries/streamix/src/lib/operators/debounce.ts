@@ -1,8 +1,8 @@
-import { createTransformer, Stream, Transformer } from "../abstractions";
+import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { createSubject } from "../streams/subject";
 
-export function debounce<T>(duration: number): Transformer {
-  return createTransformer("debounce", (input: Stream<T>): Stream<T> => {
+export function debounce<T>(duration: number): StreamMapper {
+  return createMapper("debounce", (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
 
     (async () => {

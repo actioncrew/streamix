@@ -1,7 +1,7 @@
-import { createTransformer, Stream, Transformer } from "../abstractions";
+import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { createSubject } from "../streams";
 
-export function takeUntil<T>(notifier: Stream<any>): Transformer {
+export function takeUntil<T>(notifier: Stream<any>): StreamMapper {
   const operator = (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
     let notifierEmitted = false;
@@ -39,5 +39,5 @@ export function takeUntil<T>(notifier: Stream<any>): Transformer {
     return output;
   };
 
-  return createTransformer('takeUntil', operator);
+  return createMapper('takeUntil', operator);
 }

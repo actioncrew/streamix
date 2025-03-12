@@ -1,16 +1,16 @@
-import { Operator, Transformer } from "../abstractions";
+import { Operator, StreamMapper } from "../abstractions";
 import { createSubject } from "../streams/subject";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
 // Basic Stream type definition
-export interface Stream<T = any> {
+export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
   emissionCounter: number;
   [Symbol.asyncIterator]: () => AsyncGenerator<T, void, unknown>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
-  pipe: (...steps: (Operator | Transformer)[]) => Stream<any>;
+  pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
   value: () => T | undefined;
   completed: () => boolean;
 };
@@ -18,7 +18,7 @@ export interface Stream<T = any> {
 // Functional composition to extend stream functionality
 export function pipeStream<T = any, K = any>(
   stream: Stream<T>,
-  ...steps: (Operator | Transformer)[]
+  ...steps: (Operator | StreamMapper)[]
 ): Stream<K> {
   let combinedStream: Stream<any> = stream;
   let operatorsGroup: Operator[] = [];
@@ -152,7 +152,7 @@ export function createStream<T>(
       }
     },
     subscribe,
-    pipe: (...steps: (Operator | Transformer)[]) => pipeStream(stream, ...steps),
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
     value: () => currentValue,
     completed: () => completed,
   };
