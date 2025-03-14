@@ -7,7 +7,7 @@
       "request": "launch",
       "name": "Run Jasmine Test",
       "program": "${workspaceFolder}/node_modules/jasmine/bin/jasmine.js",
-      "args": ["${file}"], // Runs the current file
+      "args": ["${file}", "--config=spec/support/jasmine.json", "--verbose"], // Runs the current file
       "cwd": "${workspaceFolder}", // Sets the working directory to the workspace folder
       "runtimeArgs": [
         "--loader",
@@ -25,7 +25,7 @@
       "request": "launch",
       "name": "Debug Jasmine Test",
       "program": "${workspaceFolder}/node_modules/jasmine/bin/jasmine.js",
-      "args": ["${file}"],
+      "args": ["${file}", "--config=spec/support/jasmine.json", "--verbose"], // Runs the current file
       "cwd": "${workspaceFolder}",
       "runtimeArgs": [
         "--loader",
