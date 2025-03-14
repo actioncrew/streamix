@@ -109,7 +109,7 @@ export function createStream<T>(
 
     const unsubscribe = function (this: Subscription) {
       if(!this.unsubscribed) {
-        this.unsubscribed = performance.now();
+        this.unsubscribed =true;
         if (!completed) {
           completed = true;
         }

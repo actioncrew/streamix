@@ -1,8 +1,7 @@
 
-export type Subscription = {
-  (): any;
-  subscribed: number;
-  unsubscribed: number | undefined;
+export type Subscription<T = any> = {
+  (): T;
+  unsubscribed: boolean;
   unsubscribe(): void;
 };
 
@@ -10,11 +9,10 @@ export const createSubscription = function <T>(getValue: () => T, unsubscribe?: 
 
   const subscription = () => getValue();
 
-  unsubscribe = unsubscribe ?? (function(this: Subscription) { this.unsubscribed = performance.now(); });
+  unsubscribe = unsubscribe ?? (function(this: Subscription) { this.unsubscribed = true; });
 
   return Object.assign(subscription, {
-    subscribed: performance.now(),
-    unsubscribed: undefined,
+    unsubscribed: false,
     unsubscribe
   }) as any;
 };
