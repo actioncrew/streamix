@@ -135,9 +135,7 @@ export function createStream<T>(
       () => latestValue, // Get the latest value
       () => {
         isUnsubscribed = true; // Mark as unsubscribed
-        if (activeIterators.has(iter)) {
-          activeIterators.delete(iter);
-        }
+        activeIterators.delete(iter);
       }
     );
   };
@@ -146,15 +144,7 @@ export function createStream<T>(
     type: "stream",
     name,
     async *[Symbol.asyncIterator]() {
-      const iter = generator();
-      try {
-        for await (const value of iter) {
-          currentValue = value;
-          yield value;
-        }
-      } finally {
-        activeIterators.delete(iter);
-      }
+      yield * generator();
     },
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
