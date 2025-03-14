@@ -5,6 +5,7 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
   let index = 0;
   return createMapper('mergeMap', (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
+    let inputCompleted = false;
     let activeInnerStreams = 0; // Track active inner streams
     let hasError = false; // Flag to track if an error has occurred
 
@@ -24,7 +25,7 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
         // Decrease the count of active inner streams
         activeInnerStreams -= 1;
         // If all inner streams are processed and the outer stream is complete, complete the output stream
-        if (activeInnerStreams === 0 && input.completed()) {
+        if (inputCompleted && activeInnerStreams === 0) {
           output.complete();
         }
       }
@@ -46,6 +47,7 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
           output.error(err); // Propagate the error from the outer stream
         }
       } finally {
+        inputCompleted = true;
         // If outer stream completes and there are no active inner streams, complete the output stream
         if (activeInnerStreams === 0 && !hasError) {
           output.complete();

@@ -10,7 +10,6 @@ describe('from function', () => {
       next: (value) => emittedValues.push(value),
       complete:() => {
         expect(emittedValues).toEqual(values);
-        expect(stream.completed()).toBe(true);
 
         subscription.unsubscribe();
       }

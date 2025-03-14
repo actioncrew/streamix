@@ -11,7 +11,6 @@ export type Stream<T = any> = {
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
   value: () => T | undefined;
-  completed: () => boolean;
 };
 
 // Functional composition to extend stream functionality
@@ -148,8 +147,7 @@ export function createStream<T>(
     },
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
-    value: () => currentValue,
-    completed: () => activeIterators.size === 0, // Stream is globally completed only if all iterators finished
+    value: () => currentValue
   };
 
   return stream;
