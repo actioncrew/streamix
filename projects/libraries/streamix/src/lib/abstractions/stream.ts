@@ -86,71 +86,80 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
   return output;
 };
 
-// The stream factory function
 export function createStream<T>(
   name: string,
   generatorFn: (this: Stream<T>) => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
-  let completed = false;
   let currentValue: T | undefined;
+  let activeIterators = new Set<AsyncGenerator<T, void, unknown>>();
 
   async function* generator() {
-    for await (const value of generatorFn.call(stream)) {
-      if (value !== undefined) {
-        currentValue = value;
-        yield value;
+    const iter = generatorFn.call(stream);
+    activeIterators.add(iter); // Track active iterator
+
+    try {
+      for await (const value of iter) {
+        if (value !== undefined) {
+          currentValue = value;
+          yield value;
+        }
       }
+    } finally {
+      activeIterators.delete(iter); // Remove when completed
     }
   }
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     const iter = generator();
-
-    const unsubscribe = function (this: Subscription) {
-      if(!this.unsubscribed) {
-        this.unsubscribed =true;
-        if (!completed) {
-          completed = true;
-        }
-      }
-    };
+    let latestValue: T | undefined;
+    let isUnsubscribed = false; // Flag to track unsubscription
 
     (async () => {
       try {
         for await (const value of iter) {
+          if (isUnsubscribed) {
+            break; // Stop iteration if unsubscribed
+          }
+          latestValue = value;
           receiver.next?.(value);
         }
       } catch (err: any) {
-        receiver.error?.(err);
+        receiver.error?.(err); // Emit error only if not unsubscribed
       } finally {
-        completed = true;
-        receiver.complete?.();
+        receiver.complete?.(); // Emit completion only if not unsubscribed
       }
     })();
 
-    return createSubscription(() => currentValue, unsubscribe);
+    return createSubscription(
+      () => latestValue, // Get the latest value
+      () => {
+        isUnsubscribed = true; // Mark as unsubscribed
+        if (activeIterators.has(iter)) {
+          activeIterators.delete(iter);
+        }
+      }
+    );
   };
 
   const stream: Stream<T> = {
     type: "stream",
     name,
     async *[Symbol.asyncIterator]() {
+      const iter = generator();
       try {
-        for await (const value of generator()) {
+        for await (const value of iter) {
           currentValue = value;
           yield value;
         }
-      } catch (err) {
-        throw err;
       } finally {
-        completed = true;
+        activeIterators.delete(iter);
       }
     },
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
     value: () => currentValue,
-    completed: () => completed,
+    completed: () => activeIterators.size === 0, // Stream is globally completed only if all iterators finished
   };
 
   return stream;
