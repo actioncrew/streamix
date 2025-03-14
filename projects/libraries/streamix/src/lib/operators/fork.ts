@@ -49,7 +49,7 @@ export const fork = <T = any, R = T>(
         output.error(outerErr); // Propagate errors from the outer stream
       } finally {
         inputCompleted = true;
-        if (inputCompleted && activeInnerStreams === 0) {
+        if (activeInnerStreams === 0) {
           output.complete();
         }
       }

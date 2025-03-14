@@ -49,7 +49,7 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
       } finally {
         inputCompleted = true;
         // If outer stream completes and there are no active inner streams, complete the output stream
-        if (activeInnerStreams === 0 && !hasError) {
+        if (activeInnerStreams === 0) {
           output.complete();
         }
       }
