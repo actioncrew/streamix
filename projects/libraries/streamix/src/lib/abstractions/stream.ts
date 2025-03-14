@@ -111,6 +111,7 @@ export function createStream<T>(
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     const iter = generator();
+
     let latestValue: T | undefined;
     let isUnsubscribed = false; // Flag to track unsubscription
 
