@@ -17,7 +17,6 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
   let completed = false;
   let hasError = false;
   let errorValue: any = null;
-  let emissionCounter = 0;
 
   // Emit a new value to all subscribers
   const next = (value: T) => {
@@ -26,7 +25,7 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
     if (buffer.length > bufferSize) {
       buffer.shift(); // Maintain the buffer size
     }
-    emissionCounter++;
+
     subscribers.forEach((subscriber) => subscriber.next?.(value));
     subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up unsubscribed receivers
   };
@@ -153,7 +152,6 @@ export function createReplaySubject<T = any>(bufferSize: number = Infinity): Rep
   const stream: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
-    emissionCounter,
     [Symbol.asyncIterator]: asyncIterator,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),

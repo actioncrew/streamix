@@ -7,7 +7,6 @@ import { createSubscription, Subscription } from "./subscription";
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
-  emissionCounter: number;
   [Symbol.asyncIterator]: () => AsyncGenerator<T, void, unknown>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
@@ -92,14 +91,12 @@ export function createStream<T>(
   name: string,
   generatorFn: (this: Stream<T>) => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
-  let emissionCounter = 0;
   let completed = false;
   let currentValue: T | undefined;
 
   async function* generator() {
     for await (const value of generatorFn.call(stream)) {
       if (value !== undefined) {
-        emissionCounter++;
         currentValue = value;
         yield value;
       }
@@ -138,7 +135,6 @@ export function createStream<T>(
   const stream: Stream<T> = {
     type: "stream",
     name,
-    emissionCounter,
     async *[Symbol.asyncIterator]() {
       try {
         for await (const value of generator()) {
