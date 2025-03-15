@@ -1,41 +1,139 @@
-import { createReceiver, Receiver, Subscription } from '../abstractions';
-import { createSubject, Subject } from '../streams';
+import { createReceiver, createSubscription, Operator, pipeStream, Receiver, StreamMapper, Subscription } from "../abstractions";
+import { Subject } from "./subject";
 
-export type BehaviorSubject<T = any> = Subject<T> & {
-  readonly value: T; // Expose the current value
-};
+export type BehaviorSubject<T = any> = Subject<T>;
 
-// Create function for the BehaviorSubject
+// Subject Stream Implementation
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
-  let currentValue = initialValue; // Store the current value
-  const subject = createSubject<T>() as Subject<T>;
+  let subscribers: Receiver<T>[] = [];
+  let currentValue = initialValue;
+  let completed = false; // Flag to indicate if the stream is completed
+  let hasError = false; // Flag to indicate if an error has occurred
+  let errorValue: any = null; // Store the error value
 
-  // Override the `next` method to update the current value
-  const originalNext = subject.next;
-  subject.next = (value: T) => {
-    currentValue = value; // Update the current value
-    originalNext.call(subject, value); // Emit the value to all subscribers
+  // Emit a new value to all subscribers
+  const next = (value: T) => {
+    if (completed || hasError) return; // Prevent emitting if the stream is completed or in error state
+    currentValue = value;
+
+    subscribers.forEach((subscriber) => subscriber.next?.(value));
+    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed);
   };
 
-  // Override the `subscribe` method to emit the current value to new subscribers
-  const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  // Complete the stream
+  const complete = () => {
+    if (completed) return; // If already completed or in error state, do nothing
+    completed = true;
+    subscribers.forEach((subscriber) => subscriber.complete?.());
+    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up
+  };
+
+  // Emit an error to all subscribers
+  const error = (err: any) => {
+    if (completed || hasError) return; // Prevent emitting errors if the stream is completed or in error state
+    hasError = true;
+    errorValue = err;
+    subscribers.forEach((subscriber) => subscriber.error?.(err));
+    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up
+  };
+
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const subscription = originalSubscribe.call(subject, callbackOrReceiver);
+    subscribers.push(receiver);
 
-    // Emit the current value to the new subscriber immediately
-    receiver.next?.(currentValue);
+    if (currentValue !== undefined && !hasError) {
+      receiver.next?.(currentValue); // Emit the current value to new subscriber immediately
+    }
 
-    return subscription;
+    if (hasError) {
+      receiver.error?.(errorValue); // If the stream has errored, emit the error immediately
+    }
+
+    if (completed) {
+      subscribers.forEach((subscriber) => subscriber.complete?.()); // If completed, notify the subscriber
+    }
+
+    return createSubscription(() => currentValue, () => {
+      if (!receiver.unsubscribed) {
+        receiver.unsubscribed = true;
+        if (!completed) {
+          completed = true;
+          // Ensure that even unsubscribed receivers are notified of completion or error
+          subscribers.forEach((subscriber) => subscriber.complete?.());
+        }
+        subscribers = subscribers.filter((sub) => sub !== receiver); // Clean up
+      }
+    });
   };
 
-  // Create the BehaviorSubject
-  Object.defineProperty(subject, 'value', {
-    get: () => currentValue,
-    configurable: false,
-    enumerable: false,
-  });
+  // Implement AsyncIterator
+  const asyncIterator = async function* (this: Subject<T>): AsyncGenerator<T, void, unknown> {
+    let resolveNext: ((value: IteratorResult<T>) => void) | null = null;
+    let rejectNext: ((reason?: any) => void) | null = null;
+    let latestValue: T | undefined;
+    let hasNewValue = false;
+    let completedHandled = false;
 
-  subject.name = 'behaviorSubject';
-  return subject as BehaviorSubject<T>;
+    const receiver = createReceiver({
+      next: (value: T) => {
+        latestValue = value;
+        hasNewValue = true;
+        if (resolveNext) {
+          resolveNext({ value, done: false });
+          resolveNext = null;
+          hasNewValue = false;
+        }
+      },
+
+      complete: () => {
+        completedHandled = true;
+        if (resolveNext) {
+          resolveNext({ value: undefined, done: true });
+        }
+      },
+
+      error: (err: Error) => {
+        if (rejectNext) {
+          rejectNext(err);
+          rejectNext = null;
+        }
+      }
+    })
+
+
+    const subscription = this.subscribe(receiver);
+
+    try {
+      while (!completedHandled || hasNewValue) {
+        if (hasNewValue) {
+          yield latestValue!;
+          hasNewValue = false;
+        } else {
+          const result = await new Promise<IteratorResult<T>>((resolve, reject) => {
+            resolveNext = resolve;
+            rejectNext = reject;
+          });
+          if (result.done) break;
+          yield result.value;
+        }
+      }
+    } finally {
+      subscription.unsubscribe();
+    }
+  };
+
+  const stream: Subject<T> = {
+    type: "subject",
+    name: "subject",
+    [Symbol.asyncIterator]: asyncIterator,
+    subscribe,
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
+    value: () => currentValue,
+    next,
+    complete,
+    completed: () => completed,
+    error,
+  };
+
+  return stream;
 }
