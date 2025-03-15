@@ -6,49 +6,35 @@ export function takeUntil<T>(notifier: Stream<any>): StreamMapper {
     const output = createSubject<T>();
     let notifierEmitted = false;
 
-    // Async generator to handle both input stream and notifier stream in a race condition
-    const processStreams = async () => {
-      const inputIterator = input[Symbol.asyncIterator]();
-      const notifierIterator = notifier[Symbol.asyncIterator]();
-
+    // Async generator to handle the input stream with takeUntil logic
+    const processInputStream = async () => {
       try {
-        while (true) {
-          // Create promises for both the input and notifier streams
-          const nextInput = inputIterator.next();
-          const nextNotifier = notifierIterator.next();
-
-          // Race between the input stream and notifier stream, and capture both results
-          const raceResult = await Promise.race([
-            nextNotifier.then(result => ({ 'notifier': { result } })),
-            nextInput.then(result => ({ 'input': { result } }))
-          ]);
-
-          if ('notifier' in raceResult) {
-            if (!notifierEmitted) {
-              notifierEmitted = true;
-              output.complete(); // Complete the output stream when the notifier emits
-            }
-            return; // Stop processing after the notifier completes
-          }
-
-          // Check if the result is from the input stream or the notifier stream
-          if ('input' in raceResult) {
-            const { result } = raceResult.input;
-            if (!result.done) {
-              output.next(result.value); // Emit value from input stream
-            } else {
-              output.complete(); // Stop if the input stream is done
-              return;
-            }
-          }
+        for await (const value of input) {
+          if (notifierEmitted) return; // Stop processing if the notifier has emitted
+          output.next(value); // Forward the value from the input stream
         }
       } catch (err) {
-        output.error(err); // Propagate any error from input or notifier streams
+        output.error(err); // Propagate any error
       }
     };
 
-    // Start processing both streams concurrently
-    processStreams();
+    // Async generator to handle the notifier stream
+    const processNotifierStream = async () => {
+      try {
+        for await (const _ of notifier) {
+          notifierEmitted = true; // Mark notifier as emitted
+          output.complete(); // Complete the output stream
+          break; // Stop processing further from the input stream
+        }
+      } catch (err) {
+        output.error(err); // Propagate any error from the notifier stream
+      }
+    };
+
+    // Run both input stream and notifier stream concurrently
+    (async () => {
+      await Promise.all([processInputStream(), processNotifierStream()]);
+    })();
 
     return output;
   };
