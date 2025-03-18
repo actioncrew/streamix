@@ -45,6 +45,7 @@ export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
       const subscription = originalSubscribe.call(output, callbackOrReceiver);
 
       return createSubscription(() => output.value(), () => {
+        output.complete();
         subscription.unsubscribe();
 
         // Cleanup all subscriptions
