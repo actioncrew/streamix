@@ -142,10 +142,6 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
     base.subscribers.set(receiver, { startIndex: base.buffer.length - 1, endIndex: Infinity });
 
     try {
-      // First yield the current value
-      const currentValue = base.buffer[base.buffer.length - 1];
-      yield currentValue;
-
       while (true) {
         const subscriptionState = base.subscribers.get(receiver);
         if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
