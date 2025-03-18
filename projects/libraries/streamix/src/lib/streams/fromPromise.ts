@@ -1,4 +1,4 @@
-import { createSubject, Subject } from './subject';
+import { createSubject, Subject } from '../streams';
 
 // Function to create a FromPromiseStream using Subject
 export function fromPromise<T = any>(promise: Promise<T>): Subject<T> {

@@ -1,5 +1,5 @@
 import { createSubscription, Receiver, Stream } from "../abstractions";
-import { createSubject, Subject } from "../streams/subject";
+import { createSubject, Subject } from "../streams";
 
 export function merge<T = any>(...sources: Stream<T>[]): Subject<T> {
   const subject = createSubject<T>();

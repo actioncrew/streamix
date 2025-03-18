@@ -1,5 +1,5 @@
 import { createSubscription, Receiver, Stream } from "../abstractions";
-import { createSubject, Subject } from "../streams/subject";
+import { createSubject, Subject } from "../streams";
 
 export function defer<T = any>(factory: () => Stream<T>): Subject<T> {
   const subject = createSubject<T>(); // Create a subject to hold emitted values

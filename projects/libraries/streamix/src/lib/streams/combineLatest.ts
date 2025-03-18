@@ -1,5 +1,5 @@
 import { Stream } from "../abstractions";
-import { createSubject } from "./subject";
+import { createSubject } from "../streams";
 
 // Combine multiple streams and emit the latest value from each stream
 export function combineLatest<T = any>(

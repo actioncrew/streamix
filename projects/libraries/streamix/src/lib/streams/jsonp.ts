@@ -1,5 +1,5 @@
 import { createSubscription, Receiver } from "../abstractions";
-import { createSubject, Subject } from "../streams/subject";
+import { createSubject, Subject } from "../streams";
 
 export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
   const subject = createSubject<T>();

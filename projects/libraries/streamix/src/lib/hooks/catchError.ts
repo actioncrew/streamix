@@ -1,5 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams/subject";
+import { createSubject } from "../streams";
 
 // Define the catchError operator
 export const catchError = (handler: ((error: any) => void) = () => {}): StreamMapper => {

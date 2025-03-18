@@ -1,9 +1,9 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
 import { createBehaviorSubject } from '../streams';
 
-export const startWith = (value: any): StreamMapper => {
+export const startWith = (initialValue: any): StreamMapper => {
   const operator = (input: Stream): Stream => {
-    const output = createBehaviorSubject<any>(value); // Create the output stream
+    const output = createBehaviorSubject<any>(initialValue); // Create the output stream
 
     // Subscribe to the original stream
     (async () => {

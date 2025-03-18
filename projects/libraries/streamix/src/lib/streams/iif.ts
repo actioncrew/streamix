@@ -1,5 +1,5 @@
 import { createSubscription, Receiver, Stream } from "../abstractions";
-import { createSubject, Subject } from "../streams/subject";
+import { createSubject, Subject } from "../streams";
 
 export function iif<T = any>(
   condition: () => boolean,

@@ -1,5 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams/subject";
+import { createSubject } from "../streams";
 
 export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
   const operator = (inputStream: Stream<any>): Stream<any> => {

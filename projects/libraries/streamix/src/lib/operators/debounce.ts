@@ -1,5 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams/subject";
+import { createSubject } from "../streams";
 
 export function debounce<T>(duration: number): StreamMapper {
   return createMapper("debounce", (input: Stream<T>): Stream<T> => {

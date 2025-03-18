@@ -1,5 +1,5 @@
 import { Operator, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams/subject";
+import { createSubject } from "../streams";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 

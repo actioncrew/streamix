@@ -1,5 +1,5 @@
 import { createMapper, Stream, StreamMapper, Subscription } from "../abstractions";
-import { createSubject } from "../streams/subject";
+import { createSubject } from "../streams";
 
 export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
   let index = 0;

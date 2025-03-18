@@ -1,4 +1,4 @@
-import { createReceiver, Receiver, Subscription } from '../abstractions';
+import { Receiver, Subscription } from '../abstractions';
 import { createSubject, Subject } from '../streams';
 
 export type BehaviorSubject<T = any> = Subject<T> & {
@@ -20,11 +20,10 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   // Override the `subscribe` method to emit the current value to new subscribers
   const originalSubscribe = subject.subscribe;
   subject.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
-    const receiver = createReceiver(callbackOrReceiver);
     const subscription = originalSubscribe.call(subject, callbackOrReceiver);
 
     // Emit the current value to the new subscriber immediately
-    receiver.next?.(currentValue);
+    subject.next?.(currentValue);
 
     return subscription;
   };
