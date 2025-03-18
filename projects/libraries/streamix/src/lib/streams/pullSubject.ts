@@ -7,147 +7,160 @@ export type Subject<T = any> = Stream<T> & {
   completed(): boolean;
 };
 
-export type PullSubscription<T> = Subscription & {
-  pull(): Promise<IteratorResult<T, void>>;
-};
-
-// Pull-based Subject Implementation
-// Pull-based Subject Implementation
 export function createSubject<T = any>(): Subject<T> {
-  let subscribers: Receiver<T>[] = [];
-  let valueQueue: T[] = []; // Queue to store values until requested
-  let currentValue: T | undefined;
+  let buffer: T[] = []; // Shared buffer
+  let subscribers = new Map<Receiver<T>, { startIndex: number; endIndex: number }>(); // Subscriber indices
   let completed = false;
   let hasError = false;
   let errorValue: any = null;
 
-  // Map to track pull requests from subscribers
+  // Pull request management
   const pullRequests = new Map<Receiver<T>, {
     resolve: (result: IteratorResult<T, void>) => void;
     reject: (error: any) => void;
   }>();
 
-  // Add a value to the queue
   const next = (value: T) => {
     if (completed || hasError) return;
-    currentValue = value;
-    valueQueue.push(value);
-
-    // Resolve any pending pull requests
+    buffer.push(value);
     processPullRequests();
   };
 
-  // Complete the stream
   const complete = () => {
     if (completed) return;
     completed = true;
-
-    // Resolve any pending pull requests with completed status
     processPullRequests();
   };
 
-  // Emit an error
   const error = (err: any) => {
     if (completed || hasError) return;
     hasError = true;
     errorValue = err;
-
-    // Reject any pending pull requests with the error
-    for (const [, { reject }] of pullRequests.entries()) {
+    for (const { reject } of pullRequests.values()) {
       reject(err);
     }
     pullRequests.clear();
   };
 
-  // Process any pending pull requests
-  const processPullRequests = () => {
-    const entries = [...pullRequests.entries()];
-
-    for (const [receiver, { resolve }] of entries) {
-      if (receiver.unsubscribed) {
-        pullRequests.delete(receiver);
-        continue;
-      }
-
-      if (valueQueue.length > 0) {
-        const value = valueQueue.shift()!;
-        resolve({ value, done: false });
-        pullRequests.delete(receiver);
-      } else if (completed) {
-        resolve({ value: undefined, done: true });
-        pullRequests.delete(receiver);
-      }
-    }
-  };
-
-  // Function to pull a value for a specific receiver
   const pullValue = (receiver: Receiver<T>): Promise<IteratorResult<T, void>> => {
-    if (receiver.unsubscribed) {
-      return Promise.reject(new Error("Subscription has been unsubscribed"));
-    }
+    if (hasError) return Promise.reject(errorValue);
 
-    if (hasError) {
-      return Promise.reject(errorValue);
-    }
+    const { startIndex, endIndex } = subscribers.get(receiver) ?? { startIndex: 0, endIndex: Infinity };
+    if (startIndex >= endIndex) return Promise.resolve({ value: undefined, done: true });
 
-    if (valueQueue.length > 0) {
-      const value = valueQueue.shift()!;
+    if (startIndex < buffer.length) {
+      const value = buffer[startIndex];
+      subscribers.set(receiver, { startIndex: startIndex + 1, endIndex });
       return Promise.resolve({ value, done: false });
     }
 
-    if (completed) {
-      return Promise.resolve({ value: undefined, done: true });
-    }
+    if (completed) return Promise.resolve({ value: undefined, done: true });
 
     return new Promise<IteratorResult<T, void>>((resolve, reject) => {
       pullRequests.set(receiver, { resolve, reject });
     });
   };
 
-  // Enhanced subscribe with pull capability
-  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): PullSubscription<T> => {
+  const processPullRequests = () => {
+    for (const [receiver, request] of pullRequests.entries()) {
+      if (receiver.unsubscribed) {
+        pullRequests.delete(receiver);
+        continue;
+      }
+      pullValue(receiver).then(request.resolve).catch(request.reject);
+      pullRequests.delete(receiver);
+    }
+  };
+
+  const cleanupBuffer = () => {
+    // Find the lowest unread index among subscribers
+    const minIndex = Math.min(...Array.from(subscribers.values(), ({ startIndex }) => startIndex ?? Infinity));
+    if (minIndex > 0) {
+      buffer.splice(0, minIndex); // Trim the buffer
+      for (const receiver of subscribers.keys()) {
+        const { startIndex, endIndex } = subscribers.get(receiver) ?? { startIndex: 0, endIndex: Infinity };
+        subscribers.set(receiver, { startIndex: startIndex - minIndex, endIndex: endIndex - minIndex });
+      }
+    }
+  };
+
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    subscribers.push(receiver);
+    const currentStartIndex = buffer.length; // Start from the current buffer index
+    subscribers.set(receiver, { startIndex: currentStartIndex, endIndex: Infinity });
 
-    // Create a base subscription
-    const baseSubscription = createSubscription(
-      // getValue function
-      () => currentValue,
-      // unsubscribe function
+    const subscription = createSubscription(
+      () => buffer[buffer.length - 1], // Provide the last emitted value
       () => {
-        if (!receiver.unsubscribed) {
+        if(!receiver.unsubscribed) {
           receiver.unsubscribed = true;
-
-          if (pullRequests.has(receiver)) {
-            const { resolve } = pullRequests.get(receiver)!;
-            resolve({ value: undefined, done: true });
-            pullRequests.delete(receiver);
-          }
-
-          subscribers = subscribers.filter(sub => sub !== receiver);
+          const subscriptionState = subscribers.get(receiver)!;
+          subscriptionState.endIndex = buffer.length;
+          subscribers.set(receiver, subscriptionState);
+          pullRequests.delete(receiver); // Clear any pending pull requests
+          cleanupBuffer();
         }
       }
     );
 
-    // Create a pull method
-    const pull = () => pullValue(receiver);
+    (async () => {
+      try {
+        while (true) { // Control the loop via startIndex and endIndex
+          const subscriptionState = subscribers.get(receiver);
+          if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
+            break; // Exit the loop if no more values can be processed
+          }
+          const result = await pullValue(receiver);
+          if (result.done) break;
+          receiver.next(result.value);
+        }
+      } catch (err: any) {
+        receiver.error(err);
+      } finally {
+        receiver.complete();
+        // Clean up once all values are processed or error occurs
+        cleanupAfterReceiver(receiver);
+      }
+    })();
 
-    // Attach the pull method to the subscription
-    return Object.assign(baseSubscription, { pull }) as PullSubscription<T>;
+    return subscription;
   };
 
-  // AsyncIterator implementation using pull mechanism
-  const asyncIterator = async function* (this: Subject<T>): AsyncGenerator<T, void, unknown> {
-    const subscription = this.subscribe() as PullSubscription<T>;
+  const cleanupAfterReceiver = (receiver: Receiver<T>) => {
+    // Remove the receiver from subscribers only when it has processed all values
+    const subscriptionState = subscribers.get(receiver);
+    if (subscriptionState && subscriptionState.startIndex >= subscriptionState.endIndex) {
+      subscribers.delete(receiver);
+      pullRequests.delete(receiver);
+      cleanupBuffer(); // Clean up the buffer to avoid memory leaks
+    }
+  };
+
+  const asyncIterator = async function* () {
+    const receiver = createReceiver();
+    // Assign the receiver to the subscribers map with the correct start index
+    subscribers.set(receiver, { startIndex: buffer.length, endIndex: Infinity });
 
     try {
       while (true) {
-        const result = await subscription.pull();
-        if (result.done) break;
-        yield result.value;
+        const subscriptionState = subscribers.get(receiver);
+        if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
+          // If the receiver has consumed all available values, break the loop
+          break;
+        }
+
+        const result = await pullValue(receiver);
+        if (result.done) {
+          // If the stream has completed, finish the iteration
+          break;
+        }
+        yield result.value;  // Yield the current value to the async iterator
       }
+    } catch (err: any) {
+      receiver.error(err);  // Handle any errors during the async iteration
     } finally {
-      subscription.unsubscribe();
+      receiver.unsubscribed = true;  // Mark the receiver as unsubscribed
+      cleanupAfterReceiver(receiver);  // Cleanup resources after processing
     }
   };
 
@@ -157,7 +170,7 @@ export function createSubject<T = any>(): Subject<T> {
     [Symbol.asyncIterator]: asyncIterator,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
-    value: () => currentValue,
+    value: () => buffer[buffer.length - 1],
     next,
     complete,
     completed: () => completed,

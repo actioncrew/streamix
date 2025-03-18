@@ -114,6 +114,7 @@ describe('Subject', () => {
 
     subject.next('value1');
     subject.next('value2');
+
     subject.complete();
   });
 
@@ -194,35 +195,6 @@ describe('Subject', () => {
     subject.complete();
   });
 
-  it('should allow independent subscriptions with different lifetimes', (done) => {
-    const subject = createSubject<any>();
-
-    let emitted1: any[] = [];
-    let emitted2: any[] = [];
-
-    const subscription1 = subject.subscribe({
-      next: value => emitted1.push(value),
-    });
-
-    subject.next('value1');
-
-    const subscription2 = subject.subscribe({
-      next: value => emitted2.push(value),
-      complete: () => {
-        expect(emitted1).toEqual(['value1', 'value2']);
-        expect(emitted2).toEqual(['value2', 'value3']); // Late subscriber misses 'value1'
-        subscription1.unsubscribe();
-        subscription2.unsubscribe();
-        done();
-      }
-    });
-
-    subject.next('value2');
-    subscription1.unsubscribe(); // Unsubscribing should not affect subscription2
-    subject.next('value3');
-    subject.complete();
-  });
-
   it('should receive emitted values via async iterator', async () => {
     const subject = createSubject<any>();
     const emittedValues: any[] = [];
@@ -240,6 +212,36 @@ describe('Subject', () => {
     subject.complete();
 
     await iterator1;
+  });
+
+  it('should allow independent subscriptions with different lifetimes', (done) => {
+    const subject = createSubject<any>();
+
+    let emitted1: any[] = [];
+    let emitted2: any[] = [];
+
+    const subscription1 = subject.subscribe({
+      next: value => emitted1.push(value),
+    });
+
+    subject.next('value1');
+
+    const subscription2 = subject.subscribe({
+      next: value => emitted2.push(value),
+      complete: () => {
+        expect(emitted1).toEqual(['value1', 'value2', 'value3']);
+        expect(emitted2).toEqual(['value2', 'value3', 'value4']); // Late subscriber misses 'value1'
+        subscription1.unsubscribe();
+        subscription2.unsubscribe();
+        done();
+      }
+    });
+
+    subject.next('value2');
+    subject.next('value3')
+    subscription1.unsubscribe(); // Unsubscribing should not affect subscription2
+    subject.next('value4');
+    subject.complete();
   });
 
   it('should work with multiple async iterators independently', async () => {
