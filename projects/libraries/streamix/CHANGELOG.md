@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.15
+Streamix now features pull-based subjects, allowing subscribers to independently pull values at their own pace rather than receiving pushed emissions. This ensures that late subscribers can access past values without missing emissions, improving backpressure handling and memory efficiency. Subscriptions are now fully independent, preventing one subscriber’s lifecycle from affecting others. Additionally, pull-based subjects support async iteration (for await...of), making them more flexible for asynchronous workflows while enhancing error propagation and buffer management.
+
 ## 1.0.14
 
 Various improvements and changes: updated test apps, renamed StreamOperator to StreamMapper, reorganized package structure, added debug configurations for jasmine scripts, removed emission abstraction, and corrected package metadata.
