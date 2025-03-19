@@ -56,9 +56,9 @@ export function createBaseSubject<T = any>() {
         base.pullRequests.set(receiver, { resolve, reject });
 
         // Cleanup if unsubscribed before pull request resolves
-        const originalUnsubscribe = receiver.unsubscribe!;
-        receiver.unsubscribe = () => {
-          originalUnsubscribe.call(receiver);
+        const originalComplete = receiver.complete!;
+        receiver.complete = () => {
+          originalComplete.call(receiver);
           if (base.pullRequests.has(receiver)) {
             resolve({ value: undefined, done: true });
             base.pullRequests.delete(receiver);
@@ -76,7 +76,7 @@ export function createBaseSubject<T = any>() {
 
   const processPullRequests = () => {
     for (const [receiver, request] of base.pullRequests.entries()) {
-      if (receiver.unsubscribed) {
+      if (receiver.completed) {
         base.pullRequests.delete(receiver);
         continue;
       }
