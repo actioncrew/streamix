@@ -16,8 +16,10 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       await Promise.resolve();
     }
 
-    // Emit the first value immediately
-    yield timerValue++;
+    if (!signal.aborted) {
+      // Emit the first value immediately
+      yield timerValue++;
+    }
 
     // Emit subsequent values at intervals
     while (!signal.aborted) {
