@@ -35,7 +35,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   stream.subscribe = (callbackOrReceiver?: ((value: number) => void) | Receiver<number>): Subscription => {
     const subscription = originalSubscribe.call(stream, callbackOrReceiver);
 
-    return createSubscription(() => stream.value(), () => {
+    return createSubscription(() => {
       abortController.abort();
       subscription.unsubscribe();
     });

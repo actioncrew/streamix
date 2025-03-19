@@ -29,7 +29,7 @@ export function onMediaQuery(mediaQueryString: string) {
   subject.subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
     const subscription = originalSubscribe.call(subject, callback);
 
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       if (subject.completed()) {
         mediaQueryList.removeEventListener("change", listener);

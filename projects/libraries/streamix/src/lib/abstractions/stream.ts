@@ -117,7 +117,7 @@ export function createStream<T>(
       }
     })();
 
-    return createSubscription(() => currentValue, () => {});
+    return createSubscription();
   };
 
   const stream: Stream<T> = {

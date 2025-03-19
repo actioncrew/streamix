@@ -134,7 +134,6 @@ export function createSubject<T = any>(): Subject<T> {
     base.subscribers.set(receiver, { startIndex: currentStartIndex, endIndex: Infinity });
 
     const subscription = createSubscription(
-      () => base.buffer[base.buffer.length - 1],
       () => {
         if (!unsubscribing) {
           unsubscribing = true;

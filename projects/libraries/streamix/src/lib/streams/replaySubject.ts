@@ -36,7 +36,6 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
     base.subscribers.set(receiver, { startIndex: replayStartIndex, endIndex: Infinity });
 
     const subscription = createSubscription(
-      () => base.buffer[base.buffer.length - 1],
       () => {
         if (!unsubscribing) {
           unsubscribing = true;

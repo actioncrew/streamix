@@ -14,14 +14,10 @@ export const empty = <T = any>(): Stream<T> => {
     // No data is emitted, immediately complete the receiver
     queueMicrotask(() => receiver.complete && receiver.complete());
 
-    // Return a no-op subscription for EMPTY stream
-    const subscription = () => undefined;
-    Object.assign(subscription, {
+    return {
       unsubscribed: false,
       unsubscribe: () => { /* No-op for EMPTY subscription */ },
-    });
-
-    return subscription as Subscription;
+    } as Subscription;
   };
 
   return Object.assign(stream, { subscribe, completed: () => true });

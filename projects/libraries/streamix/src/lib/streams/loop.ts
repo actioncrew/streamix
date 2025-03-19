@@ -25,7 +25,7 @@ export function loop<T>(
     stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
       const subscription = originalSubscribe.call(stream, callbackOrReceiver);
 
-      return createSubscription(() => stream.value(), () => {
+      return createSubscription(() => {
         abortController.abort();
         subscription.unsubscribe();
       });

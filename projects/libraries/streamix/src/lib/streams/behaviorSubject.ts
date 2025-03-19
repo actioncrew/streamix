@@ -16,7 +16,6 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
     base.subscribers.set(receiver, { startIndex: base.buffer.length - 1, endIndex: Infinity });
 
     const subscription = createSubscription(
-      () => base.buffer[base.buffer.length - 1],
       () => {
         if (!unsubscribing) {
           unsubscribing = true;

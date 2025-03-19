@@ -27,7 +27,7 @@ export function onIntersection(
 
     observer.observe(element);
 
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       observer.unobserve(element);
       observer.disconnect();

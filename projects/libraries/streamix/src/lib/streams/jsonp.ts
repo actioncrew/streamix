@@ -28,7 +28,7 @@ export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
     script.src = `${url}${url.includes('?') ? '&' : '?'}callback=${encodeURIComponent(uniqueCallbackName)}`;
     document.head.appendChild(script);
 
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       document.head.removeChild(script); // Remove the script if the subscription is unsubscribed
       delete (window as any)[uniqueCallbackName]; // Clean up the callback function

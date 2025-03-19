@@ -27,7 +27,7 @@ export function defer<T = any>(factory: () => Stream<T>): Subject<T> {
       },
     });
 
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       innerSubscription.unsubscribe(); // Cleanup both inner and outer subscriptions
     });

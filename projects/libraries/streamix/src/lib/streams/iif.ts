@@ -31,7 +31,7 @@ export function iif<T = any>(
       },
     });
 
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       innerSubscription.unsubscribe(); // Clean up both subscriptions
     });
