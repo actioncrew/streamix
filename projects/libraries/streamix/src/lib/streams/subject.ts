@@ -3,125 +3,192 @@ import { createReceiver, createSubscription, Operator, pipeStream, Receiver, Str
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
   complete(): void;
-  error(err: any): void;  // Added error method
+  error(err: any): void;
+  completed(): boolean;
 };
 
-// Subject Stream Implementation
-export function createSubject<T = any>(): Subject<T> {
-  let subscribers: Receiver<T>[] = [];
-  let currentValue: T | undefined;
-  let completed = false; // Flag to indicate if the stream is completed
-  let hasError = false; // Flag to indicate if an error has occurred
-  let errorValue: any = null; // Store the error value
+export function createBaseSubject<T = any>() {
+  const base = {
+    buffer: [] as T[],
+    subscribers: new Map<Receiver<T>, { startIndex: number; endIndex: number }>(),
+    pullRequests: new Map<Receiver<T>, { resolve: (value: IteratorResult<T, void>) => void; reject: (reason?: any) => void }>(),
+    completed: false,
+    hasError: false,
+    errorValue: null as any,
+  };
 
-  // Emit a new value to all subscribers
   const next = (value: T) => {
-    if (completed || hasError) return; // Prevent emitting if the stream is completed or in error state
-    currentValue = value;
-
-    subscribers.forEach((subscriber) => subscriber.next?.(value));
-    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed);
+    if (base.completed || base.hasError) return;
+    base.buffer.push(value);
+    processPullRequests();
   };
 
-  // Complete the stream
   const complete = () => {
-    if (completed) return; // If already completed or in error state, do nothing
-    completed = true;
-    subscribers.forEach((subscriber) => subscriber.complete?.());
-    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up
+    if (base.completed) return;
+    base.completed = true;
+    processPullRequests();
   };
 
-  // Emit an error to all subscribers
   const error = (err: any) => {
-    if (completed || hasError) return; // Prevent emitting errors if the stream is completed or in error state
-    hasError = true;
-    errorValue = err;
-    subscribers.forEach((subscriber) => subscriber.error?.(err));
-    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up
+    if (base.completed || base.hasError) return;
+    base.hasError = true;
+    base.errorValue = err;
+    for (const { reject } of base.pullRequests.values()) {
+      reject(err);
+    }
+    base.pullRequests.clear();
   };
+
+  const pullValue = async (receiver: Receiver<T>): Promise<IteratorResult<T, void>> => {
+    if (base.hasError) return Promise.reject(base.errorValue);
+
+    // Fetch the start and end indices for the subscriber
+    const { startIndex, endIndex } = base.subscribers.get(receiver) ?? { startIndex: 0, endIndex: Infinity };
+
+    // If the receiver's startIndex is beyond the available buffer
+    if (startIndex >= base.buffer.length) {
+      if (base.completed) {
+        return Promise.resolve({ value: undefined, done: true });
+      }
+
+      // If the buffer is not yet complete, wait for new values to be pushed
+      return new Promise<IteratorResult<T, void>>((resolve, reject) => {
+        base.pullRequests.set(receiver, { resolve, reject });
+
+        // Cleanup if unsubscribed before pull request resolves
+        const originalComplete = receiver.complete!;
+        receiver.complete = () => {
+          originalComplete.call(receiver);
+          if (base.pullRequests.has(receiver)) {
+            resolve({ value: undefined, done: true });
+            base.pullRequests.delete(receiver);
+          }
+        };
+      });
+    }
+
+    // Fetch the next value from the buffer if available
+    const value = base.buffer[startIndex];
+    base.subscribers.set(receiver, { startIndex: startIndex + 1, endIndex });
+
+    return Promise.resolve({ value, done: false });
+  };
+
+  const processPullRequests = () => {
+    for (const [receiver, request] of base.pullRequests.entries()) {
+      if (receiver.completed) {
+        base.pullRequests.delete(receiver);
+        continue;
+      }
+      pullValue(receiver).then(request.resolve).catch(request.reject);
+      base.pullRequests.delete(receiver);
+    }
+  };
+
+  const cleanupBuffer = () => {
+    const minIndex = Math.min(...Array.from(base.subscribers.values(), ({ startIndex }) => startIndex ?? Infinity));
+    if (minIndex > 0) {
+      base.buffer.splice(0, minIndex);
+      for (const receiver of base.subscribers.keys()) {
+        const { startIndex, endIndex } = base.subscribers.get(receiver) ?? { startIndex: 0, endIndex: Infinity };
+        base.subscribers.set(receiver, { startIndex: startIndex - minIndex, endIndex: endIndex - minIndex });
+      }
+    }
+  };
+
+  const cleanupAfterReceiver = (receiver: Receiver<T>) => {
+    const subscriptionState = base.subscribers.get(receiver);
+    if (subscriptionState && subscriptionState.startIndex >= subscriptionState.endIndex) {
+      base.subscribers.delete(receiver);
+
+      // Resolve any pending pull requests for this receiver
+      if (base.pullRequests.has(receiver)) {
+        const { resolve } = base.pullRequests.get(receiver)!;
+        resolve({ value: undefined, done: true });
+        base.pullRequests.delete(receiver);
+      }
+
+      cleanupBuffer();
+    }
+  };
+
+  return {
+    base,
+    next,
+    complete,
+    error,
+    pullValue,
+    processPullRequests,
+    cleanupBuffer,
+    cleanupAfterReceiver,
+  };
+}
+
+export function createSubject<T = any>(): Subject<T> {
+  const { base, next, complete, error, pullValue, cleanupBuffer, cleanupAfterReceiver } = createBaseSubject<T>();
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    subscribers.push(receiver);
+    let unsubscribing = false;
+    const currentStartIndex = base.buffer.length;
+    base.subscribers.set(receiver, { startIndex: currentStartIndex, endIndex: Infinity });
 
-    if (currentValue !== undefined && !hasError) {
-      receiver.next?.(currentValue); // Emit the current value to new subscriber immediately
-    }
-
-    if (hasError) {
-      receiver.error?.(errorValue); // If the stream has errored, emit the error immediately
-    }
-
-    if (completed) {
-      subscribers.forEach((subscriber) => subscriber.complete?.()); // If completed, notify the subscriber
-    }
-
-    return createSubscription(() => currentValue, () => {
-      if (!receiver.unsubscribed) {
-        receiver.unsubscribed = true;
-        if (!completed) {
-          completed = true;
-          // Ensure that even unsubscribed receivers are notified of completion or error
-          subscribers.forEach((subscriber) => subscriber.complete?.());
+    const subscription = createSubscription(
+      () => {
+        if (!unsubscribing) {
+          unsubscribing = true;
+          const subscriptionState = base.subscribers.get(receiver)!;
+          subscriptionState.endIndex = base.buffer.length;
+          base.subscribers.set(receiver, subscriptionState);
+          base.pullRequests.delete(receiver);
+          cleanupBuffer();
         }
-        subscribers = subscribers.filter((sub) => sub !== receiver); // Clean up
       }
-    });
+    );
+
+    (async () => {
+      try {
+        while (true) {
+          const subscriptionState = base.subscribers.get(receiver);
+          if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
+            break;
+          }
+
+          const result = await pullValue(receiver);
+          if (result.done) break;
+
+          receiver.next(result.value);
+        }
+      } catch (err: any) {
+        receiver.error(err);
+      } finally {
+        receiver.complete();
+        cleanupAfterReceiver(receiver);
+      }
+    })();
+
+    return subscription;
   };
 
-  // Implement AsyncIterator
-  const asyncIterator = async function* (this: Subject<T>): AsyncGenerator<T, void, unknown> {
-    let resolveNext: ((value: IteratorResult<T>) => void) | null = null;
-    let rejectNext: ((reason?: any) => void) | null = null;
-    let latestValue: T | undefined;
-    let hasNewValue = false;
-    let completedHandled = false;
-
-    const receiver = createReceiver({
-      next: (value: T) => {
-        latestValue = value;
-        hasNewValue = true;
-        if (resolveNext) {
-          resolveNext({ value, done: false });
-          resolveNext = null;
-          hasNewValue = false;
-        }
-      },
-
-      complete: () => {
-        completedHandled = true;
-        if (resolveNext) {
-          resolveNext({ value: undefined, done: true });
-        }
-      },
-
-      error: (err: Error) => {
-        if (rejectNext) {
-          rejectNext(err);
-          rejectNext = null;
-        }
-      }
-    })
-
-
-    const subscription = this.subscribe(receiver);
+  const asyncIterator = async function* () {
+    const receiver = createReceiver();
+    base.subscribers.set(receiver, { startIndex: base.buffer.length, endIndex: Infinity });
 
     try {
-      while (!completedHandled || hasNewValue) {
-        if (hasNewValue) {
-          yield latestValue!;
-          hasNewValue = false;
-        } else {
-          const result = await new Promise<IteratorResult<T>>((resolve, reject) => {
-            resolveNext = resolve;
-            rejectNext = reject;
-          });
-          if (result.done) break;
-          yield result.value;
+      while (true) {
+        const subscriptionState = base.subscribers.get(receiver);
+        if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
+          break;
         }
+        const result = await pullValue(receiver);
+        if (result.done) break;
+        yield result.value;
       }
+    } catch (err: any) {
+      receiver.error(err);
     } finally {
-      subscription.unsubscribe();
+      receiver.complete();
+      cleanupAfterReceiver(receiver);
     }
   };
 
@@ -131,10 +198,10 @@ export function createSubject<T = any>(): Subject<T> {
     [Symbol.asyncIterator]: asyncIterator,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
-    value: () => currentValue,
+    value: () => base.buffer[base.buffer.length - 1],
     next,
     complete,
-    completed: () => completed,
+    completed: () => base.completed,
     error,
   };
 

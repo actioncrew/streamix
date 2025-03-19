@@ -26,7 +26,7 @@ export function onMutation(
     observer.observe(element, options);
 
     const subscription = originalSubscribe.call(subject, callback);
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       observer.disconnect();
     });

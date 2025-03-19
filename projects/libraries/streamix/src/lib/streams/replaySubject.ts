@@ -1,166 +1,125 @@
-import {
-  createReceiver,
-  createSubscription,
-  Operator,
-  pipeStream,
-  Receiver,
-  StreamMapper,
-  Subscription,
-} from "../abstractions";
-import { Subject } from "../streams";
+import { createReceiver, createSubscription, Operator, pipeStream, Receiver, StreamMapper, Subscription } from "../abstractions";
+import { createBaseSubject, Subject } from "../streams";
 
 export type ReplaySubject<T = any> = Subject<T>;
 
-export function createReplaySubject<T = any>(bufferSize: number = Infinity): ReplaySubject<T> {
-  let subscribers: Receiver<T>[] = [];
-  let buffer: T[] = [];
-  let completed = false;
-  let hasError = false;
-  let errorValue: any = null;
+export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySubject<T> {
+  const { base, complete, error, pullValue, processPullRequests, cleanupBuffer, cleanupAfterReceiver } = createBaseSubject<T>();
 
-  // Emit a new value to all subscribers
-  const next = (value: T) => {
-    if (completed || hasError) return; // Prevent emitting if the stream is completed or in error state
-    buffer.push(value);
-    if (buffer.length > bufferSize) {
-      buffer.shift(); // Maintain the buffer size
+  const nextWithBuffer = (value: T) => {
+    if (base.completed || base.hasError) return;
+    base.buffer.push(value);
+
+    if (bufferSize !== Infinity && base.buffer.length > bufferSize) {
+      base.buffer.shift();
+
+      for (const [receiver, state] of base.subscribers.entries()) {
+        if (state.startIndex > 0) {
+          base.subscribers.set(receiver, {
+            startIndex: state.startIndex - 1,
+            endIndex: state.endIndex === Infinity ? Infinity : state.endIndex - 1,
+          });
+        }
+      }
     }
 
-    subscribers.forEach((subscriber) => subscriber.next?.(value));
-    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up unsubscribed receivers
+    processPullRequests();
   };
 
-  // Complete the stream
-  const complete = () => {
-    if (completed) return; // If already completed or in error state, do nothing
-    completed = true;
-    subscribers.forEach((subscriber) => subscriber.complete?.());
-    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up
-  };
-
-  // Emit an error to all subscribers
-  const error = (err: any) => {
-    if (completed || hasError) return; // Prevent emitting errors if the stream is completed or in error state
-    hasError = true;
-    errorValue = err;
-    subscribers.forEach((subscriber) => subscriber.error?.(err));
-    subscribers = subscribers.filter((subscriber) => !subscriber.unsubscribed); // Clean up
-  };
-
-  // Subscribe to the ReplaySubject
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    subscribers.push(receiver);
+    let unsubscribing = false;
 
-    // Replay the buffer to the new subscriber
-    buffer.forEach((value) => receiver.next?.(value));
+    const replayCount = Math.min(bufferSize, base.buffer.length);
+    const replayStartIndex = base.buffer.length - replayCount;
 
-    if (hasError) {
-      receiver.error?.(errorValue); // If the stream has errored, emit the error immediately
-    }
+    base.subscribers.set(receiver, { startIndex: replayStartIndex, endIndex: Infinity });
 
-    if (completed) {
-      receiver.complete?.(); // If completed, notify the subscriber
-    }
-
-    return createSubscription(
-      () => buffer[buffer.length - 1], // Get the latest value
+    const subscription = createSubscription(
       () => {
-        if (!receiver.unsubscribed) {
-          receiver.unsubscribed = true;
-          subscribers = subscribers.filter((sub) => sub !== receiver); // Clean up
+        if (!unsubscribing) {
+          unsubscribing = true;
+          const subscriptionState = base.subscribers.get(receiver)!;
+          subscriptionState.endIndex = base.buffer.length;
+          base.subscribers.set(receiver, subscriptionState);
+          base.pullRequests.delete(receiver);
+          cleanupBuffer();
         }
       }
     );
+
+    for (let i = replayStartIndex; i < base.buffer.length; i++) {
+      receiver.next(base.buffer[i]);
+    }
+
+    base.subscribers.set(receiver, { startIndex: base.buffer.length, endIndex: Infinity });
+
+    (async () => {
+      try {
+        while (true) {
+          const subscriptionState = base.subscribers.get(receiver);
+          if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
+            break;
+          }
+          const result = await pullValue(receiver);
+          if (result.done) break;
+          receiver.next(result.value);
+        }
+      } catch (err: any) {
+        receiver.error(err);
+      } finally {
+        receiver.complete();
+        cleanupAfterReceiver(receiver);
+      }
+    })();
+
+    return subscription;
   };
 
-  // Async Iterator Implementation
-  const asyncIterator = async function* (this: ReplaySubject<T>): AsyncGenerator<T, void, unknown> {
-    let resolveNext: ((value: IteratorResult<T>) => void) | null = null;
-    let rejectNext: ((reason?: any) => void) | null = null;
+  const asyncIterator = async function* () {
+    const receiver = createReceiver();
 
-    const queue: T[] = [];
-    let isCompleted = false;
+    const replayCount = Math.min(bufferSize, base.buffer.length);
+    const replayStartIndex = base.buffer.length - replayCount;
 
-    const receiver = createReceiver({
-      next: (value: T) => {
-
-        if (resolveNext) {
-          // If there's a pending promise, resolve it with the new emission
-          resolveNext({ value, done: false });
-          resolveNext = null;
-        } else {
-          // Otherwise, add the emission to the queue
-          queue.push(value);
-        }
-      },
-      complete: () => {
-        isCompleted = true;
-        if (resolveNext) {
-          // Resolve the pending promise with a done signal
-          resolveNext({ value: undefined, done: true });
-          resolveNext = null;
-        }
-      },
-      error: (err: Error) => {
-        if (rejectNext) {
-          // Reject the pending promise with the error
-          rejectNext(err);
-          rejectNext = null;
-        }
-      },
-    });
-
-    // Subscribe to the ReplaySubject
-    const subscription = this.subscribe(receiver);
+    base.subscribers.set(receiver, { startIndex: replayStartIndex, endIndex: Infinity });
 
     try {
-      // Replay the buffer to the async iterator
-      for (const value of buffer) {
-        yield value;
+      for (let i = replayStartIndex; i < base.buffer.length; i++) {
+        yield base.buffer[i];
       }
 
-      // Process new emissions
+      base.subscribers.set(receiver, { startIndex: base.buffer.length, endIndex: Infinity });
+
       while (true) {
-        if (queue.length > 0) {
-          // Yield emissions from the queue
-          const emission = queue.shift()!;
-          yield emission;
-        } else if (isCompleted) {
-          // If completed, break the loop
+        const subscriptionState = base.subscribers.get(receiver);
+        if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
           break;
-        } else {
-          // Wait for new emissions
-          const result = await new Promise<IteratorResult<T>>((resolve, reject) => {
-            resolveNext = resolve;
-            rejectNext = reject;
-          });
-
-          if (result.done) {
-            break;
-          } else {
-            yield result.value;
-          }
         }
+        const result = await pullValue(receiver);
+        if (result.done) break;
+        yield result.value;
       }
+    } catch (err: any) {
+      receiver.error(err);
     } finally {
-      // Clean up the subscription
-      subscription.unsubscribe();
+      receiver.complete();
+      cleanupAfterReceiver(receiver);
     }
   };
 
-  const stream: ReplaySubject<T> = {
+  const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
     [Symbol.asyncIterator]: asyncIterator,
     subscribe,
-    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
-    value: () => buffer[buffer.length - 1], // Get the latest value
-    next,
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(replaySubject, ...steps),
+    value: () => base.buffer[base.buffer.length - 1],
+    next: nextWithBuffer,
     complete,
-    completed: () => completed,
+    completed: () => base.completed,
     error,
   };
 
-  return stream;
+  return replaySubject;
 }

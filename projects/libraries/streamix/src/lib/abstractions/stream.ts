@@ -1,5 +1,5 @@
 import { Operator, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams/subject";
+import { createSubject } from "../streams";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
@@ -11,7 +11,6 @@ export type Stream<T = any> = {
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
   value: () => T | undefined;
-  completed: () => boolean;
 };
 
 // Functional composition to extend stream functionality
@@ -91,7 +90,6 @@ export function createStream<T>(
   name: string,
   generatorFn: (this: Stream<T>) => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
-  let completed = false;
   let currentValue: T | undefined;
 
   async function* generator() {
@@ -107,15 +105,6 @@ export function createStream<T>(
     const receiver = createReceiver(callbackOrReceiver);
     const iter = generator();
 
-    const unsubscribe = function (this: Subscription) {
-      if(!this.unsubscribed) {
-        this.unsubscribed =true;
-        if (!completed) {
-          completed = true;
-        }
-      }
-    };
-
     (async () => {
       try {
         for await (const value of iter) {
@@ -124,12 +113,11 @@ export function createStream<T>(
       } catch (err: any) {
         receiver.error?.(err);
       } finally {
-        completed = true;
         receiver.complete?.();
       }
     })();
 
-    return createSubscription(() => currentValue, unsubscribe);
+    return createSubscription();
   };
 
   const stream: Stream<T> = {
@@ -143,14 +131,11 @@ export function createStream<T>(
         }
       } catch (err) {
         throw err;
-      } finally {
-        completed = true;
       }
     },
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
-    value: () => currentValue,
-    completed: () => completed,
+    value: () => currentValue
   };
 
   return stream;

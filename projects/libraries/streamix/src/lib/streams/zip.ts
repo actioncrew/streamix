@@ -1,5 +1,5 @@
 import { Stream } from "../abstractions";
-import { createSubject } from "./subject";
+import { createSubject } from "../streams";
 
 // Combine multiple streams by emitting values when all streams emit
 export function zip(streams: Stream<any>[]): Stream<any[]> {

@@ -1,11 +1,12 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
-import { createSubject } from '../streams/subject';
+import { createSubject } from '../streams';
 
 export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
   let index = 0;
   return createMapper('mergeMap', (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
     let activeInnerStreams = 0; // Track active inner streams
+    let inputCompleted = false;
     let hasError = false; // Flag to track if an error has occurred
 
     // Async function to handle inner streams
@@ -24,7 +25,7 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
         // Decrease the count of active inner streams
         activeInnerStreams -= 1;
         // If all inner streams are processed and the outer stream is complete, complete the output stream
-        if (activeInnerStreams === 0 && input.completed()) {
+        if (activeInnerStreams === 0 && inputCompleted) {
           output.complete();
         }
       }
@@ -46,8 +47,8 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
           output.error(err); // Propagate the error from the outer stream
         }
       } finally {
-        // If outer stream completes and there are no active inner streams, complete the output stream
-        if (activeInnerStreams === 0 && !hasError) {
+        inputCompleted = true;
+        if (activeInnerStreams === 0) {
           output.complete();
         }
       }

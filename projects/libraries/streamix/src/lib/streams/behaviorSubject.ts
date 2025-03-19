@@ -1,41 +1,93 @@
-import { createReceiver, Receiver, Subscription } from '../abstractions';
-import { createSubject, Subject } from '../streams';
+import { createReceiver, createSubscription, Operator, pipeStream, Receiver, StreamMapper, Subscription } from "../abstractions";
+import { createBaseSubject, Subject } from "../streams";
 
-export type BehaviorSubject<T = any> = Subject<T> & {
-  readonly value: T; // Expose the current value
+export type BehaviorSubject<T> = Subject<T> & {
+  getValue(): T;
 };
 
-// Create function for the BehaviorSubject
-export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
-  let currentValue = initialValue; // Store the current value
-  const subject = createSubject<T>() as Subject<T>;
+export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
+  const { base, next, complete, error, pullValue, cleanupBuffer, cleanupAfterReceiver } = createBaseSubject<T>();
 
-  // Override the `next` method to update the current value
-  const originalNext = subject.next;
-  subject.next = (value: T) => {
-    currentValue = value; // Update the current value
-    originalNext.call(subject, value); // Emit the value to all subscribers
-  };
+  base.buffer.push(initialValue);
 
-  // Override the `subscribe` method to emit the current value to new subscribers
-  const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const subscription = originalSubscribe.call(subject, callbackOrReceiver);
+    let unsubscribing = false;
+    base.subscribers.set(receiver, { startIndex: base.buffer.length - 1, endIndex: Infinity });
 
-    // Emit the current value to the new subscriber immediately
-    receiver.next?.(currentValue);
+    const subscription = createSubscription(
+      () => {
+        if (!unsubscribing) {
+          unsubscribing = true;
+          const subscriptionState = base.subscribers.get(receiver)!;
+          subscriptionState.endIndex = base.buffer.length;
+          base.subscribers.set(receiver, subscriptionState);
+          base.pullRequests.delete(receiver);
+          cleanupBuffer();
+        }
+      }
+    );
+
+    (async () => {
+      try {
+        while (true) {
+          const subscriptionState = base.subscribers.get(receiver);
+          if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
+            break;
+          }
+          const result = await pullValue(receiver);
+          if (result.done) break;
+          receiver.next(result.value);
+        }
+      } catch (err: any) {
+        receiver.error(err);
+      } finally {
+        receiver.complete();
+        cleanupAfterReceiver(receiver);
+      }
+    })();
 
     return subscription;
   };
 
-  // Create the BehaviorSubject
-  Object.defineProperty(subject, 'value', {
-    get: () => currentValue,
-    configurable: false,
-    enumerable: false,
-  });
+  const asyncIterator = async function* () {
+    const receiver = createReceiver();
 
-  subject.name = 'behaviorSubject';
-  return subject as BehaviorSubject<T>;
+    base.subscribers.set(receiver, { startIndex: base.buffer.length - 1, endIndex: Infinity });
+
+    try {
+      while (true) {
+        const subscriptionState = base.subscribers.get(receiver);
+        if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
+          break;
+        }
+        const result = await pullValue(receiver);
+        if (result.done) break;
+        yield result.value;
+      }
+    } catch (err: any) {
+      receiver.error(err);
+    } finally {
+      receiver.complete();
+      cleanupAfterReceiver(receiver);
+    }
+  };
+
+  const getValue = () => base.buffer[base.buffer.length - 1];
+
+  const behaviorSubject: BehaviorSubject<T> = {
+    type: "subject",
+    name: "behaviorSubject",
+    [Symbol.asyncIterator]: asyncIterator,
+    subscribe,
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(behaviorSubject, ...steps),
+    value: getValue,
+    getValue,
+    next,
+    complete,
+    completed: () => base.completed,
+    error,
+  };
+
+  return behaviorSubject;
 }

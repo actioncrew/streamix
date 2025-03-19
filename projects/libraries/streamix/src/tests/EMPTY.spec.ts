@@ -11,9 +11,6 @@ describe('EmptyStream', () => {
         // Ensure no values were emitted
         expect(emittedValues.length).toBe(0);
 
-        // Ensure the stream is auto-completed
-        expect(emptyStream.completed()).toBe(true);
-
         subscription.unsubscribe();
       }
     })
@@ -28,9 +25,6 @@ describe('EMPTY constant', () => {
       complete: () => {
         // Ensure no values were emitted
         expect(emittedValues.length).toBe(0);
-
-        // Ensure the stream is auto-completed
-        expect(EMPTY.completed()).toBe(true);
 
         subscription.unsubscribe();
       }

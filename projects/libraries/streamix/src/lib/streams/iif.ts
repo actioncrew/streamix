@@ -1,5 +1,5 @@
 import { createSubscription, Receiver, Stream } from "../abstractions";
-import { createSubject, Subject } from "../streams/subject";
+import { createSubject, Subject } from "../streams";
 
 export function iif<T = any>(
   condition: () => boolean,
@@ -31,7 +31,7 @@ export function iif<T = any>(
       },
     });
 
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       innerSubscription.unsubscribe(); // Clean up both subscriptions
     });

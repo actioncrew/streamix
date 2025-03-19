@@ -1,6 +1,6 @@
 import { Stream } from '../abstractions';
 import { Coroutine } from '../operators';
-import { createSubject } from './subject';
+import { createSubject } from '../streams';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
   const subject = createSubject<any>(); // Create a Subject

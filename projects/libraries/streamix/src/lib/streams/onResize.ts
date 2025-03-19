@@ -25,7 +25,7 @@ export function onResize(element: Element) {
     const resizeObserver = new ResizeObserver(listener);
     resizeObserver.observe(element);
 
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       resizeObserver.unobserve(element);
       resizeObserver.disconnect();

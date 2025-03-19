@@ -30,7 +30,7 @@ export function onOrientation() {
   subject.subscribe = (callback?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">) => {
     const subscription = originalSubscribe.call(subject, callback);
 
-    return createSubscription(subscription, () => {
+    return createSubscription(() => {
       subscription.unsubscribe();
       if (subject.completed()) {
         window.screen.orientation.removeEventListener("change", listener);
