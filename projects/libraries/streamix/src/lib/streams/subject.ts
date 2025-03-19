@@ -188,7 +188,7 @@ export function createSubject<T = any>(): Subject<T> {
     } catch (err: any) {
       receiver.error(err);
     } finally {
-      receiver.unsubscribed = true;
+      receiver.complete();
       cleanupAfterReceiver(receiver);
     }
   };

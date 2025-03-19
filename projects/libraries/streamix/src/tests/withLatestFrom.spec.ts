@@ -1,6 +1,26 @@
 import { from, withLatestFrom } from '../lib';
 
 describe('withLatestFrom operator', () => {
+  it('should handle cancellation of the main stream', (done) => {
+    const mainStream = from([1, 2, 3]);
+    const otherStream = from(['A', 'B', 'C']);
+
+    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
+
+    let results: any[] = [];
+
+    const subscription = combinedStream.subscribe({
+      next: (value) => results.push(value),
+      complete: () => {
+        expect(results).toEqual([]);
+        done();
+      },
+      error: done.fail,
+    });
+
+    subscription.unsubscribe();
+  });
+
   it('should combine emissions with latest value from other stream', (done) => {
     const mainStream = from([1, 2, 3]);
     const otherStream = from(['A', 'B', 'C', 'D', 'E']);
@@ -47,25 +67,5 @@ describe('withLatestFrom operator', () => {
       },
       error: done.fail,
     });
-  });
-
-  it('should handle cancellation of the main stream', (done) => {
-    const mainStream = from([1, 2, 3]);
-    const otherStream = from(['A', 'B', 'C']);
-
-    const combinedStream = mainStream.pipe(withLatestFrom(otherStream));
-
-    let results: any[] = [];
-
-    const subscription = combinedStream.subscribe({
-      next: (value) => results.push(value),
-      complete: () => {
-        expect(results).toEqual([]);
-        done();
-      },
-      error: done.fail,
-    });
-
-    subscription.unsubscribe();
   });
 });

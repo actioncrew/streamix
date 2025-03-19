@@ -1,4 +1,4 @@
-import { createMapper, createSubscription, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
+import { createMapper, createReceiver, createSubscription, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
 import { createSubject } from "../streams";
 
 export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
@@ -42,11 +42,12 @@ export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
     const originalSubscribe = output.subscribe;
     output.subscribe = (callbackOrReceiver?: ((value: any) => void) | Receiver<any>): Subscription => {
 
-      const subscription = originalSubscribe.call(output, callbackOrReceiver);
+      const receiver = createReceiver(callbackOrReceiver);
+      const subscription = originalSubscribe.call(output, receiver);
 
       return createSubscription(() => output.value(), () => {
-        output.complete();
         subscription.unsubscribe();
+        receiver.complete();
 
         // Cleanup all subscriptions
         subscriptions.forEach((sub) => sub.unsubscribe());

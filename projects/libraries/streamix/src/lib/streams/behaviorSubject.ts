@@ -69,7 +69,7 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
     } catch (err: any) {
       receiver.error(err);
     } finally {
-      receiver.unsubscribed = true;
+      receiver.complete();
       cleanupAfterReceiver(receiver);
     }
   };
