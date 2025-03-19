@@ -3,7 +3,8 @@ import { createReceiver, createSubscription, Operator, pipeStream, Receiver, Str
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
   complete(): void;
-  error(err: any): void;  // Added error method
+  error(err: any): void;
+  completed: () => boolean;
 };
 
 // Subject Stream Implementation

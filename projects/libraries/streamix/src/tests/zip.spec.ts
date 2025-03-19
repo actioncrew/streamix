@@ -22,7 +22,7 @@ describe('zip operator', () => {
   });
 
   it('should complete when one source is empty', (done) => {
-    const stream1$ = from([]);
+    const stream1$ = from([] as any[]);
     const stream2$ = from(['a', 'b', 'c']);
     const stream3$ = from([true, false, true]);
 
