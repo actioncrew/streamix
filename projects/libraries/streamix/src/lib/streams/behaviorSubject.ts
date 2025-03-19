@@ -12,14 +12,14 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-
+    let unsubscribing = false;
     base.subscribers.set(receiver, { startIndex: base.buffer.length - 1, endIndex: Infinity });
 
     const subscription = createSubscription(
       () => base.buffer[base.buffer.length - 1],
       () => {
-        if (!receiver.unsubscribed) {
-          receiver.unsubscribed = true;
+        if (!unsubscribing) {
+          unsubscribing = true;
           const subscriptionState = base.subscribers.get(receiver)!;
           subscriptionState.endIndex = base.buffer.length;
           base.subscribers.set(receiver, subscriptionState);
