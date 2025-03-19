@@ -7,6 +7,7 @@ export const fork = <T = any, R = T>(
   let index = 0;
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
+    let inputCompleted = false;
     let activeInnerStreams = 0; // Track active inner streams
 
     // Helper function to handle inner streams concurrently
@@ -20,7 +21,7 @@ export const fork = <T = any, R = T>(
       } finally {
         activeInnerStreams -= 1; // Decrease active inner stream count
         // If all inner streams are done, complete the output stream
-        if (activeInnerStreams === 0 && input.completed()) {
+        if (activeInnerStreams === 0 && inputCompleted) {
           output.complete();
         }
       }
@@ -46,6 +47,11 @@ export const fork = <T = any, R = T>(
         }
       } catch (outerErr) {
         output.error(outerErr); // Propagate errors from the outer stream
+      } finally {
+        inputCompleted = true;
+        if (activeInnerStreams === 0) {
+          output.complete();
+        }
       }
     })();
 
