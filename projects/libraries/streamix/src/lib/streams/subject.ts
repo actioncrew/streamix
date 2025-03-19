@@ -42,20 +42,36 @@ export function createBaseSubject<T = any>() {
   const pullValue = async (receiver: Receiver<T>): Promise<IteratorResult<T, void>> => {
     if (base.hasError) return Promise.reject(base.errorValue);
 
+    // Fetch the start and end indices for the subscriber
     const { startIndex, endIndex } = base.subscribers.get(receiver) ?? { startIndex: 0, endIndex: Infinity };
-    if (startIndex >= endIndex) return Promise.resolve({ value: undefined, done: true });
 
-    if (startIndex < base.buffer.length) {
-      const value = base.buffer[startIndex];
-      base.subscribers.set(receiver, { startIndex: startIndex + 1, endIndex });
-      return Promise.resolve({ value, done: false });
+    // If the receiver's startIndex is beyond the available buffer
+    if (startIndex >= base.buffer.length) {
+      if (base.completed) {
+        return Promise.resolve({ value: undefined, done: true });
+      }
+
+      // If the buffer is not yet complete, wait for new values to be pushed
+      return new Promise<IteratorResult<T, void>>((resolve, reject) => {
+        base.pullRequests.set(receiver, { resolve, reject });
+
+        // Cleanup if unsubscribed before pull request resolves
+        const originalUnsubscribe = receiver.unsubscribe!;
+        receiver.unsubscribe = () => {
+          originalUnsubscribe.call(receiver);
+          if (base.pullRequests.has(receiver)) {
+            resolve({ value: undefined, done: true });
+            base.pullRequests.delete(receiver);
+          }
+        };
+      });
     }
 
-    if (base.completed) return Promise.resolve({ value: undefined, done: true });
+    // Fetch the next value from the buffer if available
+    const value = base.buffer[startIndex];
+    base.subscribers.set(receiver, { startIndex: startIndex + 1, endIndex });
 
-    return new Promise<IteratorResult<T, void>>((resolve, reject) => {
-      base.pullRequests.set(receiver, { resolve, reject });
-    });
+    return Promise.resolve({ value, done: false });
   };
 
   const processPullRequests = () => {
@@ -84,7 +100,14 @@ export function createBaseSubject<T = any>() {
     const subscriptionState = base.subscribers.get(receiver);
     if (subscriptionState && subscriptionState.startIndex >= subscriptionState.endIndex) {
       base.subscribers.delete(receiver);
-      base.pullRequests.delete(receiver);
+
+      // Resolve any pending pull requests for this receiver
+      if (base.pullRequests.has(receiver)) {
+        const { resolve } = base.pullRequests.get(receiver)!;
+        resolve({ value: undefined, done: true });
+        base.pullRequests.delete(receiver);
+      }
+
       cleanupBuffer();
     }
   };
@@ -130,8 +153,10 @@ export function createSubject<T = any>(): Subject<T> {
           if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
             break;
           }
+
           const result = await pullValue(receiver);
           if (result.done) break;
+
           receiver.next(result.value);
         }
       } catch (err: any) {
