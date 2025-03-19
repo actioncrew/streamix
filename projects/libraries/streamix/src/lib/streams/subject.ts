@@ -8,18 +8,14 @@ export type Subject<T = any> = Stream<T> & {
 };
 
 export function createBaseSubject<T = any>() {
-  return {
+  const base = {
     buffer: [] as T[],
-    subscribers: new Map(),
-    pullRequests: new Map(),
+    subscribers: new Map<Receiver<T>, { startIndex: number; endIndex: number }>(),
+    pullRequests: new Map<Receiver<T>, { resolve: (value: IteratorResult<T, void>) => void; reject: (reason?: any) => void }>(),
     completed: false,
     hasError: false,
-    errorValue: null
+    errorValue: null as any,
   };
-}
-
-export function createSubject<T = any>(): Subject<T> {
-  const base = createBaseSubject<T>();
 
   const next = (value: T) => {
     if (base.completed || base.hasError) return;
@@ -43,7 +39,7 @@ export function createSubject<T = any>(): Subject<T> {
     base.pullRequests.clear();
   };
 
-  const pullValue = async function (receiver: Receiver<T>): Promise<IteratorResult<T, void>> {
+  const pullValue = async (receiver: Receiver<T>): Promise<IteratorResult<T, void>> => {
     if (base.hasError) return Promise.reject(base.errorValue);
 
     const { startIndex, endIndex } = base.subscribers.get(receiver) ?? { startIndex: 0, endIndex: Infinity };
@@ -92,6 +88,21 @@ export function createSubject<T = any>(): Subject<T> {
       cleanupBuffer();
     }
   };
+
+  return {
+    base,
+    next,
+    complete,
+    error,
+    pullValue,
+    processPullRequests,
+    cleanupBuffer,
+    cleanupAfterReceiver,
+  };
+}
+
+export function createSubject<T = any>(): Subject<T> {
+  const { base, next, complete, error, pullValue, cleanupBuffer, cleanupAfterReceiver } = createBaseSubject<T>();
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
@@ -149,10 +160,10 @@ export function createSubject<T = any>(): Subject<T> {
         yield result.value;
       }
     } catch (err: any) {
-        receiver.error(err);
+      receiver.error(err);
     } finally {
-        receiver.unsubscribed = true;
-        cleanupAfterReceiver(receiver);
+      receiver.unsubscribed = true;
+      cleanupAfterReceiver(receiver);
     }
   };
 
@@ -166,7 +177,7 @@ export function createSubject<T = any>(): Subject<T> {
     next,
     complete,
     completed: () => base.completed,
-    error
+    error,
   };
 
   return stream;
