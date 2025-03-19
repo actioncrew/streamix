@@ -48,12 +48,6 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
       }
     );
 
-    for (let i = replayStartIndex; i < base.buffer.length; i++) {
-      receiver.next(base.buffer[i]);
-    }
-
-    base.subscribers.set(receiver, { startIndex: base.buffer.length, endIndex: Infinity });
-
     (async () => {
       try {
         while (true) {
