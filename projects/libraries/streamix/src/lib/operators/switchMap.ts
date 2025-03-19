@@ -6,7 +6,7 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>(); // The output stream
     let currentSubscription: Subscription | null = null;
-    let isOuterComplete = false;
+    let inputCompleted = false;
     let currentInnerStreamId = 0; // Track the active inner stream ID
 
     const subscribeToInner = (innerStream: Stream<R>, streamId: number) => {
@@ -40,7 +40,7 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
 
     const checkComplete = () => {
       // Complete the outer stream if the outer stream is marked complete and there is no active inner stream
-      if (isOuterComplete && !currentSubscription) {
+      if (inputCompleted && !currentSubscription) {
         output.complete();
       }
     };
@@ -54,7 +54,7 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
       },
       error: (err) => output.error(err), // Forward errors to the outer stream
       complete: () => {
-        isOuterComplete = true; // Mark the outer stream as complete
+        inputCompleted = true; // Mark the outer stream as complete
         checkComplete(); // Check if we can complete the outer stream
       },
     });

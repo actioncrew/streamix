@@ -5,7 +5,7 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
   let index = 0;
   const operator = (input: Stream<T>): Stream<R> => {
     const output = createSubject<R>();
-    let isOuterComplete = false;
+    let inputCompleted = false;
     let activeInnerStreams = 0; // Track active inner streams
 
     // Async generator to process inner streams sequentially
@@ -19,7 +19,7 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
         output.error(err); // Propagate error from the inner stream
       } finally {
         activeInnerStreams -= 1;
-        if (isOuterComplete && activeInnerStreams === 0) {
+        if (activeInnerStreams === 0&& inputCompleted) {
           output.complete(); // Complete the output stream when all inner streams are processed
         }
       }
@@ -37,13 +37,13 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
         }
 
         // If no values were emitted in the outer stream, complete immediately
-        if (!hasValue && !isOuterComplete) {
+        if (!hasValue && !inputCompleted) {
           output.complete();
         }
       } catch (err) {
         output.error(err);
       } finally {
-        isOuterComplete = true;
+        inputCompleted = true;
         // If all inner streams are done, complete the output stream
         if (activeInnerStreams === 0) {
           output.complete();
