@@ -1,5 +1,4 @@
 export type Receiver<T = any> = {
-  value?: () => T | undefined;
   next?: (value: T) => void;
   error?: (err: Error) => void;
   complete?: () => void;
@@ -11,16 +10,14 @@ export function createReceiver<T = any>(callbackOrReceiver?: ((value: T) => void
     { next: callbackOrReceiver } :
     callbackOrReceiver || {}) as Required<Receiver<T>>;
 
-  let latestValue: T | undefined;
 
   receiver.completed = false;
 
-  receiver.value = () => latestValue;
 
   const originalNext = receiver.next;
   const originalComplete = receiver.complete;
 
-  receiver.next = function (this: Receiver, value: T) { latestValue = value; originalNext?.call(this, value); }
+  receiver.next = function (this: Receiver, value: T) { originalNext?.call(this, value); }
   receiver.error = receiver.error ?? ((err) => console.error('Unhandled error:', err));
   receiver.complete = function (this: Receiver) { this.completed = true; originalComplete?.call(this); };
 
