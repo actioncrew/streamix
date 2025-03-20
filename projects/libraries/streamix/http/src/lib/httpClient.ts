@@ -1,4 +1,4 @@
-import { createReplaySubject, createStream, Stream } from '@actioncrew/streamix';
+import { createReplaySubject, createStream, eachValueFrom, Stream } from '@actioncrew/streamix';
 
 /**
  * Represents a stream of HTTP responses.
@@ -564,7 +564,7 @@ export const createHttpClient = (): HttpClient => {
 
     const stream = createStream('httpData', async function* () {
       const ctx = await promise;
-      yield* await ctx.data!;
+      yield* await eachValueFrom(ctx.data!);
     }) as HttpStream<T>;
 
     stream.abort = () => abortController.abort();
