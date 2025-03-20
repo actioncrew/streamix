@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export const defaultIfEmpty = (defaultValue: any): StreamMapper => {
@@ -8,7 +9,7 @@ export const defaultIfEmpty = (defaultValue: any): StreamMapper => {
 
     (async () => {
       try {
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           hasEmitted = true; // Mark that a value has been emitted
           output.next(value); // Pass the value to the output stream
         }

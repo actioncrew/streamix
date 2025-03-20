@@ -1,8 +1,9 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export const finalize = (callback: () => void | Promise<void>): StreamMapper => {
-  const operator = (stream: Stream): Stream => {
+  const operator = (input: Stream): Stream => {
     const output = createSubject();
 
     let finalized = false;  // Flag to ensure `callback` is called only once
@@ -10,7 +11,7 @@ export const finalize = (callback: () => void | Promise<void>): StreamMapper => 
     (async () => {
       try {
         // Iterate over the stream asynchronously
-        for await (const value of stream) {
+        for await (const value of eachValueFrom(input)) {
           output.next(value);
         }
       } catch (err) {

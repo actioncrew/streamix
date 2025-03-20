@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 export function take<T>(count: number): StreamMapper {
@@ -10,7 +11,7 @@ export function take<T>(count: number): StreamMapper {
     // Async function to iterate through the input stream and take `count` values
     (async () => {
       try {
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           if (emittedCount < count) {
             emittedCount++;
             output.next(value);

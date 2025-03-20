@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 export const fork = <T = any, R = T>(
@@ -13,7 +14,7 @@ export const fork = <T = any, R = T>(
     // Helper function to handle inner streams concurrently
     const processInnerStream = async (innerStream: Stream<R>) => {
       try {
-        for await (const value of innerStream) {
+        for await (const value of eachValueFrom(innerStream)) {
           output.next(value); // Forward value from the inner stream
         }
       } catch (innerErr) {
@@ -31,7 +32,7 @@ export const fork = <T = any, R = T>(
     (async () => {
       try {
         // Use a for-await loop to process the outer stream
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           const matchedOption = options.find(({ on }) => on(value, index++));
 
           if (matchedOption) {

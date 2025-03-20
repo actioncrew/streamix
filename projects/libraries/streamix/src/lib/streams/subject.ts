@@ -170,32 +170,9 @@ export function createSubject<T = any>(): Subject<T> {
     return subscription;
   };
 
-  const asyncIterator = async function* () {
-    const receiver = createReceiver();
-    base.subscribers.set(receiver, { startIndex: base.buffer.length, endIndex: Infinity });
-
-    try {
-      while (true) {
-        const subscriptionState = base.subscribers.get(receiver);
-        if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
-          break;
-        }
-        const result = await pullValue(receiver);
-        if (result.done) break;
-        yield result.value;
-      }
-    } catch (err: any) {
-      receiver.error(err);
-    } finally {
-      receiver.complete();
-      cleanupAfterReceiver(receiver);
-    }
-  };
-
   const stream: Subject<T> = {
     type: "subject",
     name: "subject",
-    [Symbol.asyncIterator]: asyncIterator,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
     value: () => base.buffer[base.buffer.length - 1],

@@ -50,35 +50,11 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
     return subscription;
   };
 
-  const asyncIterator = async function* () {
-    const receiver = createReceiver();
-
-    base.subscribers.set(receiver, { startIndex: base.buffer.length - 1, endIndex: Infinity });
-
-    try {
-      while (true) {
-        const subscriptionState = base.subscribers.get(receiver);
-        if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
-          break;
-        }
-        const result = await pullValue(receiver);
-        if (result.done) break;
-        yield result.value;
-      }
-    } catch (err: any) {
-      receiver.error(err);
-    } finally {
-      receiver.complete();
-      cleanupAfterReceiver(receiver);
-    }
-  };
-
   const getValue = () => base.buffer[base.buffer.length - 1];
 
   const behaviorSubject: BehaviorSubject<T> = {
     type: "subject",
     name: "behaviorSubject",
-    [Symbol.asyncIterator]: asyncIterator,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(behaviorSubject, ...steps),
     value: getValue,

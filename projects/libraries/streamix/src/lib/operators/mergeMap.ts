@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
@@ -12,7 +13,7 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
     // Async function to handle inner streams
     const processInnerStream = async (innerStream: Stream<R>) => {
       try {
-        for await (const value of innerStream) {
+        for await (const value of eachValueFrom(innerStream)) {
           if (hasError) return; // Stop processing if an error has occurred
           output.next(value);
         }
@@ -34,7 +35,7 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
     // Process the outer stream emissions
     (async () => {
       try {
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           if (hasError) return; // Stop processing if an error has occurred
 
           const innerStream = project(value, index++); // Project input to inner stream

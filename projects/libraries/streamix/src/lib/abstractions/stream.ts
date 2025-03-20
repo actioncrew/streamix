@@ -7,7 +7,6 @@ import { createSubscription, Subscription } from "./subscription";
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
-  [Symbol.asyncIterator]: () => AsyncGenerator<T, void, unknown>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
   value: () => T | undefined;
@@ -73,6 +72,9 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
         output.next(value);
       }
     },
+    error: (err: any) => {
+      output.error(err);
+    },
     complete: () => {
       if (!isCompleteCalled) {
         isCompleteCalled = true;
@@ -93,11 +95,15 @@ export function createStream<T>(
   let currentValue: T | undefined;
 
   async function* generator() {
-    for await (const value of generatorFn.call(stream)) {
-      if (value !== undefined) {
-        currentValue = value;
-        yield value;
+    try {
+      for await (const value of generatorFn.call(stream)) {
+        if (value !== undefined) {
+          currentValue = value;
+          yield value;
+        }
       }
+    } catch (err: any) {
+      throw err;
     }
   }
 
@@ -105,34 +111,30 @@ export function createStream<T>(
     const receiver = createReceiver(callbackOrReceiver);
     const iter = generator();
 
-    (async () => {
+    const asyncLoop = async () => {
       try {
         for await (const value of iter) {
           receiver.next?.(value);
         }
       } catch (err: any) {
-        receiver.error?.(err);
+        receiver.error?.(err); // Call error handler in receiver
       } finally {
-        receiver.complete?.();
+        receiver.complete?.(); // Ensure complete is always called
       }
-    })();
+    };
 
-    return createSubscription();
+    // Start the async loop
+    asyncLoop().catch((err) => {
+      // Ensure that errors are caught and handled if they bubble up
+      receiver.error?.(err);
+    });
+
+    return createSubscription(); // Return the subscription object
   };
 
   const stream: Stream<T> = {
     type: "stream",
     name,
-    async *[Symbol.asyncIterator]() {
-      try {
-        for await (const value of generator()) {
-          currentValue = value;
-          yield value;
-        }
-      } catch (err) {
-        throw err;
-      }
-    },
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
     value: () => currentValue

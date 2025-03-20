@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { eachValueFrom } from "../converters";
 import { createReplaySubject } from "../streams";
 
 export function shareReplay<T>(bufferSize: number = Infinity): StreamMapper {
@@ -8,7 +9,7 @@ export function shareReplay<T>(bufferSize: number = Infinity): StreamMapper {
     // Async generator to handle the input stream with shareReplay logic
     (async () => {
       try {
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           output.next(value); // Replay the value from the input stream
         }
       } catch (err) {

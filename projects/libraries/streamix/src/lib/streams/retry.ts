@@ -1,13 +1,5 @@
 import { createStream, Stream } from "../abstractions";
 
-/**
- * Retry a stream with a maximum retry count and delay, buffering values and checking for errors first.
- *
- * @param factory - A function to create the source stream.
- * @param maxRetries - The maximum number of retry attempts.
- * @param delay - The delay between retry attempts in milliseconds.
- * @returns A stream that emits the same values as the source stream, with retries on error.
- */
 export function retry<T = any>(
   factory: () => Stream<T>,
   maxRetries: number = 3,
@@ -15,39 +7,55 @@ export function retry<T = any>(
 ): Stream<T> {
   return createStream<T>("retry", async function* (this: Stream<T>) {
     let retryCount = 0;
-    let errorEmitted = false; // Flag to track if error is emitted
+    let sourceStream: Stream<T> | null = null;
 
-    // Buffer to store emitted values temporarily
-    let buffer: T[] = [];
+    while (retryCount <= maxRetries) {
 
-    while (retryCount <= maxRetries && !errorEmitted) {
       try {
-        buffer.length = 0;
-        // Create a fresh stream each time we retry
-        const sourceStream = factory();
+        sourceStream = factory();
+        const values: T[] = [];
+        let streamError: any = null;
+        let completed = false;
 
-        // Collect all values from the stream into the buffer
-        for await (const value of sourceStream) {
-          buffer.push(value); // Buffer the value
+        // Create a promise that will resolve when the stream completes or errors
+        await new Promise<void>((resolve, reject) => {
+          const subscription = sourceStream!.subscribe({
+            next: (value: T) => {
+              values.push(value);
+            },
+            error: (err: any) => {
+              streamError = err;
+              reject(streamError);
+            },
+            complete: () => {
+              completed = true;
+              resolve();
+              subscription.unsubscribe(); // Clean up subscription on completion
+            }
+          });
+        });
+
+        // If we have an error, throw it to trigger retry logic
+        if (streamError) {
+          throw streamError;
         }
 
-        // If no error was thrown, emit the buffered values
-        for (const value of buffer) {
-          yield value;
+        // If completed successfully, yield all collected values
+        if (completed) {
+          for (const value of values) {
+            yield value;
+          }
+          break; // Exit retry loop on success
         }
-
-        // If successful, break out of the retry loop
-        break;
       } catch (error) {
         retryCount++;
 
         if (retryCount > maxRetries) {
-          errorEmitted = true; // Mark that error is emitted
-          throw error; // Emit the error after max retries
+          throw error; // Rethrow after max retries
         }
 
         // Wait before retrying
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   });

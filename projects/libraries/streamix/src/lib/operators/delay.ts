@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export function delay<T>(ms: number): StreamMapper {
@@ -7,7 +8,7 @@ export function delay<T>(ms: number): StreamMapper {
 
     (async () => {
       try {
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           await new Promise((resolve) => setTimeout(resolve, ms)); // Delay before forwarding
           output.next(value);
         }

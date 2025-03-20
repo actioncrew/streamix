@@ -195,25 +195,6 @@ describe('Subject', () => {
     subject.complete();
   });
 
-  it('should receive emitted values via async iterator', async () => {
-    const subject = createSubject<any>();
-    const emittedValues: any[] = [];
-
-    const iterator1 = (async () => {
-      for await (const value of subject) {
-        emittedValues.push(value);
-      }
-
-      expect(emittedValues).toEqual(['value1', 'value2']);
-    })();
-
-    subject.next('value1');
-    subject.next('value2');
-    subject.complete();
-
-    await iterator1;
-  });
-
   it('should allow independent subscriptions with different lifetimes', (done) => {
     const subject = createSubject<any>();
 
@@ -242,83 +223,5 @@ describe('Subject', () => {
     subscription1.unsubscribe(); // Unsubscribing should not affect subscription2
     subject.next('value4');
     subject.complete();
-  });
-
-  it('should work with multiple async iterators independently', async () => {
-    const subject = createSubject<any>();
-
-    const emitted1: any[] = [];
-    const emitted2: any[] = [];
-
-    const iterator1 = (async () => {
-      for await (const value of subject) {
-        emitted1.push(value);
-      }
-    })();
-
-    subject.next('value1');
-
-    const iterator2 = (async () => {
-      for await (const value of subject) {
-        emitted2.push(value);
-      }
-    })();
-
-    subject.next('value2');
-    subject.complete();
-
-    await iterator1;
-    await iterator2;
-
-    expect(emitted1).toEqual(['value1', 'value2']);
-    expect(emitted2).toEqual(['value2']); // Late iterator only gets `value2`
-  });
-
-  it('should allow cancelling an async iterator without affecting others', async () => {
-    const subject = createSubject<any>();
-
-    const emitted1: any[] = [];
-    const emitted2: any[] = [];
-
-    const iterator1 = (async () => {
-      for await (const value of subject) {
-        emitted1.push(value);
-        if (value === 'value1') break; // Stop after first value
-      }
-    })();
-
-    const iterator2 = (async () => {
-      for await (const value of subject) {
-        emitted2.push(value);
-      }
-    })();
-
-    subject.next('value1');
-    subject.next('value2');
-    subject.complete();
-
-    await iterator1;
-    await iterator2;
-
-    expect(emitted1).toEqual(['value1']); // Stopped early
-    expect(emitted2).toEqual(['value1', 'value2']); // Continued normally
-  });
-
-  it('should allow stress test with async iteration', async () => {
-    const subject = createSubject<any>();
-    let counter = 0;
-
-    const iterator = (async () => {
-      for await (const value of subject) {
-        expect(value).toBe(counter++);
-      }
-    })();
-
-    for (let i = 0; i < 1000; i++) {
-      subject.next(i);
-    }
-
-    subject.complete();
-    await iterator;
   });
 });

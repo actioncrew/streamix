@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 export function debounce<T>(duration: number): StreamMapper {
@@ -12,7 +13,7 @@ export function debounce<T>(duration: number): StreamMapper {
       let emissionCount = 0;
 
       try {
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           emissionCount++;
           latestValue = value;
 

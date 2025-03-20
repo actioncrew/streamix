@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export const endWith = (value: any): StreamMapper => {
@@ -9,7 +10,7 @@ export const endWith = (value: any): StreamMapper => {
     (async () => {
       try {
         // Iterate over the input stream asynchronously
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           output.next(value); // Forward emissions from the original stream
         }
       } catch (err) {

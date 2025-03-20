@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 export function takeWhile<T>(predicate: (value: T) => boolean): StreamMapper {
@@ -9,7 +10,7 @@ export function takeWhile<T>(predicate: (value: T) => boolean): StreamMapper {
       let isCompleted = false;
 
       try {
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           // If predicate returns false, complete the stream
           if (!predicate(value)) {
             output.complete();

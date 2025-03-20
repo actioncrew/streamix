@@ -3,6 +3,7 @@ import {
   Stream,
   StreamMapper,
 } from '../abstractions';
+import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
 export type Coroutine = StreamMapper & {
@@ -135,7 +136,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
     input: Stream,
   ): AsyncGenerator<any, void, unknown> {
     try {
-      for await (const value of input) {
+      for await (const value of eachValueFrom(input)) {
         const worker = await getIdleWorker();
         try {
           const data = await new Promise<any>((resolve, reject) => {

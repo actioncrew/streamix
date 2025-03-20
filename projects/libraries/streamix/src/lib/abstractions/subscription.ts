@@ -1,13 +1,15 @@
+import { Receiver, Stream } from "../abstractions";
 
 export type Subscription = {
   unsubscribed: boolean;
   unsubscribe(): void;
+  listen(stream: Stream, receiver: Required<Receiver>): void;
 };
 
-export const createSubscription = function (unsubscribe?: () => void): Subscription {
+export const createSubscription = function (onUnsubscribe?: () => void): Subscription {
 
   return {
     unsubscribed: false,
-    unsubscribe: unsubscribe ?? (function(this: Subscription) { this.unsubscribed = true; })
+    unsubscribe: (function(this: Subscription) { this.unsubscribed = true; onUnsubscribe?.(); })
   } as Subscription
 };

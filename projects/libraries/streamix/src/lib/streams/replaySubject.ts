@@ -70,42 +70,9 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
     return subscription;
   };
 
-  const asyncIterator = async function* () {
-    const receiver = createReceiver();
-
-    const replayCount = Math.min(bufferSize, base.buffer.length);
-    const replayStartIndex = base.buffer.length - replayCount;
-
-    base.subscribers.set(receiver, { startIndex: replayStartIndex, endIndex: Infinity });
-
-    try {
-      for (let i = replayStartIndex; i < base.buffer.length; i++) {
-        yield base.buffer[i];
-      }
-
-      base.subscribers.set(receiver, { startIndex: base.buffer.length, endIndex: Infinity });
-
-      while (true) {
-        const subscriptionState = base.subscribers.get(receiver);
-        if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
-          break;
-        }
-        const result = await pullValue(receiver);
-        if (result.done) break;
-        yield result.value;
-      }
-    } catch (err: any) {
-      receiver.error(err);
-    } finally {
-      receiver.complete();
-      cleanupAfterReceiver(receiver);
-    }
-  };
-
   const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
-    [Symbol.asyncIterator]: asyncIterator,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(replaySubject, ...steps),
     value: () => base.buffer[base.buffer.length - 1],

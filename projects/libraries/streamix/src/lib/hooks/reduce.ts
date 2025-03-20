@@ -1,4 +1,4 @@
-import { createSubject } from '..';
+import { createSubject, eachValueFrom } from '..';
 import { createMapper, Stream, StreamMapper } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): StreamMapper => {
@@ -8,7 +8,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): S
 
     // Use async iterator to iterate over the input stream
     const reduceIterator = async function* () {
-      for await (const value of input) {
+      for await (const value of eachValueFrom(input)) {
         // Apply the accumulator function on each emission
         accumulatedValue = accumulator(accumulatedValue, value);
       }

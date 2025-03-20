@@ -1,4 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
@@ -11,7 +12,7 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
     // Async generator to process inner streams sequentially
     const processInnerStream = async (innerStream: Stream<R>) => {
       try {
-        for await (const value of innerStream) {
+        for await (const value of eachValueFrom(innerStream)) {
           output.next(value); // Forward value from inner stream
         }
       } catch (err) {
@@ -29,7 +30,7 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
     (async () => {
       try {
         let hasValue = false;
-        for await (const value of input) {
+        for await (const value of eachValueFrom(input)) {
           hasValue = true;
           const innerStream = project(value, index++); // Project input to inner stream
           activeInnerStreams += 1;
