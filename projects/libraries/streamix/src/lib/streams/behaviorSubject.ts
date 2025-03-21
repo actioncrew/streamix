@@ -50,20 +50,16 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
     return subscription;
   };
 
-  const getValue = () => base.buffer[base.buffer.length - 1];
-
-  const behaviorSubject: BehaviorSubject<T> = {
+  const subject: BehaviorSubject<T> = {
     type: "subject",
     name: "behaviorSubject",
     subscribe,
-    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(behaviorSubject, ...steps),
-    value: getValue,
-    getValue,
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(subject, ...steps),
     next,
     complete,
     completed: () => base.completed,
     error,
   };
 
-  return behaviorSubject;
+  return subject;
 }

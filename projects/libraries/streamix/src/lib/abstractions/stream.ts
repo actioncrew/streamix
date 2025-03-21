@@ -9,7 +9,6 @@ export type Stream<T = any> = {
   name?: string;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
-  value: () => T | undefined;
 };
 
 // Functional composition to extend stream functionality
@@ -92,13 +91,11 @@ export function createStream<T>(
   name: string,
   generatorFn: (this: Stream<T>) => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
-  let currentValue: T | undefined;
 
   async function* generator() {
     try {
       for await (const value of generatorFn.call(stream)) {
         if (value !== undefined) {
-          currentValue = value;
           yield value;
         }
       }
@@ -137,7 +134,6 @@ export function createStream<T>(
     name,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
-    value: () => currentValue
   };
 
   return stream;

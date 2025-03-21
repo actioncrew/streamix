@@ -70,17 +70,16 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
     return subscription;
   };
 
-  const replaySubject: ReplaySubject<T> = {
+  const subject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
     subscribe,
-    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(replaySubject, ...steps),
-    value: () => base.buffer[base.buffer.length - 1],
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(subject, ...steps),
     next: nextWithBuffer,
     complete,
     completed: () => base.completed,
     error,
   };
 
-  return replaySubject;
+  return subject;
 }

@@ -170,17 +170,16 @@ export function createSubject<T = any>(): Subject<T> {
     return subscription;
   };
 
-  const stream: Subject<T> = {
+  const subject: Subject<T> = {
     type: "subject",
     name: "subject",
     subscribe,
-    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
-    value: () => base.buffer[base.buffer.length - 1],
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(subject, ...steps),
     next,
     complete,
     completed: () => base.completed,
     error,
   };
 
-  return stream;
+  return subject;
 }
