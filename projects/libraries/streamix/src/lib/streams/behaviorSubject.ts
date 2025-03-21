@@ -1,9 +1,7 @@
 import { createReceiver, createSubscription, Operator, pipeStream, Receiver, StreamMapper, Subscription } from "../abstractions";
 import { createBaseSubject, Subject } from "../streams";
 
-export type BehaviorSubject<T> = Subject<T> & {
-  getValue(): T;
-};
+export type BehaviorSubject<T> = Subject<T>;
 
 export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
   const { base, next, complete, error, pullValue, cleanupBuffer, cleanupAfterReceiver } = createBaseSubject<T>();
