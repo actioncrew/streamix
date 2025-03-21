@@ -24,7 +24,7 @@ export function pipeStream<T = any, K = any>(
     if ('handle' in step) {
       // If it's an operator that has `handle`
       operatorsGroup.push(step);
-    } else if (typeof step === 'function') {
+    } else if ('map' in step) {
       // Apply SimpleOperators or StreamOperators sequentially
       if (operatorsGroup.length > 0) {
         // Apply operators before moving to the next step
@@ -32,7 +32,7 @@ export function pipeStream<T = any, K = any>(
         operatorsGroup = [];  // Reset operator group
       }
       // Apply the StreamOperator
-      combinedStream = step(combinedStream);
+      combinedStream = step.map(combinedStream);
     } else {
       throw new Error("Invalid step provided to pipe.");
     }
