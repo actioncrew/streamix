@@ -1,15 +1,47 @@
-import { Receiver, Stream } from "../abstractions";
+import { Receiver } from "../abstractions";
 
-export type Subscription = {
+export type Subscription<T = any> = {
   unsubscribed: boolean;
+  latestValue?: T; // Stores the latest value received from the stream
   unsubscribe(): void;
-  listen(stream: Stream, receiver: Required<Receiver>): void;
+  listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>): void;
 };
 
-export const createSubscription = function (onUnsubscribe?: () => void): Subscription {
-
-  return {
+export const createSubscription = function <T>(onUnsubscribe?: () => void): Subscription<T> {
+  // Initialize the subscription object
+  const subscription: Subscription<T> = {
     unsubscribed: false,
-    unsubscribe: (function(this: Subscription) { this.unsubscribed = true; onUnsubscribe?.(); })
-  } as Subscription
+    latestValue: undefined, // Store the latest value
+    unsubscribe() {
+      if (!this.unsubscribed) {
+        this.unsubscribed = true;
+        onUnsubscribe?.(); // Call the cleanup handler if provided
+      }
+    },
+    listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>) {
+      if (this.unsubscribed) {
+        throw new Error("Cannot listen on an unsubscribed subscription.");
+      }
+
+      const asyncLoop = async () => {
+        try {
+          for await (const value of generator()) {
+            receiver.next?.(value);
+          }
+        } catch (err: any) {
+          receiver.error?.(err); // Call error handler in receiver
+        } finally {
+          receiver.complete?.(); // Ensure complete is always called
+        }
+      };
+
+      // Start the async loop
+      asyncLoop().catch((err) => {
+        // Ensure that errors are caught and handled if they bubble up
+        receiver.error?.(err);
+      });
+    },
+  };
+
+  return subscription;
 };

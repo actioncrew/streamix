@@ -106,27 +106,9 @@ export function createStream<T>(
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const iter = generator();
-
-    const asyncLoop = async () => {
-      try {
-        for await (const value of iter) {
-          receiver.next?.(value);
-        }
-      } catch (err: any) {
-        receiver.error?.(err); // Call error handler in receiver
-      } finally {
-        receiver.complete?.(); // Ensure complete is always called
-      }
-    };
-
-    // Start the async loop
-    asyncLoop().catch((err) => {
-      // Ensure that errors are caught and handled if they bubble up
-      receiver.error?.(err);
-    });
-
-    return createSubscription(); // Return the subscription object
+    const subscription = createSubscription<T>();
+    subscription.listen(generator, receiver);
+    return subscription;
   };
 
   const stream: Stream<T> = {
