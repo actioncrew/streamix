@@ -35,6 +35,8 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
           }
           const result = await pullValue(receiver);
           if (result.done) break;
+
+          subscription.latestValue = result.value;
           receiver.next(result.value);
         }
       } catch (err: any) {

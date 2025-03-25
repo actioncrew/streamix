@@ -57,6 +57,8 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
           }
           const result = await pullValue(receiver);
           if (result.done) break;
+
+          subscription.latestValue = result.value;
           receiver.next(result.value);
         }
       } catch (err: any) {
