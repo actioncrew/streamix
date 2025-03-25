@@ -26,6 +26,7 @@ export const createSubscription = function <T>(onUnsubscribe?: () => void): Subs
       const asyncLoop = async () => {
         try {
           for await (const value of generator()) {
+            this.latestValue = value;
             receiver.next?.(value);
           }
         } catch (err: any) {
