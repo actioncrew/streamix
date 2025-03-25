@@ -15,7 +15,6 @@ export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
     (window as any)[uniqueCallbackName] = (data: T) => {
       subject.next(data); // Emit the data once the script loads
       subject.complete(); // Complete the subject
-      document.head.removeChild(script); // Clean up the script element
     };
 
     // Handle script errors
@@ -30,6 +29,7 @@ export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
 
     return createSubscription(() => {
       subscription.unsubscribe();
+      document.head.removeChild(script); // Clean up the script element
       delete (window as any)[uniqueCallbackName]; // Clean up the callback function
     });
   };
