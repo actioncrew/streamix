@@ -30,7 +30,6 @@ export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
 
     return createSubscription(() => {
       subscription.unsubscribe();
-      document.head.removeChild(script); // Remove the script if the subscription is unsubscribed
       delete (window as any)[uniqueCallbackName]; // Clean up the callback function
     });
   };
