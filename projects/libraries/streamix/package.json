@@ -8,9 +8,6 @@
     "reactive programming",
     "data streams"
   ],
-  "files": [
-    "CHANGELOG.md"
-  ],
   "dependencies": {
     "tslib": "^2.3.0"
   },
