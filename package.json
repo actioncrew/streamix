@@ -13,8 +13,6 @@
     "clean": "eslint --config eslint.config.js --fix"
   },
   "dependencies": {
-    "@actioncrew/actionstack": "^2.1.4",
-    "@actioncrew/streamix": "^1.0.17",
     "@angular/animations": "^18.0.0",
     "@angular/common": "^18.0.0",
     "@angular/compiler": "^18.0.0",
