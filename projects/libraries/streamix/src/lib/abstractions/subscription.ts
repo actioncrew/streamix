@@ -2,16 +2,21 @@ import { Receiver } from "../abstractions";
 
 export type Subscription<T = any> = {
   unsubscribed: boolean;
-  latestValue?: T; // Stores the latest value received from the stream
+  latestValue: T | undefined;
+  value(): T; // Stores the latest value received from the stream
   unsubscribe(): void;
   listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>): void;
 };
 
 export const createSubscription = function <T>(onUnsubscribe?: () => void): Subscription<T> {
+
   // Initialize the subscription object
   const subscription: Subscription<T> = {
+    latestValue: undefined,
     unsubscribed: false,
-    latestValue: undefined, // Store the latest value
+    value() {
+      return this.latestValue!;
+    },
     unsubscribe() {
       if (!this.unsubscribed) {
         this.unsubscribed = true;
