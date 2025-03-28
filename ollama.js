@@ -3,7 +3,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 
 const OLLAMA_URL = "http://localhost:11434/api/generate";
-const MODEL_NAME = "gemma3:1b";
+const MODEL_NAME = "deepseek-r1:7b";
 
 // Fetch all commits from the main branch
 async function getMainBranchCommits() {
