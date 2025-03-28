@@ -130,6 +130,8 @@ export function createSubject<T = any>(): Subject<T> {
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
+    let latestValue: T | undefined;
+
     const currentStartIndex = base.buffer.length;
     base.subscribers.set(receiver, { startIndex: currentStartIndex, endIndex: Infinity });
 
@@ -157,7 +159,7 @@ export function createSubject<T = any>(): Subject<T> {
           const result = await pullValue(receiver);
           if (result.done) break;
 
-          subscription.latestValue = result.value;
+          latestValue = result.value;
           receiver.next(result.value);
         }
       } catch (err: any) {
@@ -168,6 +170,10 @@ export function createSubject<T = any>(): Subject<T> {
       }
     })();
 
+    Object.assign(subscription, {
+      value: () => latestValue
+    });
+    
     return subscription;
   };
 

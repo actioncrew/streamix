@@ -29,7 +29,7 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
-
+    let latestValue: T | undefined;
     const replayCount = Math.min(bufferSize, base.buffer.length);
     const replayStartIndex = base.buffer.length - replayCount;
 
@@ -58,7 +58,7 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
           const result = await pullValue(receiver);
           if (result.done) break;
 
-          subscription.latestValue = result.value;
+          latestValue = result.value;
           receiver.next(result.value);
         }
       } catch (err: any) {
@@ -68,6 +68,10 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
         cleanupAfterReceiver(receiver);
       }
     })();
+
+    Object.assign(subscription, {
+      value: () => latestValue
+    });
 
     return subscription;
   };

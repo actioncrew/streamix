@@ -1,37 +1,44 @@
 import { Receiver } from "../abstractions";
 
 export type Subscription<T = any> = {
+  (): T | undefined;
   unsubscribed: boolean;
-  latestValue: T | undefined;
-  value(): T; // Stores the latest value received from the stream
+  value(): T | undefined; // Stores the latest value received from the stream
   unsubscribe(): void;
   listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>): void;
 };
 
 export const createSubscription = function <T>(onUnsubscribe?: () => void): Subscription<T> {
 
-  // Initialize the subscription object
-  const subscription: Subscription<T> = {
-    latestValue: undefined,
-    unsubscribed: false,
+  let _latestValue: T | undefined;
+  let _unsubscribed = false;
+
+  function subscription(this: Subscription<T>) {
+    return this.value();
+  };
+
+  return Object.assign(subscription, {
+    get unsubscribed() {
+      return _unsubscribed;
+    },
     value() {
-      return this.latestValue!;
+      return _latestValue!;
     },
     unsubscribe() {
-      if (!this.unsubscribed) {
-        this.unsubscribed = true;
+      if (!_unsubscribed) {
+        _unsubscribed = true;
         onUnsubscribe?.(); // Call the cleanup handler if provided
       }
     },
     listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>) {
-      if (this.unsubscribed) {
+      if (_unsubscribed) {
         throw new Error("Cannot listen on an unsubscribed subscription.");
       }
 
       const asyncLoop = async () => {
         try {
           for await (const value of generator()) {
-            this.latestValue = value;
+            _latestValue = value;
             receiver.next?.(value);
           }
         } catch (err: any) {
@@ -47,7 +54,5 @@ export const createSubscription = function <T>(onUnsubscribe?: () => void): Subs
         receiver.error?.(err);
       });
     },
-  };
-
-  return subscription;
+  });
 };

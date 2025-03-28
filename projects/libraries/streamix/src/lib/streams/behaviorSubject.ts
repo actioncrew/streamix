@@ -11,9 +11,11 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
+    let latestValue: T | undefined;
+
     base.subscribers.set(receiver, { startIndex: base.buffer.length - 1, endIndex: Infinity });
 
-    const subscription = createSubscription(
+    let subscription = createSubscription(
       () => {
         if (!unsubscribing) {
           unsubscribing = true;
@@ -36,7 +38,7 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
           const result = await pullValue(receiver);
           if (result.done) break;
 
-          subscription.latestValue = result.value;
+          latestValue = result.value;
           receiver.next(result.value);
         }
       } catch (err: any) {
@@ -46,6 +48,10 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
         cleanupAfterReceiver(receiver);
       }
     })();
+
+    Object.assign(subscription, {
+      value: () => latestValue
+    });
 
     return subscription;
   };
