@@ -3,6 +3,7 @@ import { Receiver } from "../abstractions";
 export type Subscription<T = any> = {
   (): T | undefined;
   unsubscribed: boolean;
+  hasValue(): boolean;
   value(): T | undefined;
   unsubscribe(): void;
   listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>): void;
@@ -20,6 +21,9 @@ export const createSubscription = function <T>(onUnsubscribe?: () => void): Subs
   return Object.assign(subscription, {
     get unsubscribed() {
       return _unsubscribed;
+    },
+    hasValue() {
+      return this.value() === undefined;
     },
     value() {
       return _latestValue!;
