@@ -1,20 +1,30 @@
-import { createMapper, createSubject, Stream, StreamMapper } from '../abstractions';
-import { createSubject } from '../streams';
+import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { eachValueFrom } from "../converters";
+import { createSubject } from "../streams";
 
-export function last(): StreamMapper {
-  return createMapper('last', (input: Stream) => {
-    const output = createSubject();
-    let lastValue: any;
+export function last<T = any>(
+  predicate?: (value: T) => boolean
+): StreamMapper {
+  return createMapper('last', (input: Stream<T>) => {
+    const output = createSubject<T>();
+    let lastValue: T | undefined;
+    let hasMatch = false;
 
     (async () => {
       try {
         for await (const value of eachValueFrom(input)) {
-          lastValue = value;
+          if (!predicate || predicate(value)) {
+            lastValue = value;
+            hasMatch = true;
+          }
         }
-        if (lastValue !== undefined) {
-          output.next(lastValue);
+
+        if (hasMatch) {
+          output.next(lastValue!);
+          output.complete();
+        } else {
+          output.error(new Error("No elements in sequence"));
         }
-        output.complete();
       } catch (err) {
         output.error(err);
       }
