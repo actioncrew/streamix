@@ -2,10 +2,10 @@ import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
-export function recurse<T>(
+export function recurse<T = any>(
   condition: (value: T) => boolean,
   project: (value: T) => Stream<T>
-): StreamMapper<T, T> {
+): StreamMapper {
   return createMapper('recurse', (input: Stream<T>) => {
     const output = createSubject<T>();
     let activeCount = 0;
