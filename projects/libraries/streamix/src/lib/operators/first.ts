@@ -1,9 +1,9 @@
 import { Operator, createOperator } from '../abstractions';
 
-export const first = (predicate?: (value: any) => boolean): Operator => {
+export const first = <T = any>(predicate?: (value: T) => boolean): Operator => {
   let found = false;
 
-  const handle = (value: any): any => {
+  const handle = (value: T): any => {
     // If we already found the first value, skip subsequent values
     if (found) return undefined;
     
