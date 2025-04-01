@@ -2,7 +2,7 @@ import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
-export function bufferWhen<T>(notifier: Stream<any>): StreamMapper {
+export function bufferWhen<T = any>(notifier: Stream<any>): StreamMapper {
   const operator = (input: Stream<T>): Stream<T[]> => {
     const output = createSubject<T[]>();
     let currentBuffer: T[] = [];
