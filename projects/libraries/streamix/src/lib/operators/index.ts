@@ -6,7 +6,6 @@ export * from './coroutine';
 export * from './debounce';
 export * from './delay';
 export * from './delayUntil';
-export * from './distinct';
 export * from './distinctUntilChanged';
 export * from './distinctUntilKeyChanged';
 export * from './expand';
