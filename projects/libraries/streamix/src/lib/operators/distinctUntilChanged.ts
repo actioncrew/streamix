@@ -1,6 +1,6 @@
 import { createOperator, Operator } from '../abstractions';
 
-export const distinctUntilChanged = <T>(comparator?: (previous: T, current: T) => boolean): Operator => {
+export const distinctUntilChanged = <T = any>(comparator?: (previous: T, current: T) => boolean): Operator => {
   let lastEmittedValue: T | undefined = undefined;
 
   const handle = (value: any): any => {
