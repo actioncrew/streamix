@@ -19,6 +19,7 @@ export * from './onMediaQuery';
 export * from './onMutation';
 export * from './onOrientation';
 export * from './onResize';
+export * from './race';
 export * from './range';
 export * from './replaySubject';
 export * from './retry';

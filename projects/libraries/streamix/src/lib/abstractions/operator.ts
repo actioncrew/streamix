@@ -15,10 +15,10 @@ export const createOperator = (name: string, handleFn: (value: any) => any): Ope
 };
 
 export type StreamMapper = Omit<Operator, "handle"> & {
-  map(stream: Stream<any>): Stream<any>;
+  map(stream: Stream<any>): any;
 }
 
-export const createMapper = (name: string, mapFn: (stream: Stream) => Stream): StreamMapper => {
+export const createMapper = (name: string, mapFn: (stream: Stream) => any): StreamMapper => {
   return {
     name,
     map: mapFn,
