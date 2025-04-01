@@ -21,7 +21,7 @@ export * from './mergeMap';
 export * from './partition';
 export * from './recurse';
 export * from './sample';
-export * from './sampleOn';
+export * from './sampleWhen';
 export * from './scan';
 export * from './shareReplay';
 export * from './skip';
