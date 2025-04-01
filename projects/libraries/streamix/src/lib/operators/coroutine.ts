@@ -15,11 +15,7 @@ export type Coroutine = StreamMapper & {
 
 let helperScriptCache: string | null = null;
 
-export const coroutine = (...functions: Function[]): Coroutine => {
-  if (functions.length === 0) {
-    throw new Error('At least one function (the main task) is required.');
-  }
-
+export const coroutine = (main: Function, ...functions: Function[]): Coroutine => {
   const maxWorkers = navigator.hardwareConcurrency || 4;
   const workerPool: Worker[] = [];
   const waitingQueue: Array<(worker: Worker) => void> = [];
@@ -31,7 +27,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
   let fetchingHelperScript = false;
   let helperScriptPromise: Promise<any> | null = null;
 
-  const asyncPresent = functions.some((fn) =>
+  const asyncPresent = main.toString().includes('__async') || functions.some((fn) =>
     fn.toString().includes('__async'),
   );
 
@@ -71,9 +67,7 @@ export const coroutine = (...functions: Function[]): Coroutine => {
       }
     }
 
-    const [mainTask, ...dependencies] = functions;
-
-    const injectedDependencies = dependencies
+    const injectedDependencies = functions
       .map((fn) => {
         let fnBody = fn.toString();
         fnBody = fnBody.replace(/function[\s]*\(/, `function ${fn.name}(`);
@@ -81,9 +75,9 @@ export const coroutine = (...functions: Function[]): Coroutine => {
       })
       .join(';\n');
 
-    const mainTaskBody = mainTask
+    const mainTaskBody = main
       .toString()
-      .replace(/function[\s]*\(/, `function ${mainTask.name}(`);
+      .replace(/function[\s]*\(/, `function ${main.name}(`);
 
     const workerBody = `
             ${helperScript}

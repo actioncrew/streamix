@@ -6,7 +6,7 @@ export function sample<T = any>(period: number): StreamMapper {
   const operator = (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
     let lastValue: T | undefined;
-    let intervalId: NodeJS.Timeout | null = null;
+    let intervalId: any = null;
 
     // Async generator to handle the input stream
     const processInputStream = async () => {
