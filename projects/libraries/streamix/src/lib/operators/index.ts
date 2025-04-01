@@ -33,5 +33,6 @@ export * from './takeUntil';
 export * from './takeWhile';
 export * from './tap';
 export * from './throwError';
+export * from './unique';
 export * from './withLatestFrom';
 
