@@ -27,8 +27,6 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
   let fetchingHelperScript = false;
   let helperScriptPromise: Promise<any> | null = null;
 
-
-
   const createWorker = async (): Promise<Worker> => {
     let helperScript = '';
 
