@@ -23,7 +23,6 @@ export * from './recurse';
 export * from './sample';
 export * from './sampleOn';
 export * from './scan';
-export * from './select';
 export * from './shareReplay';
 export * from './skip';
 export * from './skipUntil';
