@@ -27,12 +27,25 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
   let fetchingHelperScript = false;
   let helperScriptPromise: Promise<any> | null = null;
 
-  const asyncPresent = main.toString().includes('__async') || functions.some((fn) =>
-    fn.toString().includes('__async'),
-  );
+
 
   const createWorker = async (): Promise<Worker> => {
     let helperScript = '';
+
+    const injectedDependencies = functions
+      .map((fn) => {
+        let fnBody = fn.toString();
+        fnBody = fnBody.replace(/function[\s]*\(/, `function ${fn.name}(`);
+        return fnBody;
+      })
+      .join(';\n');
+
+    const mainTaskBody = main
+      .toString()
+      .replace(/function[\s]*\(/, `function ${main.name}(`);
+
+    const asyncPresent = mainTaskBody.includes('__async') || injectedDependencies.includes('__async');
+
     if (asyncPresent) {
       // If the helper script is not cached and not being fetched, start fetching
       if (!helperScriptCache && !fetchingHelperScript) {
@@ -66,18 +79,6 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
         helperScript = helperScriptCache || '';
       }
     }
-
-    const injectedDependencies = functions
-      .map((fn) => {
-        let fnBody = fn.toString();
-        fnBody = fnBody.replace(/function[\s]*\(/, `function ${fn.name}(`);
-        return fnBody;
-      })
-      .join(';\n');
-
-    const mainTaskBody = main
-      .toString()
-      .replace(/function[\s]*\(/, `function ${main.name}(`);
 
     const workerBody = `
             ${helperScript}
