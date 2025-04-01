@@ -1,12 +1,13 @@
 import { createOperator, Operator } from '../abstractions';
 
 export const filter = <T = any>(
-  predicateOrValue: ((value: any) => boolean) | T | T[]
+  predicateOrValue: ((value: any, index?: number) => boolean) | T | T[]
 ): Operator => {
+  let index = 0;
   const handle = (value: any): any => {
     const phantom =
       predicateOrValue instanceof Function
-        ? !predicateOrValue(value)
+        ? !predicateOrValue(value, index++)
         : Array.isArray(predicateOrValue)
         ? !predicateOrValue.includes(value)
         : value !== predicateOrValue;
