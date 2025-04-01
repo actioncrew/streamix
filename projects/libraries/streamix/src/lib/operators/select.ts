@@ -22,7 +22,7 @@ export function select<T = any>(indexIterator: Iterator<number>): StreamMapper {
           }
 
           currentIndex++;
-        }q
+        }
       } catch (err) {
         output.error(err);
       } finally {
