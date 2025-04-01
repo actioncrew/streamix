@@ -7,7 +7,7 @@ export function unique<T = any, K = any>(keySelector?: (value: T) => K): StreamM
     const output = createSubject<T>();
     const seenKeys = new Set<K | T>();
 
-    (async() {
+    (async () => {
       try {
         for await (const value of eachValueFrom(input)) {
           const currentKey = keySelector ? keySelector(value) : value;
