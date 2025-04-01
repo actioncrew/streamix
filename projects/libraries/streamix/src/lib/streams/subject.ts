@@ -1,6 +1,7 @@
 import { createReceiver, createSubscription, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
+  peek(subscription?: Subscription): T | undefined;
   next(value: T): void;
   complete(): void;
   error(err: any): void;
@@ -173,13 +174,31 @@ export function createSubject<T = any>(): Subject<T> {
     Object.assign(subscription, {
       value: () => latestValue
     });
-    
+
     return subscription;
+  };
+
+  const peek = (subscription?: Subscription): T | undefined => {
+    if (subscription) {
+      return subscription.value();
+    }
+
+    if (base.subscribers.size === 1) {
+      const [subscriptionState] = base.subscribers.values();
+      if (subscriptionState.startIndex < base.buffer.length) {
+        return base.buffer[subscriptionState.startIndex];
+      }
+      return undefined;
+    }
+
+    console.warn("peek() without a subscription can only be used when there is exactly one subscriber.");
+    return undefined;
   };
 
   const subject: Subject<T> = {
     type: "subject",
     name: "subject",
+    peek,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(subject, ...steps),
     next,

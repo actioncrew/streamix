@@ -1,7 +1,7 @@
 import { createReceiver, createSubscription, Operator, pipeStream, Receiver, StreamMapper, Subscription } from "../abstractions";
 import { createBaseSubject, Subject } from "../streams";
 
-export type ReplaySubject<T = any> = Subject<T>;
+export type ReplaySubject<T = any> = Omit<Subject<T>, "peek">;
 
 export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySubject<T> {
   const { base, complete, error, pullValue, processPullRequests, cleanupBuffer, cleanupAfterReceiver } = createBaseSubject<T>();

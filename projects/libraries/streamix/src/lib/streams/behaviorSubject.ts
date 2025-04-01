@@ -56,9 +56,27 @@ export function createBehaviorSubject<T>(initialValue: T): BehaviorSubject<T> {
     return subscription;
   };
 
+  const peek = (subscription?: Subscription): T | undefined => {
+    if (subscription) {
+      return subscription.value();
+    }
+
+    if (base.subscribers.size === 1) {
+      const [subscriptionState] = base.subscribers.values();
+      if (subscriptionState.startIndex < base.buffer.length) {
+        return base.buffer[subscriptionState.startIndex];
+      }
+      return undefined;
+    }
+
+    console.warn("peek() without a subscription can only be used when there is exactly one subscriber.");
+    return undefined;
+  };
+
   const subject: BehaviorSubject<T> = {
     type: "subject",
     name: "behaviorSubject",
+    peek,
     subscribe,
     pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(subject, ...steps),
     next,
