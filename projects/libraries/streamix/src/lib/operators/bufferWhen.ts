@@ -15,38 +15,32 @@ export function bufferWhen<T = any>(
         output.next(buffer);
         buffer = [];
       }
-      if (!isInputComplete) {
-        setupNewCloser();
-      } else if (buffer.length === 0 && closingSubscription?.completed()) {
-        output.complete();
-      }
+      closingSubscription = null; // Ensure a new closer starts only after emission
     };
 
     const setupNewCloser = () => {
-      closingSubscription?.unsubscribe();
-      const closer = closingSelector();
-      closingSubscription = closer.subscribe({
-        next: flushBuffer,
-        complete: () => {
-          // Don't complete output here, wait for input completion
+      if (closingSubscription) return; // Prevent multiple subscriptions
+      closingSubscription = closingSelector().subscribe({
+        next: () => {
+          flushBuffer();
+          setupNewCloser(); // Start a new closer only after emission
         },
-        error: (err) => output.error(err)
+        error: (err) => output.error(err),
       });
     };
 
     const inputSubscription = input.subscribe({
-      next: (value) => buffer.push(value),
+      next: (value) => {
+        buffer.push(value);
+        setupNewCloser();
+      },
       complete: () => {
         isInputComplete = true;
         flushBuffer();
-        if (!closingSubscription || closingSubscription.completed()) {
-          output.complete();
-        }
+        output.complete();
       },
-      error: (err) => output.error(err)
+      error: (err) => output.error(err),
     });
-
-    setupNewCloser(); // Initial setup
 
     return output;
   });
