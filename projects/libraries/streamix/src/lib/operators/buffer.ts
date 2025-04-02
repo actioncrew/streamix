@@ -1,8 +1,8 @@
 import { createMapper, Stream, StreamMapper, Subscription } from "../abstractions";
 import { createSubject, interval } from "../streams";
 
-export function bufferTime<T = any>(period: number): StreamMapper {
-  return createMapper('bufferTime', (input: Stream<T>): Stream<T[]> => {
+export function buffer<T = any>(period: number): StreamMapper {
+  return createMapper('buffer', (input: Stream<T>): Stream<T[]> => {
     const output = createSubject<T[]>();
     let buffer: T[] = [];
     let intervalSubscription: Subscription | null = null;
@@ -34,6 +34,7 @@ export function bufferTime<T = any>(period: number): StreamMapper {
           output.next([...buffer]);
         }
         intervalSubscription?.unsubscribe();
+        inputSubscription?.unsubscribe();
         output.complete();
       },
     });
