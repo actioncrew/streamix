@@ -1,6 +1,5 @@
 export * from './audit';
 export * from './bufferCount';
-export * from './bufferWhen';
 export * from './concatMap';
 export * from './coroutine';
 export * from './debounce';
@@ -21,7 +20,6 @@ export * from './mergeMap';
 export * from './partition';
 export * from './recurse';
 export * from './sample';
-export * from './sampleWhen';
 export * from './scan';
 export * from './select';
 export * from './shareReplay';
