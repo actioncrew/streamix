@@ -8,7 +8,6 @@ export function bufferWhen<T = any>(
     const output = createSubject<T[]>();
     let buffer: T[] = [];
     let closingSubscription: Subscription | null = null;
-    let isInputComplete = false;
 
     const flushBuffer = () => {
       if (buffer.length > 0) {
@@ -35,7 +34,7 @@ export function bufferWhen<T = any>(
         setupNewCloser();
       },
       complete: () => {
-        isInputComplete = true;
+        inputSubscription.unsunscribe();
         flushBuffer();
         output.complete();
       },
