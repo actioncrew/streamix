@@ -8,6 +8,7 @@ export * from './delay';
 export * from './delayUntil';
 export * from './distinctUntilChanged';
 export * from './distinctUntilKeyChanged';
+export * from './elementNth';
 export * from './expand';
 export * from './filter';
 export * from './first';
