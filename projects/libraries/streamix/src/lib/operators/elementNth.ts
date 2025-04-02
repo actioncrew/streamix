@@ -1,17 +1,16 @@
 import { StreamMapper } from "../abstractions";
 import { select } from "../operators";
 
-export function elementNth(indexPattern: (index: number) => boolean): StreamMapper {
+export function elementNth<T = any>(indexPattern: (iteration: number) => number | undefined): StreamMapper<T, T> {
   const indexIterator = (function* () {
-    let index = 0;
+    let iteration = 0;
     while (true) {
-      if (indexPattern(index)) {
-        yield index;
-      }
-      index++;
+      const nextIndex = indexPattern(iteration);
+      if (nextIndex === undefined) break;
+      yield nextIndex;
+      iteration++;
     }
   })();
 
   return select(indexIterator);
 }
-
