@@ -1,4 +1,5 @@
 export * from './audit';
+export * from './buffer';
 export * from './bufferCount';
 export * from './concatMap';
 export * from './coroutine';
