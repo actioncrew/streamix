@@ -12,5 +12,5 @@ export function elementNth<T = any>(indexPattern: (iteration: number) => number 
     }
   })();
 
-  return select(indexIterator);
+  return select<T>(indexIterator);
 }
