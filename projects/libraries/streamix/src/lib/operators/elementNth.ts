@@ -1,7 +1,7 @@
 import { StreamMapper } from "../abstractions";
 import { select } from "../operators";
 
-export function elementNth<T = any>(indexPattern: (index: number) => boolean): StreamMapper {
+export function elementNth(indexPattern: (index: number) => boolean): StreamMapper {
   const indexIterator = (function* () {
     let index = 0;
     while (true) {
