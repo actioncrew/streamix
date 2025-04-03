@@ -21,7 +21,7 @@ describe("sample operator", () => {
     subject.next(1);
     await new Promise((resolve) => setTimeout(resolve, 50));
     subject.next(2);
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await new Promise((resolve) => setTimeout(resolve, 125));
     subject.next(3);
     subject.complete();
 
