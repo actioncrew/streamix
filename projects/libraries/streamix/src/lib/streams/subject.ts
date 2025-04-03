@@ -140,6 +140,11 @@ export function createSubject<T = any>(): Subject<T> {
       () => {
         if (!unsubscribing) {
           unsubscribing = true;
+
+          if(base.subscribers.size === 1) {
+            complete();
+          }
+
           const subscriptionState = base.subscribers.get(receiver)!;
           subscriptionState.endIndex = base.buffer.length;
           base.subscribers.set(receiver, subscriptionState);
