@@ -30,7 +30,7 @@ describe('first Operator', () => {
     });
   });
 
-  it('should emit undefined for an empty stream', (done) => {
+  it('should not emit for an empty stream', (done) => {
     const testStream = from([]);
     const firstStream = testStream.pipe(first());
 
@@ -38,8 +38,8 @@ describe('first Operator', () => {
       next: () => {
         done.fail("Should not emit value");
       },
-      error: (err) => done.fail(err),
-      complete: () => {done();}
+      error: (err) => expect(err.message).toBe("No elements in sequence"),
+      complete: () => { done(); }
     });
   });
 
@@ -66,7 +66,7 @@ describe('first Operator', () => {
       next: () => {
         done.fail("should not emit value");
       },
-      error: (err) => done.fail(err),
+      error: (err) => expect(err.message).toBe("No elements in sequence"),
       complete: () => { done(); }
     });
   });

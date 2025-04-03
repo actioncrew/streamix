@@ -18,13 +18,13 @@ export const first = <T = any>(predicate?: (value: T) => boolean): StreamMapper 
             break;               // Stop processing once we've emitted the first value
           }
         }
+
+        // If no value was found, raise an error
+        if (!found) {
+          throw new Error("No elements in sequence");
+        }
       } catch (err) {
         output.error(err); // Propagate any errors that occur
-      } finally {
-        // Ensure completion if it wasn't done earlier
-        if (!found) {
-          output.complete();
-        }
       }
     })();
 

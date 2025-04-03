@@ -23,7 +23,7 @@ export function last<T = any>(
           output.next(lastValue!);
           output.complete();
         } else {
-          output.error(new Error("No elements in sequence"));
+          throw new Error("No elements in sequence");
         }
       } catch (err) {
         output.error(err);

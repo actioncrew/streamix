@@ -29,16 +29,16 @@ describe('last Operator', () => {
     }, 100);
   });
 
-  it('should emit undefined for an empty stream', (done) => {
+  it('should not emit for an empty stream', (done) => {
     const testStream = from([]);
     const lastStream = testStream.pipe(last());
 
     lastStream.subscribe({
-      next: (value) => {
-        expect(value).toBeUndefined(); // Should emit undefined for empty stream
-        done();
+      next: () => {
+        done.fail("Should not emit for empty stream");
       },
-      error: (err) => done.fail(err),
+      error: (err) => expect(err.message).toBe("No elements in sequence"),
+      complete: () => { done(); }
     });
   });
 
@@ -55,16 +55,16 @@ describe('last Operator', () => {
     });
   });
 
-  it('should emit undefined if no values match the predicate (if provided)', (done) => {
+  it('should not emit if no values match the predicate (if provided)', (done) => {
     const testStream = from([1, 2, 3, 4]);
     const lastStream = testStream.pipe(last((value) => value > 5));
 
     lastStream.subscribe({
-      next: (value) => {
-        expect(value).toBeUndefined(); // Should emit undefined if no value matches the predicate
-        done();
+      next: () => {
+        done.fail("Should not emit for empty stream");
       },
-      error: (err) => done.fail(err),
+      error: (err) => expect(err.message).toBe("No elements in sequence"),
+      complete: () => { done(); }
     });
   });
 });
