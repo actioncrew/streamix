@@ -35,11 +35,11 @@ describe('first Operator', () => {
     const firstStream = testStream.pipe(first());
 
     firstStream.subscribe({
-      next: (value) => {
-        expect(value).toBeUndefined(); // Should emit undefined for empty stream
-        done();
+      next: () => {
+        done.fail("Should not emit value");
       },
       error: (err) => done.fail(err),
+      complete: () => {done();}
     });
   });
 
@@ -58,16 +58,16 @@ describe('first Operator', () => {
     });
   });
 
-  it('should emit undefined if no values match the predicate (if provided)', (done) => {
+  it('should not emit if no values match the predicate (if provided)', (done) => {
     const testStream = from([1, 2, 3, 4]);
     const firstStream = testStream.pipe(first((value) => value > 5));
 
     firstStream.subscribe({
-      next: (value) => {
-        expect(value).toBeUndefined(); // Should emit undefined if no value matches the predicate
-        done();
+      next: () => {
+        done.fail("should not emit value");
       },
       error: (err) => done.fail(err),
+      complete: () => { done(); }
     });
   });
 });

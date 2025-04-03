@@ -16,33 +16,58 @@ export function pipeStream<T = any, K = any>(
   stream: Stream<T>,
   ...steps: (Operator | StreamMapper)[]
 ): Stream<K> {
-  let combinedStream: Stream<any> = stream;
-  let operatorsGroup: Operator[] = [];
+  // Create a subject that will be our final output
+  const outputSubject = createSubject<K>();
+  let isSubscribed = false;
 
-  for (const step of steps) {
-    if ('handle' in step) {
-      // If it's an operator that has `handle`
-      operatorsGroup.push(step);
-    } else if ('map' in step) {
-      // Apply SimpleOperators or StreamOperators sequentially
-      if (operatorsGroup.length > 0) {
-        // Apply operators before moving to the next step
-        combinedStream = chain(combinedStream, ...operatorsGroup);
-        operatorsGroup = [];  // Reset operator group
+  // Store the original subscribe method
+  const originalSubscribe = outputSubject.subscribe;
+
+  // Override the subscribe method to trigger lazy evaluation
+  outputSubject.subscribe = function(...args) {
+    if (!isSubscribed) {
+      isSubscribed = true;
+
+      // Only build and connect the pipeline when someone subscribes
+      let combinedStream: Stream<any> = stream;
+      let operatorsGroup: Operator[] = [];
+
+      for (const step of steps) {
+        if ('handle' in step) {
+          // If it's an operator that has `handle`
+          operatorsGroup.push(step);
+        } else if ('map' in step) {
+          // Apply SimpleOperators or StreamOperators sequentially
+          if (operatorsGroup.length > 0) {
+            // Apply operators before moving to the next step
+            combinedStream = chain(combinedStream, ...operatorsGroup);
+            operatorsGroup = [];  // Reset operator group
+          }
+          // Apply the StreamOperator
+          combinedStream = step.map(combinedStream);
+        } else {
+          throw new Error("Invalid step provided to pipe.");
+        }
       }
-      // Apply the StreamOperator
-      combinedStream = step.map(combinedStream);
-    } else {
-      throw new Error("Invalid step provided to pipe.");
+
+      // Apply remaining operators at the end
+      if (operatorsGroup.length > 0) {
+        combinedStream = chain(combinedStream, ...operatorsGroup);
+      }
+
+      // Connect the final stream to our output subject
+      combinedStream.subscribe({
+        next: (value) => outputSubject.next(value),
+        error: (err) => outputSubject.error(err),
+        complete: () => outputSubject.complete()
+      });
     }
-  }
 
-  // Apply remaining operators at the end
-  if (operatorsGroup.length > 0) {
-    combinedStream = chain(combinedStream, ...operatorsGroup);
-  }
+    // Call the original subscribe method with the provided arguments
+    return originalSubscribe.apply(this, args);
+  };
 
-  return combinedStream;
+  return outputSubject;
 }
 
 const chain = function (stream: Stream, ...operators: Operator[]): Stream {
