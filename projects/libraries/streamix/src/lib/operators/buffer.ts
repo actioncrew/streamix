@@ -41,4 +41,4 @@ export function buffer<T = any>(period: number): StreamMapper {
 
     return output;
   });
-                                     }
+}
