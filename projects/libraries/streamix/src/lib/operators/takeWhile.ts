@@ -2,7 +2,7 @@ import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
-export function takeWhile<T>(predicate: (value: T) => boolean): StreamMapper {
+export function takeWhile<T = any>(predicate: (value: T) => boolean): StreamMapper {
   const operator = (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
 

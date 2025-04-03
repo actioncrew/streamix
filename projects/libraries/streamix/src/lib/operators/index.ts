@@ -26,6 +26,7 @@ export * from './select';
 export * from './shareReplay';
 export * from './skip';
 export * from './skipUntil';
+export * from './skipWhile';
 export * from './slidingPair';
 export * from './switchMap';
 export * from './take';
