@@ -14,11 +14,15 @@ export function sample<T = any>(period: number): StreamMapper {
         for await (const value of eachValueFrom(input)) {
           lastValue = value; // Store the latest value from the input stream
         }
-        // When input completes, clean up the interval and complete the output
-        if (intervalId) clearInterval(intervalId);
-        output.complete();
+        // When input completes, emit the last value if available
+        if (lastValue !== undefined) {
+          output.next(lastValue);
+        }
+        output.complete(); // Complete the output stream when input is finished
       } catch (err) {
         output.error(err); // Propagate any error
+      } finally {
+        if (intervalId) clearInterval(intervalId); // Clean up interval when done
       }
     };
 
