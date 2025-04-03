@@ -1,59 +1,53 @@
-import { createMapper, Stream, StreamMapper, Subscription } from "../abstractions";
+import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject, interval } from "../streams";
+import { createSubject } from "../streams";
 
 export function audit<T = any>(duration: number): StreamMapper {
   const operator = (input: Stream<T>): Stream<T> => {
     const output = createSubject<T>();
-    let lastValue: T | undefined;
-    let timerSubscription: Subscription | null = null;
-    let inputCompleted = false;
+    let lastValue: T | undefined = undefined;
+    let timerActive = false; // Tracks if the timer is active
+    let inputCompleted = false; // Tracks if the input stream is complete
 
-    const clearTimer = () => {
-      if (timerSubscription) {
-        timerSubscription.unsubscribe();
-        timerSubscription = null;
+    const emitValue = () => {
+      if (lastValue !== undefined && timerActive) {
+        output.next(lastValue);
+        lastValue = undefined;
       }
     };
 
-    const startNewTimer = () => {
-      clearTimer();
+    const startAuditTimer = () => {
+      timerActive = true;
 
-      const timer = interval(duration);
-      timerSubscription = timer.subscribe({
-        next: () => {
-          if (lastValue !== undefined) {
-            output.next(lastValue);
-            lastValue = undefined;
-            clearTimer();
+      setTimeout(() => {
+        emitValue();
+        timerActive = false;
 
-            if (inputCompleted) {
-              output.complete();
-            }
-          }
-        },
-        error: (err) => output.error(err)
-      });
+        // Complete output if input has completed and timer finishes
+        if (inputCompleted) {
+          output.complete();
+        }
+      }, duration);
     };
 
     (async () => {
       try {
         for await (const value of eachValueFrom(input)) {
-          lastValue = value;
-          if (!timerSubscription) {
-            startNewTimer();
+          lastValue = value; // Update the latest value
+
+          if (!timerActive) {
+            startAuditTimer(); // Start the audit timer
           }
         }
 
         inputCompleted = true;
-        if (!timerSubscription && lastValue !== undefined) {
-          output.next(lastValue);
+        lastValue = undefined;
+        // Only complete if no timer is running
+        if (!timerActive) {
           output.complete();
         }
       } catch (err) {
-        output.error(err);
-      } finally {
-        clearTimer();
+        output.error(err); // Propagate errors
       }
     })();
 
