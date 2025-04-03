@@ -12,22 +12,22 @@ export function select<T = any>(indexIterator: Iterator<number>): StreamMapper {
       try {
         for await (const value of eachValueFrom(input)) {
           if (nextIndex === undefined) {
-            output.complete();
+            output.complete(); // Complete when indexIterator is exhausted
             break;
           }
 
           if (currentIndex === nextIndex) {
-            output.next(value);
-            nextIndex = indexIterator.next().value;
+            output.next(value); // Emit the value at the selected index
+            nextIndex = indexIterator.next().value; // Move to the next index
           }
 
           currentIndex++;
         }
       } catch (err) {
-        output.error(err);
+        output.error(err); // Forward any errors
       } finally {
         if (!output.completed()) {
-          output.complete();
+          output.complete(); // Ensure completion if the stream wasn't already completed
         }
       }
     })();
