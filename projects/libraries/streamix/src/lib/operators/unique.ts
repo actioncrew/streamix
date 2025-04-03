@@ -10,8 +10,10 @@ export function unique<T = any, K = any>(keySelector?: (value: T) => K): StreamM
     (async () => {
       try {
         for await (const value of eachValueFrom(input)) {
+          // If keySelector is provided, use it; otherwise, use the value itself
           const currentKey = keySelector ? keySelector(value) : value;
 
+          // Ensure that we're comparing the correct value based on the presence of keySelector
           if (!seenKeys.has(currentKey)) {
             output.next(value);
             seenKeys.add(currentKey);
@@ -28,4 +30,3 @@ export function unique<T = any, K = any>(keySelector?: (value: T) => K): StreamM
 
   return createMapper('unique', operator);
 }
-          
