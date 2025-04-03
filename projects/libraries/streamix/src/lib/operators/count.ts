@@ -10,6 +10,7 @@ export function count(): StreamMapper {
       let count = 0;
       try {
         for await (const _ of eachValueFrom(input)) {
+          void _;
           count++;
         }
         output.next(count);
