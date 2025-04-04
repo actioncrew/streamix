@@ -1,7 +1,6 @@
 import { createMapper, createStream, Stream, StreamMapper } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
-
 /**
  * Creates a stream mapper that emits all values from the source stream,
  * and then emits a specified final value upon normal completion of the source.
