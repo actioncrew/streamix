@@ -15,6 +15,8 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
     // Initial delay if specified
     if (delayMs > 0) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
+    } else {
+      await Promise.resolve();
     }
 
     if (!signal.aborted) {
