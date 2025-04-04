@@ -5,56 +5,60 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
   const subject = createSubject<T>();
   let winnerIndex = -1;
   const subscriptions: { unsubscribe: () => void }[] = [];
+  let unsubscribed = false;
 
-  // Helper to unsubscribe all except the winner
   const unsubscribeOthers = (winnerSub: { unsubscribe: () => void }) => {
-    for (const s of subscriptions) {
-      if (s !== winnerSub) s.unsubscribe();
+    if (!unsubscribed) {
+      unsubscribed = true;
+      for (const s of subscriptions) {
+        if (s !== winnerSub) s.unsubscribe();
+      }
     }
   };
 
-  streams.forEach((stream, index) => {
-    const sub = stream.subscribe({
-      next: (value) => {
-        // Delay winner selection to allow all subs to register
+  const winnerPromise = new Promise<number>((resolve) => {
+    streams.forEach((stream, index) => {
+      const sub = stream.subscribe({
+        next: async (value) => { // Make the callback async
           if (winnerIndex === -1) {
             winnerIndex = index;
-            queueMicrotask(() => {
-              unsubscribeOthers(sub);
-            });
+            resolve(winnerIndex);
+            await winnerPromise; // Await the promise
+            unsubscribeOthers(sub);
           }
 
           if (index === winnerIndex) {
             subject.next(value);
           }
-      },
-      error: (err) => {
-        if (winnerIndex === -1) {
-          winnerIndex = index;
-          queueMicrotask(() => {
-            unsubscribeOthers(sub);
-          });
-        }
-
-        if (index === winnerIndex) {
-          subject.error(err);
-        }
-      },
-      complete: () => {
+        },
+        error: async (err) => { // Make the callback async
           if (winnerIndex === -1) {
             winnerIndex = index;
-            queueMicrotask(() => {
-              unsubscribeOthers(sub);
-            });
+            resolve(winnerIndex);
+            await winnerPromise; // Await the promise
+            unsubscribeOthers(sub);
+          }
+
+          if (index === winnerIndex) {
+            subject.error(err);
+          }
+        },
+        complete: async () => { // Make the callback async
+          if (winnerIndex === -1) {
+            winnerIndex = index;
+            resolve(winnerIndex);
+            await winnerPromise; // Await the promise
+            unsubscribeOthers(sub);
           }
 
           if (index === winnerIndex) {
             subject.complete();
           }
-      },
-    });
+        },
+      });
 
-    subscriptions.push(sub);
+      subscriptions.push(sub);
+    });
   });
 
   subject.name = 'race';
