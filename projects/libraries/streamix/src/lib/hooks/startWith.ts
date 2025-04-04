@@ -1,28 +1,25 @@
-import { createMapper, Stream, StreamMapper } from '../abstractions';
-import { eachValueFrom } from '../converters';
-import { createBehaviorSubject } from '../streams';
+import { createStream, Stream, StreamMapper, createMapper } from '../abstractions'; // Adjust path as needed
 
-export const startWith = (initialValue: any): StreamMapper => {
-  const operator = (input: Stream): Stream => {
-    const output = createBehaviorSubject<any>(initialValue); // Create the output stream
+/**
+ * Creates a stream mapper that prepends a specified initial value
+ * to the sequence emitted by the source stream, using an async generator.
+ *
+ * @template T The type of the initial value.
+ * @template S The type of the values emitted by the source stream.
+ * @param initialValue The value to emit first.
+ * @returns A StreamMapper function that transforms an input Stream<S> into an output Stream<T | S>.
+ */
+export const startWith = <T = any>(initialValue: T): StreamMapper => {
+  const operator = (input: Stream<T>): Stream<T> => {
+    return createStream('startWith', async function* () {
+      // Yield the initial value first.
+      yield initialValue;
 
-    // Subscribe to the original stream
-    (async () => {
-      try {
-        // Iterate over the input stream asynchronously
-        for await (const value of eachValueFrom(input)) {
-          output.next(value); // Forward emissions from the original stream
-        }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        // Complete the output stream once the original stream completes
-        output.complete();
-      }
-    })();
-
-    return output;
+      // Delegate yielding to the input stream.
+      yield* input;
+    });
   };
 
+  // Wrap the operator logic using createMapper
   return createMapper('startWith', operator);
 };
