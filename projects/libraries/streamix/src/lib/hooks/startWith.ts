@@ -1,5 +1,5 @@
 import { createStream, Stream, StreamMapper, createMapper } from '../abstractions'; // Adjust path as needed
-
+import { eachValueFrom } from '../converters';
 /**
  * Creates a stream mapper that prepends a specified initial value
  * to the sequence emitted by the source stream, using an async generator.
@@ -15,7 +15,7 @@ export const startWith = <T = any>(initialValue: T): StreamMapper => {
       yield initialValue;
 
       // Delegate yielding to the input stream.
-      yield* input;
+      yield* eachValueFrom(input);
     });
   };
 
