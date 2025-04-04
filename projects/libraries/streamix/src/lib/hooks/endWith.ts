@@ -25,23 +25,3 @@ export const endWith = <T = any>(endValue: T): StreamMapper => {
   // Wrap the operator logic using createMapper
   return createMapper('endWith', operator);
 };
-
-// Example Usage (conceptual)
-// Assuming 'of', 'throwError' operators and 'toArray', 'toPromise' consumers exist
-
-// const source1 = of(1, 2); // Emits 1, 2, then completes
-// const resultStream1 = source1.pipe(endWith(3));
-// const output1 = await toArray(resultStream1); // output1 would be [1, 2, 3]
-
-// const source2 = throwError(new Error('Source failed')); // Emits error immediately
-// const resultStream2 = source2.pipe(endWith(99));
-// try {
-//   await toArray(resultStream2);
-// } catch (err) {
-//   // err.message would be 'Source failed'
-//   // 99 was NOT emitted.
-// }
-
-// const source3 = empty(); // Emits nothing, just completes
-// const resultStream3 = source3.pipe(endWith(0));
-// const output3 = await toArray(resultStream3); // output3 would be [0]
