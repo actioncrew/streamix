@@ -13,31 +13,68 @@ export function recurse<T = any>(
   return createMapper('recurse', (input: Stream<T>) => {
     const output = createSubject<T>();
     const queue: { value: T; depth: number }[] = [];
-    let activeCount = 0;
+    let processing = false;
+    let inputComplete = false;
 
-    const processNext = async () => {
-      while (queue.length && (options.maxDepth === undefined || queue[0].depth <= options.maxDepth)) {
-        const { value, depth } = options.traversal === 'breadth' ? queue.shift()! : queue.pop()!;
-        
-        output.next(value);
-        if (condition(value)) {
-          activeCount++;
-          try {
-            for await (const child of eachValueFrom(project(value))) {
-              queue.push({ value: child, depth: depth + 1 });
+    const processQueue = async () => {
+      if (processing) return;
+      processing = true;
+
+      try {
+        while (queue.length > 0) {
+          const { value, depth } = options.traversal === 'breadth'
+            ? queue.shift()!
+            : queue.pop()!;
+
+          if (options.maxDepth !== undefined && depth > options.maxDepth) {
+            continue;
+          }
+
+          output.next(value);
+
+          if (condition(value)) {
+            try {
+              const childStream = project(value);
+              for await (const child of eachValueFrom(childStream)) {
+                if (options.traversal === 'depth') {
+                  queue.push({ value: child, depth: depth + 1 });
+                } else {
+                  queue.push({ value: child, depth: depth + 1 });
+                }
+              }
+            } catch (error) {
+              output.error(error);
+              return;
             }
-          } finally {
-            activeCount--;
           }
         }
+
+        if (inputComplete && queue.length === 0) {
+          output.complete();
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        processing = false;
+
+        if (queue.length > 0) {
+          processQueue();
+        }
       }
-      if (activeCount === 0) output.complete();
     };
 
     (async () => {
-      for await (const value of eachValueFrom(input)) {
-        queue.push({ value, depth: 0 });
-        processNext();
+      try {
+        for await (const value of eachValueFrom(input)) {
+          queue.push({ value, depth: 0 });
+          processQueue();
+        }
+        inputComplete = true;
+        if (queue.length === 0 && !processing) {
+          output.complete();
+        }
+      } catch (error) {
+        output.error(error);
       }
     })();
 
