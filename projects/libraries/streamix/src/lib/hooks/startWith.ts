@@ -5,9 +5,8 @@ import { createStream, Stream, StreamMapper, createMapper } from '../abstraction
  * to the sequence emitted by the source stream, using an async generator.
  *
  * @template T The type of the initial value.
- * @template S The type of the values emitted by the source stream.
  * @param initialValue The value to emit first.
- * @returns A StreamMapper function that transforms an input Stream<S> into an output Stream<T | S>.
+ * @returns A StreamMapper function that transforms an input Stream<T> into an output Stream<T>.
  */
 export const startWith = <T = any>(initialValue: T): StreamMapper => {
   const operator = (input: Stream<T>): Stream<T> => {
