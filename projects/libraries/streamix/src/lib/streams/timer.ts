@@ -1,4 +1,5 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createSubject } from './subject';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;
@@ -8,17 +9,17 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   const abortController = new AbortController();
   const { signal } = abortController;
 
-  const stream = createStream<number>('timer', async function* (this: Stream) {
+  const subject = createSubject<number>();
+
+  (async () => {
     // Initial delay if specified
     if (delayMs > 0) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
-    } else {
-      await Promise.resolve();
     }
 
     if (!signal.aborted) {
       // Emit the first value immediately
-      yield timerValue++;
+      subject.next(timerValue++);
     }
 
     // Emit subsequent values at intervals
@@ -26,19 +27,19 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
       await new Promise(resolve => setTimeout(resolve, actualIntervalMs));
 
       if (!signal.aborted) {
-        yield timerValue++;
+        subject.next(timerValue++);
       }
     }
-  });
+  })();
 
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: number) => void) | Receiver<number>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+  const originalSubscribe = subject.subscribe;
+  subject.subscribe = (callbackOrReceiver?: ((value: number) => void) | Receiver<number>): Subscription => {
+    const subscription = originalSubscribe.call(subject, callbackOrReceiver);
 
     return createSubscription(() => {
       abortController.abort();
       subscription.unsubscribe();
     });
   };
-  return stream;
-}
+  return subject;
+};
