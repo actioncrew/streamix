@@ -45,6 +45,7 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
         }
 
         if (index === winnerIndex) {
+          sub.unsubscribe();
           subject.complete();
         }
       },
