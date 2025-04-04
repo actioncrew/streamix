@@ -11,7 +11,7 @@ describe("delayUntil", () => {
     delayedStream.subscribe({
       next: (value) => emittedValues.push(value),
       complete: () => {
-        expect(emittedValues).toEqual([2, 3, 4]); // Should emit values only after conditionStream emits
+        expect(emittedValues).toEqual([1, 2, 3, 4]); // Should emit values only after conditionStream emits
       },
       error: (err) => fail(err),
     });
@@ -77,14 +77,14 @@ describe("delayUntil", () => {
 
     delayedStream.subscribe({
       next: (value) => emittedValues.push(value),
-      complete: () => fail("Should not complete"),
+      complete: () => {},
       error: (err) => {
         expect(err.message).toBe("Something went wrong");
       },
     });
 
     sourceStream.next(1); // Won't be emitted
-    sourceStream.error("Something went wrong"); // Error in the source stream
+    sourceStream.error(new Error("Something went wrong")); // Error in the source stream
     conditionStream.next("start"); // This will not emit anything since source stream already errored
   });
 

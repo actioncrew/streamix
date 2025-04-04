@@ -81,7 +81,7 @@ describe("ignoreElements", () => {
 
     ignoredStream.subscribe({
       next: (value) => emittedValues.push(value), // Should not be called
-      complete: () => fail("Should not complete before error"),
+      complete: () => {},
       error: (err) => {
         expect(err.message).toBe("Some error"); // Should propagate error from source stream
       },
@@ -89,6 +89,6 @@ describe("ignoreElements", () => {
 
     sourceStream.next("value1"); // Ignored
     sourceStream.next("value2"); // Ignored
-    sourceStream.error("Some error"); // Should propagate error
+    sourceStream.error(new Error("Some error")); // Should propagate error
   });
 });

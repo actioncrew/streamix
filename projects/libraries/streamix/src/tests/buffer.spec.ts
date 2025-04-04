@@ -90,10 +90,10 @@ describe("buffer operator", () => {
       }
     })();
 
-    subject.error("Test error");
+    subject.error(new Error("Test error"));
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    expect(error).toBe("Test error");
+    expect(error.message).toBe("Test error");
   });
 
   it("should emit empty arrays if no values are received in the interval", async () => {

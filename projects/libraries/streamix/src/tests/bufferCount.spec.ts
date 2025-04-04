@@ -63,10 +63,10 @@ describe("bufferCount operator", () => {
       }
     })();
 
-    subject.error("Test error");
+    subject.error(new Error("Test error"));
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    expect(error).toBe("Test error");
+    expect(error.message).toBe("Test error");
   });
 
   it("should not emit empty buffers", async () => {
