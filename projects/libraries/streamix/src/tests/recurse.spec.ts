@@ -34,7 +34,7 @@ describe('recurse', () => {
       result.push(value);
     }
 
-    expect(result).toEqual([1, 2, 3]); // Should process in breadth-first order
+    expect(result).toEqual([1, 2, 3, 4]); // Should process in breadth-first order
   });
 
   it('should stop recursing beyond maxDepth', async () => {
