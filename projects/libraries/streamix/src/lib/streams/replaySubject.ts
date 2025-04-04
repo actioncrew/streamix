@@ -30,41 +30,49 @@ export function createReplaySubject<T>(bufferSize: number = Infinity): ReplaySub
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
     let latestValue: T | undefined;
-    const replayCount = Math.min(bufferSize, base.buffer.length);
-    const replayStartIndex = base.buffer.length - replayCount;
+    const replayStartIndex = 0;
 
     base.subscribers.set(receiver, { startIndex: replayStartIndex, endIndex: Infinity });
 
-    const subscription = createSubscription(
-      () => {
-        if (!unsubscribing) {
-          unsubscribing = true;
+    const subscription = createSubscription(() => {
+      if (!unsubscribing) {
+        unsubscribing = true;
 
-          if(base.subscribers.size === 1) {
-            complete();
-          }
-
-          const subscriptionState = base.subscribers.get(receiver)!;
-          subscriptionState.endIndex = base.buffer.length;
-          base.subscribers.set(receiver, subscriptionState);
-          base.pullRequests.delete(receiver);
-          cleanupBuffer();
+        if (base.subscribers.size === 1) {
+          complete();  // Complete when the last subscriber unsubscribes
         }
+
+        const subscriptionState = base.subscribers.get(receiver)!;
+        subscriptionState.endIndex = base.buffer.length;
+        base.subscribers.set(receiver, subscriptionState);
+        base.pullRequests.delete(receiver);
+        cleanupBuffer();
       }
-    );
+    });
 
     (async () => {
       try {
+        // Replay the buffered values first
+        for (let i = replayStartIndex; i < base.buffer.length; i++) {
+          latestValue = base.buffer[i];
+          receiver.next(latestValue);
+        }
+
+        const subscriptionState = base.subscribers.get(receiver)!;
+        base.subscribers.set(receiver, { startIndex: base.buffer.length, endIndex: subscriptionState.endIndex });
+
+        // Now handle live emissions
         while (true) {
           const subscriptionState = base.subscribers.get(receiver);
           if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
             break;
           }
+
           const result = await pullValue(receiver);
           if (result.done) break;
 
           latestValue = result.value;
-          receiver.next(result.value);
+          receiver.next(latestValue);
         }
       } catch (err: any) {
         receiver.error(err);
