@@ -24,49 +24,46 @@ export const createLock = (): SimpleLock => {
   });
 };
 
-export type Semaphore = (count: number) => {
+export type Semaphore = {
   acquire: () => Promise<ReleaseFn>;
   tryAcquire: () => ReleaseFn | null;
+  release: () => void; // Explicit release method
 };
 
-export const createSemaphore: Semaphore = (initialCount) => {
+export const createSemaphore = (initialCount: number): Semaphore => {
   let count = initialCount;
   const queue: Array<(release: ReleaseFn) => void> = [];
 
+  const release = () => {
+    count++;
+    if (queue.length > 0) {
+      const resolve = queue.shift()!;
+      count--;
+      resolve(() => {
+        release();
+      });
+    }
+  };
+
   const acquire = (): Promise<ReleaseFn> => 
     new Promise(resolve => {
-      const tryAcquire = () => {
-        if (count > 0) {
-          count--;
-          resolve(() => {
-            count++;
-            if (queue.length > 0) {
-              const next = queue.shift()!;
-              next(tryAcquire);
-            }
-          });
-        } else {
-          queue.push(tryAcquire);
-        }
-      };
-      tryAcquire();
+      if (count > 0) {
+        count--;
+        resolve(() => release());
+      } else {
+        queue.push(resolve);
+      }
     });
 
   const tryAcquire = (): ReleaseFn | null => {
     if (count > 0) {
       count--;
-      return () => {
-        count++;
-        if (queue.length > 0) {
-          const next = queue.shift()!;
-          next(tryAcquire);
-        }
-      };
+      return () => release();
     }
     return null;
   };
 
-  return { acquire, tryAcquire };
+  return { acquire, tryAcquire, release };
 };
 
 export type Buffer<T> = {
