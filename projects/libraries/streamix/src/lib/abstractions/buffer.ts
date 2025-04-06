@@ -87,7 +87,7 @@ export const createBuffer = <T>(capacity: number): Buffer<T> => {
 
   const enqueue = async (item: T) => {
     const releaseFull = await notFull.acquire();
-    const releaseLock = await lock();
+    const releaseLock = await lock.acquire();
     
     buffer[tail] = item;
     tail = (tail + 1) % capacity;
@@ -99,7 +99,7 @@ export const createBuffer = <T>(capacity: number): Buffer<T> => {
 
   const dequeue = async (): Promise<T> => {
     const releaseEmpty = await notEmpty.acquire();
-    const releaseLock = await lock();
+    const releaseLock = await lock.acquire();
     
     const item = buffer[head];
     head = (head + 1) % capacity;
