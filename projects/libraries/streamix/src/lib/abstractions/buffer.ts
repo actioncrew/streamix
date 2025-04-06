@@ -1,7 +1,7 @@
 export type ReleaseFn = () => void;
 export type SimpleLock = () => Promise<ReleaseFn>;
 
-export const createLock = (): Lock => {
+export const createLock = (): SimpleLock => {
   let locked = false;
   const queue: Array<(release: ReleaseFn) => void> = [];
 
@@ -27,13 +27,14 @@ export const createLock = (): Lock => {
 export type Semaphore = (count: number) => {
   acquire: () => Promise<ReleaseFn>;
   tryAcquire: () => ReleaseFn | null;
+  release: () => void; // Added release function
 };
 
 export const createSemaphore: Semaphore = (initialCount) => {
   let count = initialCount;
   const queue: Array<(release: ReleaseFn) => void> = [];
 
-  const acquire = (): Promise<ReleaseFn> => 
+  const acquire = (): Promise<ReleaseFn> =>
     new Promise(resolve => {
       const tryAcquire = () => {
         if (count > 0) {
@@ -64,7 +65,15 @@ export const createSemaphore: Semaphore = (initialCount) => {
     return null;
   };
 
-  return { acquire, tryAcquire };
+  const release = () => {
+    if (queue.length > 0) {
+      queue.shift()!()();
+    } else {
+      count++;
+    }
+  };
+
+  return { acquire, tryAcquire, release };
 };
 
 export type Buffer<T> = {
@@ -86,25 +95,27 @@ export const createBuffer = <T>(capacity: number): Buffer<T> => {
   const enqueue = async (item: T) => {
     const releaseFull = await notFull.acquire();
     const releaseLock = await lock();
-    
+
     buffer[tail] = item;
     tail = (tail + 1) % capacity;
     count++;
-    
+
     releaseLock();
     notEmpty.release();
+    releaseFull();
   };
 
   const dequeue = async (): Promise<T> => {
     const releaseEmpty = await notEmpty.acquire();
     const releaseLock = await lock();
-    
+
     const item = buffer[head];
     head = (head + 1) % capacity;
     count--;
-    
+
     releaseLock();
     notFull.release();
+    releaseEmpty();
     return item;
   };
 
@@ -112,6 +123,6 @@ export const createBuffer = <T>(capacity: number): Buffer<T> => {
     enqueue,
     dequeue,
     isEmpty: () => count === 0,
-    isFull: () => count === capacity
+    isFull: () => count === capacity,
   };
 };
