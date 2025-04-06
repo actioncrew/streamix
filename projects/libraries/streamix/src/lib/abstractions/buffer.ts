@@ -1,7 +1,7 @@
 export type ReleaseFn = () => void;
 export type SimpleLock = () => Promise<ReleaseFn>;
 
-export const createLock = (): Lock => {
+export const createLock = (): SimpleLock => {
   let locked = false;
   const queue: Array<(release: ReleaseFn) => void> = [];
 
@@ -86,8 +86,8 @@ export const createBuffer = <T>(capacity: number): Buffer<T> => {
   const notFull = createSemaphore(capacity);
 
   const enqueue = async (item: T) => {
-    const releaseFull = await notFull.acquire();
-    const releaseLock = await lock.acquire();
+    await notFull.acquire();
+    const releaseLock = await lock();
     
     buffer[tail] = item;
     tail = (tail + 1) % capacity;
@@ -98,8 +98,8 @@ export const createBuffer = <T>(capacity: number): Buffer<T> => {
   };
 
   const dequeue = async (): Promise<T> => {
-    const releaseEmpty = await notEmpty.acquire();
-    const releaseLock = await lock.acquire();
+    await notEmpty.acquire();
+    const releaseLock = await lock();
     
     const item = buffer[head];
     head = (head + 1) % capacity;
