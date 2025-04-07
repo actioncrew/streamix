@@ -73,9 +73,10 @@ export type Buffer<T = any> = {
   detachReader: (readerId: number) => void;
 };
 
-export const createBuffer = <T = any>(capacity: number): MultiReaderBuffer<T> => {
+export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
   const buffer: Array<T> = new Array(capacity);
   let writeIndex = 0;
+  let oldestIndex = 0; // Tracks the oldest unread data in the buffer
   const readerPositions = new Map<number, number>();
   const readerSemaphores = new Map<number, Semaphore>();
   let readerIdCounter = 0;
@@ -87,11 +88,24 @@ export const createBuffer = <T = any>(capacity: number): MultiReaderBuffer<T> =>
     await notFull.acquire();
     const releaseLock = await lock();
 
+    // Prevent overwriting unread data
+    for (const [readerId, readerIndex] of readerPositions) {
+      if (readerIndex === writeIndex) {
+        releaseLock();
+        throw new Error("Writer is trying to overwrite unread data.");
+      }
+    }
+
     buffer[writeIndex] = item;
     writeIndex = (writeIndex + 1) % capacity;
 
+    // Update oldestIndex if the buffer is completely filled
+    if (writeIndex === oldestIndex) {
+      oldestIndex = (oldestIndex + 1) % capacity;
+    }
+
     for (const semaphore of readerSemaphores.values()) {
-      semaphore.release(); // Notify the respective reader that new data is available
+      semaphore.release(); // Notify readers of new data
     }
 
     releaseLock();
@@ -101,7 +115,7 @@ export const createBuffer = <T = any>(capacity: number): MultiReaderBuffer<T> =>
     const releaseLock = await lock();
 
     const readerId = readerIdCounter++;
-    readerPositions.set(readerId, writeIndex); // Start reading from the current write position
+    readerPositions.set(readerId, writeIndex); // Start at the current write position
     readerSemaphores.set(readerId, createSemaphore(0)); // Create a semaphore for this reader
 
     releaseLock();
@@ -126,6 +140,12 @@ export const createBuffer = <T = any>(capacity: number): MultiReaderBuffer<T> =>
       const data = buffer[readIndex];
       readerPositions.set(readerId, (readIndex + 1) % capacity);
 
+      // Update oldestIndex to the earliest unread position among all readers
+      oldestIndex = Math.min(
+        ...Array.from(readerPositions.values()),
+        oldestIndex
+      );
+
       return data;
     } finally {
       releaseLock();
@@ -137,6 +157,13 @@ export const createBuffer = <T = any>(capacity: number): MultiReaderBuffer<T> =>
 
     readerPositions.delete(readerId);
     readerSemaphores.delete(readerId);
+
+    // Recalculate oldestIndex to ensure it's accurate
+    if (readerPositions.size > 0) {
+      oldestIndex = Math.min(...readerPositions.values());
+    } else {
+      oldestIndex = writeIndex; // If no readers, reset oldestIndex to writeIndex
+    }
 
     releaseLock();
   };
