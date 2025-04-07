@@ -134,14 +134,16 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
       const data = buffer[readIndex];
       readerPositions.set(readerId, (readIndex + 1) % capacity);
 
-      // Refined check for oldest read position
-      let minReadIndex = Infinity;
+      let allReadersAdvanced = true;
       for (const position of readerPositions.values()) {
-        minReadIndex = Math.min(minReadIndex, position);
+        const distance = (position - writeIndex + capacity) % capacity;
+        if (distance !== 0) {
+          allReadersAdvanced = false;
+          break;
+        }
       }
 
-      // Refined condition to handle cyclic buffer
-      if ((writeIndex > minReadIndex && (writeIndex - minReadIndex) < capacity) || (writeIndex < minReadIndex && (minReadIndex - writeIndex) > capacity / 2)) {
+      if (allReadersAdvanced) {
         notFull.release();
       }
 
