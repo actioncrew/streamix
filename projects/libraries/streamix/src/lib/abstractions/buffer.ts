@@ -76,7 +76,6 @@ export type Buffer<T = any> = {
 export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
   const buffer: Array<T> = new Array(capacity);
   let writeIndex = 0;
-  let oldestIndex = 0; // Tracks the oldest unread data in the buffer
   const readerPositions = new Map<number, number>();
   const readerSemaphores = new Map<number, Semaphore>();
   let readerIdCounter = 0;
@@ -89,7 +88,7 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
     const releaseLock = await lock();
 
     // Prevent overwriting unread data
-    for (const [readerId, readerIndex] of readerPositions) {
+    for (const [, readerIndex] of readerPositions) {
       if (readerIndex === writeIndex) {
         releaseLock();
         throw new Error("Writer is trying to overwrite unread data.");
@@ -98,11 +97,6 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
 
     buffer[writeIndex] = item;
     writeIndex = (writeIndex + 1) % capacity;
-
-    // Update oldestIndex if the buffer is completely filled
-    if (writeIndex === oldestIndex) {
-      oldestIndex = (oldestIndex + 1) % capacity;
-    }
 
     for (const semaphore of readerSemaphores.values()) {
       semaphore.release(); // Notify readers of new data
@@ -127,8 +121,8 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
     if (!semaphore) {
       throw new Error("Reader ID not found.");
     }
-
-    await semaphore.acquire(); // Wait until new data is available
+  
+    await semaphore.acquire();
 
     const releaseLock = await lock();
     try {
@@ -140,11 +134,16 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
       const data = buffer[readIndex];
       readerPositions.set(readerId, (readIndex + 1) % capacity);
 
-      // Update oldestIndex to the earliest unread position among all readers
-      oldestIndex = Math.min(
-        ...Array.from(readerPositions.values()),
-        oldestIndex
-      );
+      // Refined check for oldest read position
+      let minReadIndex = Infinity;
+      for (const position of readerPositions.values()) {
+        minReadIndex = Math.min(minReadIndex, position);
+      }
+
+      // Refined condition to handle cyclic buffer
+      if ((writeIndex > minReadIndex && (writeIndex - minReadIndex) < capacity) || (writeIndex < minReadIndex && (minReadIndex - writeIndex) > capacity / 2)) {
+        notFull.release();
+      }
 
       return data;
     } finally {
