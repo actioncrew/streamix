@@ -66,14 +66,14 @@ export const createSemaphore = (initialCount: number): Semaphore => {
   return { acquire, tryAcquire, release };
 };
 
-export type Buffer<T> = {
+export type Buffer<T = any> = {
   write: (item: T) => Promise<void>;
   read: (readerId: number) => Promise<T>;
   attachReader: () => Promise<number>;
   detachReader: (readerId: number) => void;
 };
 
-export const createBuffer = <T>(capacity: number): MultiReaderBuffer<T> => {
+export const createBuffer = <T = any>(capacity: number): MultiReaderBuffer<T> => {
   const buffer: Array<T> = new Array(capacity);
   let writeIndex = 0;
   const readerPositions = new Map<number, number>();
