@@ -79,52 +79,82 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
   const readerPositions = new Map<number, number>();
   const readerSemaphores = new Map<number, Semaphore>();
   let readerIdCounter = 0;
+  
+  // Track the minimum read position (oldest unread position)
+  let minReadPosition = 0;
 
   const lock = createLock();
   const notFull = createSemaphore(capacity);
   
-  // Track which positions have been fully consumed by all readers
-  const isPositionReadByAll = (position: number): boolean => {
-    for (const readerPos of readerPositions.values()) {
-      // If any reader hasn't yet read this position, return false
-      if (position === readerPos) {
-        return false;
+  // Calculate the minimum read position across all readers
+  const updateMinReadPosition = (): void => {
+    if (readerPositions.size === 0) {
+      // If no readers, all slots are available (matching writeIndex)
+      minReadPosition = writeIndex;
+      return;
+    }
+    
+    // Find the reader that has read the least (furthest behind)
+    let minPos = writeIndex;
+    let minDistance = capacity;
+    
+    for (const pos of readerPositions.values()) {
+      // Calculate how far behind this reader is from the write position
+      // Consider the cyclic nature of the buffer
+      const distance = (writeIndex - pos + capacity) % capacity;
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        minPos = pos;
       }
     }
-    return true;
+    
+    minReadPosition = minPos;
+  };
+  
+  // Calculate how many free slots are available in the buffer
+  const calculateFreeSlots = (): number => {
+    if (readerPositions.size === 0) {
+      return capacity;
+    }
+    
+    // In a circular buffer, the number of free slots is the distance
+    // from the minReadPosition to the writeIndex, minus 1 (we can't write
+    // to the exact position that's about to be read)
+    return (minReadPosition - writeIndex - 1 + capacity) % capacity;
   };
 
   const write = async (item: T): Promise<void> => {
     await notFull.acquire();
     const releaseLock = await lock();
 
-    // Prevent overwriting unread data
-    for (const [, readerIndex] of readerPositions) {
-      if (readerIndex === writeIndex) {
-        releaseLock();
-        throw new Error("Writer is trying to overwrite unread data.");
+    try {
+      buffer[writeIndex] = item;
+      writeIndex = (writeIndex + 1) % capacity;
+
+      for (const semaphore of readerSemaphores.values()) {
+        semaphore.release(); // Notify readers of new data
       }
+    } finally {
+      releaseLock();
     }
-
-    buffer[writeIndex] = item;
-    writeIndex = (writeIndex + 1) % capacity;
-
-    for (const semaphore of readerSemaphores.values()) {
-      semaphore.release(); // Notify readers of new data
-    }
-
-    releaseLock();
   };
 
   const attachReader = async (): Promise<number> => {
     const releaseLock = await lock();
 
-    const readerId = readerIdCounter++;
-    readerPositions.set(readerId, writeIndex); // Start at the current write position
-    readerSemaphores.set(readerId, createSemaphore(0)); // Create a semaphore for this reader
-
-    releaseLock();
-    return readerId;
+    try {
+      const readerId = readerIdCounter++;
+      readerPositions.set(readerId, writeIndex); // Start at the current write position
+      readerSemaphores.set(readerId, createSemaphore(0)); // Create a semaphore for this reader
+      
+      // Update the minimum read position
+      updateMinReadPosition();
+      
+      return readerId;
+    } finally {
+      releaseLock();
+    }
   };
 
   const read = async (readerId: number): Promise<T> => {
@@ -143,14 +173,23 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
       }
 
       const data = buffer[readIndex];
-      const oldReadIndex = readIndex;
-      const newReadIndex = (readIndex + 1) % capacity;
-      readerPositions.set(readerId, newReadIndex);
-
-      // Check if the position we just read from is now fully consumed by all readers
-      // If so, we can release a slot in the notFull semaphore
-      if (isPositionReadByAll(oldReadIndex)) {
-        notFull.release();
+      const oldMinReadPosition = minReadPosition;
+      
+      // Update the reader's position
+      readerPositions.set(readerId, (readIndex + 1) % capacity);
+      
+      // Update the minimum read position
+      updateMinReadPosition();
+      
+      // If the minimum read position advanced, release slots in the notFull semaphore
+      if (minReadPosition !== oldMinReadPosition) {
+        // Calculate how many positions were freed up
+        let freedPositions = (minReadPosition - oldMinReadPosition + capacity) % capacity;
+        
+        // Release that many slots in the notFull semaphore
+        for (let i = 0; i < freedPositions; i++) {
+          notFull.release();
+        }
       }
 
       return data;
@@ -160,24 +199,30 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
   };
 
   const detachReader = (readerId: number): void => {
-    const releaseLock = lock();
-    releaseLock().then(release => {
-      const oldPosition = readerPositions.get(readerId);
-      readerPositions.delete(readerId);
-      readerSemaphores.delete(readerId);
-      
-      // Check if removing this reader freed up any positions
-      // This is important when detaching readers to prevent deadlocks
-      if (oldPosition !== undefined) {
-        for (let i = 0; i < capacity; i++) {
-          const pos = (oldPosition + i) % capacity;
-          if (isPositionReadByAll(pos)) {
+    const releaseLockPromise = lock();
+    releaseLockPromise.then(releaseLock => {
+      try {
+        const oldMinReadPosition = minReadPosition;
+        
+        readerPositions.delete(readerId);
+        readerSemaphores.delete(readerId);
+        
+        // Update the minimum read position after removing this reader
+        updateMinReadPosition();
+        
+        // If the minimum read position advanced, release slots in the notFull semaphore
+        if (minReadPosition !== oldMinReadPosition) {
+          // Calculate how many positions were freed up
+          let freedPositions = (minReadPosition - oldMinReadPosition + capacity) % capacity;
+          
+          // Release that many slots in the notFull semaphore
+          for (let i = 0; i < freedPositions; i++) {
             notFull.release();
           }
         }
+      } finally {
+        releaseLock();
       }
-      
-      release();
     });
   };
 
