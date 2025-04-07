@@ -157,13 +157,6 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
     readerPositions.delete(readerId);
     readerSemaphores.delete(readerId);
 
-    // Recalculate oldestIndex to ensure it's accurate
-    if (readerPositions.size > 0) {
-      oldestIndex = Math.min(...readerPositions.values());
-    } else {
-      oldestIndex = writeIndex; // If no readers, reset oldestIndex to writeIndex
-    }
-
     releaseLock();
   };
 
