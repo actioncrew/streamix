@@ -82,6 +82,17 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
 
   const lock = createLock();
   const notFull = createSemaphore(capacity);
+  
+  // Track which positions have been fully consumed by all readers
+  const isPositionReadByAll = (position: number): boolean => {
+    for (const readerPos of readerPositions.values()) {
+      // If any reader hasn't yet read this position, return false
+      if (position === readerPos) {
+        return false;
+      }
+    }
+    return true;
+  };
 
   const write = async (item: T): Promise<void> => {
     await notFull.acquire();
@@ -132,18 +143,13 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
       }
 
       const data = buffer[readIndex];
-      readerPositions.set(readerId, (readIndex + 1) % capacity);
+      const oldReadIndex = readIndex;
+      const newReadIndex = (readIndex + 1) % capacity;
+      readerPositions.set(readerId, newReadIndex);
 
-      let allReadersAdvanced = true;
-      for (const position of readerPositions.values()) {
-        const distance = (position - writeIndex + capacity) % capacity;
-        if (distance !== 0) {
-          allReadersAdvanced = false;
-          break;
-        }
-      }
-
-      if (allReadersAdvanced) {
+      // Check if the position we just read from is now fully consumed by all readers
+      // If so, we can release a slot in the notFull semaphore
+      if (isPositionReadByAll(oldReadIndex)) {
         notFull.release();
       }
 
@@ -153,13 +159,26 @@ export const createBuffer = <T = any>(capacity: number): Buffer<T> => {
     }
   };
 
-  const detachReader = async (readerId: number): Promise<void> => {
-    const releaseLock = await lock();
-
-    readerPositions.delete(readerId);
-    readerSemaphores.delete(readerId);
-
-    releaseLock();
+  const detachReader = (readerId: number): void => {
+    const releaseLock = lock();
+    releaseLock().then(release => {
+      const oldPosition = readerPositions.get(readerId);
+      readerPositions.delete(readerId);
+      readerSemaphores.delete(readerId);
+      
+      // Check if removing this reader freed up any positions
+      // This is important when detaching readers to prevent deadlocks
+      if (oldPosition !== undefined) {
+        for (let i = 0; i < capacity; i++) {
+          const pos = (oldPosition + i) % capacity;
+          if (isPositionReadByAll(pos)) {
+            notFull.release();
+          }
+        }
+      }
+      
+      release();
+    });
   };
 
   return {
