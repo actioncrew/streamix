@@ -67,50 +67,84 @@ export const createSemaphore = (initialCount: number): Semaphore => {
 };
 
 export type Buffer<T> = {
-  enqueue: (item: T) => Promise<void>;
-  dequeue: () => Promise<T>;
-  isEmpty: () => boolean;
-  isFull: () => boolean;
+  write: (item: T) => Promise<void>;
+  read: (readerId: number) => Promise<T>;
+  attachReader: () => Promise<number>;
+  detachReader: (readerId: number) => void;
 };
 
-export const createBuffer = <T>(capacity: number): Buffer<T> => {
+export const createBuffer = <T>(capacity: number): MultiReaderBuffer<T> => {
   const buffer: Array<T> = new Array(capacity);
-  let head = 0;
-  let tail = 0;
-  let count = 0;
+  let writeIndex = 0;
+  const readerPositions = new Map<number, number>();
+  const readerSemaphores = new Map<number, Semaphore>();
+  let readerIdCounter = 0;
+
   const lock = createLock();
-  const notEmpty = createSemaphore(0);
   const notFull = createSemaphore(capacity);
 
-  const enqueue = async (item: T) => {
+  const write = async (item: T): Promise<void> => {
     await notFull.acquire();
     const releaseLock = await lock();
-    
-    buffer[tail] = item;
-    tail = (tail + 1) % capacity;
-    count++;
-    
+
+    buffer[writeIndex] = item;
+    writeIndex = (writeIndex + 1) % capacity;
+
+    for (const semaphore of readerSemaphores.values()) {
+      semaphore.release(); // Notify the respective reader that new data is available
+    }
+
     releaseLock();
-    notEmpty.release();
   };
 
-  const dequeue = async (): Promise<T> => {
-    await notEmpty.acquire();
+  const attachReader = async (): Promise<number> => {
     const releaseLock = await lock();
-    
-    const item = buffer[head];
-    head = (head + 1) % capacity;
-    count--;
-    
+
+    const readerId = readerIdCounter++;
+    readerPositions.set(readerId, writeIndex); // Start reading from the current write position
+    readerSemaphores.set(readerId, createSemaphore(0)); // Create a semaphore for this reader
+
     releaseLock();
-    notFull.release();
-    return item;
+    return readerId;
+  };
+
+  const read = async (readerId: number): Promise<T> => {
+    const semaphore = readerSemaphores.get(readerId);
+    if (!semaphore) {
+      throw new Error("Reader ID not found.");
+    }
+
+    await semaphore.acquire(); // Wait until new data is available
+
+    const releaseLock = await lock();
+    try {
+      const readIndex = readerPositions.get(readerId);
+      if (readIndex === undefined) {
+        throw new Error("Reader ID not found.");
+      }
+
+      const data = buffer[readIndex];
+      readerPositions.set(readerId, (readIndex + 1) % capacity);
+
+      return data;
+    } finally {
+      releaseLock();
+    }
+  };
+
+  const detachReader = async (readerId: number): Promise<void> => {
+    const releaseLock = await lock();
+
+    readerPositions.delete(readerId);
+    readerSemaphores.delete(readerId);
+
+    releaseLock();
   };
 
   return {
-    enqueue,
-    dequeue,
-    isEmpty: () => count === 0,
-    isFull: () => count === capacity
+    write,
+    read,
+    attachReader,
+    detachReader,
   };
 };
