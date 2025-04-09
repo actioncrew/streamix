@@ -151,6 +151,6 @@ export function createBuffer<T = any>(capacity: number): Buffer<T> {
     attachReader,
     detachReader,
     complete,
-    isCompleted: () => isCompleted,
+    completed: () => isCompleted,
   };
 }
