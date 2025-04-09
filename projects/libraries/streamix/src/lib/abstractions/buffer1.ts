@@ -98,7 +98,9 @@ export function createBuffer<T = any>(capacity: number): Buffer<T> {
 
       try {
         const readerOffset = readerOffsets.get(readerId);
-        if (readerOffset === undefined) throw new Error("Reader ID not found");
+        if (readerOffset === undefined) {
+          return { value: undefined, done: true };
+        }
 
         if (isCompleted && readerOffset >= readCount) {
           return { value: undefined, done: true };
