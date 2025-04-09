@@ -1,43 +1,57 @@
-export type ReleaseFn = () => void;
-export type Buffer<T = any> = {
-  write: (item: T) => Promise<void>;
-  read: (readerId: number) => Promise<{ value: T | undefined; done: boolean }>;
-  attachReader: () => Promise<number>;
-  detachReader: (readerId: number) => void;
-  complete: () => void;
-  isCompleted: () => boolean;
-};
-
 export function createBuffer<T = any>(capacity: number): Buffer<T> {
   const buffer: T[] = new Array(capacity);
   let writeIndex = 0;
-  let readCount = 0; // Total items written
-  const readerOffsets = new Map<number, number>(); // Tracks how many items each reader has consumed
+  let readCount = 0;
+  const readerOffsets = new Map<number, number>();
   let readerIdCounter = 0;
   let isCompleted = false;
   let activeReaders = 0;
 
-  // Synchronization primitives
+  // Track pending readers for each value
+  const pendingReaders = new Map<number, number>(); // value index → remaining readers
+
   const lock = createLock();
-  const readSemaphore = createSemaphore(0); // Signals data availability
-  const writeSemaphore = createSemaphore(capacity); // Tracks free slots
-  const allReadersDone = createSemaphore(0); // Signals when all readers have consumed a value
+  const readSemaphore = createSemaphore(0);
+  const writeSemaphore = createSemaphore(capacity);
+  const valueConsumed = createSemaphore(0);
 
   // --- Writer Logic ---
   const write = async (item: T): Promise<void> => {
-    await writeSemaphore.acquire(); // Wait for a free slot
-    const releaseLock = await lock();
+    if (isCompleted) throw new Error("Cannot write to completed buffer");
 
-    try {
-      // If there are active readers, wait until they've all consumed the previous value
-      if (activeReaders > 0) {
-        await allReadersDone.acquire();
+    await writeSemaphore.acquire();
+    
+    // Wait for previous value to be consumed by all readers (outside lock)
+    if (activeReaders > 0 && readCount > 0) {
+      const valueIndex = (readCount - 1) % capacity;
+      while (true) {
+        const releaseLock = await lock();
+        let remainingReaders: number;
+        try {
+          remainingReaders = pendingReaders.get(valueIndex) ?? 0;
+          if (remainingReaders === 0) break;
+        } finally {
+          releaseLock();
+        }
+        await valueConsumed.acquire();
       }
+    }
 
+    const releaseLock = await lock();
+    try {
       buffer[writeIndex] = item;
       writeIndex = (writeIndex + 1) % capacity;
       readCount++;
-      readSemaphore.release(); // Notify readers of new data
+
+      // Initialize pending readers for this value
+      if (activeReaders > 0) {
+        pendingReaders.set((readCount - 1) % capacity, activeReaders);
+      }
+
+      // Wake up all waiting readers
+      for (let i = 0; i < activeReaders; i++) {
+        readSemaphore.release();
+      }
     } finally {
       releaseLock();
     }
@@ -48,7 +62,7 @@ export function createBuffer<T = any>(capacity: number): Buffer<T> {
     const releaseLock = await lock();
     try {
       const readerId = readerIdCounter++;
-      readerOffsets.set(readerId, readCount); // New reader starts at the latest write position
+      readerOffsets.set(readerId, readCount);
       activeReaders++;
       return readerId;
     } finally {
@@ -61,9 +75,14 @@ export function createBuffer<T = any>(capacity: number): Buffer<T> {
     try {
       if (readerOffsets.delete(readerId)) {
         activeReaders--;
-        // If no readers left, unblock the writer (if waiting)
-        if (activeReaders === 0) {
-          allReadersDone.release();
+        // Mark all pending values as partially consumed
+        for (const [index, count] of pendingReaders) {
+          if (count > 0) {
+            pendingReaders.set(index, count - 1);
+            if (count === 1) {
+              valueConsumed.release();
+            }
+          }
         }
       }
     } finally {
@@ -75,57 +94,56 @@ export function createBuffer<T = any>(capacity: number): Buffer<T> {
   const read = async (readerId: number): Promise<{ value: T | undefined; done: boolean }> => {
     while (true) {
       const releaseLock = await lock();
+      let result: { value: T | undefined; done: boolean } | null = null;
+
       try {
         const readerOffset = readerOffsets.get(readerId);
-        if (readerOffset === undefined) {
-          throw new Error("Reader ID not found.");
-        }
+        if (readerOffset === undefined) throw new Error("Reader ID not found");
 
-        // Check for completion
         if (isCompleted && readerOffset >= readCount) {
           return { value: undefined, done: true };
         }
 
-        // If data is available, consume it
         if (readerOffset < readCount) {
-          const readIndex = readerOffset % capacity;
-          const value = buffer[readIndex];
+          const valueIndex = readerOffset % capacity;
+          const value = buffer[valueIndex];
           readerOffsets.set(readerId, readerOffset + 1);
 
-          // If this was the last reader to consume this value, notify the writer
-          if (isSlowestReader(readerId, readerOffset + 1)) {
-            writeSemaphore.release(); // Free a slot
-            allReadersDone.release(); // Unblock writer if waiting
+          // Update pending readers count
+          const remaining = (pendingReaders.get(valueIndex) ?? 0) - 1;
+          pendingReaders.set(valueIndex, remaining);
+          if (remaining === 0) {
+            valueConsumed.release();
+            writeSemaphore.release();
           }
 
-          return { value, done: false };
+          result = { value, done: false };
         }
       } finally {
         releaseLock();
       }
 
-      // Wait for new data or completion
+      if (result) return result;
+      if (isCompleted) return { value: undefined, done: true };
+
       await readSemaphore.acquire();
     }
   };
 
-  // Helper: Checks if a reader is the slowest (last to consume a value)
-  const isSlowestReader = (readerId: number, newOffset: number): boolean => {
-    for (const [id, offset] of readerOffsets) {
-      if (id !== readerId && offset < newOffset) {
-        return false;
-      }
-    }
-    return true;
-  };
-
   // --- Completion Handling ---
   const complete = (): void => {
-    isCompleted = true;
-    readSemaphore.release(); // Wake up any waiting readers
+    const releaseLockPromise = lock();
+    releaseLockPromise.then(releaseLock => {
+      try {
+        isCompleted = true;
+        for (let i = 0; i < activeReaders; i++) {
+          readSemaphore.release();
+        }
+      } finally {
+        releaseLock();
+      }
+    });
   };
-
-  const isCompleted = (): boolean => isCompleted;
 
   return {
     write,
@@ -133,6 +151,6 @@ export function createBuffer<T = any>(capacity: number): Buffer<T> {
     attachReader,
     detachReader,
     complete,
-    isCompleted,
+    isCompleted: () => isCompleted,
   };
 }
