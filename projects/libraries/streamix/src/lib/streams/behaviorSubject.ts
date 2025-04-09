@@ -7,18 +7,12 @@ import {
   Operator,
   pipeStream,
   Receiver,
-  Stream,
   StreamMapper,
   Subscription
 } from "../abstractions";
+import { Subject } from "./subject";
 
-export type BehaviorSubject<T = any> = Stream<T> & {
-  peek(subscription?: Subscription): T | undefined;
-  next(value: T): void;
-  complete(): void;
-  error(err: any): void;
-  completed(): boolean;
-};
+export type BehaviorSubject<T = any> = Subject<T>;
 
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
   const capacity = 10;
