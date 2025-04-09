@@ -244,3 +244,25 @@ export function createBuffer<T = any>(capacity: number): Buffer<T> {
     completed: () => isCompleted,
   };
 }
+
+export function createReplayBuffer<T = any>(capacity: number): Buffer<T> {
+  const buffer = createBuffer<T>(capacity);
+  let readCount = 0;
+
+  const originalWrite = buffer.write;
+  buffer.write = async (item: T) => {
+    await originalWrite(item);
+    readCount++;
+  };
+  
+  const originalAttach = buffer.attachReader;
+  buffer.attachReader = async () => {
+    const readerId = await originalAttach();
+    const startPos = Math.max(0, readCount - capacity);
+    readerOffsets.set(readerId, startPos);
+    if (startPos < readCount) readSemaphore.release();
+    return readerId;
+  };
+
+  return buffer;
+}
