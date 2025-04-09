@@ -1,21 +1,33 @@
 import { createSubject, Subscription } from '../lib';
 
 describe('Subject', () => {
-  it('should emit values to subscribers', (done) => {
+  it('should allow independent subscriptions with different lifetimes', (done) => {
     const subject = createSubject<any>();
 
-    const emittedValues: any[] = [];
-    const subscription: Subscription = subject.subscribe({
-      next: value => emittedValues.push(value),
+    let emitted1: any[] = [];
+    let emitted2: any[] = [];
+
+    const subscription1 = subject.subscribe({
+      next: value => emitted1.push(value),
+    });
+
+    subject.next('value1');
+
+    const subscription2 = subject.subscribe({
+      next: value => emitted2.push(value),
       complete: () => {
-        expect(emittedValues).toEqual(['value1', 'value2']);
-        subscription.unsubscribe();
+        expect(emitted1).toEqual(['value1', 'value2', 'value3', 'value4']);
+        expect(emitted2).toEqual(['value2', 'value3', 'value4']); // Late subscriber misses 'value1'
+        subscription1.unsubscribe();
+        subscription2.unsubscribe();
         done();
       }
     });
 
-    subject.next('value1');
     subject.next('value2');
+    subject.next('value3');
+    subject.next('value4');
+    subscription1.unsubscribe(); // Unsubscribing should not affect subscription2
     subject.complete();
   });
 
@@ -34,6 +46,51 @@ describe('Subject', () => {
 
     subject.next('value1');
     subscription.unsubscribe();
+    subject.next('value2');
+    subject.complete();
+  });
+
+  it('should not send past values to late subscribers', (done) => {
+    const subject = createSubject<any>();
+
+    const emittedValues1: any[] = [];
+    const emittedValues2: any[] = [];
+
+    const subscription1 = subject.subscribe({
+      next: value => emittedValues1.push(value),
+    });
+
+    subject.next('value1');
+
+    const subscription2 = subject.subscribe({
+      next: value => emittedValues2.push(value),
+      complete: () => {
+        expect(emittedValues1).toEqual(['value1', 'value2']);
+        expect(emittedValues2).toEqual(['value2']); // Only gets value2
+        subscription1.unsubscribe();
+        subscription2.unsubscribe();
+        done();
+      }
+    });
+
+    subject.next('value2');
+    subject.complete();
+  });
+
+  it('should emit values to subscribers', (done) => {
+    const subject = createSubject<any>();
+
+    const emittedValues: any[] = [];
+    const subscription: Subscription = subject.subscribe({
+      next: value => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual(['value1', 'value2']);
+        subscription.unsubscribe();
+        done();
+      }
+    });
+
+    subject.next('value1');
     subject.next('value2');
     subject.complete();
   });
@@ -76,19 +133,31 @@ describe('Subject', () => {
   });
 
   it('stress test, asynchronous case', async () => {
-    const subject = createSubject<any>();
-
+    const subject = createSubject<number>();
     let counter = 0;
-    const subscription: Subscription = subject.subscribe({
-      next: value => expect(value === counter++).toBeTruthy(),
-      complete: () => subscription.unsubscribe()
-    })
+    let completed = false;
 
+    const subscription = subject.subscribe({
+      next: value => {
+        expect(value).toBe(counter++);
+      },
+      complete: () => {
+        completed = true;
+        subscription.unsubscribe();
+      }
+    });
+
+    // Send 1000 values
     for (let i = 0; i < 1000; i++) {
       subject.next(i);
     }
 
-    await subject.complete();
+    subject.complete();
+
+    // Wait for completion to be processed
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(completed).toBe(true);
+    expect(counter).toBe(1000);
   });
 
   it('should emit values to multiple subscribers', (done) => {
@@ -144,33 +213,6 @@ describe('Subject', () => {
     subject.complete();
   });
 
-  it('should not send past values to late subscribers', (done) => {
-    const subject = createSubject<any>();
-
-    const emittedValues1: any[] = [];
-    const emittedValues2: any[] = [];
-
-    const subscription1 = subject.subscribe({
-      next: value => emittedValues1.push(value),
-    });
-
-    subject.next('value1');
-
-    const subscription2 = subject.subscribe({
-      next: value => emittedValues2.push(value),
-      complete: () => {
-        expect(emittedValues1).toEqual(['value1', 'value2']);
-        expect(emittedValues2).toEqual(['value2']); // Only gets value2
-        subscription1.unsubscribe();
-        subscription2.unsubscribe();
-        done();
-      }
-    });
-
-    subject.next('value2');
-    subject.complete();
-  });
-
   it('should handle multiple subscribers in a stress test', (done) => {
     const subject = createSubject<any>();
 
@@ -192,36 +234,6 @@ describe('Subject', () => {
       subject.next(i);
     }
 
-    subject.complete();
-  });
-
-  it('should allow independent subscriptions with different lifetimes', (done) => {
-    const subject = createSubject<any>();
-
-    let emitted1: any[] = [];
-    let emitted2: any[] = [];
-
-    const subscription1 = subject.subscribe({
-      next: value => emitted1.push(value),
-    });
-
-    subject.next('value1');
-
-    const subscription2 = subject.subscribe({
-      next: value => emitted2.push(value),
-      complete: () => {
-        expect(emitted1).toEqual(['value1', 'value2', 'value3']);
-        expect(emitted2).toEqual(['value2', 'value3', 'value4']); // Late subscriber misses 'value1'
-        subscription1.unsubscribe();
-        subscription2.unsubscribe();
-        done();
-      }
-    });
-
-    subject.next('value2');
-    subject.next('value3')
-    subscription1.unsubscribe(); // Unsubscribing should not affect subscription2
-    subject.next('value4');
     subject.complete();
   });
 });

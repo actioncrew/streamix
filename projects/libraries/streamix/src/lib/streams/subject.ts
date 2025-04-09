@@ -1,4 +1,4 @@
-import { createReceiver, createSubscription, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
+import { Buffer, createBuffer, createQueue, createReceiver, createSubscription, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   peek(subscription?: Subscription): T | undefined;
@@ -9,10 +9,14 @@ export type Subject<T = any> = Stream<T> & {
 };
 
 export function createBaseSubject<T = any>() {
+  const capacity = 10; // Minimum capacity is 2
+  const buffer: Buffer<T> = createBuffer<T>(capacity);
+  const queue = createQueue()
+
   const base = {
-    buffer: [] as T[],
-    subscribers: new Map<Receiver<T>, { startIndex: number; endIndex: number }>(),
-    pullRequests: new Map<Receiver<T>, { resolve: (value: IteratorResult<T, void>) => void; reject: (reason?: any) => void }>(),
+    queue,
+    buffer: buffer,
+    subscribers: new Map<Receiver<T>, number>(), // Maps receiver to its readerId
     completed: false,
     hasError: false,
     errorValue: null as any,
@@ -20,96 +24,58 @@ export function createBaseSubject<T = any>() {
 
   const next = (value: T) => {
     if (base.completed || base.hasError) return;
-    base.buffer.push(value);
-    processPullRequests();
+    queue.enqueue(() => buffer.write(value));
   };
 
   const complete = () => {
     if (base.completed) return;
-    base.completed = true;
-    processPullRequests();
+    queue.enqueue(async () => {
+      buffer.complete();
+
+      setTimeout(() => {
+        for (const receiver of base.subscribers.keys()) {
+          receiver.complete?.();
+        }
+
+        base.subscribers.clear();
+      }, 0);
+    });
   };
 
   const error = (err: any) => {
     if (base.completed || base.hasError) return;
     base.hasError = true;
     base.errorValue = err;
-    for (const { reject } of base.pullRequests.values()) {
-      reject(err);
+    for (const receiver of base.subscribers.keys()) {
+      receiver.error!(err);
     }
-    base.pullRequests.clear();
+    base.subscribers.clear();
   };
 
-  const pullValue = async (receiver: Receiver<T>): Promise<IteratorResult<T, void>> => {
+  const pullValue = async (readerId: number): Promise<IteratorResult<T, void>> => {
     if (base.hasError) return Promise.reject(base.errorValue);
 
-    // Fetch the start and end indices for the subscriber
-    const { startIndex, endIndex } = base.subscribers.get(receiver) ?? { startIndex: 0, endIndex: Infinity };
-
-    // If the receiver's startIndex is beyond the available buffer
-    if (startIndex >= base.buffer.length) {
-      if (base.completed) {
-        return Promise.resolve({ value: undefined, done: true });
-      }
-
-      // If the buffer is not yet complete, wait for new values to be pushed
-      return new Promise<IteratorResult<T, void>>((resolve, reject) => {
-        base.pullRequests.set(receiver, { resolve, reject });
-
-        // Cleanup if unsubscribed before pull request resolves
-        const originalComplete = receiver.complete!;
-        receiver.complete = () => {
-          originalComplete.call(receiver);
-          if (base.pullRequests.has(receiver)) {
-            resolve({ value: undefined, done: true });
-            base.pullRequests.delete(receiver);
-          }
-        };
-      });
-    }
-
-    // Fetch the next value from the buffer if available
-    const value = base.buffer[startIndex];
-    base.subscribers.set(receiver, { startIndex: startIndex + 1, endIndex });
-
-    return Promise.resolve({ value, done: false });
-  };
-
-  const processPullRequests = () => {
-    for (const [receiver, request] of base.pullRequests.entries()) {
-      if (receiver.completed) {
-        base.pullRequests.delete(receiver);
-        continue;
-      }
-      pullValue(receiver).then(request.resolve).catch(request.reject);
-      base.pullRequests.delete(receiver);
+    try {
+      const {value, done } = await base.buffer.read(readerId);
+      return { value, done } as IteratorResult<T, void>;
+    } catch (err) {
+      return Promise.reject(err);
     }
   };
+
 
   const cleanupBuffer = () => {
-    const minIndex = Math.min(...Array.from(base.subscribers.values(), ({ startIndex }) => startIndex ?? Infinity));
-    if (minIndex > 0) {
-      base.buffer.splice(0, minIndex);
-      for (const receiver of base.subscribers.keys()) {
-        const { startIndex, endIndex } = base.subscribers.get(receiver) ?? { startIndex: 0, endIndex: Infinity };
-        base.subscribers.set(receiver, { startIndex: startIndex - minIndex, endIndex: endIndex - minIndex });
-      }
-    }
+    // Not needed with the new buffer, as it's automatically managing backpressure
   };
 
   const cleanupAfterReceiver = (receiver: Receiver<T>) => {
-    const subscriptionState = base.subscribers.get(receiver);
-    if (subscriptionState && subscriptionState.startIndex >= subscriptionState.endIndex) {
+    const readerId = base.subscribers.get(receiver);
+    if (readerId !== undefined) {
       base.subscribers.delete(receiver);
-
-      // Resolve any pending pull requests for this receiver
-      if (base.pullRequests.has(receiver)) {
-        const { resolve } = base.pullRequests.get(receiver)!;
-        resolve({ value: undefined, done: true });
-        base.pullRequests.delete(receiver);
-      }
-
-      cleanupBuffer();
+      // But defer buffer detach to allow current value to be processed
+      Promise.resolve().then(() => {
+        base.buffer.detachReader(readerId);
+      });
     }
   };
 
@@ -119,62 +85,54 @@ export function createBaseSubject<T = any>() {
     complete,
     error,
     pullValue,
-    processPullRequests,
     cleanupBuffer,
     cleanupAfterReceiver,
   };
 }
 
 export function createSubject<T = any>(): Subject<T> {
-  const { base, next, complete, error, pullValue, cleanupBuffer, cleanupAfterReceiver } = createBaseSubject<T>();
+  const { base, next, complete, error, pullValue, cleanupAfterReceiver } = createBaseSubject<T>();
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
     let latestValue: T | undefined;
 
-    const currentStartIndex = base.buffer.length;
-    base.subscribers.set(receiver, { startIndex: currentStartIndex, endIndex: Infinity });
-
     const subscription = createSubscription(
       () => {
         if (!unsubscribing) {
           unsubscribing = true;
+          base.queue.enqueue(async () => {
+            if (base.subscribers.size === 1) {
+              complete();
+            }
 
-          if(base.subscribers.size === 1) {
-            complete();
-          }
-
-          const subscriptionState = base.subscribers.get(receiver)!;
-          subscriptionState.endIndex = base.buffer.length;
-          base.subscribers.set(receiver, subscriptionState);
-          base.pullRequests.delete(receiver);
-          cleanupBuffer();
+            cleanupAfterReceiver(receiver);
+          });
         }
       }
     );
 
-    (async () => {
-      try {
-        while (true) {
-          const subscriptionState = base.subscribers.get(receiver);
-          if (!subscriptionState || subscriptionState.startIndex >= subscriptionState.endIndex) {
-            break;
+    base.queue.enqueue(async () => {
+      const readerId = await base.buffer.attachReader();
+      base.subscribers.set(receiver, readerId);
+
+      queueMicrotask(async () => {
+        try {
+          while (true) {
+            const result = await pullValue(readerId);
+            if (result.done) break;
+            latestValue = result.value;
+            receiver.next(result.value);
           }
-
-          const result = await pullValue(receiver);
-          if (result.done) break;
-
-          latestValue = result.value;
-          receiver.next(result.value);
+        } catch (err: any) {
+          receiver.error(err);
+        } finally {
+          receiver.complete();
+          cleanupAfterReceiver(receiver);
         }
-      } catch (err: any) {
-        receiver.error(err);
-      } finally {
-        receiver.complete();
-        cleanupAfterReceiver(receiver);
-      }
-    })();
+      })
+    });
 
     Object.assign(subscription, {
       value: () => latestValue
@@ -188,13 +146,13 @@ export function createSubject<T = any>(): Subject<T> {
       return subscription.value();
     }
 
-    if (base.subscribers.size === 1) {
-      const [subscriptionState] = base.subscribers.values();
-      if (subscriptionState.startIndex < base.buffer.length) {
-        return base.buffer[subscriptionState.startIndex];
-      }
-      return undefined;
-    }
+    // if (base.subscribers.size === 1) {
+    //   const [subscriptionState] = base.subscribers.values();
+    //   if (subscriptionState < base.buffer.writeIndex) {
+    //     return base.buffer.read(subscriptionState);
+    //   }
+    //   return undefined;
+    // }
 
     console.warn("peek() without a subscription can only be used when there is exactly one subscriber.");
     return undefined;
