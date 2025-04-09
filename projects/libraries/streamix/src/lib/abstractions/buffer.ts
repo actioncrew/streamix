@@ -259,7 +259,7 @@ export function createBuffer<T = any>(
 
 export function createReplayBuffer<T = any>(capacity: number): Buffer<T> {
   return createBuffer<T>(capacity, {
-    getInitialReaderPosition: (readCount, capacity) =>
+    getInitialReaderPosition: (readCount: number, capacity: number) =>
       Math.max(0, readCount - capacity) // Start from oldest
   });
 }
