@@ -9,6 +9,25 @@ describe('ConcatMapOperator', () => {
     project = (value: any) => of('innerValue' + value); // A simple stream projection
   });
 
+
+  it('should handle errors in inner stream without affecting other emissions', (done) => {
+    const values = ['1', '2'];
+    const mockStream$ = from(values).pipe(concatMap((value: any) => (value === '2' ? errorInnerStream() : project(value))));
+
+    const emittedValues: any[] = [];
+    const errors: any[] = [];
+
+    mockStream$.subscribe({
+      next: (value: any) => emittedValues.push(value),
+      error: (error: any) => errors.push(error),
+      complete: () => {
+        expect(emittedValues).toEqual(['innerValue1']);
+        expect(errors[0].message).toEqual('Inner Stream Error'); // Only second emission should throw
+        done();
+      }
+    });
+  });
+
   it('should handle an empty stream', (done) => {
     const mockStream$ = from([]).pipe(concatMap(project));
 
@@ -44,24 +63,6 @@ describe('ConcatMapOperator', () => {
       next: (value: any) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual(emissions); // Sequential handling expected
-        done();
-      }
-    });
-  });
-
-  it('should handle errors in inner stream without affecting other emissions', (done) => {
-    const values = ['1', '2'];
-    const mockStream$ = from(values).pipe(concatMap((value: any) => (value === '2' ? errorInnerStream() : project(value))));
-
-    const emittedValues: any[] = [];
-    const errors: any[] = [];
-
-    mockStream$.subscribe({
-      next: (value: any) => emittedValues.push(value),
-      error: (error: any) => errors.push(error),
-      complete: () => {
-        expect(emittedValues).toEqual(['innerValue1']);
-        expect(errors[0].message).toEqual('Inner Stream Error'); // Only second emission should throw
         done();
       }
     });

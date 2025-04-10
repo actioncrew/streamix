@@ -23,6 +23,7 @@ export function defer<T = any>(factory: () => Stream<T>): Subject<T> {
       },
       error: (err: any) => {
         subject.error(err); // Propagate errors from the inner stream to the subject
+        subject.complete();
         innerSubscription.unsubscribe();
       },
     });

@@ -14,8 +14,7 @@ export const first = <T = any>(predicate?: (value: T) => boolean): StreamMapper 
           if (!found && (!predicate || predicate(value))) {
             found = true;
             output.next(value); // Emit the first matching value
-            output.complete();   // Complete the stream immediately after emitting the first value
-            break;               // Stop processing once we've emitted the first value
+            break;              // Stop processing once we've emitted the first value
           }
         }
 
@@ -25,6 +24,8 @@ export const first = <T = any>(predicate?: (value: T) => boolean): StreamMapper 
         }
       } catch (err) {
         output.error(err); // Propagate any errors that occur
+      } finally {
+        output.complete();
       }
     })();
 

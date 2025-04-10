@@ -21,12 +21,13 @@ export function last<T = any>(
 
         if (hasMatch) {
           output.next(lastValue!);
-          output.complete();
         } else {
           throw new Error("No elements in sequence");
         }
       } catch (err) {
         output.error(err);
+      } finally {
+        output.complete();
       }
     })();
 

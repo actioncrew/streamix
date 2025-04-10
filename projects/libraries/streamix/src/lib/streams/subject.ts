@@ -43,16 +43,17 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
 
   const error = (err: any) => {
     if (base.completed || base.hasError) return;
-    base.hasError = true;
-    base.errorValue = err;
-    for (const receiver of base.subscribers.keys()) {
-      receiver.error!(err);
-    }
-    base.subscribers.clear();
+    queue.enqueue(async () => {
+      base.hasError = true;
+      base.errorValue = err;
+      for (const receiver of base.subscribers.keys()) {
+        receiver.error!(err);
+      }
+      base.subscribers.clear();
+    });
   };
 
   const pullValue = async (readerId: number): Promise<IteratorResult<T, void>> => {
-    if (base.hasError) return Promise.reject(base.errorValue);
 
     try {
       const {value, done } = await base.buffer.read(readerId);
