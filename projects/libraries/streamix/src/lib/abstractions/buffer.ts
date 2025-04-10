@@ -82,6 +82,7 @@ export function createQueue() {
 export type Buffer<T = any> = {
   write: (item: T) => Promise<void>;
   read: (readerId: number) => Promise<{ value: T | undefined, done: boolean }>;
+  peek: () => T | undefined;
   attachReader: () => Promise<number>;
   detachReader: (readerId: number) => void;
   complete: () => void;
@@ -218,6 +219,11 @@ export function createBuffer<T = any>(
     }
   };
 
+  const peek = (): T | undefined => {
+    const latestIndex = (writeIndex - 1 + capacity) % capacity;
+    return buffer[latestIndex];
+  };
+
   // --- Completion Handling ---
   const complete = (): void => {
     const releaseLockPromise = lock();
@@ -234,6 +240,7 @@ export function createBuffer<T = any>(
   return {
     write,
     read,
+    peek,
     attachReader,
     detachReader,
     complete,
@@ -371,6 +378,11 @@ export function createReplayBuffer<T = any>(
     }
   };
 
+  const peek = (): T | undefined => {
+    const latestIndex = (writeIndex - 1 + capacity) % capacity;
+    return buffer[latestIndex];
+  };
+
   // --- Completion Handling ---
   const complete = (): void => {
     const releaseLockPromise = lock();
@@ -387,6 +399,7 @@ export function createReplayBuffer<T = any>(
   return {
     write,
     read,
+    peek,
     attachReader,
     detachReader,
     complete,
