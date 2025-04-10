@@ -145,14 +145,6 @@ export function createSubject<T = any>(): Subject<T> {
       return subscription.value();
     }
 
-    // if (base.subscribers.size === 1) {
-    //   const [subscriptionState] = base.subscribers.values();
-    //   if (subscriptionState < base.buffer.writeIndex) {
-    //     return base.buffer.read(subscriptionState);
-    //   }
-    //   return undefined;
-    // }
-
     console.warn("peek() without a subscription can only be used when there is exactly one subscriber.");
     return undefined;
   };
