@@ -1,7 +1,7 @@
 import { Buffer, createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
-  peek(subscription?: Subscription): T | undefined;
+  peek(): Promise<T | undefined>;
   next(value: T): void;
   complete(): void;
   error(err: any): void;
@@ -95,7 +95,6 @@ export function createSubject<T = any>(): Subject<T> {
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
-    let latestValue: T | undefined;
 
     const subscription = createSubscription(
       () => {
@@ -121,7 +120,6 @@ export function createSubject<T = any>(): Subject<T> {
           while (true) {
             const result = await pullValue(readerId);
             if (result.done) break;
-            latestValue = result.value;
             receiver.next(result.value);
           }
         } catch (err: any) {
@@ -134,19 +132,14 @@ export function createSubject<T = any>(): Subject<T> {
     });
 
     Object.assign(subscription, {
-      value: () => latestValue
+      value: () => peek()
     });
 
     return subscription;
   };
 
-  const peek = (subscription?: Subscription): T | undefined => {
-    if (subscription) {
-      return subscription.value();
-    }
-
-    console.warn("peek() without a subscription can only be used when there is exactly one subscriber.");
-    return undefined;
+  const peek = async (): Promise<T | undefined> => {
+    return await base.queue.enqueue(async () => base.buffer.peek());
   };
 
   const subject: Subject<T> = {

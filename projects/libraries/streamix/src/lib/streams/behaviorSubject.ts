@@ -84,7 +84,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
-    let latestValue: T | undefined = base.current;
 
     const subscription = createSubscription(
       () => {
@@ -108,7 +107,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
           while (true) {
             const result = await pullValue(readerId);
             if (result.done) break;
-            latestValue = result.value;
             receiver.next?.(result.value);
           }
         } catch (err: any) {
@@ -121,17 +119,14 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     });
 
     Object.assign(subscription, {
-      value: () => latestValue
+      value: () => peek()
     });
 
     return subscription;
   };
 
-  const peek = (subscription?: Subscription): T | undefined => {
-    if (subscription?.value) {
-      return subscription.value();
-    }
-    return base.current;
+  const peek = async (): Promise<T | undefined> => {
+    return await base.queue.enqueue(async () => base.buffer.peek());
   };
 
   const behaviorSubject: BehaviorSubject<T> = {

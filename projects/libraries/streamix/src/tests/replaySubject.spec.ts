@@ -122,7 +122,7 @@ describe('ReplaySubject', () => {
     const sub = subject.subscribe(() => {});
 
     sub.unsubscribe();
-    const latest = (sub as any).value();
+    const latest = await (sub as any).value();
     expect(latest).toBe(30);
   });
 });
