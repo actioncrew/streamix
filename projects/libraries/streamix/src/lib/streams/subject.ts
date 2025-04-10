@@ -1,4 +1,4 @@
-import { Buffer, createBuffer, createQueue, createReceiver, createSubscription, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
+import { Buffer, createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   peek(subscription?: Subscription): T | undefined;
@@ -8,9 +8,8 @@ export type Subject<T = any> = Stream<T> & {
   completed(): boolean;
 };
 
-export function createBaseSubject<T = any>() {
-  const capacity = 10; // Minimum capacity is 2
-  const buffer: Buffer<T> = createBuffer<T>(capacity);
+export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "replay" | "standard" = "standard") {
+  const buffer: Buffer<T> = bufferType === "standard" ? createBuffer<T>(capacity) : createReplayBuffer<T>(capacity);
   const queue = createQueue()
 
   const base = {
@@ -91,7 +90,7 @@ export function createBaseSubject<T = any>() {
 }
 
 export function createSubject<T = any>(): Subject<T> {
-  const { base, next, complete, error, pullValue, cleanupAfterReceiver } = createBaseSubject<T>();
+  const { base, next, complete, error, pullValue, cleanupAfterReceiver } = createBaseSubject<T>(10, "standard");
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);

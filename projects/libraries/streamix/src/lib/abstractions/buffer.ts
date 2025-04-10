@@ -77,7 +77,11 @@ export function createQueue() {
   };
 
   return { enqueue };
-}
+};
+
+export type BufferOptions = {
+  getInitialReaderPosition?: (readCount: number, capacity: number) => number;
+};
 
 export type Buffer<T = any> = {
   write: (item: T) => Promise<void>;
