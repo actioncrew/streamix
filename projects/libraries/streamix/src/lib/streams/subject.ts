@@ -1,4 +1,4 @@
-import { Buffer, createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
+import { createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, CyclicBuffer, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   peek(): Promise<T | undefined>;
@@ -9,7 +9,7 @@ export type Subject<T = any> = Stream<T> & {
 };
 
 export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "replay" | "standard" = "standard") {
-  const buffer: Buffer<T> = bufferType === "standard" ? createBuffer<T>(capacity) : createReplayBuffer<T>(capacity);
+  const buffer: CyclicBuffer<T> = bufferType === "standard" ? createBuffer<T>(capacity) : createReplayBuffer<T>(capacity);
   const queue = createQueue()
 
   const base = {

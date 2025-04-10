@@ -79,7 +79,7 @@ export function createQueue() {
   return { enqueue };
 };
 
-export type Buffer<T = any> = {
+export type CyclicBuffer<T = any> = {
   write: (item: T) => Promise<void>;
   read: (readerId: number) => Promise<{ value: T | undefined, done: boolean }>;
   peek: () => Promise<T | undefined>;
@@ -91,7 +91,7 @@ export type Buffer<T = any> = {
 
 export function createBuffer<T = any>(
   capacity: number,
-): Buffer<T> {
+): CyclicBuffer<T> {
   const buffer: T[] = new Array(capacity);
   let writeIndex = 0;
   let readCount = 0;
@@ -256,7 +256,7 @@ export function createBuffer<T = any>(
 
 export function createReplayBuffer<T = any>(
   capacity: number
-): Buffer<T> {
+): CyclicBuffer<T> {
   const buffer: T[] = new Array(capacity);
   let writeIndex = 0;
   let readCount = 0;

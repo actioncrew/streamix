@@ -1,9 +1,9 @@
 import {
-  Buffer,
   createBuffer,
   createQueue,
   createReceiver,
   createSubscription,
+  CyclicBuffer,
   Operator,
   pipeStream,
   Receiver,
@@ -16,7 +16,7 @@ export type BehaviorSubject<T = any> = Subject<T>;
 
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
   const capacity = 10;
-  const buffer: Buffer<T> = createBuffer<T>(capacity);
+  const buffer: CyclicBuffer<T> = createBuffer<T>(capacity);
   const queue = createQueue();
 
   const base = {
