@@ -54,6 +54,7 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
   };
 
   const pullValue = async (readerId: number): Promise<IteratorResult<T, void>> => {
+    if (base.hasError) return { value: undefined, done: true };
 
     try {
       const {value, done } = await base.buffer.read(readerId);

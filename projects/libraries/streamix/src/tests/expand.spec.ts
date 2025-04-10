@@ -20,7 +20,7 @@ describe('Expand Stream (RxJS-like)', () => {
       caughtError = e as Error;
     }
 
-    expect(result).toEqual([1, 2, 3]);
+    expect(result).toEqual([1, 2]);
     expect(caughtError).toEqual(error);
   });
 
