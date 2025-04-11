@@ -17,89 +17,90 @@ export function pipeStream<T = any>(
 ): Stream<T> {
   let finalStream: Stream<T> | undefined;
 
-  // A function that chains the operators when needed
-  const chainWithLazyEvaluation = () => {
-    let combinedStream: Stream<T> = stream;
-    let operatorsGroup: Operator[] = [];
+  const buildPipeline = () => {
+    let currentStream: Stream<T> = stream;
+    const mappers: StreamMapper[] = [];
 
-    // Apply operators lazily (only when needed)
     for (const step of steps) {
       if ('handle' in step) {
-        operatorsGroup.push(step);
+        // For operators, create a StreamMapper that chains them
+        const operatorMapper = chain(currentStream, step);
+        mappers.push(operatorMapper);
+        currentStream = operatorMapper.output;
       } else if ('map' in step) {
-        if (operatorsGroup.length > 0) {
-          combinedStream = chain(combinedStream, ...operatorsGroup);
-          operatorsGroup = [];
-        }
-        combinedStream = step.output;
-      } else {
-        throw new Error("Invalid step provided to pipe.");
+        // For existing mappers, just add them
+        mappers.push(step);
+        currentStream = step.output;
       }
     }
 
-    if (operatorsGroup.length > 0) {
-      combinedStream = chain(combinedStream, ...operatorsGroup);
-    }
-
-    return combinedStream as Stream<T>;
+    // Create final stream that applies all mappers on subscription
+    const output = createSubject<T>();
+    return {
+      stream: {
+        ...currentStream,
+        subscribe: (...args) => {
+          mappers.forEach(mapper => mapper.map(currentStream, mapper.output));
+          return output.subscribe(...args);
+        }
+      },
+      output
+    };
   };
 
-  // Return a function that lazily applies operators and subscribes when needed
-  const lazyStream = (subscriberArgs: any[]) => {
-    if(finalStream === undefined) {
-      finalStream = chainWithLazyEvaluation();
-    }
-    return finalStream.subscribe(...subscriberArgs);
-  };
-
-  // Return a proxy-like stream that defers the chain until subscribe
-  const streamWithDeferredSubscription: Stream<T> = {
+  // Return a stream that builds the pipeline lazily
+  return {
     ...stream,
-    subscribe: (...args) => lazyStream(args), // Override subscribe to use lazy evaluation
+    subscribe: (...args) => {
+      if (!finalStream) {
+        const { stream: builtStream, output } = buildPipeline();
+        finalStream = builtStream;
+      }
+      return finalStream.subscribe(...args);
+    }
   };
-
-  return streamWithDeferredSubscription;
 }
 
-const chain = function (stream: Stream, ...operators: Operator[]): Stream {
-  const output = createSubject();
-  let isCompleteCalled = false; // To ensure `complete` is only processed once
+// Modified chain function that returns a StreamMapper
+const chain = function <T>(input: Stream<T>, ...operators: Operator[]): StreamMapper<T> {
+  const output = createSubject<T>();
 
-  const subscription = stream.subscribe({
-    next: (value: any) => {
-      let errorCatched = false;
-      for (let i = 0; i < operators.length; i++) {
-        const operator = operators[i];
+  return createMapper(
+    `chain-${operators.map(op => op.name).join('-')}`,
+    output,
+    (inputStream, outputStream) => {
+      let isCompleteCalled = false;
+      const subscription = inputStream.subscribe({
+        next: (value: T) => {
+          let processedValue = value;
+          let errorOccurred = false;
 
-        try {
-          value = operator.handle(value);
-        } catch (error) {
-          errorCatched = true;
-          output.error(error);
+          for (const operator of operators) {
+            try {
+              processedValue = operator.handle(processedValue);
+              if (processedValue === undefined) break;
+            } catch (error) {
+              errorOccurred = true;
+              outputStream.error(error);
+              break;
+            }
+          }
+
+          if (!errorOccurred && processedValue !== undefined) {
+            outputStream.next(processedValue);
+          }
+        },
+        error: (err: any) => outputStream.error(err),
+        complete: () => {
+          if (!isCompleteCalled) {
+            isCompleteCalled = true;
+            outputStream.complete();
+            subscription.unsubscribe();
+          }
         }
-
-        if (errorCatched || value === undefined) {
-          break;
-        }
-      }
-
-      if (!errorCatched && value !== undefined) {
-        output.next(value);
-      }
-    },
-    error: (err: any) => {
-      output.error(err);
-    },
-    complete: () => {
-      if (!isCompleteCalled) {
-        isCompleteCalled = true;
-        output.complete();
-        subscription.unsubscribe();
-      }
+      });
     }
-  });
-
-  return output;
+  );
 };
 
 // The stream factory function
