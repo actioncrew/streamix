@@ -17,21 +17,31 @@ export function pipeStream<T = any>(
 ): Stream<T> {
 
   let currentStream: Stream<T> = stream;
+  const operatorGroup: Operator[] = [];
   const mappers: StreamMapper[] = [];
 
+  // Group consecutive simple operators
   for (const step of steps) {
     if ('handle' in step) {
-      // For operators, create a StreamMapper that chains them
-      const operatorMapper = chain(currentStream, step);
-      mappers.push(operatorMapper);
-      currentStream = operatorMapper.output;
-    } else if ('map' in step) {
-      // For existing mappers, just add them
+      operatorGroup.push(step);
+    } else {
+      // Flush operator group if we hit a mapper
+      if (operatorGroup.length > 0) {
+        mappers.push(chainOperators(currentStream, ...operatorGroup));
+        currentStream = mappers[mappers.length - 1].output;
+        operatorGroup.length = 0;
+      }
       mappers.push(step);
       currentStream = step.output;
     }
   }
 
+  // Flush remaining operators
+  if (operatorGroup.length > 0) {
+    mappers.push(chainOperators(currentStream, ...operatorGroup));
+    currentStream = mappers[mappers.length - 1].output;
+  }
+  
   // Return a stream that builds the pipeline lazily
   return {
     ...currentStream,
