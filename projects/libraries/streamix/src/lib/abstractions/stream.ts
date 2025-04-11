@@ -15,48 +15,35 @@ export function pipeStream<T = any>(
   stream: Stream<T>,
   ...steps: (Operator | StreamMapper)[]
 ): Stream<T> {
-  let finalStream: Stream<T> | undefined;
 
-  const buildPipeline = () => {
-    let currentStream: Stream<T> = stream;
-    const mappers: StreamMapper[] = [];
+  let currentStream: Stream<T> = stream;
+  const mappers: StreamMapper[] = [];
 
-    for (const step of steps) {
-      if ('handle' in step) {
-        // For operators, create a StreamMapper that chains them
-        const operatorMapper = chain(currentStream, step);
-        mappers.push(operatorMapper);
-        currentStream = operatorMapper.output;
-      } else if ('map' in step) {
-        // For existing mappers, just add them
-        mappers.push(step);
-        currentStream = step.output;
-      }
+  for (const step of steps) {
+    if ('handle' in step) {
+      // For operators, create a StreamMapper that chains them
+      const operatorMapper = chain(currentStream, step);
+      mappers.push(operatorMapper);
+      currentStream = operatorMapper.output;
+    } else if ('map' in step) {
+      // For existing mappers, just add them
+      mappers.push(step);
+      currentStream = step.output;
     }
-
-    // Create final stream that applies all mappers on subscription
-    const output = createSubject<T>();
-    return {
-      stream: {
-        ...currentStream,
-        subscribe: (...args) => {
-          mappers.forEach(mapper => mapper.map(currentStream, mapper.output));
-          return output.subscribe(...args);
-        }
-      },
-      output
-    };
-  };
+  }
 
   // Return a stream that builds the pipeline lazily
   return {
-    ...stream,
+    ...currentStream,
     subscribe: (...args) => {
-      if (!finalStream) {
-        const { stream: builtStream, output } = buildPipeline();
-        finalStream = builtStream;
+      const subscription = currentStream.subscribe(...args);
+      // Apply mappers in reverse order
+      for (let i = mappers.length - 1; i >= 0; i--) {
+        const mapper = mappers[i];
+        const source = i === 0 ? stream : mappers[i - 1].output;
+        mapper.map(source, mapper.output);
       }
-      return finalStream.subscribe(...args);
+      return subscription;
     }
   };
 }
