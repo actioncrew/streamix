@@ -11,66 +11,54 @@ export type Stream<T = any> = {
   pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
 };
 
-export function pipeStream<T = any, K = any>(
+export function pipeStream<T = any>(
   stream: Stream<T>,
   ...steps: (Operator | StreamMapper)[]
-): Stream<K> {
-  // Create a subject that will be our final output
-  const outputSubject = createSubject<K>();
-  let isSubscribed = false;
-  let pipelineSubscription: Subscription | null = null; // Store the subscription to the pipeline
+): Stream<T> {
+  let finalStream: Stream<T> | undefined;
 
-  // Store the original subscribe method
-  const originalSubscribe = outputSubject.subscribe;
+  // A function that chains the operators when needed
+  const chainWithLazyEvaluation = () => {
+    let combinedStream: Stream<T> = stream;
+    let operatorsGroup: Operator[] = [];
 
-  // Override the subscribe method to trigger lazy evaluation
-  outputSubject.subscribe = function(...args) {
-    if (!isSubscribed) {
-      isSubscribed = true;
-
-      // Only build and connect the pipeline when someone subscribes
-      let combinedStream: Stream<any> = stream;
-      let operatorsGroup: Operator[] = [];
-
-      for (const step of steps) {
-        if ('handle' in step) {
-          operatorsGroup.push(step);
-        } else if ('map' in step) {
-          if (operatorsGroup.length > 0) {
-            combinedStream = chain(combinedStream, ...operatorsGroup);
-            operatorsGroup = [];
-          }
-          combinedStream = step.map(combinedStream);
-        } else {
-          throw new Error("Invalid step provided to pipe.");
+    // Apply operators lazily (only when needed)
+    for (const step of steps) {
+      if ('handle' in step) {
+        operatorsGroup.push(step);
+      } else if ('map' in step) {
+        if (operatorsGroup.length > 0) {
+          combinedStream = chain(combinedStream, ...operatorsGroup);
+          operatorsGroup = [];
         }
+        combinedStream = step.output;
+      } else {
+        throw new Error("Invalid step provided to pipe.");
       }
-
-      if (operatorsGroup.length > 0) {
-        combinedStream = chain(combinedStream, ...operatorsGroup);
-      }
-
-      // Connect the final stream to our output subject and store the subscription
-      pipelineSubscription = combinedStream.subscribe({
-        next: (value) => outputSubject.next(value),
-        error: (err) => outputSubject.error(err),
-        complete: () => outputSubject.complete()
-      });
     }
 
-    const outerSubscription = originalSubscribe.apply(this, args);
+    if (operatorsGroup.length > 0) {
+      combinedStream = chain(combinedStream, ...operatorsGroup);
+    }
 
-    // Return a subscription that also unsubscribes from the pipeline
-    return createSubscription(() => {
-      outerSubscription.unsubscribe();
-      if (pipelineSubscription) {
-        pipelineSubscription.unsubscribe();
-        pipelineSubscription = null;
-      }
-    });
+    return combinedStream as Stream<T>;
   };
 
-  return outputSubject;
+  // Return a function that lazily applies operators and subscribes when needed
+  const lazyStream = (subscriberArgs: any[]) => {
+    if(finalStream === undefined) {
+      finalStream = chainWithLazyEvaluation();
+    }
+    return finalStream.subscribe(...subscriberArgs);
+  };
+
+  // Return a proxy-like stream that defers the chain until subscribe
+  const streamWithDeferredSubscription: Stream<T> = {
+    ...stream,
+    subscribe: (...args) => lazyStream(args), // Override subscribe to use lazy evaluation
+  };
+
+  return streamWithDeferredSubscription;
 }
 
 const chain = function (stream: Stream, ...operators: Operator[]): Stream {

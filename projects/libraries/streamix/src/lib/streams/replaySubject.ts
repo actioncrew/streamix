@@ -11,7 +11,7 @@ import { createBaseSubject, Subject } from "./subject";
 
 export type ReplaySubject<T = any> = Subject<T>;
 
-export function createReplaySubject<T = any>(capacity: number = 10): Subject<T> {
+export function createReplaySubject<T = any>(capacity: number = Infinity): Subject<T> {
   const { base, next, complete, error, pullValue, cleanupAfterReceiver } = createBaseSubject<T>(capacity, "replay");
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {

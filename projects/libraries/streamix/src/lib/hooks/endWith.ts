@@ -1,5 +1,5 @@
-import { createMapper, createStream, Stream, StreamMapper } from '../abstractions';
-import { eachValueFrom } from '../converters';
+import { createMapper, Stream, StreamMapper, Subscription } from '../abstractions';
+import { createSubject, Subject } from '../streams';
 
 /**
  * Creates a stream mapper that emits all values from the source stream,
@@ -11,17 +11,29 @@ import { eachValueFrom } from '../converters';
  * @returns A StreamMapper function that transforms an input Stream<T> into an output Stream<T>.
  */
 export const endWith = <T = any>(endValue: T): StreamMapper => {
-  const operator = (input: Stream<T>): Stream<T> => {
-    // Create the output stream using an async generator factory.
-    return createStream('endWith', async function* () {
-      // Delegate yielding to the input stream first.
-      yield* eachValueFrom(input);
+  const operator = (input: Stream<T>, output: Subject<T>) => {
+    let subscription: Subscription | null = null;
 
-      // Yield the endValue.
-      yield endValue;
+    // Subscribe to the input stream
+    subscription = input.subscribe({
+      next: (value) => {
+        // Forward values from the input stream to the output stream
+        output.next(value);
+      },
+      error: (err) => {
+        // Propagate error from the input stream to the output stream
+        output.error(err);
+      },
+      complete: () => {
+        subscription?.unsubscribe();
+        // After the input stream completes, emit the endValue and complete the stream
+        output.next(endValue);
+        output.complete();
+      },
     });
   };
 
-  // Wrap the operator logic using createMapper
-  return createMapper('endWith', operator);
+  // Return the operator wrapped in createMapper for use in the pipe
+  return createMapper('endWith', createSubject<T>(), operator);
 };
+

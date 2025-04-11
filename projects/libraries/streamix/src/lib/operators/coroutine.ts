@@ -172,21 +172,18 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
     }
   };
 
-  const operator = createMapper('coroutine', (stream: Stream) => {
-    const subject = createSubject<any>() as Subject<any> & Coroutine;
+  const operator = createMapper('coroutine', createSubject<any>() as Subject<any> & Coroutine, (input: Stream, output: Subject) => {
 
     (async () => {
       try {
-        for await (const value of processTask(stream)) {
-          subject.next(value);
+        for await (const value of processTask(input)) {
+          output.next(value);
         }
-        subject.complete();
+        output.complete();
       } catch (error) {
-        subject.error?.(error);
+        output.error?.(error);
       }
     })();
-
-    return subject;
   }) as Coroutine;
 
   operator.finalize = finalize;

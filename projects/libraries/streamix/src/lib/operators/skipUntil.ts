@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function skipUntil<T = any>(notifier: Stream<any>): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  const operator = (input: Stream<T>, output: Subject<T>) => {
     let canEmit = false;
 
     // Process the notifier stream
@@ -42,5 +41,5 @@ export function skipUntil<T = any>(notifier: Stream<any>): StreamMapper {
     return output;
   };
 
-  return createMapper('skipUntil', operator);
+  return createMapper('skipUntil', createSubject<T>(), operator);
 }

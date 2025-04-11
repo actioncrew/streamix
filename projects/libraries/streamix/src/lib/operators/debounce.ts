@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
-export function debounce<T>(duration: number): StreamMapper {
-  return createMapper("debounce", (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+export function debounce<T = any>(duration: number): StreamMapper {
+  return createMapper("debounce", createSubject<T>(), (input: Stream, output: Subject) => {
 
     (async () => {
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -44,7 +43,5 @@ export function debounce<T>(duration: number): StreamMapper {
         }
       }
     })();
-
-    return output;
   });
 }

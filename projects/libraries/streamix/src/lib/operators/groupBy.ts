@@ -1,5 +1,5 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export type GroupItem<T = any, K = any> = {
   value: T;
@@ -9,9 +9,7 @@ export type GroupItem<T = any, K = any> = {
 export function groupBy<T = any, K = any>(
   keySelector: (value: T) => K
 ): StreamMapper {
-  const operator = (input: Stream<T>): Stream<GroupItem<T, K>> => {
-    const output = createSubject<GroupItem<T, K>>();
-
+  const operator = (input: Stream<T>, output: Subject<GroupItem<T, K>>) => {
     const subscription = input.subscribe({
       next: (value) => {
         const key = keySelector(value);
@@ -23,9 +21,7 @@ export function groupBy<T = any, K = any>(
         subscription.unsubscribe();
       },
     });
-
-    return output;
   };
 
-  return createMapper('groupBy', operator);
+  return createMapper('groupBy', createSubject<GroupItem<T, K>>(), operator);
 }

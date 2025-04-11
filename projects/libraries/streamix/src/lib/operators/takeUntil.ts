@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function takeUntil<T>(notifier: Stream<any>): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  const operator = (input: Stream<T>, output: Subject<T>) => {
     let notifierEmitted = false;
 
     // Async generator to handle the input stream with takeUntil logic
@@ -40,5 +39,5 @@ export function takeUntil<T>(notifier: Stream<any>): StreamMapper {
     return output;
   };
 
-  return createMapper('takeUntil', operator);
+  return createMapper('takeUntil', createSubject<T>(), operator);
 }

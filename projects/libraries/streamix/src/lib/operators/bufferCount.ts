@@ -1,12 +1,11 @@
 import { Stream, StreamMapper } from '../abstractions'; // Import necessary types
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 import { createMapper } from './../abstractions/operator';
 
 export const bufferCount = (bufferSize: number = Infinity): StreamMapper => {
   let buffer: any[] = [];
 
-  const operator = (input: Stream<any>): Stream<any[]> => {
-    const output = createSubject<any[]>();
+  const operator = (input: Stream<any>, output: Subject<any[]>) => {
 
     input.subscribe({
       next: (value) => {
@@ -26,9 +25,7 @@ export const bufferCount = (bufferSize: number = Infinity): StreamMapper => {
         output.complete();
       },
     });
-
-    return output;
   };
 
-  return createMapper("bufferCount", operator);
+  return createMapper("bufferCount", createSubject<any[]>(), operator);
 };

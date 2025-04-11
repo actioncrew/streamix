@@ -2,7 +2,7 @@ import { createMapper, createReceiver, createSubscription, Stream, StreamMapper,
 import { createSubject } from "../streams";
 
 export function delayUntil<T = any>(notifier: Stream<any>): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
+  const operator = (input: Stream<T>, output: Subject<T>) => {
     const output = createSubject<T>();
     let inputSubscription: Subscription | null = null;
     let notifierSubscription: Subscription | null = null;

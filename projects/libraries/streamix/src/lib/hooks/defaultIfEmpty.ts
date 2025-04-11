@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
 import { eachValueFrom } from '../converters';
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 
 export const defaultIfEmpty = (defaultValue: any): StreamMapper => {
-  const operator = (input: Stream) => {
-    const output = createSubject<any>(); // The stream that will emit values, including the default value
+  const operator = (input: Stream, output: Subject<any>) => {
     let hasEmitted: boolean = false; // To track emitted values
 
     (async () => {
@@ -24,9 +23,7 @@ export const defaultIfEmpty = (defaultValue: any): StreamMapper => {
         output.complete(); // Complete the output stream
       }
     })();
-
-    return output;
   };
 
-  return createMapper('defaultIfEmpty', operator);
+  return createMapper('defaultIfEmpty', createSubject<any>(), operator);
 };

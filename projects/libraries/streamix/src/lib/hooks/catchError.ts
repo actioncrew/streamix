@@ -1,12 +1,10 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 // Define the catchError operator
 export const catchError = (handler: ((error: any) => void) = () => {}): StreamMapper => {
-  const operator = (inputStream: Stream<any>): Stream<any> => {
-    const output = createSubject<any>();
-
-    const subscription = inputStream.subscribe({
+  const operator = (input: Stream<any>, output: Subject<any>) => {
+    const subscription = input.subscribe({
       next: (value) => {
         output.next(value);
       },
@@ -26,5 +24,5 @@ export const catchError = (handler: ((error: any) => void) = () => {}): StreamMa
     return output;
   };
 
-  return createMapper('catchError', operator);
+  return createMapper('catchError', createSubject<any>(), operator);
 };
