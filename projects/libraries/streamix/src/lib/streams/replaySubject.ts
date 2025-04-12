@@ -69,7 +69,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Subje
     name: "subject",
     peek,
     subscribe,
-    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(subject, ...steps),
+    pipe: function (this: Subject, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); },
     next,
     complete,
     completed: () => base.completed,
