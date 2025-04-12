@@ -40,10 +40,9 @@ export function pipeStream<T = any>(
     currentStream = chained.output;
   }
   
-  const resultStream: Stream<T> = {
-    ...currentStream,
-    subscribe: (...args: any[]) => {
-      const subscription = currentStream.subscribe(...args);
+  const originalSubscribe = currentStream.subscribe;
+  currentStream.subscribe = (...args: any[]) => {
+      const subscription = originalSubscribe.call(currentStream, ...args);
       for (let i = mappers.length - 1; i >= 0; i--) {
         const mapper = mappers[i];
         const source = i === 0 ? stream : mappers[i - 1].output;
@@ -53,7 +52,7 @@ export function pipeStream<T = any>(
     }
   };
 
-  return resultStream;
+  return currentStream;
 };
 
 // Modified chain function that returns a StreamMapper
