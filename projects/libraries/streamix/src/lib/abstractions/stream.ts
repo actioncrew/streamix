@@ -146,7 +146,7 @@ export function createStream<T>(
     type: "stream",
     name,
     subscribe,
-    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(this, ...steps),
+    pipe: function (this: Stream, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); }
   };
 
   return stream;
