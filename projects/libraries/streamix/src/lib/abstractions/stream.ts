@@ -62,8 +62,7 @@ const chain = function <T>(...operators: Operator[]): StreamMapper {
     (input: Stream<T>, output: Subject<T>) => {
       let isCompleteCalled = false;
       let inputSubscription: Subscription | null = null;
-      let outputSubscription: Subscription | null = null;
-
+      
       // Store original subscribe method
       const originalSubscribe = output.subscribe;
 
@@ -86,13 +85,18 @@ const chain = function <T>(...operators: Operator[]): StreamMapper {
                   output.next(processedValue);
                 }
               } catch (error) {
-                output.error(error);
+                if (!isCompleteCalled) {
+                  isCompleteCalled = true;
+                  output.error(err);
+                  output.complete();
+                }
               }
             },
             error: (err: any) => {
               if (!isCompleteCalled) {
                 isCompleteCalled = true;
                 output.error(err);
+                output.complete();
               }
             },
             complete: () => {
@@ -104,15 +108,10 @@ const chain = function <T>(...operators: Operator[]): StreamMapper {
           });
         }
 
-        // Track output subscriptions
-        outputSubscription = sub;
-
         return createSubscription(() => {
+          inputSubscription?.unsubscribe();
+          inputSubscription = null;
           sub.unsubscribe();
-          if (inputSubscription && outputSubscription) {
-            inputSubscription.unsubscribe();
-            inputSubscription = null;
-          }
         });
       };
   });
