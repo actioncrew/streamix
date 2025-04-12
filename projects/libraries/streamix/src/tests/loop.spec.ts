@@ -1,4 +1,4 @@
-import { eachValueFrom } from '@actioncrew/streamix';
+import { eachValueFrom } from '../lib';
 import { loop } from '../lib'; // adjust the path if needed
 
 function collect<T>(stream: AsyncGenerator<T, void, unknown>): Promise<T[]> {
