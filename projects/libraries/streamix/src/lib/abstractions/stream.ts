@@ -1,5 +1,5 @@
 import { createMapper, Operator, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
@@ -15,20 +15,18 @@ export function pipeStream<T = any>(
   stream: Stream<T>,
   ...steps: (Operator | StreamMapper)[]
 ): Stream<T> {
-
   let currentStream: Stream<T> = stream;
   const operatorGroup: Operator[] = [];
   const mappers: StreamMapper[] = [];
 
-  // Group consecutive simple operators
   for (const step of steps) {
     if ('handle' in step) {
       operatorGroup.push(step);
     } else {
-      // Flush operator group if we hit a mapper
       if (operatorGroup.length > 0) {
-        mappers.push(chain(...operatorGroup));
-        currentStream = mappers[mappers.length - 1].output;
+        const chained = chain(...operatorGroup);
+        mappers.push(chained);
+        currentStream = chained.output;
         operatorGroup.length = 0;
       }
       mappers.push(step);
@@ -36,68 +34,95 @@ export function pipeStream<T = any>(
     }
   }
 
-  // Flush remaining operators
   if (operatorGroup.length > 0) {
-    mappers.push(chain(...operatorGroup));
-    currentStream = mappers[mappers.length - 1].output;
+    const chained = chain(...operatorGroup);
+    mappers.push(chained);
+    currentStream = chained.output;
   }
 
-  // Return a stream that builds the pipeline lazily
-  return {
+  const finalSteps = [...steps]; // preserve all steps for future pipe chaining
+
+  const resultStream: Stream<T> = {
     ...currentStream,
-    subscribe: (...args) => {
+    subscribe: (...args: any[]) => {
       const subscription = currentStream.subscribe(...args);
-      // Apply mappers in reverse order
       for (let i = mappers.length - 1; i >= 0; i--) {
         const mapper = mappers[i];
         const source = i === 0 ? stream : mappers[i - 1].output;
         mapper.map(source, mapper.output);
       }
       return subscription;
+    },
+    pipe: (...nextSteps: (Operator | StreamMapper)[]) => {
+      return pipeStream(stream, ...finalSteps, ...nextSteps);
     }
   };
-}
+
+  return resultStream;
+};
 
 // Modified chain function that returns a StreamMapper
 const chain = function <T>(...operators: Operator[]): StreamMapper {
-  const output = createSubject<T>();
-
   return createMapper(
     `chain-${operators.map(op => op.name).join('-')}`,
-    output,
-    (input, output) => {
+    createSubject<T>(),
+    (input: Stream<T>, output: Subject<T>) => {
       let isCompleteCalled = false;
-      const subscription = input.subscribe({
-        next: (value: T) => {
-          let processedValue = value;
-          let errorOccurred = false;
+      let inputSubscription: Subscription | null = null;
+      let outputSubscription: Subscription | null = null;
 
-          for (const operator of operators) {
-            try {
-              processedValue = operator.handle(processedValue);
-              if (processedValue === undefined) break;
-            } catch (error) {
-              errorOccurred = true;
-              output.error(error);
-              break;
+      // Store original subscribe method
+      const originalSubscribe = output.subscribe;
+
+      // Redefine output.subscribe to handle proper cleanup
+      output.subscribe = function(...args: any[]) {
+        // Create the actual subscription
+        const sub = originalSubscribe.call(this, ...args);
+
+        // Only subscribe to input on first subscription
+        if (!inputSubscription) {
+          inputSubscription = input.subscribe({
+            next: (value: T) => {
+              let processedValue = value;
+              try {
+                for (const operator of operators) {
+                  processedValue = operator.handle(processedValue);
+                  if (processedValue === undefined) break;
+                }
+                if (processedValue !== undefined) {
+                  output.next(processedValue);
+                }
+              } catch (error) {
+                output.error(error);
+              }
+            },
+            error: (err: any) => {
+              if (!isCompleteCalled) {
+                isCompleteCalled = true;
+                output.error(err);
+              }
+            },
+            complete: () => {
+              if (!isCompleteCalled) {
+                isCompleteCalled = true;
+                output.complete();
+              }
             }
-          }
-
-          if (!errorOccurred && processedValue !== undefined) {
-            output.next(processedValue);
-          }
-        },
-        error: (err: any) => output.error(err),
-        complete: () => {
-          if (!isCompleteCalled) {
-            isCompleteCalled = true;
-            output.complete();
-            subscription.unsubscribe();
-          }
+          });
         }
-      });
-    }
-  );
+
+        // Track output subscriptions
+        outputSubscription = sub;
+
+        return createSubscription(() => {
+          sub.unsubscribe();
+          if (inputSubscription && outputSubscription) {
+            inputSubscription.unsubscribe();
+            inputSubscription = null;
+          }
+        });
+      };
+  });
 };
 
 // The stream factory function
