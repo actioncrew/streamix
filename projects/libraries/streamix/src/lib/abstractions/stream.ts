@@ -39,9 +39,7 @@ export function pipeStream<T = any>(
     mappers.push(chained);
     currentStream = chained.output;
   }
-
-  const finalSteps = [...steps]; // preserve all steps for future pipe chaining
-
+  
   const resultStream: Stream<T> = {
     ...currentStream,
     subscribe: (...args: any[]) => {
@@ -54,7 +52,7 @@ export function pipeStream<T = any>(
       return subscription;
     },
     pipe: (...nextSteps: (Operator | StreamMapper)[]) => {
-      return pipeStream(stream, ...finalSteps, ...nextSteps);
+      return pipeStream(currentStream, ...nextSteps);
     }
   };
 
