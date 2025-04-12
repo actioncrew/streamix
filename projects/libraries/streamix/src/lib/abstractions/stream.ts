@@ -84,7 +84,7 @@ const chain = function <T>(...operators: Operator[]): StreamMapper {
                 if (processedValue !== undefined) {
                   output.next(processedValue);
                 }
-              } catch (error) {
+              } catch (err) {
                 if (!isCompleteCalled) {
                   isCompleteCalled = true;
                   output.error(err);
