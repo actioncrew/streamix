@@ -50,9 +50,6 @@ export function pipeStream<T = any>(
         mapper.map(source, mapper.output);
       }
       return subscription;
-    },
-    pipe: (...nextSteps: (Operator | StreamMapper)[]) => {
-      return pipeStream(currentStream, ...nextSteps);
     }
   };
 
