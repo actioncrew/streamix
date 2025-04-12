@@ -1,22 +1,17 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createReplaySubject, Subject } from "../streams";
+import { createReplaySubject, ReplaySubject } from "../streams";
 
 export function shareReplay<T>(bufferSize: number = Infinity): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
-    // Async generator to handle the input stream with shareReplay logic
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          output.next(value); // Replay the value from the input stream
-        }
-      } catch (err) {
-        output.error(err); // Propagate any error
-      } finally {
-        output.complete(); // Complete the replay subject
-      }
-    })();
-  };
+  let isConnected = false;
+  return createMapper('shareReplay', createReplaySubject<T>(bufferSize), (input: Stream<T>, output: ReplaySubject<T>) => {
 
-  return createMapper('shareReplay', createReplaySubject<T>(bufferSize), operator);
+    if (!isConnected) {
+      isConnected = true;
+      const subscription = input.subscribe({
+        next: (value) => output.next(value),
+        error: (err) => output.error(err),
+        complete: () => { subscription.unsubscribe(); output.complete(); }
+      });
+    }
+  });
 }

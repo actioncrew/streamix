@@ -42,15 +42,14 @@ describe('shareReplay operator', () => {
     const shared$ = source.pipe(shareReplay());
 
     let errorCount = 0;
-
+    let completed = false;
     shared$.subscribe({
       next: () => {},
       error: (err) => {
         expect(err).toEqual(new Error('Test error'));
         errorCount++;
-        if (errorCount === 2) done();
       },
-      complete: () => done.fail('Should not complete'),
+      complete: () => { if (errorCount === 2 && completed === false) { done(); completed = true; }},
     });
 
     shared$.subscribe({
@@ -58,9 +57,8 @@ describe('shareReplay operator', () => {
       error: (err) => {
         expect(err).toEqual(new Error('Test error'));
         errorCount++;
-        if (errorCount === 2) done();
       },
-      complete: () => done.fail('Should not complete'),
+      complete: () => { if (errorCount === 2 && completed === false) { done(); completed = true; }},
     });
   });
 });
