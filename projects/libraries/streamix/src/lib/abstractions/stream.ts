@@ -1,4 +1,4 @@
-import { Operator, StreamMapper } from "../abstractions";
+import { createMapper, Operator, StreamMapper } from "../abstractions";
 import { createSubject } from "../streams";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
@@ -27,7 +27,7 @@ export function pipeStream<T = any>(
     } else {
       // Flush operator group if we hit a mapper
       if (operatorGroup.length > 0) {
-        mappers.push(chainOperators(currentStream, ...operatorGroup));
+        mappers.push(chain(...operatorGroup));
         currentStream = mappers[mappers.length - 1].output;
         operatorGroup.length = 0;
       }
@@ -38,10 +38,10 @@ export function pipeStream<T = any>(
 
   // Flush remaining operators
   if (operatorGroup.length > 0) {
-    mappers.push(chainOperators(currentStream, ...operatorGroup));
+    mappers.push(chain(...operatorGroup));
     currentStream = mappers[mappers.length - 1].output;
   }
-  
+
   // Return a stream that builds the pipeline lazily
   return {
     ...currentStream,
@@ -59,15 +59,15 @@ export function pipeStream<T = any>(
 }
 
 // Modified chain function that returns a StreamMapper
-const chain = function <T>(input: Stream<T>, ...operators: Operator[]): StreamMapper<T> {
+const chain = function <T>(...operators: Operator[]): StreamMapper {
   const output = createSubject<T>();
 
   return createMapper(
     `chain-${operators.map(op => op.name).join('-')}`,
     output,
-    (inputStream, outputStream) => {
+    (input, output) => {
       let isCompleteCalled = false;
-      const subscription = inputStream.subscribe({
+      const subscription = input.subscribe({
         next: (value: T) => {
           let processedValue = value;
           let errorOccurred = false;
@@ -78,20 +78,20 @@ const chain = function <T>(input: Stream<T>, ...operators: Operator[]): StreamMa
               if (processedValue === undefined) break;
             } catch (error) {
               errorOccurred = true;
-              outputStream.error(error);
+              output.error(error);
               break;
             }
           }
 
           if (!errorOccurred && processedValue !== undefined) {
-            outputStream.next(processedValue);
+            output.next(processedValue);
           }
         },
-        error: (err: any) => outputStream.error(err),
+        error: (err: any) => output.error(err),
         complete: () => {
           if (!isCompleteCalled) {
             isCompleteCalled = true;
-            outputStream.complete();
+            output.complete();
             subscription.unsubscribe();
           }
         }
