@@ -86,8 +86,10 @@ const chain = function (stream: Stream, ...operators: Operator[]): Stream {
         try {
           value = operator.handle(value);
         } catch (error) {
+          isCompleteCalled = true;
           errorCatched = true;
           output.error(error);
+          output.complete();
         }
 
         if (errorCatched || value === undefined) {
