@@ -42,11 +42,11 @@ export function pipeStream<T = any>(
   
   const originalSubscribe = currentStream.subscribe;
   currentStream.subscribe = (...args: any[]) => {
-    mappers[0].map(stream, mappers[0].output);
-    for (let i = 1; i < mappers.length; i++) {
+    for (let i = mappers.length - 1; i > 0; i--) {
       const mapper = mappers[i];
       mapper.map(mappers[i - 1].output, mapper.output);
     }
+    mappers[0].map(stream, mappers[0].output);
     return originalSubscribe.call(currentStream, ...args);
   };
 
