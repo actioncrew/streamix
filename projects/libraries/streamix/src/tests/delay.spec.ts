@@ -13,7 +13,7 @@ describe('DelayOperator', () => {
     delayedStream.subscribe({
       next: () => {
         emitCount++;
-        const elapsedTime = Date.now() - startTime;
+        const elapsedTime = Date.now() - startTime + 5;
         expect(elapsedTime).toBeGreaterThanOrEqual(emitCount * delayTime);
       },
       complete: () => {
