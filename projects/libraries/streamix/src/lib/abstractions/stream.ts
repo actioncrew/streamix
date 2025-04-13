@@ -62,57 +62,48 @@ const chain = function <T>(...operators: Operator[]): StreamMapper {
       let isCompleteCalled = false;
       let inputSubscription: Subscription | null = null;
       
-      // Store original subscribe method
-      const originalSubscribe = output.subscribe;
-
-      // Redefine output.subscribe to handle proper cleanup
-      output.subscribe = function(...args: any[]) {
-        // Create the actual subscription
-        const sub = originalSubscribe.call(this, ...args);
-
-        // Only subscribe to input on first subscription
-        if (!inputSubscription) {
-          inputSubscription = input.subscribe({
-            next: (value: T) => {
-              let processedValue = value;
-              try {
-                for (const operator of operators) {
-                  processedValue = operator.handle(processedValue);
-                  if (processedValue === undefined) break;
-                }
-                if (processedValue !== undefined) {
-                  output.next(processedValue);
-                }
-              } catch (err) {
-                if (!isCompleteCalled) {
-                  isCompleteCalled = true;
-                  output.error(err);
-                  output.complete();
-                }
+      // Only subscribe to input on first subscription
+      if (!inputSubscription) {
+        inputSubscription = input.subscribe({
+          next: (value: T) => {
+            let processedValue = value;
+            try {
+              for (const operator of operators) {
+                processedValue = operator.handle(processedValue);
+                if (processedValue === undefined) break;
               }
-            },
-            error: (err: any) => {
+              if (processedValue !== undefined) {
+                output.next(processedValue);
+              }
+            } catch (err) {
               if (!isCompleteCalled) {
                 isCompleteCalled = true;
                 output.error(err);
                 output.complete();
-              }
-            },
-            complete: () => {
-              if (!isCompleteCalled) {
-                isCompleteCalled = true;
-                output.complete();
+                inputSubscription.unsubscribe();
+                inputSubscription= null;
               }
             }
-          });
-        }
-
-        return createSubscription(() => {
-          inputSubscription?.unsubscribe();
-          inputSubscription = null;
-          sub.unsubscribe();
-        });
-      };
+          },
+          error: (err: any) => {
+            if (!isCompleteCalled) {
+              isCompleteCalled = true;
+              output.error(err);
+              output.complete();
+              inputSubscription.unsubscribe();
+              inputSubscription= null;
+            }
+          },
+          complete: () => {
+            if (!isCompleteCalled) {
+              isCompleteCalled = true;
+              output.complete();
+              inputSubscription.unsubscribe();
+              inputSubscription= null;
+            }
+          }
+        });  
+      }
   });
 };
 
