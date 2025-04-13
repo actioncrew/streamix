@@ -16,15 +16,15 @@ export const createOperator = (name: string, handleFn: (value: any) => any): Ope
 };
 
 export type StreamMapper = Omit<Operator, "handle"> & {
-  output: Subject | Stream;
+  output: Subject | Function;
   map(input: Stream, output: Subject | Stream): void;
 }
 
-export const createMapper = (name: string, output: Subject, mapFn: (input: Stream, output: Subject) => void): StreamMapper => {
+export const createMapper = (name: string, output: Subject | Function, mapFn: (input: Stream, output: Subject | Function) => void): StreamMapper => {
   return {
     name,
     output,
-    map: mapFn,
+    map: (input: Stream, output: Subject | Function) => output instanceof Function ? output(input): mapFn(input, output),
     type: 'operator'
   };
 };
