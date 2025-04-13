@@ -24,7 +24,7 @@ export const createMapper = (name: string, output: Subject | Function, mapFn: (i
   return {
     name,
     output,
-    map: (input: Stream, output: Subject | Function) => output instanceof Function ? output(input): mapFn(input, output),
+    map: (input: Stream, output: Subject | Function) => output instanceof Function ? () => {} : mapFn(input, output),
     type: 'operator'
   };
 };
