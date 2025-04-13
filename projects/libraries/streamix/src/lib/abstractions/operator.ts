@@ -20,11 +20,11 @@ export type StreamMapper = Omit<Operator, "handle"> & {
   map(input: Stream, output: Subject): void;
 }
 
-export const createMapper = (name: string, output: Subject | ((input: Stream) => Stream), mapFn: (input: Stream, output: Subject) => void): StreamMapper => {
+export const createMapper = (name: string, output: Subject | ((input: Stream) => Stream), mapFn: (input: Stream, output: Subject | ((input: Stream) => Stream) => void): StreamMapper => {
   return {
     name,
     output,
-    map: (input: Stream, output: Subject) => output instanceof Function ? () => {} : mapFn(input, output),
+    map: (input: Stream, output: Subject | ((input: Stream) => Stream) => output instanceof Function ? () => {} : mapFn(input, output),
     type: 'operator'
   };
 };
