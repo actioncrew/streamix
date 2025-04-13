@@ -30,7 +30,7 @@ export function pipeStream<T = any>(
         operatorGroup.length = 0;
       }
       mappers.push(step);
-      currentStream = step.output instanceof Function? step.output(input) : step.output;
+      currentStream = step.output instanceof Function? step.output(currentStream) : step.output;
     }
   }
 
