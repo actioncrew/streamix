@@ -32,9 +32,9 @@ export const createMapper = (
     name,
     type: 'operator',
     output,
-    map: (input, out) => {
+    map: (input) => {
       if (isSubjectOutput(output)) {
-        mapFn(input, out);
+        mapFn(input, output);
       }
     },
   };
