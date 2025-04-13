@@ -1,11 +1,10 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
   let index = 0;
-  const operator = (input: Stream<T>): Stream<R> => {
-    const output = createSubject<R>();
+  const operator = (input: Stream<T>, output: Subject<R>) => {
     let inputCompleted = false;
     let activeInnerStreams = 0; // Track active inner streams
 
@@ -55,5 +54,5 @@ export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>)
     return output;
   };
 
-  return createMapper('concatMap', operator);
+  return createMapper('concatMap', createSubject<R>(), operator);
 }

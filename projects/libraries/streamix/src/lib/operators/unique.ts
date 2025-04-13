@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function unique<T = any, K = any>(keySelector?: (value: T) => K): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  const operator = (input: Stream<T>, output: Subject<T>) => {
     const seenKeys = new Set<K | T>();
 
     (async () => {
@@ -28,5 +27,5 @@ export function unique<T = any, K = any>(keySelector?: (value: T) => K): StreamM
     return output;
   };
 
-  return createMapper('unique', operator);
+  return createMapper('unique', createSubject<T>(), operator);
 }

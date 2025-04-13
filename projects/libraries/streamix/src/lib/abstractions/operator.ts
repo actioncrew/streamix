@@ -1,3 +1,4 @@
+import { Subject } from "../streams";
 import { Stream } from "./stream";
 
 export type Operator = {
@@ -15,13 +16,26 @@ export const createOperator = (name: string, handleFn: (value: any) => any): Ope
 };
 
 export type StreamMapper = Omit<Operator, "handle"> & {
-  map(stream: Stream<any>): Stream<any>;
-}
+  output: Subject | ((input: Stream) => Stream);
+  map(input: Stream): void;
+};
 
-export const createMapper = (name: string, mapFn: (stream: Stream) => Stream): StreamMapper => {
+export const createMapper = (
+  name: string,
+  output: Subject | ((input: Stream) => Stream),
+  mapFn: (input: Stream, output: Subject) => void
+): StreamMapper => {
+  const isSubjectOutput = (out: typeof output): out is Subject =>
+    typeof out !== 'function';
+
   return {
     name,
-    map: mapFn,
-    type: 'operator'
+    type: 'operator',
+    output,
+    map: (input) => {
+      if (isSubjectOutput(output)) {
+        mapFn(input, output);
+      }
+    },
   };
 };

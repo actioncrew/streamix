@@ -1,11 +1,10 @@
 
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function every<T = any>(predicate: (value: T, index: number) => boolean): StreamMapper {
-  const operator = (input: Stream<T>): Stream<boolean> => {
-    const output = createSubject<boolean>();
+  const operator = (input: Stream<T>, output: Subject<boolean>) => {
 
     (async () => {
       let index = 0; // Initialize index
@@ -25,9 +24,7 @@ export function every<T = any>(predicate: (value: T, index: number) => boolean):
         output.complete(); // Complete the output stream
       }
     })();
-
-    return output;
   };
 
-  return createMapper('every', operator);
+  return createMapper('every', createSubject<boolean>(), operator);
 }

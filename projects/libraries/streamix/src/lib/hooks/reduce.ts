@@ -1,9 +1,8 @@
-import { createSubject, eachValueFrom } from '..';
+import { createSubject, eachValueFrom, Subject } from '..';
 import { createMapper, Stream, StreamMapper } from '../abstractions';
 
 export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): StreamMapper => {
-  const operator = (input: Stream): Stream => {
-    const output = createSubject();
+  const operator = (input: Stream, output: Subject) => {
     let accumulatedValue = seed;
 
     // Use async iterator to iterate over the input stream
@@ -29,9 +28,7 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): S
         output.error(err); // Forward any errors to the output stream
       }
     })();
-
-    return output; // Return the output stream
   };
 
-  return createMapper('reduce', operator);
+  return createMapper('reduce', createSubject(), operator);
 };

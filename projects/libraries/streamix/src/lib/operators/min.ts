@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function min<T = any>(comparator?: (a: T, b: T) => number): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  const operator = (input: Stream<T>, output: Subject<T>) => {
 
     (async () => {
       let minValue: T | undefined;
@@ -27,5 +26,5 @@ export function min<T = any>(comparator?: (a: T, b: T) => number): StreamMapper 
     return output;
   };
 
-  return createMapper('min', operator);
+  return createMapper('min', createSubject<T>(), operator);
 }

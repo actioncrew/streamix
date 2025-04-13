@@ -1,11 +1,10 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
 import { eachValueFrom } from '../converters';
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 
 export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
   let index = 0;
-  return createMapper('mergeMap', (input: Stream<T>): Stream<R> => {
-    const output = createSubject<R>();
+  return createMapper('mergeMap', createSubject<R>(), (input: Stream<T>, output: Subject<R>) => {
     let activeInnerStreams = 0; // Track active inner streams
     let inputCompleted = false;
     let hasError = false; // Flag to track if an error has occurred
@@ -54,7 +53,5 @@ export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>):
         }
       }
     })();
-
-    return output;
   });
 }

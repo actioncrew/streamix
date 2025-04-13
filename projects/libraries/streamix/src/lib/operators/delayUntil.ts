@@ -1,9 +1,8 @@
 import { createMapper, createReceiver, createSubscription, Stream, StreamMapper, Subscription } from "../abstractions";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function delayUntil<T = any>(notifier: Stream<any>): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  const operator = (input: Stream<T>, output: Subject<T>) => {
     let inputSubscription: Subscription | null = null;
     let notifierSubscription: Subscription | null = null;
     let hasNotified = false;
@@ -70,5 +69,5 @@ export function delayUntil<T = any>(notifier: Stream<any>): StreamMapper {
     return output;
   };
 
-  return createMapper('delayUntil', operator);
+  return createMapper('delayUntil', createSubject<T>(), operator);
 }

@@ -1,11 +1,9 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function takeWhile<T = any>(predicate: (value: T) => boolean): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
-
+  const operator = (input: Stream<T>, output: Subject<T>) => {
     (async () => {
       let isCompleted = false;
 
@@ -31,5 +29,5 @@ export function takeWhile<T = any>(predicate: (value: T) => boolean): StreamMapp
     return output;
   };
 
-  return createMapper('takeWhile', operator);
+  return createMapper('takeWhile', createSubject<T>(), operator);
 }

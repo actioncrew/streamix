@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper, Subscription } from "../abstractions";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
   let index = 0;
-  const operator = (input: Stream<T>): Stream<R> => {
-    const output = createSubject<R>(); // The output stream
+  const operator = (input: Stream<T>, output: Subject<R>) => {
     let currentSubscription: Subscription | null = null;
     let inputCompleted = false;
     let currentInnerStreamId = 0; // Track the active inner stream ID
@@ -58,9 +57,7 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
         checkComplete(); // Check if we can complete the outer stream
       },
     });
-
-    return output; // Return the resulting stream
   };
 
-  return createMapper("switchMap", operator); // Return the switchMap operator
+  return createMapper("switchMap", createSubject<R>(), operator); // Return the switchMap operator
 }

@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function sample<T = any>(period: number): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  const operator = (input: Stream<T>, output: Subject<T>) => {
     let lastValue: T | undefined;
     let intervalId: any = null;
 
@@ -40,9 +39,7 @@ export function sample<T = any>(period: number): StreamMapper {
       startSampling();
       await processInputStream();
     })();
-
-    return output;
   };
 
-  return createMapper('sample', operator);
+  return createMapper('sample', createSubject<T>(), operator);
 }

@@ -1,13 +1,12 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export const fork = <T = any, R = T>(
   options: Array<{ on: (value: T, index: number) => boolean; handler: (value: T) => Stream<R> }>
 ): StreamMapper => {
   let index = 0;
-  const operator = (input: Stream<T>): Stream<R> => {
-    const output = createSubject<R>();
+  const operator = (input: Stream<T>, output: Subject<R>) => {
     let inputCompleted = false;
     let activeInnerStreams = 0; // Track active inner streams
 
@@ -55,10 +54,7 @@ export const fork = <T = any, R = T>(
         }
       }
     })();
-
-    // Return the output stream
-    return output;
   };
 
-  return createMapper('fork', operator);
+  return createMapper('fork', createSubject<R>(), operator);
 };

@@ -1,5 +1,5 @@
-import { Operator, StreamMapper } from "../abstractions";
-import { createSubject } from "../streams";
+import { createMapper, Operator, StreamMapper } from "../abstractions";
+import { createSubject, Subject } from "../streams";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
@@ -11,109 +11,70 @@ export type Stream<T = any> = {
   pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
 };
 
-export function pipeStream<T = any, K = any>(
+export function pipeStream<T = any>(
   stream: Stream<T>,
   ...steps: (Operator | StreamMapper)[]
-): Stream<K> {
-  // Create a subject that will be our final output
-  const outputSubject = createSubject<K>();
-  let isSubscribed = false;
-  let pipelineSubscription: Subscription | null = null; // Store the subscription to the pipeline
+): Stream<T> {
+  let currentStream: Stream = stream;
+  const operatorGroup: Operator[] = [];
+  const mappers: StreamMapper[] = [];
 
-  // Store the original subscribe method
-  const originalSubscribe = outputSubject.subscribe;
-
-  // Override the subscribe method to trigger lazy evaluation
-  outputSubject.subscribe = function(...args) {
-    if (!isSubscribed) {
-      isSubscribed = true;
-
-      // Only build and connect the pipeline when someone subscribes
-      let combinedStream: Stream<any> = stream;
-      let operatorsGroup: Operator[] = [];
-
-      for (const step of steps) {
-        if ('handle' in step) {
-          operatorsGroup.push(step);
-        } else if ('map' in step) {
-          if (operatorsGroup.length > 0) {
-            combinedStream = chain(combinedStream, ...operatorsGroup);
-            operatorsGroup = [];
-          }
-          combinedStream = step.map(combinedStream);
-        } else {
-          throw new Error("Invalid step provided to pipe.");
-        }
+  for (const step of steps) {
+    if ('handle' in step) {
+      operatorGroup.push(step);
+    } else {
+      if (operatorGroup.length > 0) {
+        const chained = chain(...operatorGroup);
+        mappers.push(chained);
+        currentStream = chained.output as Stream;
+        operatorGroup.length = 0;
       }
-
-      if (operatorsGroup.length > 0) {
-        combinedStream = chain(combinedStream, ...operatorsGroup);
-      }
-
-      // Connect the final stream to our output subject and store the subscription
-      pipelineSubscription = combinedStream.subscribe({
-        next: (value) => outputSubject.next(value),
-        error: (err) => outputSubject.error(err),
-        complete: () => outputSubject.complete()
-      });
+      mappers.push(step);
+      currentStream = step.output instanceof Function ? step.output(currentStream) as unknown as Stream : step.output as Subject;
     }
-
-    const outerSubscription = originalSubscribe.apply(this, args);
-
-    // Return a subscription that also unsubscribes from the pipeline
-    return createSubscription(() => {
-      outerSubscription.unsubscribe();
-      if (pipelineSubscription) {
-        pipelineSubscription.unsubscribe();
-        pipelineSubscription = null;
-      }
-    });
-  };
-
+  }
   return outputSubject;
 }
 
-const chain = function (stream: Stream, ...operators: Operator[]): Stream {
-  const output = createSubject();
-  let isCompleteCalled = false; // To ensure `complete` is only processed once
-
-  const subscription = stream.subscribe({
-    next: (value: any) => {
-      let errorCatched = false;
-      for (let i = 0; i < operators.length; i++) {
-        const operator = operators[i];
-
-        try {
-          value = operator.handle(value);
-        } catch (error) {
-          isCompleteCalled = true;
-          errorCatched = true;
-          output.error(error);
-          output.complete();
-        }
-
-        if (errorCatched || value === undefined) {
-          break;
-        }
+const chain = function <T = any>(...operators: Operator[]): StreamMapper {
+  return createMapper(
+    `chain-${operators.map(op => op.name).join('-')}`,
+    createSubject<T>(),
+    (input: Stream<T>, output: Subject<T>) => {
+      let inputSubscription: Subscription | null = null;
+      
+      // Only subscribe to input on first subscription
+      if (!inputSubscription) {
+        inputSubscription = input.subscribe({
+          next: (value: T) => {
+            let processedValue = value;
+            try {
+              for (const operator of operators) {
+                processedValue = operator.handle(processedValue);
+                if (processedValue === undefined) break;
+              }
+              if (processedValue !== undefined) {
+                output.next(processedValue);
+              }
+            } catch (err) {
+              output.error(err);
+              inputSubscription?.unsubscribe();
+              inputSubscription= null;
+            }
+          },
+          error: (err: any) => {
+            output.error(err);
+            inputSubscription?.unsubscribe();
+            inputSubscription= null;
+          },
+          complete: () => {
+            output.complete();
+            inputSubscription?.unsubscribe();
+            inputSubscription= null;
+          }
+        });  
       }
-
-      if (!errorCatched && value !== undefined) {
-        output.next(value);
-      }
-    },
-    error: (err: any) => {
-      output.error(err);
-    },
-    complete: () => {
-      if (!isCompleteCalled) {
-        isCompleteCalled = true;
-        output.complete();
-        subscription.unsubscribe();
-      }
-    }
   });
-
-  return output;
 };
 
 // The stream factory function
@@ -145,7 +106,7 @@ export function createStream<T>(
     type: "stream",
     name,
     subscribe,
-    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(stream, ...steps),
+    pipe: function (this: Stream, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); }
   };
 
   return stream;

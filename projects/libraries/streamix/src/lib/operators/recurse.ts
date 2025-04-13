@@ -1,6 +1,6 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function recurse<T = any>(
   condition: (value: T) => boolean,
@@ -10,8 +10,7 @@ export function recurse<T = any>(
     maxDepth?: number;
   } = {}
 ): StreamMapper {
-  return createMapper('recurse', (input: Stream<T>) => {
-    const output = createSubject<T>();
+  return createMapper('recurse', createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
     const queue: { value: T; depth: number }[] = [];
     let processing = false;
     let inputComplete = false;
@@ -77,7 +76,5 @@ export function recurse<T = any>(
         output.error(error);
       }
     })();
-
-    return output;
   });
 }

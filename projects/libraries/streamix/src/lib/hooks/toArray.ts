@@ -1,9 +1,9 @@
 import { createSubject, eachValueFrom } from '..';
 import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { Subject } from './../streams/subject';
 
 export const toArray = (): StreamMapper => {
-  const operator = (input: Stream): Stream => {
-    const output = createSubject<any>(); // Create an output stream
+  const operator = (input: Stream, output: Subject) => {
     let accumulatedArray: any[] = [];  // Array to accumulate emission values
 
     const toArrayIterator = async function* () {
@@ -31,5 +31,5 @@ export const toArray = (): StreamMapper => {
     return output;  // Return the output stream
   };
 
-  return createMapper('toArray', operator);
+  return createMapper('toArray', createSubject<any>(), operator);
 };

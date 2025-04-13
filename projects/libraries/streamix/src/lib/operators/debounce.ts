@@ -1,50 +1,54 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
-export function debounce<T>(duration: number): StreamMapper {
-  return createMapper("debounce", (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+export function debounce<T = any>(duration: number): StreamMapper {
+  return createMapper("debounce", createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let latestValue: T | null = null;
+    let hasValues = false;
+    let isCompleted = false;
 
+    const flush = () => {
+      if (latestValue !== null) {
+        output.next(latestValue);
+        latestValue = null;
+      }
+      timeoutId = null;
+
+      // Complete if we finished processing
+      if (isCompleted) {
+        output.complete();
+      }
+    };
+
+    // Handle input stream
     (async () => {
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      let latestValue: T | null = null;
-      let isCompleted = false;
-      let emissionCount = 0;
-
       try {
         for await (const value of eachValueFrom(input)) {
-          emissionCount++;
+          hasValues = true;
           latestValue = value;
 
-          if (timeoutId !== null) {
-            clearTimeout(timeoutId);
-          }
-
-          timeoutId = setTimeout(() => {
-            if (latestValue !== null) {
-              output.next(latestValue);
-              if (isCompleted) {
-                output.complete();
-              }
-            }
-            timeoutId = null;
-          }, duration);
+          if (timeoutId) clearTimeout(timeoutId);
+          timeoutId = setTimeout(flush, duration);
         }
-      } catch (err) {
-        output.error(err);
-      } finally {
+
+        // Mark as completed
         isCompleted = true;
 
-        if (timeoutId === null) {
-          if (emissionCount > 1 && latestValue !== null) {
-            output.next(latestValue);
+        // If no pending timer, complete immediately
+        if (!timeoutId) {
+          // Only emit if we got values but no pending timer
+          if (hasValues && latestValue !== null) {
+            flush();
           }
           output.complete();
         }
+        // Otherwise wait for flush() to handle completion
+      } catch (err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        output.error(err);
       }
     })();
-
-    return output;
   });
 }

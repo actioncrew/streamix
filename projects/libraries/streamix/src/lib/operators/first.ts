@@ -1,10 +1,9 @@
-import { Stream, StreamMapper, createMapper } from "../abstractions";
+import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export const first = <T = any>(predicate?: (value: T) => boolean): StreamMapper => {
-  return createMapper("first", (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  return createMapper("first", createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
     let found = false;
 
     // Async function to iterate through the input stream and take the first value matching the predicate (or the first value)
@@ -28,7 +27,5 @@ export const first = <T = any>(predicate?: (value: T) => boolean): StreamMapper 
         output.complete();
       }
     })();
-
-    return output; // Return the output stream
   });
 };

@@ -1,12 +1,11 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function last<T = any>(
   predicate?: (value: T) => boolean
 ): StreamMapper {
-  return createMapper('last', (input: Stream<T>) => {
-    const output = createSubject<T>();
+  return createMapper('last', createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
     let lastValue: T | undefined;
     let hasMatch = false;
 
@@ -30,7 +29,5 @@ export function last<T = any>(
         output.complete();
       }
     })();
-
-    return output;
   });
 }

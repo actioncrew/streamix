@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from '../abstractions';
 import { eachValueFrom } from '../converters';
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 
 export function delay<T>(ms: number): StreamMapper {
-  return createMapper('delay', (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  return createMapper('delay', createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
 
     (async () => {
       try {

@@ -1,10 +1,9 @@
 import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export function audit<T = any>(duration: number): StreamMapper {
-  const operator = (input: Stream<T>): Stream<T> => {
-    const output = createSubject<T>();
+  const operator = (input: Stream<T>, output: Subject<T>) => {
     let lastValue: T | undefined = undefined;
     let timerActive = false; // Tracks if the timer is active
     let inputCompleted = false; // Tracks if the input stream is complete
@@ -50,9 +49,7 @@ export function audit<T = any>(duration: number): StreamMapper {
         output.error(err); // Propagate errors
       }
     })();
-
-    return output;
   };
 
-  return createMapper('audit', operator);
+  return createMapper('audit', createSubject<T>(), operator);
 }

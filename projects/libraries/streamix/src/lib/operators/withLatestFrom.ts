@@ -1,5 +1,5 @@
 import { createMapper, createReceiver, createSubscription, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
   let latestValues: any[] = new Array(streams.length).fill(undefined);
@@ -10,30 +10,29 @@ export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
 
   let inputSubscription: Subscription | null = null;
   let subscriptions: Subscription[] = [];
-  const output = createSubject();
 
-  subscriptions = streams.map((stream, index) =>
-    stream.subscribe({
-      next: (value) => {
-        latestValues[index] = value;
-        hasValue[index] = true;
-      },
-      error: (err) => output.error(err),
-      complete: () => {
-        otherStreamsCompleted[index] = true;
-        checkCompletion();
-      },
-    })
-  );
 
-  const checkCompletion = () => {
-    if (inputCompleted && otherStreamsCompleted.every((c) => c) && !allCompleted) {
-      allCompleted = true;
-      output.complete();
-    }
-  };
+  const operator = function (input: Stream, output: Subject) {
+    subscriptions = streams.map((stream, index) =>
+      stream.subscribe({
+        next: (value) => {
+          latestValues[index] = value;
+          hasValue[index] = true;
+        },
+        error: (err) => output.error(err),
+        complete: () => {
+          otherStreamsCompleted[index] = true;
+          checkCompletion();
+        },
+      })
+    );
 
-  const operator = function (input: Stream): Stream {
+    const checkCompletion = () => {
+      if (inputCompleted && otherStreamsCompleted.every((c) => c) && !allCompleted) {
+        allCompleted = true;
+        output.complete();
+      }
+    };
 
     inputSubscription = input.subscribe({
       next: (value) => {
@@ -62,8 +61,7 @@ export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
         subscription.unsubscribe();
       });
     };
-    return output;
   };
 
-  return createMapper('withLatestFrom', operator);
+  return createMapper('withLatestFrom', createSubject(), operator);
 };
