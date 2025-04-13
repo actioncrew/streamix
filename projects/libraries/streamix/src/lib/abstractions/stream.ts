@@ -76,23 +76,15 @@ const chain = function <T = any>(...operators: Operator[]): StreamMapper {
                 output.next(processedValue);
               }
             } catch (err) {
-              if (!isCompleteCalled) {
-                isCompleteCalled = true;
-                output.error(err);
-                output.complete();
-                inputSubscription?.unsubscribe();
-                inputSubscription= null;
-              }
-            }
-          },
-          error: (err: any) => {
-            if (!isCompleteCalled) {
-              isCompleteCalled = true;
               output.error(err);
-              output.complete();
               inputSubscription?.unsubscribe();
               inputSubscription= null;
             }
+          },
+          error: (err: any) => {
+            output.error(err);
+            inputSubscription?.unsubscribe();
+            inputSubscription= null;
           },
           complete: () => {
             if (!isCompleteCalled) {
