@@ -24,7 +24,7 @@ export function pipeStream<T = any>(
       operatorGroup.push(step);
     } else {
       if (operatorGroup.length > 0) {
-        const chained = chain(...operatorGroup);
+        const chained = chain<T>(...operatorGroup);
         mappers.push(chained);
         currentStream = chained.output;
         operatorGroup.length = 0;
@@ -35,7 +35,7 @@ export function pipeStream<T = any>(
   }
 
   if (operatorGroup.length > 0) {
-    const chained = chain(...operatorGroup);
+    const chained = chain<T>(...operatorGroup);
     mappers.push(chained);
     currentStream = chained.output;
   }
@@ -55,7 +55,7 @@ export function pipeStream<T = any>(
 };
 
 // Modified chain function that returns a StreamMapper
-const chain = function <T>(...operators: Operator[]): StreamMapper {
+const chain = function <T = any>(...operators: Operator[]): StreamMapper {
   return createMapper(
     `chain-${operators.map(op => op.name).join('-')}`,
     createSubject<T>(),
