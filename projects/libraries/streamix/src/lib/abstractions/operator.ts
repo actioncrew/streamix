@@ -17,7 +17,7 @@ export const createOperator = (name: string, handleFn: (value: any) => any): Ope
 
 export type StreamMapper = Omit<Operator, "handle"> & {
   output: Subject | ((input: Stream) => Stream);
-  map(input: Stream, output: Subject | ((input: Stream) => Stream)): void;
+  map(input: Stream, output: Subject): void;
 }
 
 export const createMapper = (name: string, output: Subject | ((input: Stream) => Stream), mapFn: (input: Stream, output: Subject) => void): StreamMapper => {
