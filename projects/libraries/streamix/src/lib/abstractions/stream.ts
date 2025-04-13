@@ -33,26 +33,8 @@ export function pipeStream<T = any>(
       currentStream = step.output instanceof Function ? step.output(currentStream) as unknown as Stream : step.output as Subject;
     }
   }
-
-  if (operatorGroup.length > 0) {
-    const chained = chain(...operatorGroup);
-    mappers.push(chained);
-    currentStream = chained.output as Stream;
-  }
-  
-  const originalSubscribe = currentStream.subscribe;
-  currentStream.subscribe = (...args: any[]) => {
-    const subscription = originalSubscribe.call(currentStream, ...args);
-    for (let i = mappers.length - 1; i > 0; i--) {
-      const mapper = mappers[i];
-      mapper.map(mappers[i - 1].output as Stream);
-    }
-    mappers[0].map(stream);
-    return subscription;
-  }
-
-  return currentStream;
-};
+  return outputSubject;
+}
 
 const chain = function <T = any>(...operators: Operator[]): StreamMapper {
   return createMapper(
