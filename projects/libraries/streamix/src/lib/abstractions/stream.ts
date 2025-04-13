@@ -54,7 +54,6 @@ export function pipeStream<T = any>(
   return currentStream;
 };
 
-// Modified chain function that returns a StreamMapper
 const chain = function <T = any>(...operators: Operator[]): StreamMapper {
   return createMapper(
     `chain-${operators.map(op => op.name).join('-')}`,
