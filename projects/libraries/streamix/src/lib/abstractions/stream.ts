@@ -26,18 +26,18 @@ export function pipeStream<T = any>(
       if (operatorGroup.length > 0) {
         const chained = chain<T>(...operatorGroup);
         mappers.push(chained);
-        currentStream = chained.output;
+        currentStream = chained.output as Subject<T>;
         operatorGroup.length = 0;
       }
       mappers.push(step);
-      currentStream = step.output instanceof Function ? step.output(currentStream) as unknown as Stream<T> : step.output;
+      currentStream = step.output instanceof Function ? step.output(currentStream) as unknown as Stream<T> : step.output as Subject<T>;
     }
   }
 
   if (operatorGroup.length > 0) {
     const chained = chain<T>(...operatorGroup);
     mappers.push(chained);
-    currentStream = chained.output;
+    currentStream = chained.output as Subject<T>;
   }
   
   const originalSubscribe = currentStream.subscribe;
