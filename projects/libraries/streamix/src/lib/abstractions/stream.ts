@@ -80,7 +80,7 @@ const chain = function <T>(...operators: Operator[]): StreamMapper {
                 isCompleteCalled = true;
                 output.error(err);
                 output.complete();
-                inputSubscription.unsubscribe();
+                inputSubscription?.unsubscribe();
                 inputSubscription= null;
               }
             }
@@ -90,7 +90,7 @@ const chain = function <T>(...operators: Operator[]): StreamMapper {
               isCompleteCalled = true;
               output.error(err);
               output.complete();
-              inputSubscription.unsubscribe();
+              inputSubscription?.unsubscribe();
               inputSubscription= null;
             }
           },
@@ -98,7 +98,7 @@ const chain = function <T>(...operators: Operator[]): StreamMapper {
             if (!isCompleteCalled) {
               isCompleteCalled = true;
               output.complete();
-              inputSubscription.unsubscribe();
+              inputSubscription?.unsubscribe();
               inputSubscription= null;
             }
           }
