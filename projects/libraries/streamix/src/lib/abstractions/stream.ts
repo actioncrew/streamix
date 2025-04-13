@@ -26,7 +26,7 @@ export function pipeStream<T = any>(
       if (operatorGroup.length > 0) {
         const chained = chain(...operatorGroup);
         mappers.push(chained);
-        currentStream = chained.output;
+        currentStream = chained.output as Stream;
         operatorGroup.length = 0;
       }
       mappers.push(step);
@@ -37,7 +37,7 @@ export function pipeStream<T = any>(
   if (operatorGroup.length > 0) {
     const chained = chain(...operatorGroup);
     mappers.push(chained);
-    currentStream = chained.output;
+    currentStream = chained.output as Stream;
   }
   
   const originalSubscribe = currentStream.subscribe;
