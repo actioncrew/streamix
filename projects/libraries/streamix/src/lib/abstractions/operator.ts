@@ -18,13 +18,24 @@ export const createOperator = (name: string, handleFn: (value: any) => any): Ope
 export type StreamMapper = Omit<Operator, "handle"> & {
   output: Subject | ((input: Stream) => Stream);
   map(input: Stream, output: Subject): void;
-}
+};
 
-export const createMapper = (name: string, output: Subject | ((input: Stream) => Stream), mapFn: (input: Stream, output: Subject) => void): StreamMapper => {
+export const createMapper = (
+  name: string,
+  output: Subject | ((input: Stream) => Stream),
+  mapFn: (input: Stream, output: Subject) => void
+): StreamMapper => {
+  const isSubjectOutput = (out: typeof output): out is Subject =>
+    typeof out !== 'function';
+
   return {
     name,
+    type: 'operator',
     output,
-    map: (input: Stream, output: Subject | ((input: Stream) => Stream) => output instanceof Function ? () => {} : mapFn(input, output),
-    type: 'operator'
+    map: (input, out) => {
+      if (isSubjectOutput(output)) {
+        mapFn(input, out);
+      }
+    },
   };
 };
