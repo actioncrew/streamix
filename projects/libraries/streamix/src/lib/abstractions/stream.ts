@@ -15,7 +15,7 @@ export function pipeStream<T = any>(
   stream: Stream<T>,
   ...steps: (Operator | StreamMapper)[]
 ): Stream<T> {
-  let currentStream: Stream<T> = stream;
+  let currentStream: Stream = stream;
   const operatorGroup: Operator[] = [];
   const mappers: StreamMapper[] = [];
 
@@ -24,20 +24,20 @@ export function pipeStream<T = any>(
       operatorGroup.push(step);
     } else {
       if (operatorGroup.length > 0) {
-        const chained = chain<T>(...operatorGroup);
+        const chained = chain(...operatorGroup);
         mappers.push(chained);
-        currentStream = chained.output as Subject<T>;
+        currentStream = chained.output;
         operatorGroup.length = 0;
       }
       mappers.push(step);
-      currentStream = step.output instanceof Function ? step.output(currentStream) as unknown as Stream<T> : step.output as Subject<T>;
+      currentStream = step.output instanceof Function ? step.output(currentStream) as unknown as Stream : step.output as Subject;
     }
   }
 
   if (operatorGroup.length > 0) {
-    const chained = chain<T>(...operatorGroup);
+    const chained = chain(...operatorGroup);
     mappers.push(chained);
-    currentStream = chained.output as Subject<T>;
+    currentStream = chained.output;
   }
   
   const originalSubscribe = currentStream.subscribe;
@@ -45,7 +45,7 @@ export function pipeStream<T = any>(
     const subscription = originalSubscribe.call(currentStream, ...args);
     for (let i = mappers.length - 1; i > 0; i--) {
       const mapper = mappers[i];
-      mapper.map(mappers[i - 1].output, mapper.output);
+      mapper.map(mappers[i - 1].output as Stream<T>, mapper.output);
     }
     mappers[0].map(stream, mappers[0].output);
     return subscription;
