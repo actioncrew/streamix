@@ -59,7 +59,6 @@ const chain = function <T = any>(...operators: Operator[]): StreamMapper {
     `chain-${operators.map(op => op.name).join('-')}`,
     createSubject<T>(),
     (input: Stream<T>, output: Subject<T>) => {
-      let isCompleteCalled = false;
       let inputSubscription: Subscription | null = null;
       
       // Only subscribe to input on first subscription
@@ -87,12 +86,9 @@ const chain = function <T = any>(...operators: Operator[]): StreamMapper {
             inputSubscription= null;
           },
           complete: () => {
-            if (!isCompleteCalled) {
-              isCompleteCalled = true;
-              output.complete();
-              inputSubscription?.unsubscribe();
-              inputSubscription= null;
-            }
+            output.complete();
+            inputSubscription?.unsubscribe();
+            inputSubscription= null;
           }
         });  
       }
