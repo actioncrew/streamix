@@ -1,7 +1,7 @@
 import { createMapper, Stream, StreamMapper, Subscription } from '../abstractions';
 import { createSubject, Subject } from '../streams';
 
-export const startWith = <T = any>(startValue: T): StreamMapper<T, T> => {
+export const startWith = <T = any>(startValue: T): StreamMapper => {
   return createMapper(
     'startWith',
     createSubject<T>(),
@@ -25,6 +25,7 @@ export const startWith = <T = any>(startValue: T): StreamMapper<T, T> => {
             output.next(startValue);
           }
           output.complete();
+          subscription?.unsubscribe();
         }
       });
     }
