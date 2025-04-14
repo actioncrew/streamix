@@ -1,72 +1,44 @@
-import { createMapper, createReceiver, createSubscription, Stream, StreamMapper, Subscription } from "../abstractions";
+import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { eachValueFrom } from "../converters";
 import { createSubject, Subject } from "../streams";
 
 export function delayUntil<T = any>(notifier: Stream<any>): StreamMapper {
   const operator = (input: Stream<T>, output: Subject<T>) => {
-    let inputSubscription: Subscription | null = null;
-    let notifierSubscription: Subscription | null = null;
-    let hasNotified = false;
-    let pendingValues: T[] = [];
+    let canEmit = false;
+    let buffer: T[] = [];
 
-    notifierSubscription = notifier.subscribe({
+    const notifierSubscription = notifier.subscribe({
       next: () => {
-        if (!hasNotified) {
-          hasNotified = true;
-          pendingValues.forEach((value) => output.next(value));
-          pendingValues = [];
-        }
+        canEmit = true;
+        buffer.forEach(v => output.next(v));
+        buffer = [];
+        notifierSubscription.unsubscribe();
+      },
+      complete: () => {
+        notifierSubscription.unsubscribe();
       },
       error: (err) => {
         output.error(err);
       },
-      complete: () => {
-        if (inputSubscription) {
-          inputSubscription.unsubscribe();
-          inputSubscription = null;
-        }
-        if (!hasNotified) {
-          output.complete();
-        }
-      },
     });
 
-    inputSubscription = input.subscribe({
-      next: (value) => {
-        if (hasNotified) {
-          output.next(value);
-        } else {
-          pendingValues.push(value);
+    const processInput = async () => {
+      try {
+        for await (const value of eachValueFrom(input)) {
+          if (canEmit) {
+            output.next(value);
+          } else {
+            buffer.push(value);
+          }
         }
-      },
-      error: (err) => {
+      } catch (err) {
         output.error(err);
-      },
-      complete: () => {
-        if (hasNotified) {
-          output.complete();
-        }
-      },
-    });
-
-    const originalSubscribe = output.subscribe;
-    output.subscribe = (callbackOrReceiver) => {
-      const receiver = createReceiver(callbackOrReceiver);
-      const subscription = originalSubscribe.call(output, receiver);
-      return createSubscription(() => {
-        subscription.unsubscribe();
-        if (inputSubscription) {
-          inputSubscription.unsubscribe();
-          inputSubscription = null;
-        }
-        if (notifierSubscription) {
-          notifierSubscription.unsubscribe();
-          notifierSubscription = null;
-        }
-        receiver.complete();
-      });
+      } finally {
+        output.complete();
+      }
     };
 
-    return output;
+    processInput();
   };
 
   return createMapper('delayUntil', createSubject<T>(), operator);

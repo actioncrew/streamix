@@ -2,41 +2,38 @@ import { createMapper, Stream, StreamMapper } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject, Subject } from "../streams";
 
-export function takeUntil<T>(notifier: Stream<any>): StreamMapper {
+export function takeUntil<T = any>(notifier: Stream<any>): StreamMapper {
   const operator = (input: Stream<T>, output: Subject<T>) => {
-    let notifierEmitted = false;
+    let isStopped = false;
 
-    // Async generator to handle the input stream with takeUntil logic
-    const processInputStream = async () => {
+    const notifierSubscription = notifier.subscribe({
+      next: () => {
+        isStopped = true;
+        output.complete();
+        notifierSubscription.unsubscribe();
+      },
+      complete: () => {
+        notifierSubscription.unsubscribe();
+      },
+      error: (err) => {
+        output.error(err);
+      },
+    });
+
+    const processInput = async () => {
       try {
         for await (const value of eachValueFrom(input)) {
-          if (notifierEmitted) return; // Stop processing if the notifier has emitted
-          output.next(value); // Forward the value from the input stream
+          if (isStopped) break;
+          output.next(value);
         }
       } catch (err) {
-        output.error(err); // Propagate any error
+        output.error(err);
+      } finally {
+        if (!isStopped) output.complete();
       }
     };
 
-    // Async generator to handle the notifier stream
-    const processNotifierStream = async () => {
-      try {
-        for await (const _ of eachValueFrom(notifier)) {
-          notifierEmitted = true; // Mark notifier as emitted
-          output.complete(); // Complete the output stream
-          break; // Stop processing further from the input stream
-        }
-      } catch (err) {
-        output.error(err); // Propagate any error from the notifier stream
-      }
-    };
-
-    // Run both input stream and notifier stream concurrently
-    (async () => {
-      await Promise.all([processInputStream(), processNotifierStream()]);
-    })();
-
-    return output;
+    processInput();
   };
 
   return createMapper('takeUntil', createSubject<T>(), operator);

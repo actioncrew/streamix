@@ -6,16 +6,18 @@ export function skipUntil<T = any>(notifier: Stream<any>): StreamMapper {
   const operator = (input: Stream<T>, output: Subject<T>) => {
     let canEmit = false;
 
-    // Process the notifier stream
-    const processNotifier = async () => {
-      try {
-        // Wait for first emission from notifier
-        await eachValueFrom(notifier).next();
-        canEmit = true; // Now we can emit values
-      } catch (err) {
+    let notifierSubscription = notifier.subscribe({
+      next: () => {
+        canEmit = true;
+        notifierSubscription.unsubscribe();
+      },
+      complete: () => {
+        notifierSubscription.unsubscribe();
+      },
+      error: (err) => {
         output.error(err);
-      }
-    };
+      },
+    });
 
     // Process the input stream
     const processInput = async () => {
@@ -25,18 +27,15 @@ export function skipUntil<T = any>(notifier: Stream<any>): StreamMapper {
             output.next(value);
           }
         }
-        output.complete();
       } catch (err) {
-        if (canEmit) {
-          output.error(err);
-        }
+        output.error(err);
+      } finally {
+        output.complete();
       }
     };
 
     // Run both processors concurrently
-    (async () => {
-      await Promise.all([processNotifier(), processInput()]);
-    })();
+    processInput();
 
     return output;
   };
