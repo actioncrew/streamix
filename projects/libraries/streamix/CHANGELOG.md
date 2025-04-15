@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.20
+
+Operators in a pipeline were applied left to right — the first operator wrapped the source, followed by the next, and so on. Now operators are applied in reverse order, from right to left — the last operator wraps the source first. Streamix now includes many new built-in operators, enabling richer stream manipulation out of the box.
+
 ## 1.0.18
 
 The Subscription type has been enhanced with two new methods: listen and value. The listen method allows for efficient tracking of stream updates. The value method gives direct access to the last emitted value, making it easier to retrieve the current state of a stream without additional boilerplate.
