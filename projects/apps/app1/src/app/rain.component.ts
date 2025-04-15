@@ -1,15 +1,16 @@
 import {
-    createSubject,
-    fromEvent,
-    interval,
-    map,
-    startWith,
-    Stream,
-    switchMap,
-    takeUntil,
-    tap,
-    timer,
-    withLatestFrom,
+  createSubject,
+  fromEvent,
+  interval,
+  map,
+  shareReplay,
+  startWith,
+  Stream,
+  switchMap,
+  takeUntil,
+  tap,
+  timer,
+  withLatestFrom,
 } from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
@@ -114,7 +115,8 @@ export class AppRainComponent implements AfterViewInit, OnDestroy {
   private setupAnimation() {
     const resize$ = fromEvent(window, 'resize').pipe(
       startWith(this.getCanvasSize()),
-      map(() => this.getCanvasSize())
+      map(() => this.getCanvasSize()),
+      shareReplay(1)
     );
 
     const columns$ = resize$.pipe(
