@@ -1,33 +1,13 @@
-import { createMapper, Stream, StreamMapper, Subscription } from '../abstractions';
-import { createSubject, Subject } from '../streams';
+import { createMapper, createStream, StreamMapper } from '../abstractions';
+import { eachValueFrom } from '../converters';
 
-export const startWith = <T = any>(startValue: T): StreamMapper => {
-  return createMapper(
-    'startWith',
-    createSubject<T>(),
-    (input: Stream<T>, output: Subject<T>) => {
-      let emittedInitial = false;
-      let subscription: Subscription | null = null;
+export const startWith = <T = any>(initialValue: T): StreamMapper => {
+  // Wrap the operator logic using createMapper
+  return createMapper('startWith', (input) => createStream('startWith', async function* () {
+    // Yield the initial value first.
+    yield initialValue;
 
-      subscription = input.subscribe({
-        next: (value) => {
-          if (!emittedInitial) {
-            output.next(startValue);
-            emittedInitial = true;
-          }
-          output.next(value);
-        },
-        error: (err) => {
-          output.error(err);
-        },
-        complete: () => {
-          if (!emittedInitial) {
-            output.next(startValue);
-          }
-          output.complete();
-          subscription?.unsubscribe();
-        }
-      });
-    }
-  );
-};
+    // Delegate yielding to the input stream.
+    yield* eachValueFrom(input);
+  }), () => {});
+}
