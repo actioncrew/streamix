@@ -166,8 +166,9 @@ const subscription = onResize(this.canvas).pipe(
 | `withLatestFrom` | Combines values from multiple streams. |
 | `webSocket` | Creates a stream from a WebSocket connection, emitting messages as they arrive in real time. | 
 | `zip` | Combines values from multiple streams in a one-to-one fashion. |
-
 ---
+
+... and more.
 
 ## HTTP Client
 
