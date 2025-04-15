@@ -17,38 +17,47 @@ export function pipeStream<T = any>(
 ): Stream<T> {
   let currentStream: Stream = stream;
   const operatorGroup: Operator[] = [];
-  const mappers: StreamMapper[] = [];
+  const connections: Array<{input: Stream, mapper: StreamMapper}> = [];
 
+  // First pass: build the pipeline structure
   for (const step of steps) {
     if ('handle' in step) {
       operatorGroup.push(step);
     } else {
       if (operatorGroup.length > 0) {
         const chained = chain(...operatorGroup);
-        mappers.push(chained);
+        connections.push({
+          input: currentStream,
+          mapper: chained
+        });
         currentStream = chained.output as Stream;
         operatorGroup.length = 0;
       }
-      mappers.push(step);
-      currentStream = step.output instanceof Function ? step.output(currentStream) as unknown as Stream : step.output as Subject;
+
+      connections.push({
+        input: currentStream,
+        mapper: step
+      });
+
+      currentStream =
+        typeof step.output === 'function'
+          ? step.output(currentStream) as Stream
+          : step.output as Subject;
     }
   }
-  
+
   if (operatorGroup.length > 0) {
     const chained = chain(...operatorGroup);
-    mappers.push(chained);
+    connections.push({
+      input: currentStream,
+      mapper: chained
+    });
     currentStream = chained.output as Stream;
   }
-  
-  const originalSubscribe = currentStream.subscribe;
-  currentStream.subscribe = (...args: any[]) => {
-    const subscription = originalSubscribe.call(currentStream, ...args);
-    for (let i = mappers.length - 1; i > 0; i--) {
-      const mapper = mappers[i];
-      mapper.map(mappers[i - 1].output as Stream);
-    }
-    mappers[0].map(stream);
-    return subscription;
+
+  // Second pass: connect all streams
+  for (const connection of connections) {
+    connection.mapper.map(connection.input);
   }
 
   return currentStream;
@@ -60,7 +69,7 @@ const chain = function <T = any>(...operators: Operator[]): StreamMapper {
     createSubject<T>(),
     (input: Stream<T>, output: Subject<T>) => {
       let inputSubscription: Subscription | null = null;
-      
+
       // Only subscribe to input on first subscription
       if (!inputSubscription) {
         inputSubscription = input.subscribe({
@@ -90,7 +99,7 @@ const chain = function <T = any>(...operators: Operator[]): StreamMapper {
             inputSubscription?.unsubscribe();
             inputSubscription= null;
           }
-        });  
+        });
       }
   });
 };
