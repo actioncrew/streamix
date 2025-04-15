@@ -25,15 +25,13 @@ export const createMapper = (
   output: Subject | ((input: Stream) => Stream),
   mapFn: (input: Stream, output: Subject) => void
 ): StreamMapper => {
-  const isSubjectOutput = (out: typeof output): out is Subject =>
-    typeof out !== 'function';
-
   return {
     name,
     type: 'operator',
     output,
     map: (input) => {
-      if (isSubjectOutput(output)) {
+
+      if (typeof input !== 'function' && typeof output !== 'function') {
         mapFn(input, output);
       }
     },

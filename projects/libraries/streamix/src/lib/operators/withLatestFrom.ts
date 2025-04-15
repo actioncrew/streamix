@@ -11,7 +11,6 @@ export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
   let inputSubscription: Subscription | null = null;
   let subscriptions: Subscription[] = [];
 
-
   const operator = function (input: Stream, output: Subject) {
     subscriptions = streams.map((stream, index) =>
       stream.subscribe({

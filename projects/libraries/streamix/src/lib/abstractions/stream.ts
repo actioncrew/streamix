@@ -55,9 +55,19 @@ export function pipeStream<T = any>(
     currentStream = chained.output as Stream;
   }
 
-  // Second pass: connect all streams
-  for (const connection of connections) {
-    connection.mapper.map(connection.input);
+  let connected = false;
+  const originalSubscribe = currentStream.subscribe;
+  currentStream.subscribe = (...args: any[]) => {
+    const subscription = originalSubscribe.call(currentStream, ...args);
+    if (!connected) {
+      connected = true;
+      // Second pass: connect all streams
+      for (let i = connections.length - 1; i >= 0; i--) {
+        connections[i].mapper.map(connections[i].input);
+      }
+    }
+
+    return subscription;
   }
 
   return currentStream;
@@ -65,7 +75,7 @@ export function pipeStream<T = any>(
 
 const chain = function <T = any>(...operators: Operator[]): StreamMapper {
   return createMapper(
-    `chain-${operators.map(op => op.name).join('-')}`,
+    `${operators.map(op => op.name).join('-')}`,
     createSubject<T>(),
     (input: Stream<T>, output: Subject<T>) => {
       let inputSubscription: Subscription | null = null;
