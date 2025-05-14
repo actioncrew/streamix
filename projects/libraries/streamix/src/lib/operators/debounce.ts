@@ -32,7 +32,11 @@ export function debounce<T = any>(duration: number): StreamMapper {
           if (timeoutId) clearTimeout(timeoutId);
           timeoutId = setTimeout(flush, duration);
         }
-
+        // Otherwise wait for flush() to handle completion
+      } catch (err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        output.error(err);
+      } finally {
         // Mark as completed
         isCompleted = true;
 
@@ -44,10 +48,6 @@ export function debounce<T = any>(duration: number): StreamMapper {
           }
           output.complete();
         }
-        // Otherwise wait for flush() to handle completion
-      } catch (err) {
-        if (timeoutId) clearTimeout(timeoutId);
-        output.error(err);
       }
     })();
   });
