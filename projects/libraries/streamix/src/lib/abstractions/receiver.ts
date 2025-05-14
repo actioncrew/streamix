@@ -10,9 +10,7 @@ export function createReceiver<T = any>(callbackOrReceiver?: ((value: T) => void
     { next: callbackOrReceiver } :
     callbackOrReceiver || {}) as Required<Receiver<T>>;
 
-
   receiver.completed = false;
-
 
   const originalNext = receiver.next;
   const originalComplete = receiver.complete;
