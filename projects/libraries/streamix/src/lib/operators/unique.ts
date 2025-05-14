@@ -18,9 +18,10 @@ export function unique<T = any, K = any>(keySelector?: (value: T) => K): StreamM
             seenKeys.add(currentKey);
           }
         }
-        output.complete();
       } catch (err) {
         output.error(err);
+      } finally {
+        output.complete();
       }
     })();
 

@@ -41,12 +41,13 @@ export function audit<T = any>(duration: number): StreamMapper {
 
         inputCompleted = true;
         lastValue = undefined;
+      } catch (err) {
+        output.error(err); // Propagate errors
+      } finally {
         // Only complete if no timer is running
         if (!timerActive) {
           output.complete();
         }
-      } catch (err) {
-        output.error(err); // Propagate errors
       }
     })();
   };
