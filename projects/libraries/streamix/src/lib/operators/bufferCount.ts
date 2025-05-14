@@ -1,13 +1,14 @@
-import { Stream, StreamMapper } from '../abstractions'; // Import necessary types
+import { Stream, StreamMapper, Subscription } from '../abstractions'; // Import necessary types
 import { createSubject, Subject } from '../streams';
 import { createMapper } from './../abstractions/operator';
 
 export const bufferCount = (bufferSize: number = Infinity): StreamMapper => {
   let buffer: any[] = [];
+  let subscription: Subscription | undefined;
 
   const operator = (input: Stream<any>, output: Subject<any[]>) => {
 
-    input.subscribe({
+    subscription = input.subscribe({
       next: (value) => {
         buffer.push(value);
 
@@ -19,6 +20,7 @@ export const bufferCount = (bufferSize: number = Infinity): StreamMapper => {
       },
       error: (err) => output.error(err),
       complete: () => {
+        subscription?.unsubscribe();
         if (buffer.length > 0) {
           output.next(buffer); // Emit remaining items when stream completes
         }
