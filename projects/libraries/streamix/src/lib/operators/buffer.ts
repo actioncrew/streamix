@@ -6,20 +6,35 @@ export function buffer<T = any>(period: number): StreamMapper {
     let buffer: T[] = [];
     let intervalSubscription: Subscription | null = null;
     let inputSubscription: Subscription | null = null;
+    let completed = false;
+
+    const flush = () => {
+      if (buffer.length > 0) {
+        output.next([...buffer]);
+        buffer = [];
+      }
+    };
+
+    const cleanup = () => {
+      intervalSubscription?.unsubscribe();
+      inputSubscription?.unsubscribe();
+    };
 
     intervalSubscription = timer(period, period).subscribe({
       next: () => {
-        if (buffer.length > 0) {
-          output.next([...buffer]);
-          buffer = [];
-        }
+        flush();
       },
-      error: (err) => output.error(err),
+      error: (err) => {
+        cleanup();
+        output.error(err);
+      },
       complete: () => {
-        if (buffer.length > 0) {
-          output.next([...buffer]);
+        flush();
+        cleanup();
+        if (!completed) {
+          completed = true;
+          output.complete();
         }
-        output.complete();
       },
     });
 
@@ -27,14 +42,17 @@ export function buffer<T = any>(period: number): StreamMapper {
       next: (value) => {
         buffer.push(value);
       },
-      error: (err) => output.error(err),
+      error: (err) => {
+        cleanup();
+        output.error(err);
+      },
       complete: () => {
-        if (buffer.length > 0) {
-          output.next([...buffer]);
+        flush();
+        cleanup();
+        if (!completed) {
+          completed = true;
+          output.complete();
         }
-        intervalSubscription?.unsubscribe();
-        inputSubscription?.unsubscribe();
-        output.complete();
       },
     });
   });

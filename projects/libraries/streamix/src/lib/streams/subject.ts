@@ -103,6 +103,7 @@ export function createSubject<T = any>(): Subject<T> {
         if (!unsubscribing) {
           unsubscribing = true;
           base.queue.enqueue(async () => {
+            subscription.unsubscribe();
             if (base.subscribers.size === 1) {
               complete();
             }
