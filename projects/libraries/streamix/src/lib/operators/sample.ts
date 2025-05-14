@@ -17,10 +17,10 @@ export function sample<T = any>(period: number): StreamMapper {
         if (lastValue !== undefined) {
           output.next(lastValue);
         }
-        output.complete(); // Complete the output stream when input is finished
       } catch (err) {
         output.error(err); // Propagate any error
       } finally {
+        output.complete(); // Complete the output stream when input is finished
         if (intervalId) clearInterval(intervalId); // Clean up interval when done
       }
     };
