@@ -1,25 +1,22 @@
 import { createOperator } from "../abstractions";
 
-export const count() => 
-  createOperator('count', (sourceIter) => {
-    let count = 0;
-    let done = false;
+export const count = () =>
+  createOperator("count", (source) => {
+    let counted = false;
+    let total = 0;
 
     return {
-      async next() {
-        if (done) {
-          return { done: true };
+      async next(): Promise<IteratorResult<number>> {
+        if (counted) return { done: true, value: undefined };
+
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+          total++;
         }
 
-        const result = await sourceIter.next();
-
-        if (result.done) {
-          done = true;
-          return { value: count, done: true };
-        }
-
-        count++;
-        return this.next(); // Continue pulling from the source until done
-      }
+        counted = true;
+        return { done: false, value: total };
+      },
     };
   });
