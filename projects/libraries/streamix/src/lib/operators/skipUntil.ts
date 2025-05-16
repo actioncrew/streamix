@@ -1,44 +1,34 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from '../abstractions';
+import { eachValueFrom } from '../converters';
 
-export function skipUntil<T = any>(notifier: Stream<any>): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export const skipUntil = <T = any>(notifier: AsyncIterable<any>) =>
+  createOperator('skipUntil', (source) => {
+    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
+    const notifierIterator = notifier[Symbol.asyncIterator]?.() ?? notifier;
     let canEmit = false;
 
-    let notifierSubscription = notifier.subscribe({
-      next: () => {
-        canEmit = true;
-        notifierSubscription.unsubscribe();
-      },
-      complete: () => {
-        notifierSubscription.unsubscribe();
-      },
-      error: (err) => {
-        output.error(err);
-      },
-    });
-
-    // Process the input stream
-    const processInput = async () => {
+    // Start a promise that resolves once notifier emits or completes
+    const notifierSignal = (async () => {
       try {
-        for await (const value of eachValueFrom(input)) {
-          if (canEmit) {
-            output.next(value);
-          }
+        for await (const _ of notifierIterator) {
+          canEmit = true;
+          break; // Stop on first emission
         }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
+      } catch {
+        // Ignore errors or handle as needed
+      }
+      canEmit = true; // Also emit if notifier completes without emission
+    })();
+
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        // Wait until notifier signals to start emitting
+        if (!canEmit) {
+          await notifierSignal;
+        }
+
+        // Now pass values through
+        return sourceIterator.next();
       }
     };
-
-    // Run both processors concurrently
-    processInput();
-
-    return output;
-  };
-
-  return createMapper('skipUntil', createSubject<T>(), operator);
-}
+  });
