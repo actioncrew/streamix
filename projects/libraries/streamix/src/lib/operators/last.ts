@@ -1,33 +1,33 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from '../abstractions';
 
-export function last<T = any>(
-  predicate?: (value: T) => boolean
-): StreamMapper {
-  return createMapper('last', createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
-    let lastValue: T | undefined;
-    let hasMatch = false;
+export const last = <T>(predicate?: (value: T) => boolean) =>
+  createOperator('last', (source) => {
+    let done = false;
 
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        if (done) return { done: true, value: undefined as any };
+
+        let lastMatch: T | undefined;
+        let hasMatch = false;
+
+        while (true) {
+          const { value, done: iterDone } = await source.next();
+          if (iterDone) break;
+
           if (!predicate || predicate(value)) {
-            lastValue = value;
+            lastMatch = value;
             hasMatch = true;
           }
         }
 
+        done = true;
+
         if (hasMatch) {
-          output.next(lastValue!);
+          return { value: lastMatch!, done: false };
         } else {
-          throw new Error("No elements in sequence");
+          throw new Error('No elements in sequence');
         }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
       }
-    })();
+    };
   });
-}
