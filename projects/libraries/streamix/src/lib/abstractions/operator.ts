@@ -1,39 +1,27 @@
-import { Subject } from "../streams";
-import { Stream } from "./stream";
-
 export type Operator = {
-  handle: (value: any) => any;
-  type: string;
   name?: string;
+  type: 'operator';
+  apply: (source: Iterable<any>) => Iterable<any>;
 };
 
-export const createOperator = (name: string, handleFn: (value: any) => any): Operator => {
-  return {
-    name,
-    handle: handleFn,
-    type: 'operator'
-  };
-};
-
-export type StreamMapper = Omit<Operator, "handle"> & {
-  output: Subject | ((input: Stream) => Stream);
-  map(input: Stream): void;
-};
-
-export const createMapper = (
+export const createOperator = (
   name: string,
-  output: Subject | ((input: Stream) => Stream),
-  mapFn: (input: Stream, output: Subject) => void
-): StreamMapper => {
+  transformFn: (source: Iterator<any>) => { next: () => IteratorResult<any> }
+): Operator => {
   return {
     name,
     type: 'operator',
-    output,
-    map: (input) => {
-
-      if (typeof input !== 'function' && typeof output !== 'function') {
-        mapFn(input, output);
-      }
-    },
+    apply(source) {
+      const sourceIter = source[Symbol.iterator]();
+      const state = transformFn(sourceIter);
+      return {
+        [Symbol.iterator]() {
+          return this;
+        },
+        next() {
+          return state.next();
+        }
+      };
+    }
   };
 };
