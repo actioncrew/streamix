@@ -1,35 +1,23 @@
-import { createSubject, eachValueFrom } from '..';
-import { createMapper, Stream, StreamMapper } from '../abstractions';
-import { Subject } from './../streams/subject';
+import { createOperator } from "../abstractions";
 
-export const toArray = (): StreamMapper => {
-  const operator = (input: Stream, output: Subject) => {
-    let accumulatedArray: any[] = [];  // Array to accumulate emission values
+export const toArray = () =>
+  createOperator("toArray", (source) => {
+    let collected: any[] | null = null;
+    let emitted = false;
 
-    const toArrayIterator = async function* () {
-      for await (const value of eachValueFrom(input)) {
-        // Collect each value emitted by the input stream into the array
-        accumulatedArray.push(value);
-      }
-      // Once the stream completes, emit the accumulated array
-      yield accumulatedArray;
-    };
+    return {
+      async next(): Promise<IteratorResult<any[]>> {
+        if (emitted) return { done: true, value: undefined };
 
-    // Handle the stream using the iterator
-    (async () => {
-      try {
-        // Iterate over all emissions from the input stream
-        for await (const result of toArrayIterator()) {
-          output.next(result);  // Emit the accumulated array to the output stream
+        collected = [];
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+          collected.push(value);
         }
-        output.complete();  // Complete the output stream once all values are processed
-      } catch (err) {
-        output.error(err);  // Forward any errors from the stream
+
+        emitted = true;
+        return { done: false, value: collected };
       }
-    })();
-
-    return output;  // Return the output stream
-  };
-
-  return createMapper('toArray', createSubject<any>(), operator);
-};
+    };
+  });
