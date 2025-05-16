@@ -1,14 +1,22 @@
-import { Operator, createOperator } from '../abstractions';
+import { createOperator } from "../abstractions";
 
-export const scan = (accumulator: (acc: any, value: any, index?: number) => any, seed: any): Operator => {
-  let accumulatedValue = seed; // Initialize the accumulated value
-  let index = 0; // Initialize the index
+export const scan = <T, R>(
+  accumulator: (acc: R, value: T, index: number) => R,
+  seed: R
+) =>
+  createOperator("scan", (source) => {
+    let acc = seed;
+    let index = 0;
+    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
 
-  const handle = (value: any): any => {
-    accumulatedValue = accumulator(accumulatedValue, value, index++); // Update the accumulated value
-    return accumulatedValue;
-  };
-
-  // Create the operator with the handle function
-  return createOperator('scan', handle);
-};
+    return {
+      async next(): Promise<IteratorResult<R>> {
+        const { done, value } = await sourceIterator.next();
+        if (done) {
+          return { done: true, value: undefined };
+        }
+        acc = accumulator(acc, value, index++);
+        return { done: false, value: acc };
+      },
+    };
+  });
