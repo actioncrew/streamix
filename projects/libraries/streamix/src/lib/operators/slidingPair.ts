@@ -1,17 +1,23 @@
-import { Operator } from "../abstractions";
-import { scan } from "./scan";
+import { createOperator } from "../abstractions";
 
-export const slidingPair = (): Operator => {
-  const operator = scan(
-    (acc, value) => {
-      // For the first value, set it as the previous value
-      if (!acc) return [undefined, value];
-      // Otherwise, accumulate the previous value and the current value as a pair
-      return [acc[1], value];
-    },
-    undefined
-  )
+export const slidingPair = <T = any>() =>
+  createOperator('slidingPair', (source) => {
+    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
+    let prev: T | undefined = undefined;
+    let first = true;
 
-  operator.name = 'slidingPair';
-  return operator;
-};
+    return {
+      async next(): Promise<IteratorResult<[T | undefined, T]>> {
+        const { value, done } = await sourceIterator.next();
+
+        if (done) {
+          return { value: undefined, done: true };
+        }
+
+        const result: [T | undefined, T] = [first ? undefined : prev, value];
+        prev = value;
+        first = false;
+        return { value: result, done: false };
+      }
+    };
+  });
