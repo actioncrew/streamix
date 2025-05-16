@@ -1,64 +1,42 @@
-import { createOperator } from '../abstractions';
+import { createOperator } from "../abstractions";
 
 export const debounce = <T = any>(duration: number) =>
-  createOperator('debounce', (sourceIter) => {
+  createOperator("debounce", (source) => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let latestValue: T | null = null;
+    let currentValue: T | undefined;
+    let pending: Promise<IteratorResult<T>> | null = null;
     let done = false;
 
-    const waitForDebounce = () =>
-      new Promise<{ value: T | null; done: boolean }>((resolve) => {
-        timeoutId = setTimeout(() => {
-          timeoutId = null;
-          const valueToEmit = latestValue;
-          latestValue = null;
-          resolve({ value: valueToEmit, done: false });
-        }, duration);
-      });
-
     return {
-      [Symbol.asyncIterator]() {
-        return this;
-      },
       async next(): Promise<IteratorResult<T>> {
-        if (done) {
-          return { done: true, value: undefined as any };
-        }
-
-        while (true) {
-          if (timeoutId) {
-            const debounced = await waitForDebounce();
-            if (debounced.value !== null) {
-              return { done: false, value: debounced.value };
-            }
-            if (done) {
-              return { done: true, value: undefined as any };
-            }
-          }
-
-          const { value, done: sourceDone } = await sourceIter.next();
-          if (sourceDone) {
+        while (!done) {
+          const result = await source.next();
+          if (result.done) {
             done = true;
+
+            // Wait for any pending debounce timeout
             if (timeoutId) {
-              const debounced = await waitForDebounce();
-              if (debounced.value !== null) {
-                return { done: false, value: debounced.value };
-              }
+              await new Promise((resolve) => setTimeout(resolve, duration));
+              timeoutId = null;
+              return { done: false, value: currentValue! };
             }
-            return { done: true, value: undefined as any };
+
+            return { done: true, value: undefined };
           }
 
-          latestValue = value;
+          currentValue = result.value;
 
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-            timeoutId = null;
-          }
+          if (timeoutId) clearTimeout(timeoutId);
 
-          timeoutId = setTimeout(() => {
-            timeoutId = null;
-          }, duration);
+          // Delay emission and start a new debounce timer
+          await new Promise<void>((resolve) => {
+            timeoutId = setTimeout(resolve, duration);
+          });
+
+          return { done: false, value: currentValue };
         }
+
+        return { done: true, value: undefined };
       },
     };
   });
