@@ -1,30 +1,35 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from '../abstractions';
 
-export function min<T = any>(comparator?: (a: T, b: T) => number): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export const min = <T = any>(
+  comparator?: (a: T, b: T) => number
+) => 
+  createOperator('min', (source) => {
+    let minValue: T | undefined = undefined;
 
-    (async () => {
-      let minValue: T | undefined;
-      try {
-        for await (const value of eachValueFrom(input)) {
-          if (minValue === undefined || (comparator ? comparator(value, minValue) < 0 : value < minValue!)) {
-            minValue = value;
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
+          const result = await source.next();
+
+          if (result.done) {
+            if (minValue !== undefined) {
+              // Return the minValue once input is done, then complete next call
+              const valueToReturn = minValue;
+              minValue = undefined; // clear after emitting
+              return { value: valueToReturn, done: false };
+            }
+            return { value: undefined, done: true };
+          }
+
+          const currentValue = result.value;
+
+          if (
+            minValue === undefined ||
+            (comparator ? comparator(currentValue, minValue) < 0 : currentValue < minValue)
+          ) {
+            minValue = currentValue;
           }
         }
-        if (minValue !== undefined) {
-          output.next(minValue);
-        }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
       }
-    })();
-
-    return output;
-  };
-
-  return createMapper('min', createSubject<T>(), operator);
-}
+    };
+  });
