@@ -1,54 +1,64 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from '../abstractions';
 
-export function debounce<T = any>(duration: number): StreamMapper {
-  return createMapper("debounce", createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
+export const debounce = <T = any>(duration: number) =>
+  createOperator('debounce', (sourceIter) => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let latestValue: T | null = null;
-    let hasValues = false;
-    let isCompleted = false;
+    let done = false;
 
-    const flush = () => {
-      if (latestValue !== null) {
-        output.next(latestValue);
-        latestValue = null;
-      }
-      timeoutId = null;
+    const waitForDebounce = () =>
+      new Promise<{ value: T | null; done: boolean }>((resolve) => {
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
+          const valueToEmit = latestValue;
+          latestValue = null;
+          resolve({ value: valueToEmit, done: false });
+        }, duration);
+      });
 
-      // Complete if we finished processing
-      if (isCompleted) {
-        output.complete();
-      }
-    };
+    return {
+      [Symbol.asyncIterator]() {
+        return this;
+      },
+      async next(): Promise<IteratorResult<T>> {
+        if (done) {
+          return { done: true, value: undefined as any };
+        }
 
-    // Handle input stream
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          hasValues = true;
+        while (true) {
+          if (timeoutId) {
+            const debounced = await waitForDebounce();
+            if (debounced.value !== null) {
+              return { done: false, value: debounced.value };
+            }
+            if (done) {
+              return { done: true, value: undefined as any };
+            }
+          }
+
+          const { value, done: sourceDone } = await sourceIter.next();
+          if (sourceDone) {
+            done = true;
+            if (timeoutId) {
+              const debounced = await waitForDebounce();
+              if (debounced.value !== null) {
+                return { done: false, value: debounced.value };
+              }
+            }
+            return { done: true, value: undefined as any };
+          }
+
           latestValue = value;
 
-          if (timeoutId) clearTimeout(timeoutId);
-          timeoutId = setTimeout(flush, duration);
-        }
-        // Otherwise wait for flush() to handle completion
-      } catch (err) {
-        if (timeoutId) clearTimeout(timeoutId);
-        output.error(err);
-      } finally {
-        // Mark as completed
-        isCompleted = true;
-
-        // If no pending timer, complete immediately
-        if (!timeoutId) {
-          // Only emit if we got values but no pending timer
-          if (hasValues && latestValue !== null) {
-            flush();
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
           }
-          output.complete();
+
+          timeoutId = setTimeout(() => {
+            timeoutId = null;
+          }, duration);
         }
-      }
-    })();
+      },
+    };
   });
-}
