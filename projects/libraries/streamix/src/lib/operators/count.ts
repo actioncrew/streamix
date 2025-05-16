@@ -1,25 +1,25 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function count(): StreamMapper {
-  const operator = (input: Stream<any>, output: Subject<number>) => {
+export const count() => 
+  createOperator('count', (sourceIter) => {
+    let count = 0;
+    let done = false;
 
-    (async () => {
-      let count = 0;
-      try {
-        for await (const _ of eachValueFrom(input)) {
-          void _;
-          count++;
+    return {
+      async next() {
+        if (done) {
+          return { done: true };
         }
-        output.next(count);
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
-      }
-    })();
-  };
 
-  return createMapper('count', createSubject<number>(), operator);
-}
+        const result = await sourceIter.next();
+
+        if (result.done) {
+          done = true;
+          return { value: count, done: true };
+        }
+
+        count++;
+        return this.next(); // Continue pulling from the source until done
+      }
+    };
+  });
