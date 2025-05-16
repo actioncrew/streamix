@@ -1,30 +1,20 @@
-import { createMapper, Stream } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 import { GroupItem } from "./groupBy";
 
-export function partition<T = any>(
+export const partition = <T = any>(
   predicate: (value: T, index: number) => boolean
-) {
-  const operator = (input: Stream<T>, output: Subject<GroupItem>) => {
+) =>
+  createOperator('partition', (source) => {
     let index = 0;
 
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          if (predicate(value, index++)) {
-            output.next({ key: "true", value });
-          } else {
-            output.next({ key: "false", value });
-          }
+    return {
+      async next(): Promise<IteratorResult<GroupItem<T, "true" | "false">>> {
+        const result = await source.next();
+        if (result.done) {
+          return { value: undefined, done: true };
         }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
+        const key = predicate(result.value, index++) ? "true" : "false";
+        return { value: { key, value: result.value }, done: false };
       }
-    })();
-  };
-
-  return createMapper('partition', createSubject<GroupItem>(), operator);
-}
+    };
+  });
