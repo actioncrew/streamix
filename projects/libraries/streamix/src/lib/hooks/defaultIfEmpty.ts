@@ -1,29 +1,29 @@
-import { createMapper, Stream, StreamMapper } from '../abstractions';
-import { eachValueFrom } from '../converters';
-import { createSubject, Subject } from '../streams';
+import { createOperator } from "../abstractions";
 
-export const defaultIfEmpty = (defaultValue: any): StreamMapper => {
-  const operator = (input: Stream, output: Subject<any>) => {
-    let hasEmitted: boolean = false; // To track emitted values
+export const defaultIfEmpty = (defaultValue: any) =>
+  createOperator("defaultIfEmpty", (source) => {
+    let emitted = false;
+    let done = false;
 
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          hasEmitted = true; // Mark that a value has been emitted
-          output.next(value); // Pass the value to the output stream
+    return {
+      async next(): Promise<IteratorResult<any>> {
+        if (done) return { done: true, value: undefined };
+
+        const result = await source.next();
+
+        if (!result.done) {
+          emitted = true;
+          return result;
         }
 
-        // After the stream finishes emitting values, check if any values were received
-        if (hasEmitted === false) {
-          output.next(defaultValue); // Emit the default value if no emissions occurred
+        if (!emitted) {
+          emitted = true;
+          done = true;
+          return { done: false, value: defaultValue };
         }
-      } catch (err) {
-        output.error(err); // If an error occurs during iteration, propagate it
-      } finally {
-        output.complete(); // Complete the output stream
+
+        done = true;
+        return { done: true, value: undefined };
       }
-    })();
-  };
-
-  return createMapper('defaultIfEmpty', createSubject<any>(), operator);
-};
+    };
+  });
