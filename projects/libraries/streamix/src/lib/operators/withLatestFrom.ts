@@ -1,66 +1,45 @@
-import { createMapper, createReceiver, createSubscription, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
-  let latestValues: any[] = new Array(streams.length).fill(undefined);
-  let hasValue: boolean[] = new Array(streams.length).fill(false);
-  let otherStreamsCompleted: boolean[] = new Array(streams.length).fill(false);
-  let inputCompleted = false;
-  let allCompleted = false;
+export const withLatestFrom = (...streams: any[]) =>
+  createOperator("withLatestFrom", (source) => {
+    const latestValues = new Array(streams.length).fill(undefined);
+    const hasValue = new Array(streams.length).fill(false);
+    let listening = true;
 
-  let inputSubscription: Subscription | null = null;
-  let subscriptions: Subscription[] = [];
-
-  const operator = function (input: Stream, output: Subject) {
-    subscriptions = streams.map((stream, index) =>
+    // Subscribe to all other streams and update latest values
+    const subscriptions = streams.map((stream, index) =>
       stream.subscribe({
-        next: (value) => {
-          latestValues[index] = value;
+        next: (val) => {
+          latestValues[index] = val;
           hasValue[index] = true;
         },
-        error: (err) => output.error(err),
-        complete: () => {
-          otherStreamsCompleted[index] = true;
-          checkCompletion();
+        error: () => {
+          listening = false;
         },
+        complete: () => {},
       })
     );
 
-    const checkCompletion = () => {
-      if (inputCompleted && otherStreamsCompleted.every((c) => c) && !allCompleted) {
-        allCompleted = true;
-        output.complete();
+    return {
+      async next() {
+        if (!listening) return { done: true, value: undefined };
+
+        const result = await source.next();
+        if (result.done) {
+          listening = false;
+          subscriptions.forEach((sub) => sub.unsubscribe());
+          return { done: true, value: undefined };
+        }
+
+        if (hasValue.every(Boolean)) {
+          return {
+            done: false,
+            value: [result.value, ...latestValues],
+          };
+        }
+
+        // If not all values are ready yet, just skip this pull
+        return this.next();
       }
     };
-
-    inputSubscription = input.subscribe({
-      next: (value) => {
-        if (hasValue.every((v) => v)) {
-          output.next([value, ...latestValues]);
-        }
-      },
-      error: (err) => output.error(err),
-      complete: () => {
-        inputCompleted = true;
-        checkCompletion();
-      },
-    });
-
-    const originalSubscribe = output.subscribe;
-    output.subscribe = (callbackOrReceiver?: ((value: any) => void) | Receiver<any>): Subscription => {
-      const receiver = createReceiver(callbackOrReceiver);
-      const subscription = originalSubscribe.call(output, receiver);
-
-      return createSubscription(() => {
-        subscriptions.forEach((sub) => sub.unsubscribe());
-        if (inputSubscription) {
-          inputSubscription.unsubscribe();
-          inputSubscription = null;
-        }
-        subscription.unsubscribe();
-      });
-    };
-  };
-
-  return createMapper('withLatestFrom', createSubject(), operator);
-};
+  });
