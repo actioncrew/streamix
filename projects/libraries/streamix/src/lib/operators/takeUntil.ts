@@ -1,40 +1,35 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function takeUntil<T = any>(notifier: Stream<any>): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
-    let isStopped = false;
+export const takeUntil = (notifier: AsyncIterable<any>) =>
+  createOperator("takeUntil", (source) => {
+    let shouldStop = false;
+    let done = false;
 
-    const notifierSubscription = notifier.subscribe({
-      next: () => {
-        isStopped = true;
-        output.complete();
-        notifierSubscription.unsubscribe();
-      },
-      complete: () => {
-        notifierSubscription.unsubscribe();
-      },
-      error: (err) => {
-        output.error(err);
-      },
-    });
-
-    const processInput = async () => {
+    // Start listening to the notifier asynchronously
+    (async () => {
       try {
-        for await (const value of eachValueFrom(input)) {
-          if (isStopped) break;
-          output.next(value);
+        for await (const _ of notifier) {
+          shouldStop = true;
+          break;
         }
       } catch (err) {
-        output.error(err);
-      } finally {
-        if (!isStopped) output.complete();
+        // If notifier errors, you might optionally choose to propagate or log
+        shouldStop = true;
+      }
+    })();
+
+    return {
+      async next() {
+        if (done || shouldStop) return { done: true, value: undefined };
+
+        const result = await source.next();
+
+        if (result.done || shouldStop) {
+          done = true;
+          return { done: true, value: undefined };
+        }
+
+        return result;
       }
     };
-
-    processInput();
-  };
-
-  return createMapper('takeUntil', createSubject<T>(), operator);
-}
+  });
