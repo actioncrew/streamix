@@ -1,45 +1,53 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function sample<T = any>(period: number): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export const sample = <T = any>(period: number) =>
+  createOperator('sample', (source) => {
     let lastValue: T | undefined;
-    let intervalId: any = null;
+    let done = false;
 
-    // Async generator to handle the input stream
-    const processInputStream = async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          lastValue = value; // Store the latest value from the input stream
-        }
-        // When input completes, emit the last value if available
-        if (lastValue !== undefined) {
-          output.next(lastValue);
-        }
-      } catch (err) {
-        output.error(err); // Propagate any error
-      } finally {
-        output.complete(); // Complete the output stream when input is finished
-        if (intervalId) clearInterval(intervalId); // Clean up interval when done
-      }
-    };
+    // Source iterator
+    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
 
-    // Start the sampling interval
-    const startSampling = () => {
-      intervalId = setInterval(() => {
-        if (lastValue !== undefined) {
-          output.next(lastValue); // Emit the last value at each interval
+    // Timer promise resolver
+    let timerResolve: (() => void) | null = null;
+    const timerPromise = () =>
+      new Promise<void>((resolve) => (timerResolve = resolve));
+
+    // Start periodic timer that resolves every 'period' ms
+    const startTimer = () => {
+      setInterval(() => {
+        if (timerResolve) {
+          timerResolve();
+          timerResolve = null;
         }
       }, period);
     };
 
-    // Run the input stream processing and start sampling
-    (async () => {
-      startSampling();
-      await processInputStream();
-    })();
-  };
+    // Start timer immediately
+    startTimer();
 
-  return createMapper('sample', createSubject<T>(), operator);
-}
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        while (!done) {
+          // Pull from source until exhausted or next timer tick
+          const result = await sourceIterator.next();
+          if (result.done) {
+            done = true;
+            // Emit last value if exists, then complete on next call
+            if (lastValue !== undefined) {
+              const value = lastValue;
+              lastValue = undefined;
+              return { value, done: false };
+            }
+            return { value: undefined, done: true };
+          }
+          lastValue = result.value;
+
+          // Wait for next sampling tick before emitting
+          await timerPromise();
+          return { value: lastValue, done: false };
+        }
+        return { value: undefined, done: true };
+      }
+    };
+  });
