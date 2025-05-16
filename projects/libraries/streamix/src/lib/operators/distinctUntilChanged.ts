@@ -4,28 +4,26 @@ export const distinctUntilChanged = <T = any>(
   comparator?: (previous: T, current: T) => boolean
 ) =>
   createOperator('distinctUntilChanged', (source) => {
-    let lastValue: T | undefined;
+    let last: T | undefined;
     let isFirst = true;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
-        while (true) {
-          const result = await source.next();
-          if (result.done) return result;
+      next: async (): Promise<IteratorResult<T>> => {
+        const result = await source.next();
+        if (result.done) return result;
 
-          const currentValue = result.value;
-          const isDistinct = isFirst || (
-            comparator
-              ? !comparator(lastValue!, currentValue)
-              : lastValue !== currentValue
-          );
+        const current = result.value;
+        const isDistinct = isFirst || (
+          comparator ? !comparator(last!, current) : last !== current
+        );
 
-          if (isDistinct) {
-            lastValue = currentValue;
-            isFirst = false;
-            return { value: currentValue, done: false };
-          }
+        isFirst = false;
+        if (isDistinct) {
+          last = current;
+          return { value: current, done: false };
         }
+
+        return { value: undefined as any, done: false }; // downstream should skip undefined
       }
     };
   });
