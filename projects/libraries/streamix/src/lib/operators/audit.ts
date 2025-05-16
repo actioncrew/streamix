@@ -1,56 +1,47 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function audit<T = any>(duration: number): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
-    let lastValue: T | undefined = undefined;
-    let timerActive = false; // Tracks if the timer is active
-    let inputCompleted = false; // Tracks if the input stream is complete
+export const audit = (duration: number) =>
+  createOperator("audit", (source) => {
+    let lastValue: any = undefined;
+    let timerStart: number | null = null;
+    let timeoutPromise: Promise<void> | null = null;
 
-    const emitValue = () => {
-      if (lastValue !== undefined && timerActive) {
-        output.next(lastValue);
-        lastValue = undefined;
-      }
-    };
+    const wait = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
-    const startAuditTimer = () => {
-      timerActive = true;
+    return {
+      async next() {
+        if (!timeoutPromise) {
+          const result = source.next();
+          if (result.done) return result;
 
-      setTimeout(() => {
-        emitValue();
-        timerActive = false;
+          lastValue = result.value;
+          timerStart = Date.now();
+          timeoutPromise = wait(duration);
+          await timeoutPromise;
 
-        // Complete output if input has completed and timer finishes
-        if (inputCompleted) {
-          output.complete();
+          const valueToReturn = lastValue;
+          lastValue = undefined;
+          timeoutPromise = null;
+          return { done: false, value: valueToReturn };
         }
-      }, duration);
-    };
 
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          lastValue = value; // Update the latest value
+        // Timer in progress, discard interim values
+        while (true) {
+          const result = source.next();
+          if (result.done) return result;
+          lastValue = result.value;
 
-          if (!timerActive) {
-            startAuditTimer(); // Start the audit timer
+          const elapsed = Date.now() - (timerStart || 0);
+          const remaining = duration - elapsed;
+          if (remaining > 0) {
+            await wait(remaining);
           }
-        }
 
-        inputCompleted = true;
-        lastValue = undefined;
-      } catch (err) {
-        output.error(err); // Propagate errors
-      } finally {
-        // Only complete if no timer is running
-        if (!timerActive) {
-          output.complete();
+          const valueToReturn = lastValue;
+          lastValue = undefined;
+          timeoutPromise = null;
+          return { done: false, value: valueToReturn };
         }
       }
-    })();
-  };
-
-  return createMapper('audit', createSubject<T>(), operator);
-}
+    };
+  });
