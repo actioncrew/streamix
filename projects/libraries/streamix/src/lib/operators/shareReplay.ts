@@ -1,17 +1,42 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createReplaySubject, ReplaySubject } from "../streams";
+import { createOperator } from "../abstractions";
+import { createReplaySubject } from "../streams";
 
-export function shareReplay<T>(bufferSize: number = Infinity): StreamMapper {
-  let isConnected = false;
-  return createMapper('shareReplay', createReplaySubject<T>(bufferSize), (input: Stream<T>, output: ReplaySubject<T>) => {
+export const shareReplay = <T>(bufferSize = Infinity) =>
+  createOperator<T>('shareReplay', (source) => {
+    const subject = createReplaySubject<T>(bufferSize);
+    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
 
-    if (!isConnected) {
-      isConnected = true;
-      const subscription = input.subscribe({
-        next: (value) => output.next(value),
-        error: (err) => output.error(err),
-        complete: () => { subscription.unsubscribe(); output.complete(); }
-      });
-    }
+    let upstreamStarted = false;
+    let upstreamDone = false;
+    let upstreamError: any = null;
+
+    // Start upstream pumping only once
+    const ensureUpstream = () => {
+      if (upstreamStarted) return;
+      upstreamStarted = true;
+      (async () => {
+        try {
+          for await (const value of sourceIterator) {
+            subject.next(value);
+          }
+          subject.complete();
+          upstreamDone = true;
+        } catch (err) {
+          upstreamError = err;
+          subject.error?.(err);
+        }
+      })();
+    };
+
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        ensureUpstream();
+
+        const iterator = subject[Symbol.asyncIterator]();
+        const result = await iterator.next();
+
+        if (upstreamError) throw upstreamError;
+        return result;
+      }
+    };
   });
-}
