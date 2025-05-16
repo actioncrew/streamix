@@ -1,16 +1,25 @@
-import { createOperator, Operator } from '../abstractions';
+import { createOperator } from '../abstractions';
 
-export const skip = (count: number): Operator => {
-  let counter = count;
+export const skip = (count: number) =>
+  createOperator('skip', (source) => {
+    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
+    let counter = count;
 
-  const handle = (value: any): any => {
-    if (counter <= 0) {
-      return value;
-    } else {
-      counter--;
-      return undefined;
-    }
-  };
+    return {
+      async next(): Promise<IteratorResult<any>> {
+        while (true) {
+          const { done, value } = await sourceIterator.next();
+          if (done) {
+            return { done: true, value: undefined };
+          }
 
-  return createOperator('skip', handle);
-};
+          if (counter > 0) {
+            counter--;
+            continue; // Skip this value
+          }
+
+          return { done: false, value };
+        }
+      },
+    };
+  });
