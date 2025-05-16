@@ -1,57 +1,90 @@
-import { createMapper, Stream, StreamMapper } from '../abstractions';
-import { eachValueFrom } from '../converters';
-import { createSubject, Subject } from '../streams';
+import { createOperator } from "../abstractions";
 
-export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
-  let index = 0;
-  return createMapper('mergeMap', createSubject<R>(), (input: Stream<T>, output: Subject<R>) => {
-    let activeInnerStreams = 0; // Track active inner streams
-    let inputCompleted = false;
-    let hasError = false; // Flag to track if an error has occurred
+export const mergeMap = <T, R>(
+  project: (value: T, index: number) => AsyncIterable<R>
+) =>
+  createOperator("mergeMap", (source) => {
+    let outerDone = false;
+    let outerIndex = 0;
+    const innerIterators = new Set<AsyncIterator<R>>();
+    const pullQueue: Array<(result: IteratorResult<R>) => void> = [];
+    let error: any = null;
 
-    // Async function to handle inner streams
-    const processInnerStream = async (innerStream: Stream<R>) => {
-      try {
-        for await (const value of eachValueFrom(innerStream)) {
-          if (hasError) return; // Stop processing if an error has occurred
-          output.next(value);
-        }
-      } catch (err) {
-        if (!hasError) {
-          hasError = true; // Set the error flag
-          output.error(err); // Propagate the error from the inner stream
-        }
-      } finally {
-        // Decrease the count of active inner streams
-        activeInnerStreams -= 1;
-        // If all inner streams are processed and the outer stream is complete, complete the output stream
-        if (activeInnerStreams === 0 && inputCompleted) {
-          output.complete();
+    // Helper to pull from inner iterators concurrently
+    async function pullInner() {
+      while (innerIterators.size > 0) {
+        try {
+          // Race next() calls from all inner iterators
+          const promises = Array.from(innerIterators).map(async (it) => ({
+            it,
+            res: await it.next(),
+          }));
+
+          const { it, res } = await Promise.race(promises);
+
+          if (res.done) {
+            innerIterators.delete(it);
+          } else {
+            return res.value;
+          }
+        } catch (err) {
+          error = err;
+          innerIterators.clear();
+          throw err;
         }
       }
+      return undefined;
+    }
+
+    return {
+      async next() {
+        // If error was caught before, rethrow it
+        if (error) throw error;
+
+        // Try to pull next value from inner iterators if any
+        if (innerIterators.size > 0) {
+          const val = await pullInner();
+          if (val !== undefined) {
+            return { done: false, value: val };
+          }
+        }
+
+        // If no inner streams active, pull from outer source
+        if (outerDone) {
+          return { done: true, value: undefined };
+        }
+
+        const outerResult = await source.next();
+        if (outerResult.done) {
+          outerDone = true;
+          // If no active inner streams, complete
+          if (innerIterators.size === 0) {
+            return { done: true, value: undefined };
+          }
+          // Otherwise, continue pulling from inner iterators
+          return this.next();
+        }
+
+        // Create new inner iterator and add to the set
+        const innerIter = project(outerResult.value, outerIndex++)[Symbol.asyncIterator]();
+        innerIterators.add(innerIter);
+
+        // Pull from inner iterators again after adding new one
+        return this.next();
+      },
+
+      async return() {
+        innerIterators.clear();
+        outerDone = true;
+        if (source.return) await source.return();
+        return { done: true, value: undefined };
+      },
+
+      async throw(e: any) {
+        innerIterators.clear();
+        outerDone = true;
+        if (source.throw) await source.throw(e);
+        throw e;
+      },
     };
-
-    // Process the outer stream emissions
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          if (hasError) return; // Stop processing if an error has occurred
-
-          const innerStream = project(value, index++); // Project input to inner stream
-          activeInnerStreams += 1;
-          processInnerStream(innerStream); // Process the inner stream concurrently
-        }
-      } catch (err) {
-        if (!hasError) {
-          hasError = true; // Set the error flag
-          output.error(err); // Propagate the error from the outer stream
-        }
-      } finally {
-        inputCompleted = true;
-        if (activeInnerStreams === 0) {
-          output.complete();
-        }
-      }
-    })();
   });
-}
