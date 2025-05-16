@@ -1,31 +1,25 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export const first = <T = any>(predicate?: (value: T) => boolean): StreamMapper => {
-  return createMapper("first", createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
-    let found = false;
+export const first = <T = any>(predicate?: (value: T) => boolean) =>
+  createOperator("first", (source) => {
+    let done = false;
 
-    // Async function to iterate through the input stream and take the first value matching the predicate (or the first value)
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          if (!found && (!predicate || predicate(value))) {
-            found = true;
-            output.next(value); // Emit the first matching value
-            break;              // Stop processing once we've emitted the first value
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        if (done) return { done: true, value: undefined as any };
+
+        while (true) {
+          const result = await source.next();
+          if (result.done) {
+            done = true;
+            throw new Error("No elements in sequence");
+          }
+
+          if (!predicate || predicate(result.value)) {
+            done = true;
+            return { value: result.value, done: false };
           }
         }
-
-        // If no value was found, raise an error
-        if (!found) {
-          throw new Error("No elements in sequence");
-        }
-      } catch (err) {
-        output.error(err); // Propagate any errors that occur
-      } finally {
-        output.complete();
       }
-    })();
+    };
   });
-};
