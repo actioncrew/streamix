@@ -1,32 +1,23 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function unique<T = any, K = any>(keySelector?: (value: T) => K): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
-    const seenKeys = new Set<K | T>();
+export const unique = <T, K = any>(keySelector?: (value: T) => K) =>
+  createOperator("unique", (source) => {
+    const seen = new Set<K | T>();
 
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          // If keySelector is provided, use it; otherwise, use the value itself
-          const currentKey = keySelector ? keySelector(value) : value;
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) return { done: true, value: undefined };
 
-          // Ensure that we're comparing the correct value based on the presence of keySelector
-          if (!seenKeys.has(currentKey)) {
-            output.next(value);
-            seenKeys.add(currentKey);
+          const key = keySelector ? keySelector(value) : value;
+
+          if (!seen.has(key)) {
+            seen.add(key);
+            return { done: false, value };
           }
+          // otherwise, continue to next item
         }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
       }
-    })();
-
-    return output;
-  };
-
-  return createMapper('unique', createSubject<T>(), operator);
-}
+    };
+  });
