@@ -1,80 +1,65 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function recurse<T = any>(
+export type RecurseOptions = {
+  traversal?: 'depth' | 'breadth';
+  maxDepth?: number;
+};
+
+export const recurse = <T = any>(
   condition: (value: T) => boolean,
-  project: (value: T) => Stream<T>,
-  options: {
-    traversal?: 'depth' | 'breadth';
-    maxDepth?: number;
-  } = {}
-): StreamMapper {
-  return createMapper('recurse', createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
-    const queue: { value: T; depth: number }[] = [];
-    let processing = false;
-    let inputComplete = false;
+  project: (value: T) => AsyncIterable<T>,
+  options: RecurseOptions = {}
+) =>
+  createOperator('recurse', (source) => {
+    type QueueItem = { value: T; depth: number };
+    const queue: QueueItem[] = [];
+    let sourceDone = false;
 
-    const processQueue = async () => {
-      if (processing) return;
-      processing = true;
+    // Async iterator for the source
+    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
 
-      try {
-        while (queue.length > 0) {
-          const { value, depth } = options.traversal === 'breadth'
-            ? queue.shift()!
-            : queue.pop()!;
-
-          if (options.maxDepth !== undefined && depth > options.maxDepth) {
-            continue;
+    // Helper to enqueue children respecting traversal strategy
+    const enqueueChildren = async (value: T, depth: number) => {
+      if (options.maxDepth !== undefined && depth > options.maxDepth) {
+        return;
+      }
+      if (condition(value)) {
+        for await (const child of project(value)) {
+          if (options.traversal === 'breadth') {
+            queue.push({ value: child, depth: depth + 1 });
+          } else {
+            queue.unshift({ value: child, depth: depth + 1 });
           }
-
-          output.next(value);
-
-          if (condition(value)) {
-            try {
-              const childStream = project(value);
-              for await (const child of eachValueFrom(childStream)) {
-                if (options.traversal === 'depth') {
-                  queue.push({ value: child, depth: depth + 1 });
-                } else {
-                  queue.push({ value: child, depth: depth + 1 });
-                }
-              }
-            } catch (error) {
-              output.error(error);
-              return;
-            }
-          }
-        }
-
-        if (inputComplete && queue.length === 0) {
-          output.complete();
-        }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        processing = false;
-
-        if (queue.length > 0) {
-          processQueue();
         }
       }
     };
 
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          queue.push({ value, depth: 0 });
-          processQueue();
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        // If queue is empty, pull from source
+        while (queue.length === 0 && !sourceDone) {
+          const outerResult = await sourceIterator.next();
+          if (outerResult.done) {
+            sourceDone = true;
+            break;
+          }
+          queue.push({ value: outerResult.value, depth: 0 });
         }
-        inputComplete = true;
-        if (queue.length === 0 && !processing) {
-          output.complete();
+
+        if (queue.length === 0 && sourceDone) {
+          // Done emitting everything
+          return { value: undefined, done: true };
         }
-      } catch (error) {
-        output.error(error);
+
+        // Dequeue next item according to traversal order (breadth: FIFO, depth: LIFO)
+        const item = options.traversal === 'breadth' ? queue.shift()! : queue.pop()!;
+
+        // Enqueue children asynchronously but don't block emitting this item
+        // We'll await enqueueChildren next time next() is called to simplify flow
+        await enqueueChildren(item.value, item.depth);
+
+        // Emit current value
+        return { value: item.value, done: false };
       }
-    })();
+    };
   });
-}
