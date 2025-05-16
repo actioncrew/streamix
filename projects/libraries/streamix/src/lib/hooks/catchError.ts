@@ -1,28 +1,28 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-// Define the catchError operator
-export const catchError = (handler: ((error: any) => void) = () => {}): StreamMapper => {
-  const operator = (input: Stream<any>, output: Subject<any>) => {
-    const subscription = input.subscribe({
-      next: (value) => {
-        output.next(value);
-      },
-      error: (error) => {
-        // When an error occurs, we pass it to the handler
-        handler(error);
-        // Optionally, you could return a new stream or just complete the stream
-        output.complete();
-        subscription.unsubscribe();
-      },
-      complete: () => {
-        output.complete();
-        subscription.unsubscribe();
+export const catchError = <T>(
+  fallback: (err: any) => AsyncIterable<T>
+) =>
+  createOperator("catchError", (source) => {
+    let activeIterator: AsyncIterator<T> | null = source;
+    let handled = false;
+
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        if (!activeIterator) return { done: true, value: undefined };
+
+        try {
+          const result = await activeIterator.next();
+          if (result.done) {
+            activeIterator = null;
+          }
+          return result;
+        } catch (err) {
+          if (handled) throw err; // Don't handle again
+          handled = true;
+          activeIterator = fallback(err)[Symbol.asyncIterator]();
+          return this.next(); // retry with fallback
+        }
       }
-    });
-
-    return output;
-  };
-
-  return createMapper('catchError', createSubject<any>(), operator);
-};
+    };
+  });
