@@ -1,33 +1,37 @@
-import { createOperator } from '../abstractions';
+import { createOperator } from "../abstractions";
 
-export const last = <T>(predicate?: (value: T) => boolean) =>
+export const last = <T = any>(
+  predicate?: (value: T) => boolean
+) =>
   createOperator('last', (source) => {
-    let done = false;
+    const iterator = source[Symbol.asyncIterator]?.() ?? source;
+    let finished = false;
+    let cached: T | undefined;
+    let hasMatch = false;
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        if (done) return { done: true, value: undefined as any };
+        if (finished) return { done: true, value: undefined };
 
-        let lastMatch: T | undefined;
-        let hasMatch = false;
-
-        while (true) {
-          const { value, done: iterDone } = await source.next();
-          if (iterDone) break;
-
-          if (!predicate || predicate(value)) {
-            lastMatch = value;
-            hasMatch = true;
+        try {
+          for await (const value of iterator) {
+            if (!predicate || predicate(value)) {
+              cached = value;
+              hasMatch = true;
+            }
           }
-        }
 
-        done = true;
+          finished = true;
 
-        if (hasMatch) {
-          return { value: lastMatch!, done: false };
-        } else {
-          throw new Error('No elements in sequence');
+          if (hasMatch) {
+            return { done: false, value: cached! };
+          } else {
+            throw new Error("No elements in sequence");
+          }
+        } catch (err) {
+          finished = true;
+          throw err;
         }
-      }
+      },
     };
   });
