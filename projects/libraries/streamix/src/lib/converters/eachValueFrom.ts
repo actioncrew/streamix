@@ -8,52 +8,50 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
   const queue: T[] = [];
 
   const subscription = stream.subscribe({
-    next(value: T) {
+    next(value) {
       if (resolveNext) {
         resolveNext(value);
         resolveNext = null;
+        rejectNext = null;
       } else {
         queue.push(value);
       }
     },
-    error(err: any) {
-      error = err;  // Capture the error
+    error(err) {
+      error = err;
       if (rejectNext) {
-        rejectNext(err); // Reject the waiting promise
+        rejectNext(err);
+        resolveNext = null;
+        rejectNext = null;
       }
-      // Don't throw here - let the generator handle it
     },
     complete() {
       completed = true;
       if (resolveNext) {
         resolveNext(undefined);
+        resolveNext = null;
+        rejectNext = null;
       }
     }
   });
 
   try {
     while (!completed || queue.length > 0) {
-      // Check for error before each iteration
-      if (error) {
-        throw error; // Properly throw from within the generator
-      }
+      if (error) throw error;
 
       if (queue.length > 0) {
         yield queue.shift()!;
       } else if (!completed) {
         try {
-          const nextValue = await new Promise<T | undefined>((resolve, reject) => {
+          const next = await new Promise<T | undefined>((resolve, reject) => {
             resolveNext = resolve;
             rejectNext = reject;
           });
 
-          if (nextValue !== undefined) {
-            yield nextValue;
-          }
+          if (next !== undefined) yield next;
         } catch (err) {
-          // This handles errors rejected through rejectNext
           error = err;
-          throw error;
+          throw err;
         }
       }
     }
