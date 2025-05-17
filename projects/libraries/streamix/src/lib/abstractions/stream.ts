@@ -1,141 +1,53 @@
-import { createMapper, Operator, StreamMapper } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { Operator } from "./operator";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
+import { eachValueFrom } from "../converters";
 
 // Basic Stream type definition
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
-  pipe: (...steps: (Operator | StreamMapper)[]) => Stream<any>;
+  pipe: (...steps: Operator[]) => Stream<any>;
 };
 
 export function pipeStream<T = any>(
   stream: Stream<T>,
-  ...steps: (Operator | StreamMapper)[]
-): Stream<T> {
-  let currentStream: Stream = stream;
-  const operatorGroup: Operator[] = [];
-  const connections: Array<{input: Stream, mapper: StreamMapper}> = [];
+  ...steps: Operator[]
+): Stream<any> {
+  const base = eachValueFrom(stream);
 
-  // First pass: build the pipeline structure
-  for (const step of steps) {
-    if ('handle' in step) {
-      operatorGroup.push(step);
-    } else {
-      if (operatorGroup.length > 0) {
-        const chained = chain(...operatorGroup);
-        connections.push({
-          input: currentStream,
-          mapper: chained
-        });
-        currentStream = chained.output as Stream;
-        operatorGroup.length = 0;
-      }
+  const piped = steps.reduce((iter, op) => op.apply(iter), base);
 
-      connections.push({
-        input: currentStream,
-        mapper: step
-      });
-
-      currentStream =
-        typeof step.output === 'function'
-          ? step.output(currentStream) as Stream
-          : step.output as Subject;
-    }
-  }
-
-  if (operatorGroup.length > 0) {
-    const chained = chain(...operatorGroup);
-    connections.push({
-      input: currentStream,
-      mapper: chained
-    });
-    currentStream = chained.output as Stream;
-  }
-
-  let connected = false;
-  const originalSubscribe = currentStream.subscribe;
-  currentStream.subscribe = (...args: any[]) => {
-    const subscription = originalSubscribe.call(currentStream, ...args);
-    if (!connected) {
-      connected = true;
-      // Second pass: connect all streams
-      for (let i = connections.length - 1; i >= 0; i--) {
-        connections[i].mapper.map(connections[i].input);
-      }
-    }
-
-    return subscription;
-  }
-
-  return currentStream;
+  return createStream(
+    `pipe(${steps.map(op => op.name).join(" → ")})`,
+    () => piped[Symbol.asyncIterator]()
+  );
 }
-
-const chain = function <T = any>(...operators: Operator[]): StreamMapper {
-  return createMapper(
-    `${operators.map(op => op.name).join('-')}`,
-    createSubject<T>(),
-    (input: Stream<T>, output: Subject<T>) => {
-      let inputSubscription: Subscription | null = null;
-
-      // Only subscribe to input on first subscription
-      if (!inputSubscription) {
-        inputSubscription = input.subscribe({
-          next: (value: T) => {
-            let processedValue = value;
-            try {
-              for (const operator of operators) {
-                processedValue = operator.handle(processedValue);
-                if (processedValue === undefined) break;
-              }
-              if (processedValue !== undefined) {
-                output.next(processedValue);
-              }
-            } catch (err) {
-              output.error(err);
-              inputSubscription?.unsubscribe();
-              inputSubscription= null;
-            }
-          },
-          error: (err: any) => {
-            output.error(err);
-            inputSubscription?.unsubscribe();
-            inputSubscription= null;
-          },
-          complete: () => {
-            output.complete();
-            inputSubscription?.unsubscribe();
-            inputSubscription= null;
-          }
-        });
-      }
-  });
-};
 
 // The stream factory function
 export function createStream<T>(
   name: string,
-  generatorFn: (this: Stream<T>) => AsyncGenerator<T, void, unknown>
+  generatorFn: () => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
-
-  async function* generator() {
-    try {
-      for await (const value of generatorFn.call(stream)) {
-        if (value !== undefined) {
-          yield value;
-        }
-      }
-    } catch (err: any) {
-      throw err;
-    }
-  }
-
-  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  const subscribe = (
+    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
+  ): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     const subscription = createSubscription<T>();
-    subscription.listen(generator, receiver);
+
+    (async () => {
+      try {
+        for await (const value of generatorFn()) {
+          if (subscription.closed) break;
+          receiver.next?.(value);
+        }
+        receiver.complete?.();
+      } catch (err) {
+        receiver.error?.(err);
+      }
+    })();
+
     return subscription;
   };
 
@@ -143,8 +55,11 @@ export function createStream<T>(
     type: "stream",
     name,
     subscribe,
-    pipe: function (this: Stream, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); }
+    pipe(...steps: Operator[]) {
+      return pipeStream(this, ...steps);
+    }
   };
 
   return stream;
 }
+    
