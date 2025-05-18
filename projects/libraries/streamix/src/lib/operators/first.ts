@@ -1,7 +1,7 @@
 import { createOperator } from "../abstractions";
 
 export const first = <T = any>(predicate?: (value: T) => boolean) =>
-  createOperator<T, T>('first', (source) => {
+  createOperator('first', (source) => {
     const iterator = source[Symbol.asyncIterator]?.() ?? source;
     let done = false;
 
