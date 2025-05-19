@@ -2,7 +2,6 @@ import { createOperator } from "../abstractions";
 
 export const select = <T = any>(indexIterator: Iterator<number>) =>
   createOperator("select", (source) => {
-    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
     let currentIndex = 0;
     let nextIndex = indexIterator.next().value;
 
@@ -14,7 +13,7 @@ export const select = <T = any>(indexIterator: Iterator<number>) =>
             return { done: true, value: undefined };
           }
 
-          const { done, value } = await sourceIterator.next();
+          const { done, value } = await source.next();
           if (done) {
             // Input ended
             return { done: true, value: undefined };

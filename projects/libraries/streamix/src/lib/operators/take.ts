@@ -1,6 +1,6 @@
 import { createOperator } from "../abstractions";
 
-export const take = <T>(count: number) =>
+export const take = (count: number) =>
   createOperator("take", (source) => {
     let emitted = 0;
     let done = false;

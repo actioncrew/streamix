@@ -2,27 +2,37 @@ import { createOperator } from "../abstractions";
 
 export const first = <T = any>(predicate?: (value: T) => boolean) =>
   createOperator('first', (source) => {
-    const iterator = source[Symbol.asyncIterator]?.() ?? source;
-    let done = false;
+    let found = false;
+    let firstValue: T | undefined;
+    let sourceDone = false;
 
-    return {
-      async next(): Promise<IteratorResult<T>> {
-        if (done) return { value: undefined, done: true };
+    async function next(): Promise<IteratorResult<T>> {
+      if (found) {
+        return { value: undefined, done: true };
+      }
 
-        try {
-          for await (const value of iterator) {
-            if (!predicate || predicate(value)) {
-              done = true;
-              return { value, done: false };
-            }
-          }
+      if (sourceDone) {
+        throw new Error("No elements in sequence");
+      }
 
-          done = true;
+      while (!found) {
+        const result = await source.next();
+        if (result.done) {
+          sourceDone = true;
           throw new Error("No elements in sequence");
-        } catch (err) {
-          done = true;
-          throw err;
+        }
+
+        const value = result.value;
+        if (!predicate || predicate(value)) {
+          found = true;
+          firstValue = value;
+          return { value: firstValue!, done: false };
         }
       }
-    };
+
+      // Should not reach here
+      return { value: undefined, done: true };
+    }
+
+    return { next };
   });

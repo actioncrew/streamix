@@ -7,7 +7,6 @@ export const mergeMap = <T, R>(
     let outerDone = false;
     let outerIndex = 0;
     const innerIterators = new Set<AsyncIterator<R>>();
-    const pullQueue: Array<(result: IteratorResult<R>) => void> = [];
     let error: any = null;
 
     // Helper to pull from inner iterators concurrently

@@ -5,9 +5,6 @@ export const sample = <T = any>(period: number) =>
     let lastValue: T | undefined;
     let done = false;
 
-    // Source iterator
-    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
-
     // Timer promise resolver
     let timerResolve: (() => void) | null = null;
     const timerPromise = () =>
@@ -30,7 +27,7 @@ export const sample = <T = any>(period: number) =>
       async next(): Promise<IteratorResult<T>> {
         while (!done) {
           // Pull from source until exhausted or next timer tick
-          const result = await sourceIterator.next();
+          const result = await source.next();
           if (result.done) {
             done = true;
             // Emit last value if exists, then complete on next call
@@ -45,7 +42,7 @@ export const sample = <T = any>(period: number) =>
 
           // Wait for next sampling tick before emitting
           await timerPromise();
-          return { value: lastValue, done: false };
+          return { value: lastValue!, done: false };
         }
         return { value: undefined, done: true };
       }

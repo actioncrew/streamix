@@ -4,7 +4,6 @@ export const some = <T = any>(
   predicate: (value: T, index: number) => boolean
 ) =>
   createOperator('some', (source) => {
-    const iterator = source[Symbol.asyncIterator]?.() ?? source;
     let evaluated = false;
     let result: boolean = false;
     let index = 0;
@@ -16,10 +15,14 @@ export const some = <T = any>(
         }
 
         try {
-          for await (const item of iterator) {
-            if (predicate(item, index++)) {
+          while (true) {
+            const itemResult = await source.next();
+            if (itemResult.done) {
+              break; // Source completed
+            }
+            if (predicate(itemResult.value, index++)) {
               result = true;
-              break;
+              break; // Predicate matched, no need to continue
             }
           }
         } catch (err) {

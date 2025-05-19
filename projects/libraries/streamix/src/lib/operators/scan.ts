@@ -7,11 +7,10 @@ export const scan = <T, R>(
   createOperator("scan", (source) => {
     let acc = seed;
     let index = 0;
-    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
 
     return {
       async next(): Promise<IteratorResult<R>> {
-        const { done, value } = await sourceIterator.next();
+        const { done, value } = await source.next();
         if (done) {
           return { done: true, value: undefined };
         }

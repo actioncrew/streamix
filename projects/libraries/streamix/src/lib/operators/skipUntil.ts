@@ -1,34 +1,54 @@
-import { createOperator } from '../abstractions';
-import { eachValueFrom } from '../converters';
+import { createOperator, Operator, Stream } from '../abstractions';
 
-export const skipUntil = <T = any>(notifier: AsyncIterable<any>) =>
-  createOperator('skipUntil', (source) => {
-    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
-    const notifierIterator = notifier[Symbol.asyncIterator]?.() ?? notifier;
+export const skipUntil = <T = any>(notifier: Stream<any>): Operator => {
+  return createOperator('skipUntil', (source) => {
     let canEmit = false;
+    let notifierResolved = false;
+    let resolveCanEmit: () => void;
 
-    // Start a promise that resolves once notifier emits or completes
-    const notifierSignal = (async () => {
-      try {
-        for await (const _ of notifierIterator) {
+    const canEmitPromise = new Promise<void>((resolve) => {
+      resolveCanEmit = resolve;
+    });
+
+    const notifierSubscription = notifier.subscribe({
+      next: () => {
+        if (!canEmit) {
           canEmit = true;
-          break; // Stop on first emission
+          notifierResolved = true;
+          resolveCanEmit();
+          notifierSubscription.unsubscribe();
         }
-      } catch {
-        // Ignore errors or handle as needed
+      },
+      error: (_: any) => {
+        notifierResolved = true;
+        resolveCanEmit();
+        // No propagation of error here because we're inside an Operator —
+        // we let source decide what to do with errors, or optionally log them.
+      },
+      complete: () => {
+        if (!canEmit) {
+          canEmit = true;
+          notifierResolved = true;
+          resolveCanEmit();
+        }
+        notifierSubscription.unsubscribe();
       }
-      canEmit = true; // Also emit if notifier completes without emission
-    })();
+    });
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        // Wait until notifier signals to start emitting
-        if (!canEmit) {
-          await notifierSignal;
+        // Wait until canEmit is true
+        if (!canEmit && !notifierResolved) {
+          await canEmitPromise;
         }
 
-        // Now pass values through
-        return sourceIterator.next();
-      }
+        const result = await source.next();
+        if (result.done) return result;
+
+        return canEmit
+          ? result
+          : await this.next(); // Skip this value if canEmit is still false
+      },
     };
   });
+};

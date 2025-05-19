@@ -2,13 +2,12 @@ import { createOperator } from '../abstractions';
 
 export const skipWhile = <T = any>(predicate: (value: T) => boolean) =>
   createOperator('skipWhile', (source) => {
-    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
     let skipping = true;
 
     return {
       async next(): Promise<IteratorResult<T>> {
         while (true) {
-          const { value, done } = await sourceIterator.next();
+          const { value, done } = await source.next();
 
           if (done) {
             return { value: undefined, done: true };

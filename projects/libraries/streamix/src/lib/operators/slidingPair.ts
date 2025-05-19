@@ -2,13 +2,12 @@ import { createOperator } from "../abstractions";
 
 export const slidingPair = <T = any>() =>
   createOperator('slidingPair', (source) => {
-    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
     let prev: T | undefined = undefined;
     let first = true;
 
     return {
       async next(): Promise<IteratorResult<[T | undefined, T]>> {
-        const { value, done } = await sourceIterator.next();
+        const { value, done } = await source.next();
 
         if (done) {
           return { value: undefined, done: true };

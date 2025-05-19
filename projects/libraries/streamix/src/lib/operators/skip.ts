@@ -2,13 +2,12 @@ import { createOperator } from '../abstractions';
 
 export const skip = (count: number) =>
   createOperator('skip', (source) => {
-    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
     let counter = count;
 
     return {
       async next(): Promise<IteratorResult<any>> {
         while (true) {
-          const { done, value } = await sourceIterator.next();
+          const { done, value } = await source.next();
           if (done) {
             return { done: true, value: undefined };
           }

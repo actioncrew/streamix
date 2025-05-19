@@ -1,13 +1,12 @@
-import { createOperator } from "../abstractions";
+import { createOperator, Stream } from "../abstractions";
+import { eachValueFrom } from "../converters";
 
 export const switchMap = <T, R>(
-  project: (value: T, index: number) => AsyncIterable<R>
+  project: (value: T, index: number) => Stream<R>
 ) =>
   createOperator('switchMap', (source) => {
-    const sourceIterator = source[Symbol.asyncIterator]?.() ?? source;
     let innerIterator: AsyncIterator<R> | null = null;
     let innerDone = true;
-    let outerDone = false;
     let currentIndex = 0;
 
     return {
@@ -15,12 +14,11 @@ export const switchMap = <T, R>(
         while (true) {
           // If no active inner or inner completed, pull new outer value and switch
           if (innerDone) {
-            const outerResult = await sourceIterator.next();
+            const outerResult = await source.next();
             if (outerResult.done) {
-              outerDone = true;
               return { done: true, value: undefined };
             }
-            innerIterator = project(outerResult.value, currentIndex++)[Symbol.asyncIterator]();
+            innerIterator = eachValueFrom(project(outerResult.value, currentIndex++));
             innerDone = false;
           }
 

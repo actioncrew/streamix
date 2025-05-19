@@ -1,6 +1,6 @@
 import { createOperator } from "../abstractions";
 
-export const ignoreElements = <T = any>() =>
+export const ignoreElements = () =>
   createOperator("ignoreElements", (source) => ({
     async next(): Promise<IteratorResult<never>> {
       while (true) {

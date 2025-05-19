@@ -8,7 +8,6 @@ export interface ForkOption<T, R> {
 export const fork = <T, R>(options: ForkOption<T, R>[]) =>
   createOperator('fork', (source) => {
     let outerIndex = 0;
-    let outerDone = false;
     let innerIterator: AsyncIterator<R> | null = null;
 
     return {
@@ -18,7 +17,6 @@ export const fork = <T, R>(options: ForkOption<T, R>[]) =>
           if (!innerIterator) {
             const outerResult = await source.next();
             if (outerResult.done) {
-              outerDone = true;
               return { done: true, value: undefined };
             }
 

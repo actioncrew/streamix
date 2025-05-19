@@ -1,6 +1,7 @@
-import { createOperator } from "../abstractions";
+import { eachValueFrom } from '@actioncrew/streamix';
+import { createOperator, Stream } from "../abstractions";
 
-export const delayUntil = <T = any>(notifier: AsyncIterable<any>) =>
+export const delayUntil = <T = any>(notifier: Stream<any>) =>
   createOperator("delayUntil", (source) => {
     let canEmit = false;
     let notifierDone = false;
@@ -11,7 +12,7 @@ export const delayUntil = <T = any>(notifier: AsyncIterable<any>) =>
       if (notifierStarted) return;
       notifierStarted = true;
       try {
-        for await (const _ of notifier) {
+        for await (const _ of eachValueFrom(notifier)) {
           void _;
           canEmit = true;
           break;

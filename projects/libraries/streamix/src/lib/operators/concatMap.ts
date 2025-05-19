@@ -1,7 +1,8 @@
-import { createOperator } from "../abstractions";
+import { createOperator, Stream } from "../abstractions";
+import { eachValueFrom } from "../converters";
 
 export const concatMap = <T, R>(
-  project: (value: T, index: number) => AsyncIterable<R>
+  project: (value: T, index: number) => Stream<R>
 ) =>
   createOperator("concatMap", (source) => {
     let outerIndex = 0;
@@ -17,7 +18,7 @@ export const concatMap = <T, R>(
             if (outerResult.done) {
               return { done: true, value: undefined };
             }
-            innerIterator = project(outerResult.value, outerIndex++)[Symbol.asyncIterator]();
+            innerIterator = eachValueFrom(project(outerResult.value, outerIndex++));
           }
 
           // Pull from the active inner iterator

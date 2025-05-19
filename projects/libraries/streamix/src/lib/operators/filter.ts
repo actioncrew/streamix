@@ -13,14 +13,20 @@ export const filter = <T = any>(
           if (result.done) return result;
 
           const value = result.value;
-          const shouldInclude =
-            typeof predicateOrValue === 'function'
-              ? predicateOrValue(value, index++)
-              : Array.isArray(predicateOrValue)
-              ? predicateOrValue.includes(value)
-              : value === predicateOrValue;
+          let shouldInclude = false;
 
-          if (shouldInclude) return { value, done: false };
+          if (typeof predicateOrValue === 'function') {
+            shouldInclude = (predicateOrValue as (value: T, index: number) => boolean)(value, index); // Use current index
+          } else if (Array.isArray(predicateOrValue)) {
+            shouldInclude = predicateOrValue.includes(value);
+          } else {
+            shouldInclude = value === predicateOrValue;
+          }
+
+          if (shouldInclude) {
+            index++; // Increment index only if included
+            return { value, done: false };
+          }
         }
       }
     };
