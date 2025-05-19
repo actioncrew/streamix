@@ -1,6 +1,6 @@
 import { createOperator } from "../abstractions";
 
-export const buffer = (period: number): Operator =>
+export const buffer = (period: number) =>
   createOperator("buffer", (source) => {
     let done = false;
 

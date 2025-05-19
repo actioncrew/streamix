@@ -1,7 +1,7 @@
+import { eachValueFrom } from "../converters";
 import { Operator } from "./operator";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
-import { eachValueFrom } from "../converters";
 
 // Basic Stream type definition
 export type Stream<T = any> = {
@@ -15,13 +15,19 @@ export function pipeStream<T = any>(
   stream: Stream<T>,
   ...steps: Operator[]
 ): Stream<any> {
-  const base = eachValueFrom(stream);
+  const base: AsyncIterable<any> = eachValueFrom(stream);
 
-  const piped = steps.reduce((iter, op) => op.apply(iter), base);
+  const piped = steps.reduce<AsyncIterable<any>>((iter, op) => {
+    return op.apply(iter);
+  }, base);
 
   return createStream(
-    `pipe(${steps.map(op => op.name).join(" → ")})`,
-    () => piped[Symbol.asyncIterator]()
+    `pipe(${steps.map(op => op.name ?? 'anonymous').join(" → ")})`,
+    async function* () {
+      for await (const value of piped) {
+        yield value;
+      }
+    }
   );
 }
 
@@ -39,11 +45,11 @@ export function createStream<T>(
     (async () => {
       try {
         for await (const value of generatorFn()) {
-          if (subscription.closed) break;
+          if (subscription.unsubscribed) break;
           receiver.next?.(value);
         }
         receiver.complete?.();
-      } catch (err) {
+      } catch (err: any) {
         receiver.error?.(err);
       }
     })();
@@ -62,4 +68,4 @@ export function createStream<T>(
 
   return stream;
 }
-    
+

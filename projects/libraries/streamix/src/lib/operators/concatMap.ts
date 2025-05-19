@@ -4,7 +4,6 @@ export const concatMap = <T, R>(
   project: (value: T, index: number) => AsyncIterable<R>
 ) =>
   createOperator("concatMap", (source) => {
-    let outerDone = false;
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
 
@@ -16,7 +15,6 @@ export const concatMap = <T, R>(
           if (!innerIterator) {
             const outerResult = await source.next();
             if (outerResult.done) {
-              outerDone = true;
               return { done: true, value: undefined };
             }
             innerIterator = project(outerResult.value, outerIndex++)[Symbol.asyncIterator]();

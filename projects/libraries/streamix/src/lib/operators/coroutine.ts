@@ -9,18 +9,22 @@ export type Coroutine = Operator & {
 
 let helperScriptCache: string | null = null;
 
-import { createOperator } from "../abstractions";
-
 export const coroutine = (main: Function, ...functions: Function[]): Operator => {
   return createOperator("coroutine", (source) => {
     const maxWorkers = navigator.hardwareConcurrency || 4;
     const workerPool: Worker[] = [];
     const waitingQueue: Array<(worker: Worker) => void> = [];
     let createdWorkersCount = 0;
-    let isFinalizing = false;
+
     let blobUrlCache: string | null = null;
+    let isFinalizing = false;
+
+    let fetchingHelperScript = false;
+    let helperScriptPromise: Promise<any> | null = null;
 
     const createWorker = async (): Promise<Worker> => {
+      let helperScript = '';
+
       const injectedDependencies = functions
         .map((fn) => {
           let fnBody = fn.toString();
@@ -33,22 +37,60 @@ export const coroutine = (main: Function, ...functions: Function[]): Operator =>
         .toString()
         .replace(/function[\s]*\(/, `function ${main.name}(`);
 
-      const workerBody = `
-        ${injectedDependencies};
-        const mainTask = ${mainTaskBody};
-        onmessage = async (event) => {
-          try {
-            const result = await mainTask(event.data);
-            postMessage(result);
-          } catch (error) {
-            postMessage({ error: error.message });
-          }
-        };
-      `;
+      const asyncPresent = mainTaskBody.includes('__async') || injectedDependencies.includes('__async');
 
+      if (asyncPresent) {
+        // If the helper script is not cached and not being fetched, start fetching
+        if (!helperScriptCache && !fetchingHelperScript) {
+          fetchingHelperScript = true; // Mark fetching as in progress
+          helperScriptPromise = fetch(
+            'https://unpkg.com/@actioncrew/streamix@1.0.21/fesm2022/actioncrew-streamix-coroutine.mjs',
+          )
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(`Failed to fetch helper script: ${response.statusText}`);
+              }
+              return response.text();
+            })
+            .then((script) => {
+              helperScriptCache = script; // Cache the helper script
+              return script;
+            })
+            .catch((error) => {
+              console.error('Error fetching helper script:', error);
+              throw error;
+            })
+            .finally(() => {
+              fetchingHelperScript = false; // Reset fetching flag
+            });
+        }
+
+        // If the helper script is being fetched, wait for it to complete
+        if (fetchingHelperScript) {
+          helperScript = await helperScriptPromise;
+        } else {
+          helperScript = helperScriptCache || '';
+        }
+      }
+
+      const workerBody = `
+              ${helperScript}
+              ${injectedDependencies};
+              const mainTask = ${mainTaskBody};
+              onmessage = async (event) => {
+                  try {
+                      const result = await mainTask(event.data);
+                      postMessage(result);
+                  } catch (error) {
+                      postMessage({ error: error.message });
+                  }
+              };
+          `;
+
+      // Only create the Blob URL once
       if (!blobUrlCache) {
         const blob = new Blob([workerBody], { type: 'application/javascript' });
-        blobUrlCache = URL.createObjectURL(blob);
+        blobUrlCache = URL.createObjectURL(blob); // Cache the Blob URL
       }
 
       return new Worker(blobUrlCache, { type: 'module' });

@@ -4,7 +4,6 @@ export const debounce = <T = any>(duration: number) =>
   createOperator("debounce", (source) => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let currentValue: T | undefined;
-    let pending: Promise<IteratorResult<T>> | null = null;
     let done = false;
 
     return {
@@ -33,7 +32,7 @@ export const debounce = <T = any>(duration: number) =>
             timeoutId = setTimeout(resolve, duration);
           });
 
-          return { done: false, value: currentValue };
+          return { done: false, value: currentValue! };
         }
 
         return { done: true, value: undefined };

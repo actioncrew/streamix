@@ -10,7 +10,7 @@ export const count = () =>
         if (counted) return { done: true, value: undefined };
 
         while (true) {
-          const { value, done } = await source.next();
+          const { done } = await source.next();
           if (done) break;
           total++;
         }

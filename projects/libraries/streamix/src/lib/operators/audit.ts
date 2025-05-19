@@ -3,7 +3,6 @@ import { createOperator } from "../abstractions"; // your updated factory
 export const audit = (duration: number) =>
   createOperator("audit", (source) => {
     let lastEmittedTime = 0;
-    let lastSeenValue: any = undefined;
 
     return {
       async next() {
@@ -18,9 +17,6 @@ export const audit = (duration: number) =>
             lastEmittedTime = now;
             return { done: false, value: result.value };
           }
-
-          // Otherwise: skip, but remember latest
-          lastSeenValue = result.value;
         }
       }
     };

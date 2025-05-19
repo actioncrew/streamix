@@ -7,21 +7,25 @@ export type Operator = {
 export const createOperator = (
   name: string,
   transformFn: (source: AsyncIterator<any>) => { next: () => Promise<IteratorResult<any>> }
-): AsyncOperator => {
+): Operator => {
   return {
     name,
     type: 'operator',
     apply(source) {
       const sourceIter = source[Symbol.asyncIterator]();
       const state = transformFn(sourceIter);
-      return {
+
+      const iterator: AsyncIterator<any> = {
+        next: state.next
+      };
+
+      const iterable: AsyncIterable<any> = {
         [Symbol.asyncIterator]() {
-          return this;
-        },
-        async next() {
-          return state.next();
+          return iterator;
         }
       };
+
+      return iterable;
     }
   };
 };

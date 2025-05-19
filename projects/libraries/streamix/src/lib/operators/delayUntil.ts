@@ -1,5 +1,4 @@
 import { createOperator } from "../abstractions";
-import { eachValueFrom } from "../converters";
 
 export const delayUntil = <T = any>(notifier: AsyncIterable<any>) =>
   createOperator("delayUntil", (source) => {
