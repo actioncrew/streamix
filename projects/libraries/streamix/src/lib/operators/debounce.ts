@@ -1,41 +1,59 @@
 import { createOperator } from "../abstractions";
+import { eachValueFrom } from "../converters";
+import { createSubject } from "../streams";
 
-export const debounce = <T = any>(duration: number) =>
-  createOperator("debounce", (source) => {
+export function debounce<T = any>(duration: number) {
+  return createOperator("debounce", (source) => {
+    let output = createSubject();
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let currentValue: T | undefined;
-    let done = false;
+    let latestValue: T | null = null;
+    let hasValues = false;
+    let isCompleted = false;
 
-    return {
-      async next(): Promise<IteratorResult<T>> {
-        while (!done) {
+    const flush = () => {
+      if (latestValue !== null) {
+        output.next(latestValue);
+        latestValue = null;
+      }
+      timeoutId = null;
+
+      // Complete if we finished processing
+      if (isCompleted) {
+        output.complete();
+      }
+    };
+
+    // Handle input stream
+    (async () => {
+      try {
+        while (true) {
           const result = await source.next();
-          if (result.done) {
-            done = true;
+          if (result.done) break;
 
-            // Wait for any pending debounce timeout
-            if (timeoutId) {
-              await new Promise((resolve) => setTimeout(resolve, duration));
-              timeoutId = null;
-              return { done: false, value: currentValue! };
-            }
-
-            return { done: true, value: undefined };
-          }
-
-          currentValue = result.value;
+          latestValue = result.value;
 
           if (timeoutId) clearTimeout(timeoutId);
-
-          // Delay emission and start a new debounce timer
-          await new Promise<void>((resolve) => {
-            timeoutId = setTimeout(resolve, duration);
-          });
-
-          return { done: false, value: currentValue! };
+          timeoutId = setTimeout(flush, duration);
         }
+        // Otherwise wait for flush() to handle completion
+      } catch (err) {
+        if (timeoutId) clearTimeout(timeoutId);
+        output.error(err);
+      } finally {
+        // Mark as completed
+        isCompleted = true;
 
-        return { done: true, value: undefined };
-      },
-    };
+        // If no pending timer, complete immediately
+        if (!timeoutId) {
+          // Only emit if we got values but no pending timer
+          if (hasValues && latestValue !== null) {
+            flush();
+          }
+          output.complete();
+        }
+      }
+    })();
+
+    return eachValueFrom(output);
   });
+}
