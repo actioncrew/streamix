@@ -1,29 +1,24 @@
 import { createOperator } from '../abstractions';
 
 export const distinctUntilChanged = <T = any>(
-  comparator?: (previous: T, current: T) => boolean
+  comparator?: (prev: T, curr: T) => boolean
 ) =>
-  createOperator('distinctUntilChanged', (source) => {
-    let last: T | undefined;
-    let isFirst = true;
+  createOperator<T>('distinctUntilChanged', (source) => {
+    let lastValue: T | undefined;
+    let hasLast = false;
 
     return {
-      next: async (): Promise<IteratorResult<T>> => {
-        const result = await source.next();
-        if (result.done) return result;
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) return { value: undefined, done: true };
 
-        const current = result.value;
-        const isDistinct = isFirst || (
-          comparator ? !comparator(last!, current) : last !== current
-        );
-
-        isFirst = false;
-        if (isDistinct) {
-          last = current;
-          return { value: current, done: false };
+          if (!hasLast || !(comparator ? comparator(lastValue!, value) : lastValue === value)) {
+            lastValue = value;
+            hasLast = true;
+            return { value, done: false };
+          }
         }
-
-        return { value: undefined as any, done: false }; // downstream should skip undefined
-      }
+      },
     };
   });
