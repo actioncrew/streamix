@@ -1,33 +1,29 @@
-import { createOperator } from '../abstractions';
+import { createOperator } from "../abstractions";
 
 export const every = <T = any>(
   predicate: (value: T, index: number) => boolean
 ) =>
-  createOperator('every', (source) => {
+  createOperator("every", (source) => {
     let index = 0;
-    let allPassed = true;
-    let finished = false;
-    let finalResult: IteratorResult<boolean> = { value: true, done: false };
+    let emitted = false;
 
-    async function next(): Promise<IteratorResult<boolean>> {
-      if (finished) {
-        return { value: finalResult.value, done: true };
-      }
+    return {
+      async next(): Promise<IteratorResult<boolean>> {
+        if (emitted) return { done: true, value: undefined };
 
-      while (true) {
-        const result = await source.next();
-        if (result.done) {
-          finished = true;
-          return { value: allPassed, done: true };
+        while (true) {
+          const { value, done } = await source.next();
+
+          if (done) {
+            emitted = true;
+            return { done: false, value: true };
+          }
+
+          if (!predicate(value, index++)) {
+            emitted = true;
+            return { done: false, value: false };
+          }
         }
-
-        if (!predicate(result.value, index++)) {
-          allPassed = false;
-          finished = true;
-          return { value: false, done: true };
-        }
-      }
-    }
-
-    return { next };
+      },
+    };
   });
