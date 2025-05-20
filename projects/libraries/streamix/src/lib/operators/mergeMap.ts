@@ -1,7 +1,8 @@
-import { createOperator } from "../abstractions";
+import { eachValueFrom } from '@actioncrew/streamix';
+import { createOperator, Stream } from "../abstractions";
 
 export const mergeMap = <T, R>(
-  project: (value: T, index: number) => AsyncIterable<R>
+  project: (value: T, index: number) => Stream<R>
 ) =>
   createOperator("mergeMap", (source) => {
     let outerDone = false;
@@ -65,7 +66,7 @@ export const mergeMap = <T, R>(
         }
 
         // Create new inner iterator and add to the set
-        const innerIter = project(outerResult.value, outerIndex++)[Symbol.asyncIterator]();
+        const innerIter = eachValueFrom(project(outerResult.value, outerIndex++));
         innerIterators.add(innerIter);
 
         // Pull from inner iterators again after adding new one

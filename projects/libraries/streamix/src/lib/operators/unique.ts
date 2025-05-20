@@ -1,6 +1,6 @@
 import { createOperator } from "../abstractions";
 
-export const unique = <T, K = any>(keySelector?: (value: T) => K) =>
+export const unique = <T = any, K = any>(keySelector?: (value: T) => K) =>
   createOperator("unique", (source) => {
     const seen = new Set<K | T>();
 

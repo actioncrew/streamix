@@ -1,6 +1,7 @@
-import { createOperator } from "../abstractions";
+import { eachValueFrom } from '@actioncrew/streamix';
+import { createOperator, Stream } from "../abstractions";
 
-export const takeUntil = (notifier: AsyncIterable<any>) =>
+export const takeUntil = (notifier: Stream<any>) =>
   createOperator("takeUntil", (source) => {
     let shouldStop = false;
     let done = false;
@@ -8,11 +9,11 @@ export const takeUntil = (notifier: AsyncIterable<any>) =>
     // Start listening to the notifier asynchronously
     (async () => {
       try {
-        for await (const _ of notifier) {
+        for await (const _ of eachValueFrom(notifier)) {
           shouldStop = true;
           break;
         }
-      } catch (err) {
+      } catch (_: any) {
         // If notifier errors, you might optionally choose to propagate or log
         shouldStop = true;
       }

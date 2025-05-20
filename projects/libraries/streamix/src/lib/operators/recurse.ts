@@ -1,4 +1,5 @@
-import { createOperator } from "../abstractions";
+import { eachValueFrom } from '@actioncrew/streamix';
+import { createOperator, Stream } from "../abstractions";
 
 export type RecurseOptions = {
   traversal?: 'depth' | 'breadth';
@@ -7,7 +8,7 @@ export type RecurseOptions = {
 
 export const recurse = <T = any>(
   condition: (value: T) => boolean,
-  project: (value: T) => AsyncIterable<T>,
+  project: (value: T) => Stream<T>,
   options: RecurseOptions = {}
 ) =>
   createOperator('recurse', (source) => {
@@ -19,7 +20,7 @@ export const recurse = <T = any>(
       if (options.maxDepth !== undefined && depth >= options.maxDepth) return;
       if (!condition(value)) return;
 
-      for await (const child of project(value)) {
+      for await (const child of eachValueFrom(project(value))) {
         const item = { value: child, depth: depth + 1 };
         if (options.traversal === 'breadth') {
           queue.push(item);

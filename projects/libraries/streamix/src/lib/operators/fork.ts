@@ -1,8 +1,9 @@
-import { createOperator } from "../abstractions";
+import { eachValueFrom } from '@actioncrew/streamix';
+import { createOperator, Stream } from "../abstractions";
 
 export interface ForkOption<T, R> {
   on: (value: T, index: number) => boolean;
-  handler: (value: T) => AsyncIterable<R>;
+  handler: (value: T) => Stream<R>;
 }
 
 export const fork = <T, R>(options: ForkOption<T, R>[]) =>
@@ -25,7 +26,7 @@ export const fork = <T, R>(options: ForkOption<T, R>[]) =>
               throw new Error(`No handler matched value: ${outerResult.value}`);
             }
 
-            innerIterator = matched.handler(outerResult.value)[Symbol.asyncIterator]();
+            innerIterator = eachValueFrom(matched.handler(outerResult.value));
           }
 
           // Pull next inner value
