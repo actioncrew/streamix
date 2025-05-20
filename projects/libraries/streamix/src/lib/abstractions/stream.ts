@@ -46,26 +46,8 @@ export function createStream<T>(
     callbackOrReceiver?: ((value: T) => void) | Receiver<T>
   ): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const iterator = generatorFn();
-    const subscription = createSubscription<T>(async () => {
-      await iterator.return?.();
-    });
-
-    (async () => {
-      if (subscription.unsubscribed) return;
-
-      try {
-        for await (const value of iterator) {
-          if (subscription.unsubscribed) break;
-          receiver.next?.(value);
-        }
-      } catch (err: any) {
-        receiver.error?.(err);
-      } finally {
-        receiver.complete?.();
-      }
-    })();
-
+    const subscription = createSubscription<T>();
+    subscription.listen(generatorFn, receiver);
     return subscription;
   };
 
