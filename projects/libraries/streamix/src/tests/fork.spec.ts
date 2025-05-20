@@ -55,7 +55,7 @@ describe('fork operator', () => {
     source$.subscribe({
       next: (value: any) => result.push(value),
       error: (error: any) => {
-        expect(error.message).toBe('No handler found for value: 1');
+        expect(error.message).toBe('No handler matched value: 1');
         done();
       }
     });
