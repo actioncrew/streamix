@@ -3,37 +3,41 @@ import { createOperator } from '../abstractions';
 export const min = <T = any>(
   comparator?: (a: T, b: T) => number
 ) =>
-  createOperator('min', (source) => {
+  createOperator<T>('min', (source) => {
     let minValue: T | undefined;
-    let hasEmitted = false;
+    let hasMin = false;
 
-    async function next(): Promise<IteratorResult<T>> {
+    // Await entire source and compute min eagerly
+    const ready = (async () => {
       while (true) {
-        const result = await source.next();
-        if (result.done) {
-          if (hasEmitted) {
-            return { value: minValue, done: true };
-          } else {
-            return { value: undefined, done: true };
-          }
-        }
+        const { value, done: sourceDone } = await source.next();
+        if (sourceDone) break;
 
-        const currentValue = result.value;
-
-        if (!hasEmitted) {
-          minValue = currentValue;
-          hasEmitted = true;
-        } else if (minValue !== undefined) {
-          if (comparator) {
-            if (comparator(currentValue, minValue) < 0) {
-              minValue = currentValue;
-            }
-          } else if (minValue !== null && currentValue < minValue) {
-            minValue = currentValue;
+        if (!hasMin) {
+          minValue = value;
+          hasMin = true;
+        } else if (comparator) {
+          if (comparator(value, minValue!) < 0) {
+            minValue = value;
           }
+        } else if (value < minValue!) {
+          minValue = value;
         }
       }
-    }
+    })();
 
-    return { next };
+    let emitted = false;
+
+    return {
+      async next() {
+        await ready;
+
+        if (!emitted && hasMin) {
+          emitted = true;
+          return { value: minValue!, done: false };
+        }
+
+        return { value: undefined, done: true };
+      },
+    };
   });
