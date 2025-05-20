@@ -17,14 +17,18 @@ export function pipeStream<T = any>(
 ): Stream<any> {
   const base: AsyncIterable<any> = eachValueFrom(stream);
 
+  // Apply operators to get the final AsyncIterable
   const piped = steps.reduce<AsyncIterable<any>>((iter, op) => {
     return op.apply(iter);
   }, base);
 
   return createStream(
-    `pipe(${steps.map(op => op.name ?? 'anonymous').join(" → ")})`,
+    `pipe(${steps.map(op => op.name ?? 'anonymous').join(' → ')})`,
     async function* () {
-      for await (const value of piped) {
+      const iterator = piped[Symbol.asyncIterator]();
+      while (true) {
+        const { value, done } = await iterator.next();
+        if (done) break;
         yield value;
       }
     }
@@ -48,9 +52,10 @@ export function createStream<T>(
           if (subscription.unsubscribed) break;
           receiver.next?.(value);
         }
-        receiver.complete?.();
       } catch (err: any) {
         receiver.error?.(err);
+      } finally {
+        receiver.complete?.();
       }
     })();
 

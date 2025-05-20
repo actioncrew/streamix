@@ -1,23 +1,50 @@
-import { createOperator } from "../abstractions"; // your updated factory
+import { eachValueFrom } from '@actioncrew/streamix';
+import { createOperator, Operator } from '../abstractions';
+import { createSubject } from '../streams';
 
-export const audit = (duration: number) =>
-  createOperator("audit", (source) => {
-    let lastEmittedTime = 0;
+export const audit = <T = any>(duration: number): Operator => {
+  return createOperator<T>('audit', (source) => {
+    const output = createSubject<T>();
 
-    return {
-      async next() {
+    let lastValue: T | undefined = undefined;
+    let timerActive = false;
+
+    const startTimer = () => {
+      timerActive = true;
+      setTimeout(() => {
+        if (lastValue !== undefined) {
+          output.next(lastValue);
+          lastValue = undefined;
+        }
+        timerActive = false;
+      }, duration);
+    };
+
+    // Start processing the source
+    (async () => {
+      try {
         while (true) {
-          const result = await source.next();
-          if (result.done) return result;
+          const { value, done } = await source.next();
+          if (done) break;
 
-          const now = Date.now();
+          lastValue = value;
 
-          // If enough time has passed since last emitted value, emit this
-          if (now - lastEmittedTime >= duration) {
-            lastEmittedTime = now;
-            return { done: false, value: result.value };
+          if (!timerActive) {
+            startTimer();
           }
         }
+
+        // If a value is still buffered after stream ends, emit it
+        if (!timerActive && lastValue !== undefined) {
+          output.next(lastValue);
+        }
+
+        output.complete();
+      } catch (err) {
+        output.error(err);
       }
-    };
+    })();
+
+    return eachValueFrom(output);
   });
+};
