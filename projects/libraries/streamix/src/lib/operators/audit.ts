@@ -1,5 +1,5 @@
-import { eachValueFrom } from '@actioncrew/streamix';
 import { createOperator, Operator } from '../abstractions';
+import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export const audit = <T = any>(duration: number): Operator => {

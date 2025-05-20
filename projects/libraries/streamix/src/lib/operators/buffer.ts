@@ -1,5 +1,5 @@
-import { eachValueFrom } from '@actioncrew/streamix';
 import { createOperator, Operator } from "../abstractions";
+import { eachValueFrom } from '../converters';
 import { createSubject, timer } from "../streams";
 
 export function buffer<T = any>(period: number): Operator {

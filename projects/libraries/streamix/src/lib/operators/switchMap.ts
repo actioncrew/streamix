@@ -1,5 +1,5 @@
-import { eachValueFrom } from '@actioncrew/streamix';
 import { createOperator, Stream, Subscription } from "../abstractions";
+import { eachValueFrom } from '../converters';
 import { createSubject } from "../streams";
 
 export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>) {

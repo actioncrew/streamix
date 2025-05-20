@@ -1,5 +1,5 @@
-import { eachValueFrom } from '@actioncrew/streamix';
 import { createOperator, Stream } from "../abstractions";
+import { eachValueFrom } from '../converters';
 
 export const takeUntil = (notifier: Stream<any>) =>
   createOperator("takeUntil", (source) => {

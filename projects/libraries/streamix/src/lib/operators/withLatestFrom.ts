@@ -1,5 +1,5 @@
-import { eachValueFrom } from '@actioncrew/streamix';
 import { createOperator, createReceiver, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
+import { eachValueFrom } from '../converters';
 import { createSubject } from "../streams";
 
 export function withLatestFrom<T, R extends any[]>(
