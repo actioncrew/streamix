@@ -52,7 +52,7 @@ export function createStream<T>(
     });
 
     (async () => {
-      if (subscription.unsubscribed) subscription;
+      if (subscription.unsubscribed) return;
 
       try {
         for await (const value of iterator) {
