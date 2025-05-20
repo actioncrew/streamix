@@ -11,8 +11,7 @@ export type Stream<T = any> = {
 };
 
 export function pipeStream<T = any>(stream: Stream<T>, ...steps: Operator[]): Stream<any> {
-  const base = eachValueFrom(stream);
-  const piped = steps.reduce<AsyncIterable<any>>((iter, op) => op.apply(iter), base);
+  const piped = steps.reduce<AsyncIterable<any>>((iter, op) => op.apply(iter), eachValueFrom(stream));
 
   return createStream(
     `pipe(${steps.map(op => op.name ?? 'anonymous').join(" → ")})`,
