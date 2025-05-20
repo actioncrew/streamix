@@ -1,54 +1,41 @@
+import { eachValueFrom } from '@actioncrew/streamix';
 import { createOperator, Operator, Stream } from '../abstractions';
+import { createSubject } from '../streams';
 
-export const skipUntil = <T = any>(notifier: Stream<any>): Operator => {
+export function skipUntil<T = any>(notifier: Stream): Operator {
   return createOperator('skipUntil', (source) => {
+    const output = createSubject<T>();
     let canEmit = false;
-    let notifierResolved = false;
-    let resolveCanEmit: () => void;
 
-    const canEmitPromise = new Promise<void>((resolve) => {
-      resolveCanEmit = resolve;
-    });
-
-    const notifierSubscription = notifier.subscribe({
+    // Subscribe to notifier as an async iterator
+     let notifierSubscription = notifier.subscribe({
       next: () => {
-        if (!canEmit) {
-          canEmit = true;
-          notifierResolved = true;
-          resolveCanEmit();
-          notifierSubscription.unsubscribe();
-        }
+        canEmit = true;
+        notifierSubscription.unsubscribe();
       },
-      error: (_: any) => {
-        notifierResolved = true;
-        resolveCanEmit();
-        // No propagation of error here because we're inside an Operator —
-        // we let source decide what to do with errors, or optionally log them.
+      error: (err: any) => {
+        output.error(err);
       },
       complete: () => {
-        if (!canEmit) {
-          canEmit = true;
-          notifierResolved = true;
-          resolveCanEmit();
-        }
         notifierSubscription.unsubscribe();
-      }
+      },
     });
 
-    return {
-      async next(): Promise<IteratorResult<T>> {
-        // Wait until canEmit is true
-        if (!canEmit && !notifierResolved) {
-          await canEmitPromise;
+
+    // Process source async iterator
+    (async () => {
+      try {
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+          if (canEmit) output.next(value);
         }
+        output.complete();
+      } catch (err) {
+        if (!output.completed()) output.error(err);
+      }
+    })();
 
-        const result = await source.next();
-        if (result.done) return result;
-
-        return canEmit
-          ? result
-          : await this.next(); // Skip this value if canEmit is still false
-      },
-    };
+    return eachValueFrom(output);
   });
-};
+}
