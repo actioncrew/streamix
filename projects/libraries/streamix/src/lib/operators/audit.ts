@@ -1,56 +1,50 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator, Operator } from '../abstractions';
+import { eachValueFrom } from '../converters';
+import { createSubject } from '../streams';
 
-export function audit<T = any>(duration: number): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export const audit = <T = any>(duration: number): Operator => {
+  return createOperator<T>('audit', (source) => {
+    const output = createSubject<T>();
+
     let lastValue: T | undefined = undefined;
-    let timerActive = false; // Tracks if the timer is active
-    let inputCompleted = false; // Tracks if the input stream is complete
+    let timerActive = false;
 
-    const emitValue = () => {
-      if (lastValue !== undefined && timerActive) {
-        output.next(lastValue);
-        lastValue = undefined;
-      }
-    };
-
-    const startAuditTimer = () => {
+    const startTimer = () => {
       timerActive = true;
-
       setTimeout(() => {
-        emitValue();
-        timerActive = false;
-
-        // Complete output if input has completed and timer finishes
-        if (inputCompleted) {
-          output.complete();
+        if (lastValue !== undefined) {
+          output.next(lastValue);
+          lastValue = undefined;
         }
+        timerActive = false;
       }, duration);
     };
 
+    // Start processing the source
     (async () => {
       try {
-        for await (const value of eachValueFrom(input)) {
-          lastValue = value; // Update the latest value
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+
+          lastValue = value;
 
           if (!timerActive) {
-            startAuditTimer(); // Start the audit timer
+            startTimer();
           }
         }
 
-        inputCompleted = true;
-        lastValue = undefined;
-      } catch (err) {
-        output.error(err); // Propagate errors
-      } finally {
-        // Only complete if no timer is running
-        if (!timerActive) {
-          output.complete();
+        // If a value is still buffered after stream ends, emit it
+        if (!timerActive && lastValue !== undefined) {
+          output.next(lastValue);
         }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        output.complete();
       }
     })();
-  };
 
-  return createMapper('audit', createSubject<T>(), operator);
-}
+    return eachValueFrom(output);
+  });
+};

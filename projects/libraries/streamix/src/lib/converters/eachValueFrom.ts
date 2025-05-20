@@ -59,5 +59,8 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
     }
   } finally {
     subscription.unsubscribe();
+    if (error) {
+      throw error; // Properly throw from within the generator
+    }
   }
 }

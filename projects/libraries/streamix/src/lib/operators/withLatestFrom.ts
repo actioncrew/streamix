@@ -1,52 +1,76 @@
-import { createMapper, createReceiver, createSubscription, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createOperator, createReceiver, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
+import { eachValueFrom } from '../converters';
+import { createSubject } from "../streams";
 
-export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
-  let latestValues: any[] = new Array(streams.length).fill(undefined);
-  let hasValue: boolean[] = new Array(streams.length).fill(false);
-  let otherStreamsCompleted: boolean[] = new Array(streams.length).fill(false);
-  let inputCompleted = false;
-  let allCompleted = false;
+export function withLatestFrom<T, R extends any[]>(
+  ...streams: Stream<any>[]
+) {
+  return createOperator("withLatestFrom", (source) => {
+    const output = createSubject<[T, ...R]>();
 
-  let inputSubscription: Subscription | null = null;
-  let subscriptions: Subscription[] = [];
+    const latestValues: any[] = new Array(streams.length).fill(undefined);
+    const hasValue: boolean[] = new Array(streams.length).fill(false);
+    const otherStreamsCompleted: boolean[] = new Array(streams.length).fill(false);
 
-  const operator = function (input: Stream, output: Subject) {
-    subscriptions = streams.map((stream, index) =>
-      stream.subscribe({
-        next: (value) => {
-          latestValues[index] = value;
-          hasValue[index] = true;
-        },
-        error: (err) => output.error(err),
-        complete: () => {
-          otherStreamsCompleted[index] = true;
-          checkCompletion();
-        },
-      })
-    );
+    let inputCompleted = false;
+    let allCompleted = false;
+
+    let inputSubscription: Subscription | null = null;
+    const subscriptions: Subscription[] = [];
 
     const checkCompletion = () => {
-      if (inputCompleted && otherStreamsCompleted.every((c) => c) && !allCompleted) {
+      if (
+        inputCompleted &&
+        otherStreamsCompleted.every((completed) => completed) &&
+        !allCompleted
+      ) {
         allCompleted = true;
         output.complete();
       }
     };
 
-    inputSubscription = input.subscribe({
-      next: (value) => {
-        if (hasValue.every((v) => v)) {
-          output.next([value, ...latestValues]);
-        }
-      },
-      error: (err) => output.error(err),
-      complete: () => {
-        inputCompleted = true;
-        checkCompletion();
-      },
-    });
+    // Subscribe to other streams to track latest values and completion
+    for (let i = 0; i < streams.length; i++) {
+      const subscription = streams[i].subscribe({
+        next: (value) => {
+          latestValues[i] = value;
+          hasValue[i] = true;
+        },
+        error: (err) => {
+          output.error(err);
+        },
+        complete: () => {
+          otherStreamsCompleted[i] = true;
+          checkCompletion();
+        },
+      });
+      subscriptions.push(subscription);
+    }
 
-    const originalSubscribe = output.subscribe;
+    // Subscribe to the main source stream
+    (async () => {
+      try {
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) {
+            inputCompleted = true;
+            checkCompletion();
+            break;
+          }
+
+          if (hasValue.every(Boolean)) {
+            output.next([value, ...latestValues] as [T, ...R]);
+          }
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        output.complete();
+      }
+    })();
+
+    // Override output.subscribe to handle unsubscriptions cleanly
+    const originalSubscribe = output.subscribe.bind(output);
     output.subscribe = (callbackOrReceiver?: ((value: any) => void) | Receiver<any>): Subscription => {
       const receiver = createReceiver(callbackOrReceiver);
       const subscription = originalSubscribe.call(output, receiver);
@@ -60,7 +84,7 @@ export const withLatestFrom = (...streams: Stream<any>[]): StreamMapper => {
         subscription.unsubscribe();
       });
     };
-  };
 
-  return createMapper('withLatestFrom', createSubject(), operator);
-};
+    return eachValueFrom(output);
+  });
+}

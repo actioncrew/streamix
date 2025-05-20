@@ -1,33 +1,31 @@
-import { Stream, StreamMapper, Subscription } from '../abstractions'; // Import necessary types
-import { createSubject, Subject } from '../streams';
-import { createMapper } from './../abstractions/operator';
+import { createOperator } from "../abstractions";
 
-export const bufferCount = (bufferSize: number = Infinity): StreamMapper => {
-  let buffer: any[] = [];
-  let subscription: Subscription | undefined;
+export const bufferCount = (bufferSize: number = Infinity) =>
+  createOperator("bufferCount", (source) => {
+    let done = false;
 
-  const operator = (input: Stream<any>, output: Subject<any[]>) => {
+    return {
+      async next(): Promise<IteratorResult<any[]>> {
+        if (done) return { done: true, value: undefined };
 
-    subscription = input.subscribe({
-      next: (value) => {
-        buffer.push(value);
+        const buffer: any[] = [];
 
-        // Emit buffer when it reaches the specified size
-        if (buffer.length >= bufferSize) {
-          output.next(buffer);
-          buffer = [];  // Clear the buffer
+        while (buffer.length < bufferSize) {
+          const { done: sourceDone, value } = await source.next();
+
+          if (sourceDone) {
+            done = true;
+            // Emit any remaining buffered items before completing
+            return buffer.length > 0
+              ? { done: false, value: buffer }
+              : { done: true, value: undefined };
+          }
+
+          buffer.push(value);
         }
-      },
-      error: (err) => output.error(err),
-      complete: () => {
-        subscription?.unsubscribe();
-        if (buffer.length > 0) {
-          output.next(buffer); // Emit remaining items when stream completes
-        }
-        output.complete();
-      },
-    });
-  };
 
-  return createMapper("bufferCount", createSubject<any[]>(), operator);
-};
+        // Buffer full, emit it
+        return { done: false, value: buffer };
+      }
+    };
+  });

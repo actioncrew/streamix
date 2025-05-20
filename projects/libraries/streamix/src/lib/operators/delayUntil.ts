@@ -1,45 +1,50 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator, Stream } from "../abstractions";
+import { eachValueFrom } from '../converters';
 
-export function delayUntil<T = any>(notifier: Stream<any>): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export const delayUntil = <T = any>(notifier: Stream<any>) =>
+  createOperator("delayUntil", (source) => {
     let canEmit = false;
-    let buffer: T[] = [];
+    let notifierDone = false;
+    let notifierStarted = false;
+    const buffer: T[] = [];
 
-    const notifierSubscription = notifier.subscribe({
-      next: () => {
-        canEmit = true;
-        buffer.forEach(v => output.next(v));
-        buffer = [];
-        notifierSubscription.unsubscribe();
-      },
-      complete: () => {
-        notifierSubscription.unsubscribe();
-      },
-      error: (err) => {
-        output.error(err);
-      },
-    });
-
-    const processInput = async () => {
+    const waitForNotifier = async () => {
+      if (notifierStarted) return;
+      notifierStarted = true;
       try {
-        for await (const value of eachValueFrom(input)) {
-          if (canEmit) {
-            output.next(value);
-          } else {
-            buffer.push(value);
-          }
+        for await (const _ of eachValueFrom(notifier)) {
+          void _;
+          canEmit = true;
+          break;
         }
-      } catch (err) {
-        output.error(err);
+      } catch (_) {
+        // ignore errors, just unblock
       } finally {
-        output.complete();
+        notifierDone = true;
       }
     };
 
-    processInput();
-  };
+    waitForNotifier();
 
-  return createMapper('delayUntil', createSubject<T>(), operator);
-}
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
+          if (canEmit) {
+            if (buffer.length) {
+              return { value: buffer.shift()!, done: false };
+            }
+            return source.next();
+          }
+
+          const result = await source.next();
+          if (result.done) return result;
+          buffer.push(result.value);
+
+          if (notifierDone) {
+            // fallback in case notifier ends without emitting
+            canEmit = true;
+          }
+        }
+      },
+    };
+  });

@@ -1,57 +1,62 @@
-import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { createOperator, Operator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
-import { createSubject, Subject } from '../streams';
+import { createSubject } from '../streams';
 
-export function mergeMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
-  let index = 0;
-  return createMapper('mergeMap', createSubject<R>(), (input: Stream<T>, output: Subject<R>) => {
-    let activeInnerStreams = 0; // Track active inner streams
-    let inputCompleted = false;
-    let hasError = false; // Flag to track if an error has occurred
+export function mergeMap<T, R>(
+  project: (value: T, index: number) => Stream<R>, // or Stream<R>
+): Operator {
+  return createOperator('mergeMap', (source) => {
+    const output = createSubject<R>();
 
-    // Async function to handle inner streams
-    const processInnerStream = async (innerStream: Stream<R>) => {
+    let index = 0;
+    let activeInner = 0;
+    let outerCompleted = false;
+    let errorOccurred = false;
+
+    // Process each inner stream concurrently
+    const processInner = async (innerStream: Stream<R>) => {
       try {
-        for await (const value of eachValueFrom(innerStream)) {
-          if (hasError) return; // Stop processing if an error has occurred
-          output.next(value);
+        for await (const val of eachValueFrom(innerStream)) {
+          if (errorOccurred) break;
+          output.next(val);
         }
       } catch (err) {
-        if (!hasError) {
-          hasError = true; // Set the error flag
-          output.error(err); // Propagate the error from the inner stream
+        if (!errorOccurred) {
+          errorOccurred = true;
+          output.error(err);
         }
       } finally {
-        // Decrease the count of active inner streams
-        activeInnerStreams -= 1;
-        // If all inner streams are processed and the outer stream is complete, complete the output stream
-        if (activeInnerStreams === 0 && inputCompleted) {
+        activeInner--;
+        if (outerCompleted && activeInner === 0 && !errorOccurred) {
           output.complete();
         }
       }
     };
 
-    // Process the outer stream emissions
     (async () => {
       try {
-        for await (const value of eachValueFrom(input)) {
-          if (hasError) return; // Stop processing if an error has occurred
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+          if (errorOccurred) break;
 
-          const innerStream = project(value, index++); // Project input to inner stream
-          activeInnerStreams += 1;
-          processInnerStream(innerStream); // Process the inner stream concurrently
+          const inner = project(value, index++);
+          activeInner++;
+          processInner(inner); // concurrent, do not await
+        }
+
+        outerCompleted = true;
+        if (activeInner === 0 && !errorOccurred) {
+          output.complete();
         }
       } catch (err) {
-        if (!hasError) {
-          hasError = true; // Set the error flag
-          output.error(err); // Propagate the error from the outer stream
-        }
-      } finally {
-        inputCompleted = true;
-        if (activeInnerStreams === 0) {
-          output.complete();
+        if (!errorOccurred) {
+          errorOccurred = true;
+          output.error(err);
         }
       }
     })();
+
+    return eachValueFrom(output);
   });
 }

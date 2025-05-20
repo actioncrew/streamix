@@ -1,9 +1,10 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { createOperator } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createSubject } from "../streams";
 
-export function debounce<T = any>(duration: number): StreamMapper {
-  return createMapper("debounce", createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
+export function debounce<T = any>(duration: number) {
+  return createOperator("debounce", (source) => {
+    let output = createSubject();
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let latestValue: T | null = null;
     let hasValues = false;
@@ -25,9 +26,11 @@ export function debounce<T = any>(duration: number): StreamMapper {
     // Handle input stream
     (async () => {
       try {
-        for await (const value of eachValueFrom(input)) {
-          hasValues = true;
-          latestValue = value;
+        while (true) {
+          const result = await source.next();
+          if (result.done) break;
+
+          latestValue = result.value;
 
           if (timeoutId) clearTimeout(timeoutId);
           timeoutId = setTimeout(flush, duration);
@@ -50,5 +53,7 @@ export function debounce<T = any>(duration: number): StreamMapper {
         }
       }
     })();
+
+    return eachValueFrom(output);
   });
 }

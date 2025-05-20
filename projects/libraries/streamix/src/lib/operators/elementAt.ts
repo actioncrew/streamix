@@ -1,11 +1,10 @@
-import { StreamMapper } from "../abstractions";
-import { select } from "../operators";
+import { Operator } from "../abstractions";
+import { select } from "./select";
 
-export function elementAt<T = any>(targetIndex: number): StreamMapper {
-  return select<T>(function* () {
+export const elementAt = <T = any>(targetIndex: number) =>
+  select<T>(function* () {
     if (targetIndex < 0) {
       throw new Error(`Invalid index: ${targetIndex}. Index must be non-negative.`);
     }
     yield targetIndex; // Yield only the target index
-  }());
-}
+  }()) as Operator;

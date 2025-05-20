@@ -1,80 +1,64 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator, Stream } from "../abstractions";
+import { eachValueFrom } from '../converters';
 
-export function recurse<T = any>(
+export type RecurseOptions = {
+  traversal?: 'depth' | 'breadth';
+  maxDepth?: number;
+};
+
+export const recurse = <T = any>(
   condition: (value: T) => boolean,
   project: (value: T) => Stream<T>,
-  options: {
-    traversal?: 'depth' | 'breadth';
-    maxDepth?: number;
-  } = {}
-): StreamMapper {
-  return createMapper('recurse', createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
-    const queue: { value: T; depth: number }[] = [];
-    let processing = false;
-    let inputComplete = false;
+  options: RecurseOptions = {}
+) =>
+  createOperator('recurse', (source) => {
+    type QueueItem = { value: T; depth: number };
+    const queue: QueueItem[] = [];
+    let sourceDone = false;
 
-    const processQueue = async () => {
-      if (processing) return;
-      processing = true;
+    const enqueueChildren = async (value: T, depth: number) => {
+      if (options.maxDepth !== undefined && depth >= options.maxDepth) return;
+      if (!condition(value)) return;
 
-      try {
-        while (queue.length > 0) {
-          const { value, depth } = options.traversal === 'breadth'
-            ? queue.shift()!
-            : queue.pop()!;
-
-          if (options.maxDepth !== undefined && depth > options.maxDepth) {
-            continue;
-          }
-
-          output.next(value);
-
-          if (condition(value)) {
-            try {
-              const childStream = project(value);
-              for await (const child of eachValueFrom(childStream)) {
-                if (options.traversal === 'depth') {
-                  queue.push({ value: child, depth: depth + 1 });
-                } else {
-                  queue.push({ value: child, depth: depth + 1 });
-                }
-              }
-            } catch (error) {
-              output.error(error);
-              return;
-            }
-          }
-        }
-
-        if (inputComplete && queue.length === 0) {
-          output.complete();
-        }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        processing = false;
-
-        if (queue.length > 0) {
-          processQueue();
+      for await (const child of eachValueFrom(project(value))) {
+        const item = { value: child, depth: depth + 1 };
+        if (options.traversal === 'breadth') {
+          queue.push(item);
+        } else {
+          queue.unshift(item);
         }
       }
     };
 
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          queue.push({ value, depth: 0 });
-          processQueue();
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
+          // Refill queue from source if it's empty
+          while (queue.length === 0 && !sourceDone) {
+            const result = await source.next();
+            if (result.done) {
+              sourceDone = true;
+              break;
+            }
+            queue.push({ value: result.value, depth: 0 });
+          }
+
+          // If the queue now has items, process them
+          if (queue.length > 0) {
+            const item =
+              options.traversal === 'breadth' ? queue.shift()! : queue.pop()!;
+            await enqueueChildren(item.value, item.depth);
+            return { value: item.value, done: false };
+          }
+
+          // If queue is empty and source is done, we're done
+          if (sourceDone && queue.length === 0) {
+            return { value: undefined, done: true };
+          }
+
+          // Yield control briefly (avoid busy waiting)
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
-        inputComplete = true;
-        if (queue.length === 0 && !processing) {
-          output.complete();
-        }
-      } catch (error) {
-        output.error(error);
-      }
-    })();
+      },
+    };
   });
-}

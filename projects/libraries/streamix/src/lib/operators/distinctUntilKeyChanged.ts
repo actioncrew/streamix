@@ -1,26 +1,32 @@
-import { createOperator, Operator } from '../abstractions';
+import { createOperator } from '../abstractions';
 
 export const distinctUntilKeyChanged = <T extends object>(
   key: keyof T,
-  comparator?: (previous: T[keyof T], current: T[keyof T]) => boolean
-): Operator => {
-  let lastEmittedValue: T | undefined = undefined;
+  comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean
+) =>
+  createOperator('distinctUntilKeyChanged', (source) => {
+    let lastValue: T | undefined;
+    let isFirst = true;
 
-  const handle = (value: T): T | undefined => {
-    const currentValue = value;
+    return {
+      next: async (): Promise<IteratorResult<T>> => {
+        const result = await source.next();
+        if (result.done) return result;
 
-    const isDistinct = lastEmittedValue === undefined ||
-      (comparator
-        ? !comparator(lastEmittedValue[key], currentValue[key])
-        : lastEmittedValue[key] !== currentValue[key]);
+        const current = result.value;
+        const isDistinct = isFirst || (
+          comparator
+            ? !comparator(lastValue![key], current[key])
+            : lastValue![key] !== current[key]
+        );
 
-    if (isDistinct) {
-      lastEmittedValue = currentValue;
-      return currentValue;
-    } else {
-      return undefined;
-    }
-  };
+        isFirst = false;
+        if (isDistinct) {
+          lastValue = current;
+          return { value: current, done: false };
+        }
 
-  return createOperator('distinctUntilKeyChanged', handle);
-};
+        return { value: undefined as any, done: false }; // downstream should skip undefined
+      }
+    };
+  });

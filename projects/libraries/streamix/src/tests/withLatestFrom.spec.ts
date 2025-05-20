@@ -11,11 +11,11 @@ describe('withLatestFrom operator', () => {
 
     const subscription = combinedStream.subscribe({
       next: (value) => results.push(value),
+      error: done.fail,
       complete: () => {
         expect(results).toEqual([]);
         done();
       },
-      error: done.fail,
     });
 
     subscription.unsubscribe();

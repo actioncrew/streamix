@@ -1,36 +1,34 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function select<T = any>(indexIterator: Iterator<number>): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export const select = <T = any>(indexIterator: Iterator<number>) =>
+  createOperator("select", (source) => {
     let currentIndex = 0;
     let nextIndex = indexIterator.next().value;
 
-    (async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
           if (nextIndex === undefined) {
-            output.complete(); // Complete when indexIterator is exhausted
-            break;
+            // No more indices to select, complete
+            return { done: true, value: undefined };
+          }
+
+          const { done, value } = await source.next();
+          if (done) {
+            // Input ended
+            return { done: true, value: undefined };
           }
 
           if (currentIndex === nextIndex) {
-            output.next(value); // Emit the value at the selected index
-            nextIndex = indexIterator.next().value; // Move to the next index
+            // Emit this selected value and advance nextIndex
+            nextIndex = indexIterator.next().value;
+            currentIndex++;
+            return { done: false, value };
           }
 
           currentIndex++;
+          // Skip this value, continue looping
         }
-      } catch (err) {
-        output.error(err); // Forward any errors
-      } finally {
-        if (!output.completed()) {
-          output.complete(); // Ensure completion if the stream wasn't already completed
-        }
-      }
-    })();
-  };
-
-  return createMapper('select', createSubject<T>(), operator);
-}
+      },
+    };
+  });

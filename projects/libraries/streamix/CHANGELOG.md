@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.21
+
+Fully refactored all built-in operators, replacing complex subscription management with a clean, unified async iterator-based design. Operators now implement the async iterable protocol (next(), return(), throw()) directly, eliminating callback spaghetti and ensuring straightforward, predictable, and maintainable flow control. This approach improves resource management, unsubscription handling, and overall operator performance.
+
 ## 1.0.20
 
 Operators in a pipeline were applied left to right — the first operator wrapped the source, followed by the next, and so on. Now operators are applied in reverse order, from right to left — the last operator wraps the source first. Streamix now includes many new built-in operators, enabling richer stream manipulation out of the box. createMapper method receives both input and output streams.

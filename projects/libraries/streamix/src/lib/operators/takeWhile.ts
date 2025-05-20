@@ -1,33 +1,26 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function takeWhile<T = any>(predicate: (value: T) => boolean): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
-    (async () => {
-      let isCompleted = false;
+export const takeWhile = <T>(predicate: (value: T) => boolean) =>
+  createOperator("takeWhile", (source) => {
+    let done = false;
 
-      try {
-        for await (const value of eachValueFrom(input)) {
-          // If predicate returns false, complete the stream
-          if (!predicate(value)) {
-            output.complete();
-            isCompleted = true;
-            break;
-          }
-          output.next(value);
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        if (done) return { done: true, value: undefined };
+
+        const result = await source.next();
+
+        if (result.done) {
+          done = true;
+          return result;
         }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        if (!isCompleted) {
-          output.complete();
+
+        if (!predicate(result.value)) {
+          done = true;
+          return { done: true, value: undefined };
         }
+
+        return result;
       }
-    })();
-
-    return output;
-  };
-
-  return createMapper('takeWhile', createSubject<T>(), operator);
-}
+    };
+  });

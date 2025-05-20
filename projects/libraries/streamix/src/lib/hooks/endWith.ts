@@ -1,13 +1,24 @@
-import { createMapper, createStream, StreamMapper } from '../abstractions';
-import { eachValueFrom } from '../converters';
+import { createOperator } from "../abstractions";
 
-export const endWith = <T = any>(initialValue: T): StreamMapper => {
-  // Wrap the operator logic using createMapper
-  return createMapper('endWith', (input) => createStream('endWith', async function* () {
-    // Delegate yielding to the input stream.
-    yield* eachValueFrom(input);
+export const endWith = <T = any>(finalValue: T) =>
+  createOperator("endWith", (source) => {
+    let sourceDone = false;
+    let finalEmitted = false;
 
-    // Yield the initial value first.
-    yield initialValue;
-  }), () => {});
-}
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        if (!sourceDone) {
+          const result = await source.next();
+          if (!result.done) return result;
+          sourceDone = true;
+        }
+
+        if (!finalEmitted) {
+          finalEmitted = true;
+          return { done: false, value: finalValue };
+        }
+
+        return { done: true, value: undefined };
+      }
+    };
+  });

@@ -1,58 +1,35 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
+import { createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
 
-export function concatMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
-  let index = 0;
-  const operator = (input: Stream<T>, output: Subject<R>) => {
-    let inputCompleted = false;
-    let activeInnerStreams = 0; // Track active inner streams
+export const concatMap = <T, R>(
+  project: (value: T, index: number) => Stream<R>
+) =>
+  createOperator("concatMap", (source) => {
+    let outerIndex = 0;
+    let innerIterator: AsyncIterator<R> | null = null;
 
-    // Async generator to process inner streams sequentially
-    const processInnerStream = async (innerStream: Stream<R>) => {
-      try {
-        for await (const value of eachValueFrom(innerStream)) {
-          output.next(value); // Forward value from inner stream
-        }
-      } catch (err) {
-        // Handle error in inner stream without affecting other emissions
-        output.error(err); // Propagate error from the inner stream
-      } finally {
-        activeInnerStreams -= 1;
-        if (activeInnerStreams === 0&& inputCompleted) {
-          output.complete(); // Complete the output stream when all inner streams are processed
+    // Async iterator object that sequentially flattens projected inner async iterables
+    return {
+      async next(): Promise<IteratorResult<R>> {
+        while (true) {
+          // If no active inner iterator, get next outer value and create one
+          if (!innerIterator) {
+            const outerResult = await source.next();
+            if (outerResult.done) {
+              return { done: true, value: undefined };
+            }
+            innerIterator = eachValueFrom(project(outerResult.value, outerIndex++));
+          }
+
+          // Pull from the active inner iterator
+          const innerResult = await innerIterator.next();
+          if (innerResult.done) {
+            innerIterator = null; // Finished this inner stream, go back to outer
+            continue; // loop again to fetch next outer value
+          }
+          // Return next inner value
+          return { done: false, value: innerResult.value };
         }
       }
     };
-
-    // Iterate over the input stream using async iterator
-    (async () => {
-      try {
-        let hasValue = false;
-        for await (const value of eachValueFrom(input)) {
-          hasValue = true;
-          const innerStream = project(value, index++); // Project input to inner stream
-          activeInnerStreams += 1;
-          processInnerStream(innerStream); // Process the inner stream sequentially
-        }
-
-        // If no values were emitted in the outer stream, complete immediately
-        if (!hasValue && !inputCompleted) {
-          output.complete();
-        }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        inputCompleted = true;
-        // If all inner streams are done, complete the output stream
-        if (activeInnerStreams === 0) {
-          output.complete();
-        }
-      }
-    })();
-
-    return output;
-  };
-
-  return createMapper('concatMap', createSubject<R>(), operator);
-}
+  });

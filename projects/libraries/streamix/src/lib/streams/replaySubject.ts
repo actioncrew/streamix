@@ -4,7 +4,6 @@ import {
   Operator,
   pipeStream,
   Receiver,
-  StreamMapper,
   Subscription,
 } from "../abstractions";
 import { createBaseSubject, Subject } from "./subject";
@@ -70,7 +69,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Subje
     name: "subject",
     peek,
     subscribe,
-    pipe: function (this: Subject, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); },
+    pipe: function (this: Subject, ...steps: Operator[]) { return pipeStream(this, ...steps); },
     next,
     complete,
     completed: () => base.completed,
