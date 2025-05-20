@@ -23,7 +23,7 @@ export const fork = <T, R>(options: ForkOption<T, R>[]) =>
 
             const matched = options.find(({ on }) => on(outerResult.value, outerIndex++));
             if (!matched) {
-              throw new Error(`No handler matched value: ${outerResult.value}`);
+              throw new Error(`No handler found for value: ${outerResult.value}`);
             }
 
             innerIterator = eachValueFrom(matched.handler(outerResult.value));
