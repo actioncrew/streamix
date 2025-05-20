@@ -1,27 +1,19 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
 export type GroupItem<T = any, K = any> = {
   value: T;
   key: K;
 };
 
-export function groupBy<T = any, K = any>(
+export const groupBy = <T = any, K = any>(
   keySelector: (value: T) => K
-): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<GroupItem<T, K>>) => {
-    const subscription = input.subscribe({
-      next: (value) => {
-        const key = keySelector(value);
-        output.next({ key, value });
-      },
-      error: (err: any) => output.error(err),
-      complete: () => {
-        output.complete();
-        subscription.unsubscribe();
-      },
-    });
-  };
+) =>
+  createOperator("groupBy", (source) => ({
+    async next(): Promise<IteratorResult<GroupItem<T, K>>> {
+      const result = await source.next();
+      if (result.done) return result;
 
-  return createMapper('groupBy', createSubject<GroupItem<T, K>>(), operator);
-}
+      const key = keySelector(result.value);
+      return { value: { key, value: result.value }, done: false };
+    }
+  }));

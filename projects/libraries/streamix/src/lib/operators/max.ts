@@ -1,27 +1,43 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from '../abstractions';
 
-export function max<T = any>(comparator?: (a: T, b: T) => number): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
-    (async () => {
-      let maxValue: T | undefined;
-      try {
-        for await (const value of eachValueFrom(input)) {
-          if (maxValue === undefined || (comparator ? comparator(value, maxValue) > 0 : value > maxValue!)) {
+export const max = <T = any>(
+  comparator?: (a: T, b: T) => number
+) =>
+  createOperator<T>('max', (source) => {
+    let maxValue: T | undefined;
+    let hasMax = false;
+
+    // Process the source eagerly
+    const ready = (async () => {
+      while (true) {
+        const { value, done: sourceDone } = await source.next();
+        if (sourceDone) break;
+
+        if (!hasMax) {
+          maxValue = value;
+          hasMax = true;
+        } else if (comparator) {
+          if (comparator(value, maxValue!) > 0) {
             maxValue = value;
           }
+        } else if (value > maxValue!) {
+          maxValue = value;
         }
-        if (maxValue !== undefined) {
-          output.next(maxValue);
-        }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
       }
     })();
-  };
 
-  return createMapper('max', createSubject<T>(), operator);
-}
+    let emitted = false;
+
+    return {
+      async next() {
+        await ready;
+
+        if (!emitted && hasMax) {
+          emitted = true;
+          return { value: maxValue!, done: false };
+        }
+
+        return { value: undefined, done: true };
+      },
+    };
+  });

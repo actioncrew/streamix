@@ -1,28 +1,38 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from '../abstractions';
 
-// Define the catchError operator
-export const catchError = (handler: ((error: any) => void) = () => {}): StreamMapper => {
-  const operator = (input: Stream<any>, output: Subject<any>) => {
-    const subscription = input.subscribe({
-      next: (value) => {
-        output.next(value);
+export const catchError = <T = any>(
+  handler: (error: any) => void = () => {} // Handler still returns void
+) =>
+  createOperator('catchError', (source) => {
+    let errorCaughtAndHandled = false;
+    let sourceCompleted = false;
+
+    return {
+      async next(): Promise<IteratorResult<T>> {
+        // If an error was already caught and handled, this operator is done
+        if (errorCaughtAndHandled || sourceCompleted) {
+          return { value: undefined, done: true };
+        }
+
+        try {
+          const result = await source.next();
+          if (result.done) {
+            sourceCompleted = true; // Source completed without error
+            return { value: undefined, done: true };
+          }
+          return result; // Emit value from source
+        } catch (error) {
+          // An error occurred from the source
+          if (!errorCaughtAndHandled) { // Only handle the first error
+            handler(error); // Call the provided handler
+            errorCaughtAndHandled = true; // Mark as handled
+            // After handling, this operator completes
+            return { value: undefined, done: true };
+          } else {
+            // If subsequent errors occur (shouldn't happen with a proper upstream), re-throw
+            throw error;
+          }
+        }
       },
-      error: (error) => {
-        // When an error occurs, we pass it to the handler
-        handler(error);
-        // Optionally, you could return a new stream or just complete the stream
-        output.complete();
-        subscription.unsubscribe();
-      },
-      complete: () => {
-        output.complete();
-        subscription.unsubscribe();
-      }
-    });
-
-    return output;
-  };
-
-  return createMapper('catchError', createSubject<any>(), operator);
-};
+    };
+  });

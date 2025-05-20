@@ -1,10 +1,17 @@
-import { createOperator, Operator } from '../abstractions';
+import { createOperator } from '../abstractions';
 
-export const tap = (tapFunction: (value: any) => void): Operator => {
-  const handle = (value: any): any => {
-    tapFunction(value); // Call the tap function with the emission value
-    return value; // Return the original emission
-  };
+export const tap = (tapFunction: (value: any) => void) =>
+  createOperator('tap', (source) => {
+    return {
+      async next() {
+        const result = await source.next();
 
-  return createOperator('tap', handle);
-};
+        if (result.done) {
+          return { done: true, value: undefined };
+        }
+
+        tapFunction(result.value); // Apply side effect
+        return { done: false, value: result.value };
+      }
+    };
+  });

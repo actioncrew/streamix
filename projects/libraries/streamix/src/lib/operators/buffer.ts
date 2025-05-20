@@ -1,11 +1,11 @@
-import { createMapper, Stream, StreamMapper, Subscription } from "../abstractions";
-import { createSubject, Subject, timer } from "../streams";
+import { createOperator, Operator } from "../abstractions";
+import { eachValueFrom } from '../converters';
+import { createSubject, timer } from "../streams";
 
-export function buffer<T = any>(period: number): StreamMapper {
-  return createMapper('buffer', createSubject<T[]>(), (input: Stream<T>, output: Subject<T[]>) => {
+export function buffer<T = any>(period: number): Operator {
+  return createOperator('buffer', (source) => {
+    const output = createSubject<T[]>();
     let buffer: T[] = [];
-    let intervalSubscription: Subscription | null = null;
-    let inputSubscription: Subscription | null = null;
     let completed = false;
 
     const flush = () => {
@@ -16,44 +16,42 @@ export function buffer<T = any>(period: number): StreamMapper {
     };
 
     const cleanup = () => {
-      intervalSubscription?.unsubscribe();
-      inputSubscription?.unsubscribe();
+      intervalSubscription.unsubscribe();
     };
 
-    intervalSubscription = timer(period, period).subscribe({
-      next: () => {
-        flush();
-      },
+    const flushAndComplete = () => {
+      flush();
+      if (!completed) {
+        completed = true;
+        output.complete();
+      }
+      cleanup();
+    };
+
+    const intervalSubscription = timer(period, period).subscribe({
+      next: () => flush(),
       error: (err) => {
         cleanup();
         output.error(err);
       },
-      complete: () => {
-        flush();
-        cleanup();
-        if (!completed) {
-          completed = true;
-          output.complete();
-        }
-      },
+      complete: () => flushAndComplete(),
     });
 
-    inputSubscription = input.subscribe({
-      next: (value) => {
-        buffer.push(value);
-      },
-      error: (err) => {
+    (async () => {
+      try {
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+          buffer.push(value);
+        }
+      } catch (err) {
         cleanup();
         output.error(err);
-      },
-      complete: () => {
-        flush();
-        cleanup();
-        if (!completed) {
-          completed = true;
-          output.complete();
-        }
-      },
-    });
+      } finally {
+        flushAndComplete();
+      }
+    })();
+
+    return eachValueFrom(output);
   });
 }

@@ -1,45 +1,50 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from '../abstractions';
+import { eachValueFrom } from '../converters';
+import { createSubject } from '../streams';
 
-export function sample<T = any>(period: number): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export const sample = <T = any>(period: number) =>
+  createOperator<T>('sample', (source) => {
+    const output = createSubject<T>();
+
     let lastValue: T | undefined;
-    let intervalId: any = null;
+    let intervalId: any;
 
-    // Async generator to handle the input stream
-    const processInputStream = async () => {
-      try {
-        for await (const value of eachValueFrom(input)) {
-          lastValue = value; // Store the latest value from the input stream
-        }
-        // When input completes, emit the last value if available
-        if (lastValue !== undefined) {
-          output.next(lastValue);
-        }
-      } catch (err) {
-        output.error(err); // Propagate any error
-      } finally {
-        output.complete(); // Complete the output stream when input is finished
-        if (intervalId) clearInterval(intervalId); // Clean up interval when done
-      }
-    };
-
-    // Start the sampling interval
+    // Starts a timer that periodically emits the last seen value
     const startSampling = () => {
       intervalId = setInterval(() => {
         if (lastValue !== undefined) {
-          output.next(lastValue); // Emit the last value at each interval
+          output.next(lastValue);
         }
       }, period);
     };
 
-    // Run the input stream processing and start sampling
-    (async () => {
-      startSampling();
-      await processInputStream();
-    })();
-  };
+    const stopSampling = () => {
+      if (intervalId != null) {
+        clearInterval(intervalId);
+      }
+    };
 
-  return createMapper('sample', createSubject<T>(), operator);
-}
+    (async () => {
+      try {
+        startSampling();
+
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+          lastValue = value;
+        }
+
+        // Emit the final value after source completes
+        if (lastValue !== undefined) {
+          output.next(lastValue);
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        output.complete();
+        stopSampling();
+      }
+    })();
+
+    return eachValueFrom(output);
+  });

@@ -1,65 +1,65 @@
-import { createMapper, Stream, StreamMapper, Subscription } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createOperator, Stream, Subscription } from "../abstractions";
+import { eachValueFrom } from '../converters';
+import { createSubject } from "../streams";
 
-export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>): StreamMapper {
-  let index = 0;
-  const operator = (input: Stream<T>, output: Subject<R>) => {
+export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>) {
+  return createOperator("switchMap", (source) => {
+    const output = createSubject<R>();
+
     let currentSubscription: Subscription | null = null;
     let inputCompleted = false;
-    let currentInnerStreamId = 0; // Track the active inner stream ID
-    let subscription: Subscription | undefined;
+    let currentInnerStreamId = 0;
+    let index = 0;
+
+    const checkComplete = () => {
+      if (inputCompleted && !currentSubscription) {
+        output.complete();
+      }
+    };
 
     const subscribeToInner = (innerStream: Stream<R>, streamId: number) => {
-      // Unsubscribe from the previous inner subscription if any
       if (currentSubscription) {
         currentSubscription.unsubscribe();
         currentSubscription = null;
       }
 
-      // Subscribe to the new inner stream
       currentSubscription = innerStream.subscribe({
         next: (value) => {
-          // Only forward values from the most recent stream
           if (streamId === currentInnerStreamId) {
             output.next(value);
           }
         },
         error: (err) => {
           if (streamId === currentInnerStreamId) {
-            output.error(err); // Forward errors to the outer stream
+            output.error(err);
           }
         },
         complete: () => {
           if (streamId === currentInnerStreamId) {
-            currentSubscription = null; // Clear the subscription
-            checkComplete(); // Check if we can complete the outer stream
+            currentSubscription = null;
+            checkComplete();
           }
         },
       });
     };
 
-    const checkComplete = () => {
-      // Complete the outer stream if the outer stream is marked complete and there is no active inner stream
-      if (inputCompleted && !currentSubscription) {
-        output.complete();
+    (async () => {
+      try {
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+
+          const streamId = ++currentInnerStreamId;
+          const innerStream = project(value, index++);
+          subscribeToInner(innerStream, streamId);
+        }
+        inputCompleted = true;
+        checkComplete();
+      } catch (err) {
+        output.error(err);
       }
-    };
+    })();
 
-    // Subscribe to the outer input stream
-    subscription = input.subscribe({
-      next: (value) => {
-        const streamId = ++currentInnerStreamId; // Assign a unique ID to the new inner stream
-        const innerStream = project(value, index++); // Project to the inner stream
-        subscribeToInner(innerStream, streamId); // Subscribe to the inner stream
-      },
-      error: (err) => output.error(err), // Forward errors to the outer stream
-      complete: () => {
-        inputCompleted = true; // Mark the outer stream as complete
-        subscription?.unsubscribe();
-        checkComplete(); // Check if we can complete the outer stream
-      },
-    });
-  };
-
-  return createMapper("switchMap", createSubject<R>(), operator); // Return the switchMap operator
+    return eachValueFrom(output);
+  });
 }

@@ -1,10 +1,18 @@
-import { createOperator, Operator } from '../abstractions';
+import { createOperator } from '../abstractions';
 
-export const map = (transform: (value: any, index: number) => any): Operator => {
-  let index = 0;
-  const handle = (value: any): any => {
-    return transform(value, index++); // Transform the emission value
-  };
-
-  return createOperator('map', handle);
-};
+export const map = <T = any, R = any>(
+  transform: (value: T, index: number) => R
+) =>
+  createOperator('map', (source) => {
+    let index = 0;
+    return {
+      async next(): Promise<IteratorResult<R>> {
+        const result = await source.next();
+        if (result.done) return result;
+        return {
+          value: transform(result.value, index++),
+          done: false,
+        };
+      },
+    };
+  });

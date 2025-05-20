@@ -1,44 +1,41 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator, Operator, Stream } from '../abstractions';
+import { eachValueFrom } from '../converters';
+import { createSubject } from '../streams';
 
-export function skipUntil<T = any>(notifier: Stream<any>): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export function skipUntil<T = any>(notifier: Stream): Operator {
+  return createOperator('skipUntil', (source) => {
+    const output = createSubject<T>();
     let canEmit = false;
 
-    let notifierSubscription = notifier.subscribe({
+    // Subscribe to notifier as an async iterator
+     let notifierSubscription = notifier.subscribe({
       next: () => {
         canEmit = true;
         notifierSubscription.unsubscribe();
       },
+      error: (err: any) => {
+        output.error(err);
+      },
       complete: () => {
         notifierSubscription.unsubscribe();
       },
-      error: (err) => {
-        output.error(err);
-      },
     });
 
-    // Process the input stream
-    const processInput = async () => {
+
+    // Process source async iterator
+    (async () => {
       try {
-        for await (const value of eachValueFrom(input)) {
-          if (canEmit) {
-            output.next(value);
-          }
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+          if (canEmit) output.next(value);
         }
-      } catch (err) {
-        output.error(err);
-      } finally {
         output.complete();
+      } catch (err) {
+        if (!output.completed()) output.error(err);
       }
-    };
+    })();
 
-    // Run both processors concurrently
-    processInput();
-
-    return output;
-  };
-
-  return createMapper('skipUntil', createSubject<T>(), operator);
+    return eachValueFrom(output);
+  });
 }

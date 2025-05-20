@@ -1,34 +1,32 @@
-import { createSubject, eachValueFrom, Subject } from '..';
-import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { createOperator } from "../abstractions";
 
-export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): StreamMapper => {
-  const operator = (input: Stream, output: Subject) => {
-    let accumulatedValue = seed;
+export const reduce = (
+  accumulator: (acc: any, value: any) => any,
+  seed: any
+) =>
+  createOperator("reduce", (source) => {
+    let done = false;
 
-    // Use async iterator to iterate over the input stream
-    const reduceIterator = async function* () {
-      for await (const value of eachValueFrom(input)) {
-        // Apply the accumulator function on each emission
-        accumulatedValue = accumulator(accumulatedValue, value);
-      }
+    return {
+      async next(): Promise<IteratorResult<any>> {
+        if (done) return { done: true, value: undefined };
 
-      // Emit the final accumulated value after stream completion
-      yield accumulatedValue;
-    };
-
-    // Handle the input stream and process values
-    (async () => {
-      try {
-        // Iterate over the values emitted by the input stream
-        for await (const result of reduceIterator()) {
-          output.next(result); // Emit the accumulated value to the output stream
+        let acc = seed;
+        for await (const result of {
+          async *[Symbol.asyncIterator]() {
+            while (true) {
+              const { done, value } = await source.next();
+              if (done) break;
+              acc = accumulator(acc, value);
+            }
+            yield acc;
+          },
+        }) {
+          done = true;
+          return { done: false, value: result };
         }
-        output.complete(); // Complete the output stream when the iteration is done
-      } catch (err) {
-        output.error(err); // Forward any errors to the output stream
-      }
-    })();
-  };
 
-  return createMapper('reduce', createSubject(), operator);
-};
+        return { done: true, value: undefined };
+      },
+    };
+  });

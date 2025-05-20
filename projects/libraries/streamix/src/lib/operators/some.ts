@@ -1,31 +1,37 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from "../abstractions";
 
-export function some<T = any>(predicate: (value: T, index: number) => boolean): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<boolean>) => {
+export const some = <T = any>(
+  predicate: (value: T, index: number) => boolean
+) =>
+  createOperator('some', (source) => {
+    let evaluated = false;
+    let result: boolean = false;
+    let index = 0;
 
-    (async () => {
-      let index = 0; // Initialize index
-
-      try {
-        for await (const value of eachValueFrom(input)) {
-          if (predicate(value, index++)) { // Pass value and index to predicate
-            output.next(true); // Emit true if any value satisfies the predicate
-            output.complete();
-            return;
-          }
+    return {
+      async next(): Promise<IteratorResult<boolean>> {
+        if (evaluated) {
+          return { value: undefined, done: true };
         }
-        output.next(false); // Emit false if no values satisfy the predicate
-      } catch (err) {
-        output.error(err); // Propagate errors
-      } finally {
-        output.complete(); // Complete the output stream
+
+        try {
+          while (true) {
+            const itemResult = await source.next();
+            if (itemResult.done) {
+              break; // Source completed
+            }
+            if (predicate(itemResult.value, index++)) {
+              result = true;
+              break; // Predicate matched, no need to continue
+            }
+          }
+        } catch (err) {
+          throw err;
+        } finally {
+          evaluated = true;
+        }
+
+        return { value: result, done: false };
       }
-    })();
-
-    return output;
-  };
-
-  return createMapper('some', createSubject<boolean>(), operator);
-}
+    };
+  });

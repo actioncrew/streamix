@@ -1,15 +1,19 @@
-import { createMapper, Stream, StreamMapper } from '../abstractions';
+import { createOperator } from '../abstractions';
 import { eachValueFrom } from '../converters';
-import { createSubject, Subject } from '../streams';
+import { createSubject } from '../streams';
 
-export function delay<T>(ms: number): StreamMapper {
-  return createMapper('delay', createSubject<T>(), (input: Stream<T>, output: Subject<T>) => {
+export function delay<T>(ms: number) {
+  return createOperator('delay', (source) => {
+    const output = createSubject<T>();
 
     (async () => {
       try {
-        for await (const value of eachValueFrom(input)) {
+        while (true) {
+          const result = await source.next();
+          if (result.done) break;
+
           await new Promise((resolve) => setTimeout(resolve, ms)); // Delay before forwarding
-          output.next(value);
+          output.next(result.value);
         }
       } catch (err) {
         output.error(err);
@@ -18,6 +22,6 @@ export function delay<T>(ms: number): StreamMapper {
       }
     })();
 
-    return output;
+    return eachValueFrom(output);
   });
 }

@@ -1,30 +1,43 @@
-import { createMapper, Stream, StreamMapper } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject, Subject } from "../streams";
+import { createOperator } from '../abstractions';
 
-export function min<T = any>(comparator?: (a: T, b: T) => number): StreamMapper {
-  const operator = (input: Stream<T>, output: Subject<T>) => {
+export const min = <T = any>(
+  comparator?: (a: T, b: T) => number
+) =>
+  createOperator<T>('min', (source) => {
+    let minValue: T | undefined;
+    let hasMin = false;
 
-    (async () => {
-      let minValue: T | undefined;
-      try {
-        for await (const value of eachValueFrom(input)) {
-          if (minValue === undefined || (comparator ? comparator(value, minValue) < 0 : value < minValue!)) {
+    // Await entire source and compute min eagerly
+    const ready = (async () => {
+      while (true) {
+        const { value, done: sourceDone } = await source.next();
+        if (sourceDone) break;
+
+        if (!hasMin) {
+          minValue = value;
+          hasMin = true;
+        } else if (comparator) {
+          if (comparator(value, minValue!) < 0) {
             minValue = value;
           }
+        } else if (value < minValue!) {
+          minValue = value;
         }
-        if (minValue !== undefined) {
-          output.next(minValue);
-        }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
       }
     })();
 
-    return output;
-  };
+    let emitted = false;
 
-  return createMapper('min', createSubject<T>(), operator);
-}
+    return {
+      async next() {
+        await ready;
+
+        if (!emitted && hasMin) {
+          emitted = true;
+          return { value: minValue!, done: false };
+        }
+
+        return { value: undefined, done: true };
+      },
+    };
+  });
