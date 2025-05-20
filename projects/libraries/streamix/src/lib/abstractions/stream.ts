@@ -3,6 +3,7 @@ import { Operator } from "./operator";
 import { createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
+// Basic Stream type definition
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
@@ -10,35 +11,42 @@ export type Stream<T = any> = {
   pipe: (...steps: Operator[]) => Stream<any>;
 };
 
-export function pipeStream<T = any>(stream: Stream<T>, ...steps: Operator[]): Stream<any> {
-  const piped = steps.reduce<AsyncIterable<any>>((iter, op) => op.apply(iter), eachValueFrom(stream));
+export function pipeStream<T = any>(
+  stream: Stream<T>,
+  ...steps: Operator[]
+): Stream<any> {
+  const base: AsyncIterable<any> = eachValueFrom(stream);
 
-  return createStream(
-    `pipe(${steps.map(op => op.name ?? 'anonymous').join(" → ")})`,
+  // Apply operators to get the final AsyncIterable
+  const piped = steps.reduce<AsyncIterable<any>>((iter, op) => {
+    return op.apply(iter);
+  }, base);
+
+  const sink = createStream(
+    `pipe(${steps.map(op => op.name ?? 'anonymous').join(' → ')})`,
     async function* () {
       const iterator = piped[Symbol.asyncIterator]();
-      try {
-        while (true) {
-          const { value, done } = await iterator.next();
-          if (done) break;
-          yield value;
-        }
-      } catch (err) {
-        if (iterator.throw) await iterator.throw(err);
-        throw err;
-      } finally {
-        if (iterator.return) {
-          await iterator.return();
-        }
+      while (true) {
+        const { value, done } = await iterator.next();
+        if (done) break;
+        yield value;
       }
     }
   );
+
+  return sink;
 }
 
-export function createStream<T>(name: string, generatorFn: () => AsyncGenerator<T, void, unknown>): Stream<T> {
-  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+// The stream factory function
+export function createStream<T>(
+  name: string,
+  generatorFn: () => AsyncGenerator<T, void, unknown>
+): Stream<T> {
+  const subscribe = (
+    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
+  ): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const iterator: AsyncGenerator<T, void, unknown> | null = generatorFn();
+    const iterator = generatorFn();
     const subscription = createSubscription<T>(async () => {
       await iterator.return();
     });
@@ -46,13 +54,10 @@ export function createStream<T>(name: string, generatorFn: () => AsyncGenerator<
     (async () => {
       try {
         for await (const value of iterator) {
-          if (subscription.unsubscribed) {
-            break;
-          }
+          if (subscription.unsubscribed) break;
           receiver.next?.(value);
         }
       } catch (err: any) {
-        if (iterator?.throw) await iterator.throw(err);
         receiver.error?.(err);
       } finally {
         receiver.complete?.();
@@ -62,5 +67,15 @@ export function createStream<T>(name: string, generatorFn: () => AsyncGenerator<
     return subscription;
   };
 
-  return { type: "stream", name, subscribe, pipe: function(...steps) { return pipeStream<T>(this, ...steps); }}
+  const stream: Stream<T> = {
+    type: "stream",
+    name,
+    subscribe,
+    pipe(...steps: Operator[]) {
+      return pipeStream(this, ...steps);
+    }
+  };
+
+  return stream;
 }
+
