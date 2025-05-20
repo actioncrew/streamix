@@ -2,7 +2,7 @@
 
 ## 1.0.21
 
-We have refactored and optimized all built-in operators for improved performance, readability, and consistency. The operator implementations now follow a unified and streamlined async iterable pattern, ensuring better maintainability and easier extension. Operators have been redesigned to fully leverage async iterator protocols with clean, efficient next(), return(), and throw() implementations. This leads to more predictable behavior and correct resource management including proper unsubscription handling.
+Fully refactored all built-in operators, replacing complex subscription management with a clean, unified async iterator-based design. Operators now implement the async iterable protocol (next(), return(), throw()) directly, eliminating callback spaghetti and ensuring straightforward, predictable, and maintainable flow control. This approach improves resource management, unsubscription handling, and overall operator performance.
 
 ## 1.0.20
 

@@ -1,3 +1,4 @@
+import { Operator } from "../abstractions";
 import { select } from "./select";
 
 export const elementNth = <T = any>(indexPattern: (iteration: number) => number | undefined) => {
@@ -11,5 +12,5 @@ export const elementNth = <T = any>(indexPattern: (iteration: number) => number 
     }
   })();
 
-  return select<T>(indexIterator);
+  return select<T>(indexIterator) as Operator;
 }
