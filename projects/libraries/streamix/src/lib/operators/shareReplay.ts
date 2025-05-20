@@ -1,42 +1,30 @@
-import { createOperator } from "../abstractions";
-import { eachValueFrom } from "../converters"; // Assuming you have this
-import { createReplaySubject } from "../streams";
+import { createOperator } from '../abstractions';
+import { eachValueFrom } from '../converters';
+import { createReplaySubject } from '../streams';
 
-export const shareReplay = <T>(bufferSize = Infinity) =>
-  createOperator('shareReplay', (source) => {
-    const subject = createReplaySubject<T>(bufferSize);
-    let upstreamStarted = false;
+export function shareReplay<T>(bufferSize: number = Infinity) {
+  let isConnected = false;
+  const sharedSubject = createReplaySubject<T>(bufferSize);
 
-    // Start upstream pumping only once
-    const ensureUpstream = () => {
-      if (upstreamStarted) return;
-      upstreamStarted = true;
+  return createOperator<T>('shareReplay', (source) => {
+    if (!isConnected) {
+      isConnected = true;
+
       (async () => {
         try {
-          while (true) {
-            const result = await source.next();
-            if (result.done) {
-              subject.complete();
-              break;
-            }
-            subject.next(result.value);
+          let result = await source.next();
+          while (!result.done) {
+            sharedSubject.next(result.value);
+            result = await source.next();
           }
         } catch (err) {
-          subject.error?.(err);
+          sharedSubject.error(err);
+        } finally {
+          sharedSubject.complete();
         }
       })();
-    };
+    }
 
-    ensureUpstream(); // Start the upstream immediately
-
-    const iterableFromSubject: AsyncIterable<T> = eachValueFrom(subject);
-
-    return {
-      [Symbol.asyncIterator]() {
-        return iterableFromSubject[Symbol.asyncIterator]();
-      },
-      next: async (): Promise<IteratorResult<T>> => {
-        return await iterableFromSubject[Symbol.asyncIterator]().next();
-      }
-    };
+    return eachValueFrom(sharedSubject);
   });
+}

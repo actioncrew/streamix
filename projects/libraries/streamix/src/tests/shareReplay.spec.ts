@@ -33,7 +33,7 @@ describe('shareReplay operator', () => {
     });
   });
 
-  it('should propagate error to all subscribers', done => {
+  fit('should propagate error to all subscribers', done => {
     const source = createStream<number>('erroring', async function* () {
       yield 1;
       throw new Error('Test error');
