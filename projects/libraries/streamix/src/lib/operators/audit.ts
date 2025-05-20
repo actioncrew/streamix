@@ -38,10 +38,10 @@ export const audit = <T = any>(duration: number): Operator => {
         if (!timerActive && lastValue !== undefined) {
           output.next(lastValue);
         }
-
-        output.complete();
       } catch (err) {
         output.error(err);
+      } finally {
+        output.complete();
       }
     })();
 
