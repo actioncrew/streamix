@@ -55,6 +55,6 @@ export const createSubscription = function <T>(onUnsubscribe?: () => void): Subs
       asyncLoop().catch((err) => {
         receiver.error?.(err);
       });
-    },
+    }
   });
 };
