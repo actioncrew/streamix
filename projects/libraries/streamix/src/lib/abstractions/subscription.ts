@@ -1,12 +1,9 @@
-import { Receiver } from "../abstractions";
-
 export type Subscription<T = any> = {
   (): Promise<T | undefined>;
   unsubscribed: boolean;
   hasValue(): Promise<boolean>;
   value(): Promise<T | undefined>;
   unsubscribe(): void;
-  listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>): void;
 };
 
 export const createSubscription = function <T>(onUnsubscribe?: () => void): Subscription<T> {
@@ -33,28 +30,6 @@ export const createSubscription = function <T>(onUnsubscribe?: () => void): Subs
         _unsubscribed = true;
         onUnsubscribe?.();
       }
-    },
-    listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>) {
-      if (_unsubscribed) {
-        throw new Error("Cannot listen on an unsubscribed subscription.");
-      }
-
-      const asyncLoop = async () => {
-        try {
-          for await (const value of generator()) {
-            _latestValue = value;
-            receiver.next?.(value);
-          }
-        } catch (err: any) {
-          receiver.error?.(err);
-        } finally {
-          receiver.complete?.();
-        }
-      };
-
-      asyncLoop().catch((err) => {
-        receiver.error?.(err);
-      });
     }
   });
 };

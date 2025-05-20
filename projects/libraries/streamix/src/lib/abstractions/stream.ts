@@ -48,10 +48,12 @@ export function createStream<T>(
     const receiver = createReceiver(callbackOrReceiver);
     const iterator = generatorFn();
     const subscription = createSubscription<T>(async () => {
-      await iterator.return();
+      await iterator.return?.();
     });
 
     (async () => {
+      if (subscription.unsubscribed) subscription;
+
       try {
         for await (const value of iterator) {
           if (subscription.unsubscribed) break;
