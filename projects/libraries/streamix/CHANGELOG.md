@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.22
+
+Added support for unsubscription in custom operators. Operators can now clean up inner subscriptions when the outer stream is unsubscribed, preventing memory leaks and ensuring proper resource management.
+
 ## 1.0.20
 
 Operators in a pipeline were applied left to right — the first operator wrapped the source, followed by the next, and so on. Now operators are applied in reverse order, from right to left — the last operator wraps the source first. Streamix now includes many new built-in operators, enabling richer stream manipulation out of the box. createMapper method receives both input and output streams.
