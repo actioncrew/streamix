@@ -45,7 +45,7 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
     };
 
     // Subscribe to the outer input stream
-    input.subscribe({
+    const inputSubsctiption = input.subscribe({
       next: (value) => {
         const streamId = ++currentInnerStreamId; // Assign a unique ID to the new inner stream
         const innerStream = project(value, index++); // Project to the inner stream
@@ -53,6 +53,7 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
       },
       error: (err) => output.error(err), // Forward errors to the outer stream
       complete: () => {
+        inputSubsctiption.unsubscribe();
         inputCompleted = true; // Mark the outer stream as complete
         checkComplete(); // Check if we can complete the outer stream
       },

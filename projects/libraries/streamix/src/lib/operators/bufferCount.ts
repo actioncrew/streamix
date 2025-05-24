@@ -7,7 +7,7 @@ export const bufferCount = (bufferSize: number = Infinity): StreamMapper => {
 
   const operator = (input: Stream<any>, output: Subject<any[]>) => {
 
-    input.subscribe({
+    const inputSubscription = input.subscribe({
       next: (value) => {
         buffer.push(value);
 
@@ -19,6 +19,7 @@ export const bufferCount = (bufferSize: number = Infinity): StreamMapper => {
       },
       error: (err) => output.error(err),
       complete: () => {
+        inputSubscription.unsubscribe();
         if (buffer.length > 0) {
           output.next(buffer); // Emit remaining items when stream completes
         }
