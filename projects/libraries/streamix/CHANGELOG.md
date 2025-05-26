@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.21
+## 2.0.1
 
 Fully refactored all built-in operators, replacing complex subscription management with a clean, unified async iterator-based design. Operators now implement the async iterable protocol (next(), return(), throw()) directly, eliminating callback spaghetti and ensuring straightforward, predictable, and maintainable flow control. This approach improves resource management, unsubscription handling, and overall operator performance.
 
