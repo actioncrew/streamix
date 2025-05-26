@@ -22,9 +22,10 @@ export const toArray = (): StreamMapper => {
         for await (const result of toArrayIterator()) {
           output.next(result);  // Emit the accumulated array to the output stream
         }
-        output.complete();  // Complete the output stream once all values are processed
       } catch (err) {
         output.error(err);  // Forward any errors from the stream
+      } finally {
+        output.complete();  // Complete the output stream once all values are processed
       }
     })();
 

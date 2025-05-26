@@ -11,9 +11,10 @@ export function ignoreElements<T>(): StreamMapper {
           // Intentionally empty - we're ignoring all values
           void _;
         }
-        output.complete();
       } catch (err) {
         output.error(err); // Only errors get propagated
+      } finally {
+        output.complete();
       }
     })();
   };

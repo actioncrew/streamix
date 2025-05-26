@@ -23,9 +23,10 @@ export const reduce = (accumulator: (acc: any, value: any) => any, seed: any): S
         for await (const result of reduceIterator()) {
           output.next(result); // Emit the accumulated value to the output stream
         }
-        output.complete(); // Complete the output stream when the iteration is done
       } catch (err) {
         output.error(err); // Forward any errors to the output stream
+      } finally {
+        output.complete(); // Complete the output stream when the iteration is done
       }
     })();
   };

@@ -48,12 +48,13 @@ export function recurse<T = any>(
           }
         }
 
-        if (inputComplete && queue.length === 0) {
-          output.complete();
-        }
       } catch (err) {
         output.error(err);
       } finally {
+        if (inputComplete && queue.length === 0) {
+          output.complete();
+        }
+
         processing = false;
 
         if (queue.length > 0) {
@@ -68,12 +69,13 @@ export function recurse<T = any>(
           queue.push({ value, depth: 0 });
           processQueue();
         }
+      } catch (error) {
+        output.error(error);
+      } finally {
         inputComplete = true;
         if (queue.length === 0 && !processing) {
           output.complete();
         }
-      } catch (error) {
-        output.error(error);
       }
     })();
   });

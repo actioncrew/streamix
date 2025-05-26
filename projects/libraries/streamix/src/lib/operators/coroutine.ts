@@ -179,9 +179,10 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
         for await (const value of processTask(input)) {
           output.next(value);
         }
-        output.complete();
       } catch (error) {
         output.error?.(error);
+      } finally {
+        output.complete();
       }
     })();
   }) as Coroutine;
