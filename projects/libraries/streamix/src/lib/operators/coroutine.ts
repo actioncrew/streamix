@@ -42,7 +42,7 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
       if (!helperScriptCache && !fetchingHelperScript) {
         fetchingHelperScript = true;
         helperScriptPromise = fetch(
-          'https://unpkg.com/@actioncrew/streamix@1.0.21/fesm2022/actioncrew-streamix-coroutine.mjs',
+          'https://unpkg.com/@actioncrew/streamix@2.0.1/fesm2022/actioncrew-streamix-coroutine.mjs',
         )
           .then((response) => {
             if (!response.ok) {

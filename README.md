@@ -18,10 +18,19 @@ Streamix is a **lightweight alternative to RxJS**, offering a streamlined approa
 [Supported Operators /](#supported-operators)
 [HTTP Client /](#http-client)
 
-
 ## Benefits of using Generators
 
 Generators (function* and async function* in JavaScript) offer a **pull-based** model for iteration, contrasting with the **push-based** model used in RxJS and similar libraries. With generators, values are only produced when requested via .next(), allowing for more efficient execution by avoiding unnecessary computations. In contrast, traditional RxJS observables push values to subscribers regardless of whether they are ready to handle them, potentially leading to wasted processing or memory usage.
+
+## Revamped Operators
+Starting with **v2.0.1**, all Streamix operators have been fully rewritten using the AsyncIterator protocol. This shift marks a major milestone in the library’s evolution, bringing several key benefits:
+
+- No internal Subjects: Operators no longer rely on Subjects or hidden state.
+- No manual subscriptions: There’s no RxJS-style subscribe() logic inside operators anymore.
+- Cleaner and more efficient implementation: Leveraging native JavaScript async iteration makes the library faster and simpler.
+- Easier to debug: Without subscription chains and intermediate Subject layers, debugging operator pipelines is much more straightforward.
+
+This change makes Streamix more predictable and transparent, offering developers greater control and insight into their reactive data flows.
 
 ## Key Features
 
@@ -212,5 +221,9 @@ To see Streamix in action, check out these sample projects:
 
 Interested in extending Streamix or using it in your project? Reach out to us! We’re excited to collaborate and help bring your ideas to life.
 
-[More information](https://medium.com/p/00d5467f0c01)
+## More Information
+[Exploring Streamix: A Lightweight Alternative to RxJS](https://medium.com/p/00d5467f0c01)
 
+[Streamix 2.0.1: Embracing Async Iterators for Simpler, Faster Reactive Streams](https://medium.com/p/a1eb9e7ce1d7)
+
+[Simplifying Reactive Programming Approach with Active Subscriptions in JavaScript](https://medium.com/p/0bfc206ad41c)
