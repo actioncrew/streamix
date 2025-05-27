@@ -64,7 +64,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     return await base.queue.enqueue(async () => base.buffer.peek());
   };
 
-  const subject: ReplaySubject<T> = {
+  const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
     subscribe,
@@ -75,5 +75,5 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     error,
   };
 
-  return subject;
+  return replaySubject;
 }
