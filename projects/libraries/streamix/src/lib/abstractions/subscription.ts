@@ -9,7 +9,7 @@ export type Subscription<T = any> = {
   listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>): void;
 };
 
-export const createSubscription = function <T>(onUnsubscribe?: () => void): Subscription<T> {
+export const createSubscription = function <T = any>(onUnsubscribe?: () => void): Subscription<T> {
 
   let _latestValue: T | undefined;
   let _unsubscribed = false;
