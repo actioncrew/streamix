@@ -8,9 +8,9 @@ import {
 } from "../abstractions";
 import { createBaseSubject, Subject } from "./subject";
 
-export type ReplaySubject<T = any> = Subject<T>;
+export type ReplaySubject<T = any> = Omit<Subject<T>, "peek">;
 
-export function createReplaySubject<T = any>(capacity: number = Infinity): Subject<T> {
+export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
   const { base, next, complete, error, pullValue, cleanupAfterReceiver } = createBaseSubject<T>(capacity, "replay");
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
@@ -64,12 +64,11 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Subje
     return await base.queue.enqueue(async () => base.buffer.peek());
   };
 
-  const subject: Subject<T> = {
+  const subject: ReplaySubject<T> = {
     type: "subject",
-    name: "subject",
-    peek,
+    name: "replaySubject",
     subscribe,
-    pipe: function (this: Subject, ...steps: Operator[]) { return pipeStream(this, ...steps); },
+    pipe: function (this: ReplaySubject, ...steps: Operator[]) { return pipeStream(this, ...steps); },
     next,
     complete,
     completed: () => base.completed,
