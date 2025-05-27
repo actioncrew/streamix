@@ -148,12 +148,12 @@ describe('race', () => {
 
   it('should complete when the winning stream completes after a delay', (done) => {
     const stream1 = createStream<number>('delayed1', async function* () {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 100));
       yield 1;
     });
 
     const stream2 = createStream<number>('delayed2', async function* () {
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise(resolve => setTimeout(resolve, 50));
       yield 3;
     });
 
