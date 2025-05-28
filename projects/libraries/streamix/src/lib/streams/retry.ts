@@ -29,8 +29,8 @@ export function retry<T = any>(
             },
             complete: () => {
               completed = true;
-              resolve();
               subscription.unsubscribe(); // Clean up subscription on completion
+              resolve();
             }
           });
         });

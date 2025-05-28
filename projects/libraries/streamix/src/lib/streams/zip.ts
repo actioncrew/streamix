@@ -1,5 +1,6 @@
 import { Stream } from "../abstractions";
 import { createSubject } from "../streams";
+import { Subscription } from './../abstractions/subscription';
 
 // Combine multiple streams by emitting values when all streams emit
 export function zip(streams: Stream<any>[]): Stream<any[]> {
@@ -10,7 +11,7 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
   let completedStreams = 0;
 
   // Wrap the streams with subscription logic
-  streams.forEach((stream, index) => {
+  const subscriptions: Subscription[] = streams.map((stream, index) =>
     stream.subscribe({
       next: (value) => {
         latestValues[index] = value;
@@ -28,11 +29,15 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
         if (completedStreams === streams.length) {
           // Complete the subject when all streams have completed
           subject.complete();
+          subscriptions.forEach(s => s.unsubscribe());
         }
       },
-      error: (err) => subject.error(err),  // Pass errors to the subject
-    });
-  });
+      error: (err) => {
+        subject.error(err),  // Pass errors to the subject
+        subscriptions.forEach(s => s.unsubscribe());
+      }
+    })
+  );
 
   subject.name = 'zip';
   return subject;  // Return the subject that acts as a combined stream

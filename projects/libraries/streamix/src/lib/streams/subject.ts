@@ -1,4 +1,4 @@
-import { createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, CyclicBuffer, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
+import { createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, CyclicBuffer, Operator, pipeStream, Receiver, Stream, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   peek(): Promise<T | undefined>;
@@ -22,14 +22,17 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
   };
 
   const next = (value: T) => {
-    if (base.completed || base.hasError) return;
-    queue.enqueue(() => buffer.write(value));
+    queue.enqueue(async () => {
+      if (base.completed || base.hasError) return;
+      buffer.write(value);
+    });
   };
 
   const complete = () => {
-    if (base.completed) return;
     queue.enqueue(async () => {
-      buffer.complete();
+      if (base.completed) return;
+      base.completed = true;
+      await buffer.complete();
 
       setTimeout(() => {
         for (const receiver of base.subscribers.keys()) {
@@ -42,8 +45,8 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
   };
 
   const error = (err: any) => {
-    if (base.completed || base.hasError) return;
     queue.enqueue(async () => {
+      if (base.completed || base.hasError) return;
       base.hasError = true;
       base.errorValue = err;
       for (const receiver of base.subscribers.keys()) {
@@ -69,30 +72,18 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
     // Not needed with the new buffer, as it's automatically managing backpressure
   };
 
-  const cleanupAfterReceiver = (receiver: Receiver<T>) => {
-    const readerId = base.subscribers.get(receiver);
-    if (readerId !== undefined) {
-      base.subscribers.delete(receiver);
-      // But defer buffer detach to allow current value to be processed
-      Promise.resolve().then(() => {
-        base.buffer.detachReader(readerId);
-      });
-    }
-  };
-
   return {
     base,
     next,
     complete,
     error,
     pullValue,
-    cleanupBuffer,
-    cleanupAfterReceiver,
+    cleanupBuffer
   };
 }
 
 export function createSubject<T = any>(): Subject<T> {
-  const { base, next, complete, error, pullValue, cleanupAfterReceiver } = createBaseSubject<T>(10, "standard");
+  const { base, next, complete, error, pullValue } = createBaseSubject<T>(10, "standard");
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
@@ -103,22 +94,26 @@ export function createSubject<T = any>(): Subject<T> {
         if (!unsubscribing) {
           unsubscribing = true;
           base.queue.enqueue(async () => {
+            subscription.unsubscribe();
             if (base.subscribers.size === 1) {
               complete();
             }
 
-            cleanupAfterReceiver(receiver);
+            const readerId = base.subscribers.get(receiver);
+            if (readerId !== undefined) {
+              base.subscribers.delete(receiver);
+              await base.buffer.detachReader(readerId);
+            }
           });
         }
       }
     );
 
     base.queue.enqueue(async () => {
-      const readerId = await base.buffer.attachReader();
-      base.subscribers.set(receiver, readerId);
-
       queueMicrotask(async () => {
+        const readerId = await base.buffer.attachReader();
         try {
+          base.subscribers.set(receiver, readerId);
           while (true) {
             const result = await pullValue(readerId);
             if (result.done) break;
@@ -127,8 +122,9 @@ export function createSubject<T = any>(): Subject<T> {
         } catch (err: any) {
           receiver.error(err);
         } finally {
+          base.subscribers.delete(receiver);
+          await base.buffer.detachReader(readerId);
           receiver.complete();
-          cleanupAfterReceiver(receiver);
         }
       })
     });
@@ -149,7 +145,7 @@ export function createSubject<T = any>(): Subject<T> {
     name: "subject",
     peek,
     subscribe,
-    pipe: function (this: Subject, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); },
+    pipe: function (this: Subject, ...steps: Operator[]) { return pipeStream(this, ...steps); },
     next,
     complete,
     completed: () => base.completed,
