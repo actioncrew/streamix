@@ -39,6 +39,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   const complete = () => {
     if (base.completed) return;
     base.completed = true;
+
     queue.enqueue(async () => {
       await buffer.complete();
 
@@ -56,6 +57,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     if (base.completed || base.hasError) return;
     base.hasError = true;
     base.errorValue = err;
+
     for (const receiver of base.subscribers.keys()) {
       receiver.error?.(err);
     }
