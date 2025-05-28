@@ -1,6 +1,23 @@
 import { createSubject, Subscription } from '../lib';
 
 describe('Subject', () => {
+  it('should not emit values after unsubscribed', (done) => {
+    const subject = createSubject<any>();
+
+    const emittedValues: any[] = [];
+    const subscription = subject.subscribe({
+      next: value => emittedValues.push(value),
+      complete: () => {
+        expect(emittedValues).toEqual(['value1']);
+        done();
+      }
+    });
+
+    subject.next('value1');
+    subscription.unsubscribe();
+    subject.next('value2');
+  });
+
   it('should allow independent subscriptions with different lifetimes', (done) => {
     const subject = createSubject<any>();
 
@@ -28,25 +45,6 @@ describe('Subject', () => {
     subject.next('value3');
     subject.next('value4');
     subscription1.unsubscribe(); // Unsubscribing should not affect subscription2
-    subject.complete();
-  });
-
-  it('should not emit values after unsubscribed', (done) => {
-    const subject = createSubject<any>();
-
-    const emittedValues: any[] = [];
-    const subscription = subject.subscribe({
-      next: value => emittedValues.push(value),
-      complete: () => {
-        expect(emittedValues).toEqual(['value1']);
-        subscription.unsubscribe();
-        done();
-      }
-    });
-
-    subject.next('value1');
-    subscription.unsubscribe();
-    subject.next('value2');
     subject.complete();
   });
 
