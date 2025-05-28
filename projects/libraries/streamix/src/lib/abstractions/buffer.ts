@@ -84,7 +84,7 @@ export type CyclicBuffer<T = any> = {
   read: (readerId: number) => Promise<{ value: T | undefined, done: boolean }>;
   peek: () => Promise<T | undefined>;
   attachReader: () => Promise<number>;
-  detachReader: (readerId: number) => void;
+  detachReader: (readerId: number) => Promise<void>;
   complete: () => void;
   completed: (readerId: number) => boolean;
 };
