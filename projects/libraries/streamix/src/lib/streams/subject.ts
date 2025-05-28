@@ -28,6 +28,7 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
 
   const complete = () => {
     if (base.completed) return;
+    base.completed = true;
     queue.enqueue(async () => {
       await buffer.complete();
 
@@ -69,30 +70,18 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
     // Not needed with the new buffer, as it's automatically managing backpressure
   };
 
-  const cleanupAfterReceiver = (receiver: Receiver<T>) => {
-    const readerId = base.subscribers.get(receiver);
-    if (readerId !== undefined) {
-      base.subscribers.delete(receiver);
-      // But defer buffer detach to allow current value to be processed
-      Promise.resolve().then(() => {
-        base.buffer.detachReader(readerId);
-      });
-    }
-  };
-
   return {
     base,
     next,
     complete,
     error,
     pullValue,
-    cleanupBuffer,
-    cleanupAfterReceiver,
+    cleanupBuffer
   };
 }
 
 export function createSubject<T = any>(): Subject<T> {
-  const { base, next, complete, error, pullValue, cleanupAfterReceiver } = createBaseSubject<T>(10, "standard");
+  const { base, next, complete, error, pullValue } = createBaseSubject<T>(10, "standard");
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
@@ -108,18 +97,21 @@ export function createSubject<T = any>(): Subject<T> {
               complete();
             }
 
-            cleanupAfterReceiver(receiver);
+            const readerId = base.subscribers.get(receiver);
+            if (readerId !== undefined) {
+              base.subscribers.delete(receiver);
+              await base.buffer.detachReader(readerId);
+            }
           });
         }
       }
     );
 
     base.queue.enqueue(async () => {
-      const readerId = await base.buffer.attachReader();
-      base.subscribers.set(receiver, readerId);
-
       queueMicrotask(async () => {
+        const readerId = await base.buffer.attachReader();
         try {
+          base.subscribers.set(receiver, readerId);
           while (true) {
             const result = await pullValue(readerId);
             if (result.done) break;
@@ -128,8 +120,9 @@ export function createSubject<T = any>(): Subject<T> {
         } catch (err: any) {
           receiver.error(err);
         } finally {
+          base.subscribers.delete(receiver);
+          await base.buffer.detachReader(readerId);
           receiver.complete();
-          cleanupAfterReceiver(receiver);
         }
       })
     });

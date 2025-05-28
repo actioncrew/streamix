@@ -41,10 +41,12 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     base.completed = true;
     queue.enqueue(async () => {
       await buffer.complete();
+
       setTimeout(() => {
         for (const receiver of base.subscribers.keys()) {
           receiver.complete?.();
         }
+
         base.subscribers.clear();
       }, 0);
     });
