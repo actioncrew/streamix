@@ -22,15 +22,16 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
   };
 
   const next = (value: T) => {
-    if (base.completed || base.hasError) return;
-    queue.enqueue(() => buffer.write(value));
+    queue.enqueue(async () => {
+      if (base.completed || base.hasError) return;
+      buffer.write(value);
+    });
   };
 
   const complete = () => {
-    if (base.completed) return;
-    base.completed = true;
-
     queue.enqueue(async () => {
+      if (base.completed) return;
+      base.completed = true;
       await buffer.complete();
 
       setTimeout(() => {
@@ -44,11 +45,10 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
   };
 
   const error = (err: any) => {
-    if (base.completed || base.hasError) return;
-    base.hasError = true;
-    base.errorValue = err;
-
     queue.enqueue(async () => {
+      if (base.completed || base.hasError) return;
+      base.hasError = true;
+      base.errorValue = err;
       for (const receiver of base.subscribers.keys()) {
         receiver.error!(err);
       }
