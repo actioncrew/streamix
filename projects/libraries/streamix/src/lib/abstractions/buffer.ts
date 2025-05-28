@@ -85,7 +85,7 @@ export type CyclicBuffer<T = any> = {
   peek: () => Promise<T | undefined>;
   attachReader: () => Promise<number>;
   detachReader: (readerId: number) => Promise<void>;
-  complete: () => void;
+  complete: () => Promise<void>;
   completed: (readerId: number) => boolean;
 };
 
@@ -231,16 +231,14 @@ export function createBuffer<T = any>(
   };
 
   // --- Completion Handling ---
-  const complete = (): void => {
-    const releaseLockPromise = lock();
-    releaseLockPromise.then(releaseLock => {
-      try {
-        isCompleted = true;
-        readSemaphore.release();
-      } finally {
-        releaseLock();
-      }
-    });
+  const complete = async(): Promise<void> => {
+    const releaseLock = await lock();
+    try {
+      isCompleted = true;
+      readSemaphore.release();
+    } finally {
+      releaseLock();
+    }
   };
 
   return {
@@ -252,7 +250,7 @@ export function createBuffer<T = any>(
     complete,
     completed: () => isCompleted,
   };
-}
+};
 
 export function createReplayBuffer<T = any>(
   capacity: number
@@ -395,16 +393,14 @@ export function createReplayBuffer<T = any>(
     }
   };
 
-  const complete = (): void => {
-    const releaseLockPromise = lock();
-    releaseLockPromise.then(releaseLock => {
-      try {
-        isCompleted = true;
-        readSemaphore.release();
-      } finally {
-        releaseLock();
-      }
-    });
+  const complete = async (): Promise<void> => {
+    const releaseLock = await lock();
+    try {
+      isCompleted = true;
+      readSemaphore.release();
+    } finally {
+      releaseLock();
+    }
   };
 
   return {
@@ -416,4 +412,4 @@ export function createReplayBuffer<T = any>(
     complete,
     completed: () => isCompleted,
   };
-}
+};

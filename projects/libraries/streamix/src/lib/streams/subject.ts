@@ -29,7 +29,7 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
   const complete = () => {
     if (base.completed) return;
     queue.enqueue(async () => {
-      buffer.complete();
+      await buffer.complete();
 
       setTimeout(() => {
         for (const receiver of base.subscribers.keys()) {
