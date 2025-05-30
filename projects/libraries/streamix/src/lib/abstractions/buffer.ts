@@ -69,15 +69,35 @@ export const createSemaphore = (initialCount: number): Semaphore => {
 
 export function createQueue() {
   let last = Promise.resolve();
-
+  let pendingCount = 0;
+  
   const enqueue = (operation: () => Promise<any>): Promise<any> => {
-    const result = last.then(() => operation());
-    last = result.catch(() => {}); // prevent queue lock on error
+    pendingCount++;
+    
+    const result = last
+      .then(() => operation())
+      .finally(() => {
+        pendingCount--;
+        
+        // Reset the call stack when queue is empty
+        if (pendingCount === 0) {
+          last = Promise.resolve();
+        }
+      });
+    
+    // Chain the next operation but handle errors to prevent queue lock
+    last = result.catch(() => {});
+    
     return result;
   };
-
-  return { enqueue };
-};
+  
+  return { 
+    enqueue,
+    // Utility methods for debugging/monitoring
+    get pending() { return pendingCount; },
+    get isEmpty() { return pendingCount === 0; }
+  };
+}
 
 export type CyclicBuffer<T = any> = {
   write: (item: T) => Promise<void>;
