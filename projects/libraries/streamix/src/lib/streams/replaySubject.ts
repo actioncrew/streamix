@@ -4,11 +4,12 @@ import {
   Operator,
   pipeStream,
   Receiver,
+  StreamMapper,
   Subscription,
 } from "../abstractions";
 import { createBaseSubject, Subject } from "./subject";
 
-export type ReplaySubject<T = any> = Omit<Subject<T>, "peek">;
+export type ReplaySubject<T = any> = Subject<T>;
 
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
   const { base, next, complete, error, pullValue } = createBaseSubject<T>(capacity, "replay");
@@ -72,11 +73,12 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     type: "subject",
     name: "replaySubject",
     subscribe,
-    pipe: function (this: ReplaySubject, ...steps: Operator[]) { return pipeStream(this, ...steps); },
+    pipe: function (this: ReplaySubject, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); },
     next,
     complete,
     completed: () => base.completed,
     error,
+    peek: () => { throw new Error("Unsupported operation."); }
   };
 
   return replaySubject;

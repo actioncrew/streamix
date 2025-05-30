@@ -4,6 +4,7 @@ import {
   Operator,
   pipeStream,
   Receiver,
+  StreamMapper,
   Subscription
 } from "../abstractions";
 import { createBaseSubject, Subject } from "./subject"; // Adjust path as needed
@@ -82,7 +83,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     name: "behaviorSubject",
     peek,
     subscribe,
-    pipe: (...steps: Operator[]) => pipeStream(behaviorSubject, ...steps),
+    pipe: (...steps: (Operator | StreamMapper)[]) => pipeStream(behaviorSubject, ...steps),
     next,
     complete,
     completed: () => base.completed,
