@@ -69,23 +69,43 @@ export const createSemaphore = (initialCount: number): Semaphore => {
 
 export function createQueue() {
   let last = Promise.resolve();
+  let pendingCount = 0;
 
   const enqueue = (operation: () => Promise<any>): Promise<any> => {
-    const result = last.then(() => operation());
-    last = result.catch(() => {}); // prevent queue lock on error
+    pendingCount++;
+
+    const result = last
+      .then(() => operation())
+      .finally(() => {
+        pendingCount--;
+
+        // Reset the call stack when queue is empty
+        if (pendingCount === 0) {
+          last = Promise.resolve();
+        }
+      });
+
+    // Chain the next operation but handle errors to prevent queue lock
+    last = result.catch(() => {});
+
     return result;
   };
 
-  return { enqueue };
-};
+  return {
+    enqueue,
+    // Utility methods for debugging/monitoring
+    get pending() { return pendingCount; },
+    get isEmpty() { return pendingCount === 0; }
+  };
+}
 
 export type CyclicBuffer<T = any> = {
   write: (item: T) => Promise<void>;
   read: (readerId: number) => Promise<{ value: T | undefined, done: boolean }>;
   peek: () => Promise<T | undefined>;
   attachReader: () => Promise<number>;
-  detachReader: (readerId: number) => void;
-  complete: () => void;
+  detachReader: (readerId: number) => Promise<void>;
+  complete: () => Promise<void>;
   completed: (readerId: number) => boolean;
 };
 
@@ -231,16 +251,14 @@ export function createBuffer<T = any>(
   };
 
   // --- Completion Handling ---
-  const complete = (): void => {
-    const releaseLockPromise = lock();
-    releaseLockPromise.then(releaseLock => {
-      try {
-        isCompleted = true;
-        readSemaphore.release();
-      } finally {
-        releaseLock();
-      }
-    });
+  const complete = async(): Promise<void> => {
+    const releaseLock = await lock();
+    try {
+      isCompleted = true;
+      readSemaphore.release();
+    } finally {
+      releaseLock();
+    }
   };
 
   return {
@@ -252,7 +270,7 @@ export function createBuffer<T = any>(
     complete,
     completed: () => isCompleted,
   };
-}
+};
 
 export function createReplayBuffer<T = any>(
   capacity: number
@@ -395,16 +413,14 @@ export function createReplayBuffer<T = any>(
     }
   };
 
-  const complete = (): void => {
-    const releaseLockPromise = lock();
-    releaseLockPromise.then(releaseLock => {
-      try {
-        isCompleted = true;
-        readSemaphore.release();
-      } finally {
-        releaseLock();
-      }
-    });
+  const complete = async (): Promise<void> => {
+    const releaseLock = await lock();
+    try {
+      isCompleted = true;
+      readSemaphore.release();
+    } finally {
+      releaseLock();
+    }
   };
 
   return {
@@ -416,4 +432,4 @@ export function createReplayBuffer<T = any>(
     complete,
     completed: () => isCompleted,
   };
-}
+};
