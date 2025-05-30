@@ -1,4 +1,4 @@
-import { createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, CyclicBuffer, Operator, pipeStream, Receiver, Stream, Subscription } from "../abstractions";
+import { createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, CyclicBuffer, Operator, pipeStream, Receiver, Stream, StreamMapper, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   peek(): Promise<T | undefined>;
@@ -24,6 +24,7 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
   const next = (value: T) => {
     queue.enqueue(async () => {
       if (base.completed || base.hasError) return;
+      if(arguments.length === 0) { buffer.write(null as T); }
       buffer.write(value);
     });
   };
@@ -145,7 +146,7 @@ export function createSubject<T = any>(): Subject<T> {
     name: "subject",
     peek,
     subscribe,
-    pipe: function (this: Subject, ...steps: Operator[]) { return pipeStream(this, ...steps); },
+    pipe: function (this: Subject, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); },
     next,
     complete,
     completed: () => base.completed,
