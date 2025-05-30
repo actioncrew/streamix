@@ -19,6 +19,7 @@ export function createBaseSubject<T = any>() {
 
   const next = (value: T) => {
     if (base.completed || base.hasError) return;
+    if(arguments.length === 0) { base.buffer.push(null as T); }
     base.buffer.push(value);
     processPullRequests();
   };
