@@ -1,5 +1,9 @@
 # Changelog
 
+# 2.0.3
+
+For void-typed subjects, we emit null instead of undefined to represent a meaningful signal with no payload. This avoids confusion, since undefined is reserved internally to indicate the absence of a value (e.g. end of stream or nothing available). Using null ensures that emitted events are distinguishable from service values. Additionally, the queue primitive logic was refined to more accurately manage consumer demand and backpressure without leaking or retaining unnecessary state.
+
 ## 2.0.1
 
 Fully refactored all built-in operators, replacing complex subscription management with a clean, unified async iterator-based design. Operators now implement the async iterable protocol (next(), return(), throw()) directly, eliminating callback spaghetti and ensuring straightforward, predictable, and maintainable flow control. This approach improves resource management, unsubscription handling, and overall operator performance.
