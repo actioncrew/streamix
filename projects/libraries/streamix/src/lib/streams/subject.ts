@@ -24,8 +24,8 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
   const next = (value: T) => {
     queue.enqueue(async () => {
       if (base.completed || base.hasError) return;
-      if(arguments.length === 0) { buffer.write(null as T); }
-      buffer.write(value);
+      if (arguments.length === 0) { buffer.write(null as T); }
+      else { buffer.write(value); }
     });
   };
 
