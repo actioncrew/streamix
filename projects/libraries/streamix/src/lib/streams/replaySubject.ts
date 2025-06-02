@@ -106,6 +106,10 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       });
     });
 
+    Object.assign(subscription, {
+      value: () => { throw new Error("Replay subject does not support single value property"); }
+    });
+
     return subscription;
   };
 

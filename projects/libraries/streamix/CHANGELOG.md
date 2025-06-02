@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.5
+
+Both Subject and BehaviorSubject now use SingleValueBuffer internally. It offers a more direct and efficient backpressure mechanism for single-value streams (like Subjects and BehaviorSubjects). Unlike CyclicBuffer, it doesn't maintain a history of values beyond the latest one, simplifying the internal logic and potentially reducing memory overhead for these specific use cases. The SingleValueBuffer explicitly provides a value getter, which is a significant departure and a key feature compared to the generic CyclicBuffer. 
+
 ## 2.0.1
 
 Fully refactored all built-in operators, replacing complex subscription management with a clean, unified async iterator-based design. Operators now implement the async iterable protocol (next(), return(), throw()) directly, eliminating callback spaghetti and ensuring straightforward, predictable, and maintainable flow control. This approach improves resource management, unsubscription handling, and overall operator performance.

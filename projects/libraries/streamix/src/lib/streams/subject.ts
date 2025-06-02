@@ -104,6 +104,10 @@ export function createSubject<T = any>(): Subject<T> {
       });
     });
 
+    Object.assign(subscription, {
+      value: () => buffer.value
+    });
+
     return subscription;
   };
 
