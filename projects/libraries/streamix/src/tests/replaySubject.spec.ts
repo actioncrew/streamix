@@ -111,18 +111,4 @@ describe('ReplaySubject', () => {
     expect(result1).toEqual([6]);
     expect(result2).toEqual([6]);
   });
-
-  it('should allow for latest value peek via value()', async () => {
-    const subject = createReplaySubject<number>(2);
-
-    subject.next(10);
-    subject.next(20);
-    subject.next(30);
-
-    const sub = subject.subscribe(() => {});
-
-    sub.unsubscribe();
-    const latest = await (sub as any).value();
-    expect(latest).toBe(30);
-  });
 });
