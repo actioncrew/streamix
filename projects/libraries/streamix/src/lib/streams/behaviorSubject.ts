@@ -1,26 +1,61 @@
-import {
-  createReceiver,
-  createSubscription,
-  Operator,
-  pipeStream,
-  Receiver,
-  Subscription
-} from "../abstractions";
-import { createBaseSubject, Subject } from "./subject"; // Adjust path as needed
+import { createBuffer, createQueue, createReceiver, createSubscription, Operator, pipeStream, Receiver, Subscription } from "../abstractions";
+import { Subject } from "./subject"; // Adjust path as needed
 
-export type BehaviorSubject<T = any> = Subject<T>;
+export type BehaviorSubject<T = any> = Subject<T> & {
+  get value(): T;
+};
 
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
-  const {
-    base,
-    next,
-    complete,
-    error,
-    pullValue,
-  } = createBaseSubject<T>();
+  // Create a single-value buffer (capacity=1)
+  const buffer = createBuffer<T>(1);
+  const queue = createQueue();
+  const subscribers = new Map<Receiver<T>, number>(); // Maps receiver to its readerId
+  let isCompleted = false;
+  let hasError = false;
 
-  const peek = async (): Promise<T | undefined> => {
-    return await base.queue.enqueue(async () => base.buffer.peek());
+  const next = (value: T) => {
+    queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
+      if (value === undefined) { value = null as T; }
+      await buffer.write(value);
+    });
+  };
+
+  const complete = () => {
+    queue.enqueue(async () => {
+      if (isCompleted) return;
+      isCompleted = true;
+      await buffer.complete();
+
+      setTimeout(() => {
+        for (const receiver of subscribers.keys()) {
+          receiver.complete?.();
+        }
+        subscribers.clear();
+      }, 0);
+    });
+  };
+
+  const error = (err: any) => {
+    queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
+      hasError = true;
+      for (const receiver of subscribers.keys()) {
+        receiver.error!(err);
+      }
+      subscribers.clear();
+    });
+  };
+
+  const pullValue = async (readerId: number): Promise<IteratorResult<T, void>> => {
+    if (hasError) return { value: undefined, done: true };
+
+    try {
+      const result = await buffer.read(readerId);
+      return result as IteratorResult<T, void>;
+    } catch (err) {
+      return Promise.reject(err);
+    }
   };
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
@@ -31,30 +66,29 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       () => {
         if (!unsubscribing) {
           unsubscribing = true;
-          base.queue.enqueue(async () => {
+          queue.enqueue(async () => {
             subscription.unsubscribe();
-            if (base.subscribers.size === 1) {
+            if (subscribers.size === 1) {
               complete();
             }
 
-            const readerId = base.subscribers.get(receiver);
+            const readerId = subscribers.get(receiver);
             if (readerId !== undefined) {
-              base.subscribers.delete(receiver);
-              await base.buffer.detachReader(readerId);
+              subscribers.delete(receiver);
+              await buffer.detachReader(readerId);
             }
           });
         }
       }
     );
 
-    base.queue.enqueue(async () => {
-      const readerId = await base.buffer.attachReader();
-      base.subscribers.set(receiver, readerId);
-
-      await base.buffer.write(initialValue);
+    queue.enqueue(async () => {
 
       queueMicrotask(async () => {
+        const readerId = await buffer.attachReader();
+        subscribers.set(receiver, readerId);
         try {
+          await buffer.write(initialValue);
           while (true) {
             const result = await pullValue(readerId);
             if (result.done) break;
@@ -63,31 +97,31 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
         } catch (err: any) {
           receiver.error(err);
         } finally {
-          base.subscribers.delete(receiver);
-          await base.buffer.detachReader(readerId);
+          subscribers.delete(receiver);
+          await buffer.detachReader(readerId);
           receiver.complete();
         }
       });
     });
 
-    Object.assign(subscription, {
-      value: () => peek()
-    });
-
     return subscription;
   };
 
-  const behaviorSubject: BehaviorSubject<T> = {
+  const subject: BehaviorSubject<T> = {
     type: "subject",
     name: "behaviorSubject",
-    peek,
+    get value() {
+      return initialValue;
+    },
     subscribe,
-    pipe: (...steps: Operator[]) => pipeStream(behaviorSubject, ...steps),
+    pipe: function (this: Subject, ...steps: Operator[]) {
+      return pipeStream(this, ...steps);
+    },
     next,
     complete,
-    completed: () => base.completed,
+    completed: () => isCompleted,
     error,
   };
 
-  return behaviorSubject;
+  return subject;
 }
