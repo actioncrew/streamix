@@ -79,7 +79,7 @@ describe('race', () => {
       error: (err) => {
         expect(err.message).toBe(errorMsg);
       },
-      complete: done,
+      complete: () => done(),
     });
 
     stream1.next(1);

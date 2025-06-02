@@ -37,6 +37,7 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
         if (index === winnerIndex) {
           subject.error(err);
         }
+        subject.complete();
       },
       complete: () => {
         if (winnerIndex === -1) {
