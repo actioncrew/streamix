@@ -11,7 +11,7 @@ export function createSubject<T = any>(): Subject<T> {
   // Create a single-value buffer (capacity=1)
   const buffer = createSingleValueBuffer<T>();
   const queue = createQueue();
-  const subscribers = new Map<Receiver<T>, number>(); // Maps receiver to its readerId
+  const subscribers = new Map<Receiver<T>, number>();
   let isCompleted = false;
   let hasError = false;
 
