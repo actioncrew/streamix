@@ -70,28 +70,28 @@ export const createSemaphore = (initialCount: number): Semaphore => {
 export function createQueue() {
   let last = Promise.resolve();
   let pendingCount = 0;
-  
+
   const enqueue = (operation: () => Promise<any>): Promise<any> => {
     pendingCount++;
-    
+
     const result = last
       .then(() => operation())
       .finally(() => {
         pendingCount--;
-        
+
         // Reset the call stack when queue is empty
         if (pendingCount === 0) {
           last = Promise.resolve();
         }
       });
-    
+
     // Chain the next operation but handle errors to prevent queue lock
     last = result.catch(() => {});
-    
+
     return result;
   };
-  
-  return { 
+
+  return {
     enqueue,
     // Utility methods for debugging/monitoring
     get pending() { return pendingCount; },
@@ -109,7 +109,167 @@ export type CyclicBuffer<T = any> = {
   completed: (readerId: number) => boolean;
 };
 
-export function createBuffer<T = any>(
+export type SingleValueBuffer<T = any> = CyclicBuffer<T> & { get value(): T | undefined; };
+
+export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
+  let value: T | undefined = initialValue;
+  let hasValue = initialValue === undefined ? false : true;
+  let readCount = hasValue ? 1 : 0;
+  const readerOffsets = new Map<number, number>();
+  let readerIdCounter = 0;
+  let isCompleted = false;
+  let activeReaders = 0;
+
+  const pendingReaders = new Map<number, number>(); // single entry: index 0 → readers left
+
+  const lock = createLock();
+  const readSemaphore = createSemaphore(0);
+  const writeSemaphore = createSemaphore(1); // always 1 for capacity=1
+  const valueConsumed = createSemaphore(0);
+
+  // --- Writer Logic ---
+  const write = async (item: T): Promise<void> => {
+    if (isCompleted) throw new Error("Cannot write to completed buffer");
+
+    if (activeReaders > 0 && hasValue) {
+      await writeSemaphore.acquire(); // wait until current value is consumed
+    }
+
+    const releaseLock = await lock();
+    try {
+      value = item;
+      hasValue = true;
+      readCount++;
+
+      if (activeReaders > 0) {
+        pendingReaders.set(0, activeReaders);
+        for (let i = 0; i < activeReaders; i++) {
+          readSemaphore.release();
+        }
+      }
+    } finally {
+      releaseLock();
+    }
+  };
+
+  // --- Reader Management ---
+  const attachReader = async (): Promise<number> => {
+    const releaseLock = await lock();
+    try {
+      const readerId = readerIdCounter++;
+      const startPos = hasValue ? readCount - 1 : readCount;
+      readerOffsets.set(readerId, startPos);
+      activeReaders++;
+
+      if (startPos < readCount) {
+        readSemaphore.release();
+      }
+
+      return readerId;
+    } finally {
+      releaseLock();
+    }
+  };
+
+  const detachReader = async (readerId: number): Promise<void> => {
+    const releaseLock = await lock();
+    try {
+      if (readerOffsets.delete(readerId)) {
+        activeReaders--;
+        const remaining = (pendingReaders.get(0) ?? 0) - 1;
+        if (remaining > 0) {
+          pendingReaders.set(0, remaining);
+        } else if (remaining === 0) {
+          pendingReaders.delete(0);
+          hasValue = false;
+          value = undefined;
+          valueConsumed.release();
+          writeSemaphore.release();
+        }
+      }
+    } finally {
+      releaseLock();
+    }
+  };
+
+  // --- Reading Logic ---
+  const read = async (readerId: number): Promise<{ value: T | undefined; done: boolean }> => {
+    while (true) {
+      const releaseLock = await lock();
+      let result: { value: T | undefined; done: boolean } | null = null;
+
+      try {
+        const readerOffset = readerOffsets.get(readerId);
+        if (readerOffset === undefined) {
+          return { value: undefined, done: true };
+        }
+
+        if (isCompleted && readerOffset >= readCount) {
+          return { value: undefined, done: true };
+        }
+
+        if (readerOffset < readCount && hasValue) {
+          const readValue = value;
+          readerOffsets.set(readerId, readerOffset + 1);
+
+          const remaining = (pendingReaders.get(0) ?? 0) - 1;
+          if (remaining > 0) {
+            pendingReaders.set(0, remaining);
+          } else if (remaining === 0) {
+            pendingReaders.delete(0);
+            hasValue = false;
+            value = undefined;
+            valueConsumed.release();
+            writeSemaphore.release();
+          }
+
+          result = { value: readValue, done: false };
+        }
+      } finally {
+        releaseLock();
+      }
+
+      if (result) return result;
+      if (isCompleted) return { value: undefined, done: true };
+
+      await readSemaphore.acquire();
+    }
+  };
+
+  const peek = async (): Promise<T | undefined> => {
+    const releaseLock = await lock();
+    try {
+      return hasValue ? value : undefined;
+    } finally {
+      releaseLock();
+    }
+  };
+
+  const complete = async (): Promise<void> => {
+    const releaseLock = await lock();
+    try {
+      isCompleted = true;
+      readSemaphore.release();
+    } finally {
+      releaseLock();
+    }
+  };
+
+  return {
+    write,
+    read,
+    peek,
+    attachReader,
+    detachReader,
+    complete,
+    completed: () => isCompleted,
+    get value() {
+      return hasValue ? value : undefined;
+    },
+  } as SingleValueBuffer<T>;
+}
+
+export function createCyclicBuffer<T = any>(
   capacity: number,
 ): CyclicBuffer<T> {
   const buffer: T[] = new Array(capacity);

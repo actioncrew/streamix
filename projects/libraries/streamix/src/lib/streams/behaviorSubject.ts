@@ -1,4 +1,4 @@
-import { createBuffer, createQueue, createReceiver, createSubscription, Operator, pipeStream, Receiver, Subscription } from "../abstractions";
+import { createQueue, createReceiver, createSingleValueBuffer, createSubscription, Operator, pipeStream, Receiver, Subscription } from "../abstractions";
 import { Subject } from "./subject"; // Adjust path as needed
 
 export type BehaviorSubject<T = any> = Subject<T> & {
@@ -7,7 +7,7 @@ export type BehaviorSubject<T = any> = Subject<T> & {
 
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
   // Create a single-value buffer (capacity=1)
-  const buffer = createBuffer<T>(1);
+  const buffer = createSingleValueBuffer<T>(initialValue);
   const queue = createQueue();
   const subscribers = new Map<Receiver<T>, number>(); // Maps receiver to its readerId
   let isCompleted = false;
@@ -88,7 +88,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
         const readerId = await buffer.attachReader();
         subscribers.set(receiver, readerId);
         try {
-          await buffer.write(initialValue);
           while (true) {
             const result = await pullValue(readerId);
             if (result.done) break;
@@ -111,7 +110,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     type: "subject",
     name: "behaviorSubject",
     get value() {
-      return initialValue;
+      return buffer.value!;
     },
     subscribe,
     pipe: function (this: Subject, ...steps: Operator[]) {

@@ -1,4 +1,4 @@
-import { createBuffer, createQueue, createReceiver, createReplayBuffer, createSubscription, CyclicBuffer, Operator, pipeStream, Receiver, Stream, Subscription } from "../abstractions";
+import { createQueue, createReceiver, createReplayBuffer, createSingleValueBuffer, createSubscription, CyclicBuffer, Operator, pipeStream, Receiver, Stream, Subscription } from "../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
@@ -8,7 +8,7 @@ export type Subject<T = any> = Stream<T> & {
 };
 
 export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "replay" | "standard" = "standard") {
-  const buffer: CyclicBuffer<T> = bufferType === "standard" ? createBuffer<T>(capacity) : createReplayBuffer<T>(capacity);
+  const buffer: CyclicBuffer<T> = bufferType === "standard" ? createSingleValueBuffer<T>() : createReplayBuffer<T>(capacity);
   const queue = createQueue()
 
   const base = {
@@ -84,7 +84,7 @@ export function createBaseSubject<T = any>(capacity: number = 10, bufferType: "r
 
 export function createSubject<T = any>(): Subject<T> {
   // Create a single-value buffer (capacity=1)
-  const buffer = createBuffer<T>(1);
+  const buffer = createSingleValueBuffer<T>();
   const queue = createQueue();
   const subscribers = new Map<Receiver<T>, number>(); // Maps receiver to its readerId
   let isCompleted = false;
@@ -182,9 +182,12 @@ export function createSubject<T = any>(): Subject<T> {
     return subscription;
   };
 
-  const subject: Subject<T> = {
+  const subject: Subject<T> & { get value(): T | undefined; } = {
     type: "subject",
     name: "subject",
+    get value() {
+      return buffer.value;
+    },
     subscribe,
     pipe: function (this: Subject, ...steps: Operator[]) {
       return pipeStream(this, ...steps);

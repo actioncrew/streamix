@@ -11,7 +11,6 @@ describe('skipUntil', () => {
     source$.pipe(skipUntil(notifier$)).subscribe({
       next: val => result.push(val),
       complete: () => {
-        emissions.shift();
         expect(result).toEqual(emissions); // all emitted, because notifier triggers instantly
         done();
       },
