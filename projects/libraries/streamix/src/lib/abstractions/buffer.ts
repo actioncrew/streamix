@@ -1,6 +1,14 @@
 export type ReleaseFn = () => void;
 export type SimpleLock = () => Promise<ReleaseFn>;
 
+/**
+ * Creates a simple asynchronous lock mechanism. Only one caller can hold the lock at a time.
+ * Subsequent calls will queue up and wait for the lock to be released.
+ *
+ * @returns {SimpleLock} A function that, when called, attempts to acquire the lock.
+ * If successful, it returns a Promise that resolves with a `ReleaseFn` to release the lock.
+ * If the lock is held, the Promise will await until the lock becomes available.
+ */
 export const createLock = (): SimpleLock => {
   let locked = false;
   const queue: Array<(release: ReleaseFn) => void> = [];
@@ -31,6 +39,12 @@ export type Semaphore = {
   release: () => void; // Explicit release method
 };
 
+/**
+ * Creates a semaphore for controlling access to a limited number of resources.
+ *
+ * @param {number} initialCount The initial number of permits available in the semaphore.
+ * @returns {Semaphore} An object with methods to acquire, try to acquire, and release permits.
+ */
 export const createSemaphore = (initialCount: number): Semaphore => {
   let count = initialCount;
   const queue: Array<(release: ReleaseFn) => void> = [];
@@ -67,6 +81,17 @@ export const createSemaphore = (initialCount: number): Semaphore => {
   return { acquire, tryAcquire, release };
 };
 
+/**
+ * Creates an asynchronous queue that processes operations sequentially.
+ * Operations are guaranteed to run in the order they are enqueued, one after another.
+ *
+ * @returns {object} An object containing the enqueue function and utility properties.
+ * @property {(operation: () => Promise<any>) => Promise<any>} enqueue - Enqueues an asynchronous operation.
+ * The operation will run after all previously enqueued operations have completed.
+ * Returns a Promise that resolves with the result of the operation, or rejects if the operation throws an error.
+ * @property {number} pending - A getter that returns the current number of pending operations in the queue.
+ * @property {boolean} isEmpty - A getter that returns true if there are no pending operations in the queue, false otherwise.
+ */
 export function createQueue() {
   let last = Promise.resolve();
   let pendingCount = 0;
@@ -111,6 +136,15 @@ export type CyclicBuffer<T = any> = {
 
 export type SingleValueBuffer<T = any> = CyclicBuffer<T> & { get value(): T | undefined; };
 
+/**
+ * Creates a single-value buffer (effectively a buffer with capacity 1).
+ * This buffer ensures that a new value can only be written once all currently active readers have consumed the previous value.
+ * It provides backpressure by waiting for readers to process the current value before allowing a new one.
+ *
+ * @template T The type of items stored in the buffer.
+ * @param {T | undefined} [initialValue=undefined] An optional initial value for the buffer.
+ * @returns {SingleValueBuffer<T>} A buffer implementation for a single value.
+ */
 export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
   let value: T | undefined = initialValue;
   let hasValue = initialValue === undefined ? false : true;
@@ -269,6 +303,18 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
   } as SingleValueBuffer<T>;
 }
 
+/**
+ * Creates a replay buffer with a specified capacity.
+ * This buffer stores a history of values up to its capacity and allows new readers
+ * to "replay" past values from the point they attach, up to the current value.
+ *
+ * If `capacity` is `Infinity`, it acts as an unbounded replay buffer, storing all values.
+ * Otherwise, it's a fixed-size circular buffer.
+ *
+ * @template T The type of items stored in the buffer.
+ * @param {number} capacity The maximum number of items the buffer can store. Use `Infinity` for an unbounded buffer.
+ * @returns {CyclicBuffer<T>} A replay buffer implementation.
+ */
 export function createReplayBuffer<T = any>(
   capacity: number
 ): CyclicBuffer<T> {
