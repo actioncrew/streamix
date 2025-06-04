@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.6
+
+Due to the asynchronous nature of the internal buffer, getValue() is now an async method returning Promise<T | undefined>. This ensures consistent and race-free access to the latest buffered value across concurrent consumers.
+
 ## 2.0.5
 
 Both Subject and BehaviorSubject now use SingleValueBuffer internally. It offers a more direct and efficient backpressure mechanism for single-value streams (like Subjects and BehaviorSubjects). Unlike CyclicBuffer, it doesn't maintain a history of values beyond the latest one, simplifying the internal logic and potentially reducing memory overhead for these specific use cases. The SingleValueBuffer explicitly provides a value getter, which is a significant departure and a key feature compared to the generic CyclicBuffer. 

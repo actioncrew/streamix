@@ -17,6 +17,7 @@ Streamix is a **lightweight alternative to RxJS**, offering a streamlined approa
 [Usage Example /](#usage-example)
 [Supported Operators /](#supported-operators)
 [HTTP Client /](#http-client)
+[Questionnare /](https://forms.gle/CDLvoXZqMMyp4VKu9)
 
 ## Benefits of using Generators
 
