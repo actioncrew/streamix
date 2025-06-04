@@ -105,17 +105,17 @@ export function createSubject<T = any>(): Subject<T> {
     });
 
     Object.assign(subscription, {
-      value: () => buffer.value
+      value: () => queue.enqueue(() => buffer.getValue())
     });
 
     return subscription;
   };
 
-  const subject: Subject<T> & { get value(): T | undefined; } = {
+  const subject: Subject<T> & { getValue(): Promise<T | undefined>; } = {
     type: "subject",
     name: "subject",
-    get value() {
-      return buffer.value;
+    getValue: async () => {
+      return queue.enqueue(() => buffer.getValue());
     },
     subscribe,
     pipe: function (this: Subject, ...steps: Operator[]) {

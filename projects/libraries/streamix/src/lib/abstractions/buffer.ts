@@ -134,7 +134,7 @@ export type CyclicBuffer<T = any> = {
   completed: (readerId: number) => boolean;
 };
 
-export type SingleValueBuffer<T = any> = CyclicBuffer<T> & { get value(): T | undefined; };
+export type SingleValueBuffer<T = any> = CyclicBuffer<T> & { getValue(): Promise<T | undefined>; };
 
 /**
  * Creates a single-value buffer (effectively a buffer with capacity 1).
@@ -297,7 +297,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     detachReader,
     complete,
     completed: () => isCompleted,
-    get value() {
+    getValue: async (): Promise<T | undefined> => {
       return hasValue ? value : undefined;
     },
   } as SingleValueBuffer<T>;

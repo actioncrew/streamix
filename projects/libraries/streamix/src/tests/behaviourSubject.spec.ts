@@ -19,4 +19,23 @@ describe('BehaviorSubject', () => {
     behaviorSubject.next('value2');
     behaviorSubject.complete();
   });
+
+  it('should always expose the latest value via the async getValue() method', async () => {
+    const initial = 42;
+    const behaviorSubject = createBehaviorSubject(initial);
+
+    // Immediately after creation, getValue() resolves to the initial value
+    expect(await behaviorSubject.getValue()).toBe(42);
+
+    // After next(), getValue() resolves to the updated value
+    behaviorSubject.next(100);
+    expect(await behaviorSubject.getValue()).toBe(100);
+
+    behaviorSubject.next(999);
+    expect(await behaviorSubject.getValue()).toBe(999);
+
+    // Completing should not change the last value
+    behaviorSubject.complete();
+    expect(await behaviorSubject.getValue()).toBe(999);
+  });
 });
