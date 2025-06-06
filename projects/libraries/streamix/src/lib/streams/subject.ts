@@ -31,7 +31,7 @@ export function createSubject<T = any>(): Subject<T> {
 
       setTimeout(() => {
         for (const receiver of subscribers.keys()) {
-          receiver.complete?.();
+          receiver.complete!();
         }
         subscribers.clear();
       }, 0);
@@ -41,13 +41,13 @@ export function createSubject<T = any>(): Subject<T> {
   const error = (err: any) => {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      hasError = true;
+      hasError = true; isCompleted = true;
+      await buffer.complete();
       for (const receiver of subscribers.keys()) {
         receiver.error!(err);
+        receiver.complete!();
       }
       subscribers.clear();
-
-      complete();
     });
   };
 

@@ -47,7 +47,7 @@ describe('FromPromiseStream', () => {
     });
   });
 
-  it('should not emit if unsubscribed before run', async () => {
+  it('should not emit if unsubscribed before run', (done) => {
     const value = 'test_value';
     const promise = Promise.resolve(value);
     const stream = fromPromise(promise);
@@ -57,6 +57,7 @@ describe('FromPromiseStream', () => {
       next: (value: any) => emittedValues.push(value),
       complete: () => {
         expect(emittedValues).toEqual([]);
+        done();
       }
     });
 

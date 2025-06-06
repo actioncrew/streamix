@@ -19,11 +19,7 @@ export function withLatestFrom<T, R extends any[]>(
     const subscriptions: Subscription[] = [];
 
     const checkCompletion = () => {
-      if (
-        inputCompleted &&
-        otherStreamsCompleted.every((completed) => completed) &&
-        !allCompleted
-      ) {
+      if (inputCompleted && !allCompleted) {
         allCompleted = true;
         output.complete();
       }
@@ -52,11 +48,7 @@ export function withLatestFrom<T, R extends any[]>(
       try {
         while (true) {
           const { value, done } = await source.next();
-          if (done) {
-            inputCompleted = true;
-            checkCompletion();
-            break;
-          }
+          if (done) break;
 
           if (hasValue.every(Boolean)) {
             output.next([value, ...latestValues] as [T, ...R]);
@@ -65,7 +57,8 @@ export function withLatestFrom<T, R extends any[]>(
       } catch (err) {
         output.error(err);
       } finally {
-        output.complete();
+        inputCompleted = true;
+        checkCompletion();
       }
     })();
 
@@ -76,12 +69,12 @@ export function withLatestFrom<T, R extends any[]>(
       const subscription = originalSubscribe.call(output, receiver);
 
       return createSubscription(() => {
+        subscription.unsubscribe();
         subscriptions.forEach((sub) => sub.unsubscribe());
         if (inputSubscription) {
           inputSubscription.unsubscribe();
           inputSubscription = null;
         }
-        subscription.unsubscribe();
       });
     };
 
