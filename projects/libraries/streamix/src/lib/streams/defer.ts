@@ -18,13 +18,12 @@ export function defer<T = any>(factory: () => Stream<T>): Subject<T> {
         subject.next(value); // Emit values from the inner stream to the subject
       },
       complete: () => {
-        subject.complete(); // Complete the subject when the inner stream completes
         innerSubscription.unsubscribe();
+        subject.complete(); // Complete the subject when the inner stream completes
       },
       error: (err: any) => {
-        subject.error(err); // Propagate errors from the inner stream to the subject
-        subject.complete();
         innerSubscription.unsubscribe();
+        subject.error(err); // Propagate errors from the inner stream to the subject
       },
     });
 

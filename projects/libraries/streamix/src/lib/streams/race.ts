@@ -17,11 +17,11 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
   streams.forEach((stream, index) => {
     if (raceComplete) return; // Exit early if winner is already found
 
-    const sub = stream.subscribe({
+    const subscription = stream.subscribe({
       next: (value: any) => {
         if (winnerIndex === -1) {
           winnerIndex = index;
-          unsubscribeOthers(sub);
+          unsubscribeOthers(subscription);
         }
 
         if (index === winnerIndex) {
@@ -29,30 +29,30 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
         }
       },
       error: (err: any) => {
+        subscription.unsubscribe();
         if (winnerIndex === -1) {
           winnerIndex = index;
-          unsubscribeOthers(sub);
+          unsubscribeOthers(subscription);
         }
 
         if (index === winnerIndex) {
           subject.error(err);
         }
-        subject.complete();
       },
       complete: () => {
+        subscription.unsubscribe();
         if (winnerIndex === -1) {
           winnerIndex = index;
-          unsubscribeOthers(sub);
+          unsubscribeOthers(subscription);
         }
 
         if (index === winnerIndex) {
-          sub.unsubscribe();
           subject.complete();
         }
       },
     });
 
-    subscriptions.push(sub);
+    subscriptions.push(subscription);
   });
 
   subject.name = 'race';

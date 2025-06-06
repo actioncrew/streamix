@@ -46,6 +46,8 @@ export function createSubject<T = any>(): Subject<T> {
         receiver.error!(err);
       }
       subscribers.clear();
+
+      complete();
     });
   };
 

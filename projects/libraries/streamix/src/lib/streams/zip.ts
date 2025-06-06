@@ -1,44 +1,48 @@
 import { Stream } from "../abstractions";
+import { Subscription } from "../abstractions/subscription";
 import { createSubject } from "../streams";
-import { Subscription } from './../abstractions/subscription';
 
-// Combine multiple streams by emitting values when all streams emit
+// Combine multiple streams by emitting values when all have emitted
 export function zip(streams: Stream<any>[]): Stream<any[]> {
-  const subject = createSubject<any[]>();  // Create a Subject to handle emissions
+  const subject = createSubject<any[]>(); // Combined stream output
+  const subscriptions: Subscription[] = [];
 
   const latestValues: any[] = Array(streams.length).fill(undefined);
-  const hasEmitted = Array(streams.length).fill(false);
+  const hasEmitted: boolean[] = Array(streams.length).fill(false);
   let completedStreams = 0;
 
-  // Wrap the streams with subscription logic
-  const subscriptions: Subscription[] = streams.map((stream, index) =>
-    stream.subscribe({
+  // Subscribe to each input stream
+  streams.forEach((stream, index) => {
+    const subscription = stream.subscribe({
       next: (value) => {
         latestValues[index] = value;
         hasEmitted[index] = true;
 
-        // Emit the combined value when all streams have emitted
+        // Emit when all streams have emitted at least once
         if (hasEmitted.every(Boolean)) {
-          subject.next([...latestValues as any[]]);  // Emit the tuple of latest values
-          latestValues.fill(undefined);  // Reset the values for the next emission
-          hasEmitted.fill(false);  // Reset the emit flags
+          subject.next([...latestValues]);
+          latestValues.fill(undefined);
+          hasEmitted.fill(false);
         }
       },
+
       complete: () => {
         completedStreams++;
         if (completedStreams === streams.length) {
-          // Complete the subject when all streams have completed
           subject.complete();
-          subscriptions.forEach(s => s.unsubscribe());
+          subscriptions.forEach(sub => sub.unsubscribe());
         }
       },
-      error: (err) => {
-        subject.error(err),  // Pass errors to the subject
-        subscriptions.forEach(s => s.unsubscribe());
-      }
-    })
-  );
 
-  subject.name = 'zip';
-  return subject;  // Return the subject that acts as a combined stream
+      error: (err) => {
+        subject.error(err);
+        subscriptions.forEach(sub => sub.unsubscribe());
+      }
+    });
+
+    subscriptions.push(subscription);
+  });
+
+  subject.name = "zip";
+  return subject;
 }

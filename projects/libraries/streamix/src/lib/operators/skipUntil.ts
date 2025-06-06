@@ -14,6 +14,7 @@ export function skipUntil<T = any>(notifier: Stream): Operator {
         notifierSubscription.unsubscribe();
       },
       error: (err: any) => {
+        notifierSubscription.unsubscribe();
         output.error(err);
       },
       complete: () => {
@@ -30,9 +31,10 @@ export function skipUntil<T = any>(notifier: Stream): Operator {
           if (done) break;
           if (canEmit) output.next(value);
         }
-        output.complete();
       } catch (err) {
         if (!output.completed()) output.error(err);
+      } finally {
+        output.complete();
       }
     })();
 

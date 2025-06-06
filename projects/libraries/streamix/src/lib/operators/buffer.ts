@@ -31,8 +31,8 @@ export function buffer<T = any>(period: number): Operator {
     const intervalSubscription = timer(period, period).subscribe({
       next: () => flush(),
       error: (err) => {
-        cleanup();
         output.error(err);
+        cleanup();
       },
       complete: () => flushAndComplete(),
     });

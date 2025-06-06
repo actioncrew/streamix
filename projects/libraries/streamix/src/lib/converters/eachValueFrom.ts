@@ -17,13 +17,14 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
       }
     },
     error(err: any) {
-      error = err;  // Capture the error
+      subscription.unsubscribe();
+      error = err;
       if (rejectNext) {
-        rejectNext(err); // Reject the waiting promise
+        rejectNext(err);
       }
-      // Don't throw here - let the generator handle it
     },
     complete() {
+      subscription.unsubscribe();
       completed = true;
       if (resolveNext) {
         resolveNext(undefined);

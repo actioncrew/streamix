@@ -50,6 +50,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
         receiver.error?.(err);
       }
       subscribers.clear();
+
+      complete();
     });
   };
 

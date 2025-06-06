@@ -44,6 +44,8 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
         receiver.error!(err);
       }
       subscribers.clear();
+
+      complete();
     });
   };
 
