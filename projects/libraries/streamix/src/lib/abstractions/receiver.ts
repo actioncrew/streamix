@@ -5,19 +5,27 @@ export type Receiver<T = any> = {
   completed?: boolean;
 };
 
-export function createReceiver<T = any>(callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Required<Receiver<T>> {
-  const receiver = (typeof callbackOrReceiver === 'function' ?
-    { next: callbackOrReceiver } :
-    callbackOrReceiver || {}) as Required<Receiver<T>>;
+export function createReceiver<T = any>(
+  callbackOrReceiver?: ((value: T) => void) | Receiver<T>
+): Required<Receiver<T>> {
+  const receiver =
+    typeof callbackOrReceiver === 'function'
+      ? { next: callbackOrReceiver }
+      : callbackOrReceiver || {};
 
-  receiver.completed = false;
+  let completed = false;
 
-  const originalNext = receiver.next;
-  const originalComplete = receiver.complete;
+  const wrappedReceiver: Required<Receiver<T>> = {
+    next: receiver.next?.bind(receiver) ?? (() => {}),
+    error: receiver.error?.bind(receiver) ?? ((err) => console.error('Unhandled error:', err)),
+    complete: () => {
+      if (!completed) {
+        completed = true;
+        receiver.complete?.call(receiver);
+      }
+    },
+    completed: false,
+  };
 
-  receiver.next = function (this: Receiver, value: T) { originalNext?.call(this, value); }
-  receiver.error = receiver.error ?? ((err) => console.error('Unhandled error:', err));
-  receiver.complete = function (this: Receiver) { this.completed = true; originalComplete?.call(this); };
-
-  return receiver;
+  return wrappedReceiver;
 }
