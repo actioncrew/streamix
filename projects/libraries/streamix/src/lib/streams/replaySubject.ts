@@ -47,6 +47,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       if (isCompleted || hasError) return;
       hasError = true; isCompleted = true;
       await buffer.complete();
+
       setTimeout(() => {
         for (const receiver of subscribers.keys()) {
           receiver.error!(err);
