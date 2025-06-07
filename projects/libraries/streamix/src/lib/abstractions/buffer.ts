@@ -286,7 +286,11 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     const releaseLock = await lock();
     try {
       isCompleted = true;
-      for (let i = 0; i < pendingReaders.size; i++) {
+      let totalPending = 0;
+      for (const count of pendingReaders.values()) {
+        totalPending += count;
+      }
+      for (let i = 0; i < totalPending; i++) {
         readSemaphore.release();
       }
     } finally {
@@ -465,7 +469,11 @@ export function createReplayBuffer<T = any>(
     const releaseLock = await lock();
     try {
       isCompleted = true;
-      for (let i = 0; i < pendingReaders.size; i++) {
+      let totalPending = 0;
+      for (const count of pendingReaders.values()) {
+        totalPending += count;
+      }
+      for (let i = 0; i < totalPending; i++) {
         readSemaphore.release();
       }
     } finally {
