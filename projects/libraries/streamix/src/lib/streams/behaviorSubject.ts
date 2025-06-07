@@ -41,14 +41,11 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       if (isCompleted || hasError) return;
       hasError = true; isCompleted = true;
       await buffer.complete();
-
-      setTimeout(() => {
-        for (const receiver of subscribers.keys()) {
-          receiver.error!(err);
-          receiver.complete!();
-        }
-        subscribers.clear();
-      }, 0);
+      for (const receiver of subscribers.keys()) {
+        receiver.error!(err);
+        receiver.complete!();
+      }
+      subscribers.clear();
     });
   };
 
