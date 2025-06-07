@@ -28,5 +28,6 @@ jobs:
         cache: 'npm'
     - run: npm i
     - run: npm run build streamix
+    - run: npm run jasmine:coverage
     
 
