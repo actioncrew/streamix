@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.7
+
+The buffer implementation was corrected to ensure proper synchronization between writers and readers, especially in scenarios involving concurrent access and stream completion. Previously, the readSemaphore was released for all active readers regardless of whether they were actually pending, leading to incorrect wakeups and race conditions.
+
 ## 2.0.6
 
 Due to the asynchronous nature of the internal buffer, getValue() is now an async method returning Promise<T | undefined>. This ensures consistent and race-free access to the latest buffered value across concurrent consumers.
