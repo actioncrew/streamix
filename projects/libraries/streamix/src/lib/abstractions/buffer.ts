@@ -47,16 +47,14 @@ export type Semaphore = {
  */
 export const createSemaphore = (initialCount: number): Semaphore => {
   let count = initialCount;
-  const queue: Array<(release: ReleaseFn) => void> = [];
+  const queue: Array<() => void> = []; // Stores functions that resolve the acquire promise
 
   const release = () => {
-    count++;
     if (queue.length > 0) {
-      const resolve = queue.shift()!;
-      count--;
-      resolve(() => {
-        release();
-      });
+      const next = queue.shift()!;
+      next(); // Immediately execute the next acquire logic, passing the permit
+    } else {
+      count++; // Only increment count if no one is waiting
     }
   };
 
@@ -64,9 +62,14 @@ export const createSemaphore = (initialCount: number): Semaphore => {
     new Promise((resolve) => {
       if (count > 0) {
         count--;
-        resolve(() => release());
+        resolve(() => release()); // Resolve with a ReleaseFn that calls our internal release
       } else {
-        queue.push(resolve);
+        // Store a function that will resolve this promise when unblocked
+        queue.push(() => {
+          // When this function is called, it means we've acquired a permit.
+          // No need to decrement count here, as it was never incremented for this "queued" acquire.
+          resolve(() => release());
+        });
       }
     });
 
