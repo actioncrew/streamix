@@ -150,19 +150,19 @@ export type SingleValueBuffer<T = any> = CyclicBuffer<T> & { getValue(): Promise
  */
 export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
   let value: T | undefined = initialValue;
-  let hasValue = initialValue === undefined ? false : true;
+  let hasValue = initialValue !== undefined;
   let readCount = hasValue ? 1 : 0;
   const readerOffsets = new Map<number, number>();
   let readerIdCounter = 0;
   let isCompleted = false;
   let activeReaders = 0;
 
-  const pendingReaders = new Map<number, number>(); // single entry: index 0 → readers left
-
   const lock = createLock();
-  const readSemaphore = createSemaphore(0);
   const writeSemaphore = createSemaphore(1); // always 1 for capacity=1
   const valueConsumed = createSemaphore(0);
+
+  const pendingReaders = new Map<number, number>(); // key 0 → number of expected reads
+  const waitingReaders: (() => void)[] = []; // queue of per-reader resolvers
 
   // --- Writer Logic ---
   const write = async (item: T): Promise<void> => {
@@ -181,7 +181,8 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       if (activeReaders > 0) {
         pendingReaders.set(0, activeReaders);
         for (let i = 0; i < activeReaders; i++) {
-          readSemaphore.release();
+          const next = waitingReaders.shift();
+          if (next) next();
         }
       }
     } finally {
@@ -199,7 +200,8 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       activeReaders++;
 
       if (startPos < readCount) {
-        readSemaphore.release();
+        const next = waitingReaders.shift();
+        if (next) next();
       }
 
       return readerId;
@@ -269,7 +271,10 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       if (result) return result;
       if (isCompleted) return { value: undefined, done: true };
 
-      await readSemaphore.acquire();
+      // Wait until a value becomes available
+      await new Promise<void>((resolve) => {
+        waitingReaders.push(resolve);
+      });
     }
   };
 
@@ -286,7 +291,11 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     const releaseLock = await lock();
     try {
       isCompleted = true;
-      readSemaphore.release();
+      for (let i = 0; i < activeReaders; i++) {
+        const next = waitingReaders.shift();
+        if (next) next();
+      }
+      writeSemaphore?.release();
     } finally {
       releaseLock();
     }
@@ -306,6 +315,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
   } as SingleValueBuffer<T>;
 }
 
+
 /**
  * Creates a replay buffer with a specified capacity.
  * This buffer stores a history of values up to its capacity and allows new readers
@@ -318,10 +328,8 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
  * @param {number} capacity The maximum number of items the buffer can store. Use `Infinity` for an unbounded buffer.
  * @returns {CyclicBuffer<T>} A replay buffer implementation.
  */
-export function createReplayBuffer<T = any>(
-  capacity: number
-): CyclicBuffer<T> {
-  const isInfinite = capacity === Infinity;
+export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
+  const isInfinite = isNaN(capacity);
 
   const buffer: T[] = [];
   let writeIndex = 0;
@@ -334,9 +342,18 @@ export function createReplayBuffer<T = any>(
   const pendingReaders = new Map<number, number>();
 
   const lock = createLock();
-  const readSemaphore = createSemaphore(0);
   const writeSemaphore = isInfinite ? undefined : createSemaphore(capacity);
   const valueConsumed = createSemaphore(0);
+
+  const readersWaiting: Map<number, () => void> = new Map();
+
+  const notifyReader = (readerId: number) => {
+    const notify = readersWaiting.get(readerId);
+    if (notify) {
+      readersWaiting.delete(readerId);
+      notify();
+    }
+  };
 
   const write = async (item: T): Promise<void> => {
     if (isCompleted) throw new Error("Cannot write to completed buffer");
@@ -356,13 +373,11 @@ export function createReplayBuffer<T = any>(
 
       readCount++;
 
-      if (activeReaders > 0) {
-        const valueIndex = isInfinite ? readCount - 1 : (readCount - 1) % capacity;
-        pendingReaders.set(valueIndex, activeReaders);
+      const valueIndex = isInfinite ? readCount - 1 : (readCount - 1) % capacity;
+      pendingReaders.set(valueIndex, activeReaders);
 
-        for (let i = 0; i < activeReaders; i++) {
-          readSemaphore.release();
-        }
+      for (const readerId of readerOffsets.keys()) {
+        notifyReader(readerId);
       }
     } finally {
       releaseLock();
@@ -377,10 +392,7 @@ export function createReplayBuffer<T = any>(
       readerOffsets.set(readerId, startPos);
       activeReaders++;
 
-      if (startPos < readCount) {
-        readSemaphore.release();
-      }
-
+      notifyReader(readerId); // in case there's already buffered data
       return readerId;
     } finally {
       releaseLock();
@@ -392,14 +404,23 @@ export function createReplayBuffer<T = any>(
     try {
       if (readerOffsets.delete(readerId)) {
         activeReaders--;
+
         for (const [index, count] of pendingReaders) {
           if (count > 0) {
-            pendingReaders.set(index, count - 1);
-            if (count === 1 && !isInfinite) {
-              valueConsumed.release();
+            const remaining = count - 1;
+            if (remaining === 0) {
+              pendingReaders.delete(index);
+              if (!isInfinite) {
+                valueConsumed.release();
+                writeSemaphore!.release();
+              }
+            } else {
+              pendingReaders.set(index, remaining);
             }
           }
         }
+
+        notifyReader(readerId);
       }
     } finally {
       releaseLock();
@@ -408,6 +429,11 @@ export function createReplayBuffer<T = any>(
 
   const read = async (readerId: number): Promise<{ value: T | undefined; done: boolean }> => {
     while (true) {
+      let notify: () => void;
+      const waitForValue = new Promise<void>(resolve => {
+        notify = resolve;
+      });
+
       const releaseLock = await lock();
       let result: { value: T | undefined; done: boolean } | null = null;
 
@@ -417,32 +443,35 @@ export function createReplayBuffer<T = any>(
           return { value: undefined, done: true };
         }
 
-        // Check if there are buffered values to replay, even if completed
         if (readerOffset < readCount) {
           const valueIndex = isInfinite ? readerOffset : readerOffset % capacity;
           const value = buffer[valueIndex];
           readerOffsets.set(readerId, readerOffset + 1);
 
           const remaining = (pendingReaders.get(valueIndex) ?? 0) - 1;
-          pendingReaders.set(valueIndex, remaining);
-          if (remaining === 0 && !isInfinite) {
-            valueConsumed.release();
-            writeSemaphore!.release();
+          if (remaining === 0) {
+            pendingReaders.delete(valueIndex);
+            if (!isInfinite) {
+              valueConsumed.release();
+              writeSemaphore!.release();
+            }
+          } else {
+            pendingReaders.set(valueIndex, remaining);
           }
 
           result = { value, done: false };
         } else if (isCompleted) {
-          // If completed and no more values, return done
           return { value: undefined, done: true };
+        } else {
+          readersWaiting.set(readerId, notify!);
         }
       } finally {
         releaseLock();
       }
 
       if (result) return result;
-      if (isCompleted) return { value: undefined, done: true };
 
-      await readSemaphore.acquire();
+      await waitForValue;
     }
   };
 
@@ -463,7 +492,10 @@ export function createReplayBuffer<T = any>(
     const releaseLock = await lock();
     try {
       isCompleted = true;
-      readSemaphore.release();
+      for (const readerId of readerOffsets.keys()) {
+        notifyReader(readerId);
+      }
+      writeSemaphore?.release();
     } finally {
       releaseLock();
     }
@@ -478,4 +510,5 @@ export function createReplayBuffer<T = any>(
     complete,
     completed: () => isCompleted,
   };
-};
+}
+

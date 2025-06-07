@@ -72,12 +72,9 @@ export function createSubject<T = any>(): Subject<T> {
           unsubscribing = true;
           queue.enqueue(async () => {
             subscription.unsubscribe();
-            if (subscribers.size === 1) {
-              complete();
-            }
-
             const readerId = subscribers.get(receiver);
             if (readerId !== undefined) {
+              receiver.complete();
               subscribers.delete(receiver);
               await buffer.detachReader(readerId);
             }
