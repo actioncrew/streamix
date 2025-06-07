@@ -96,9 +96,11 @@ export function createSubject<T = any>(): Subject<T> {
         } catch (err: any) {
           receiver.error(err);
         } finally {
-          subscribers.delete(receiver);
-          await buffer.detachReader(readerId);
-          receiver.complete();
+          if (!unsubscribing) {
+            subscribers.delete(receiver);
+            await buffer.detachReader(readerId);
+            receiver.complete();
+          }
         }
       });
     });
