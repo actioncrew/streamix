@@ -63,7 +63,6 @@ export function createSubject<T = any>(): Subject<T> {
           if (readerId !== undefined) {
             await buffer.detachReader(readerId);
           }
-          subscription.unsubscribe();
         });
       }
     });
