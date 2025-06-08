@@ -28,13 +28,6 @@ export function createSubject<T = any>(): Subject<T> {
       if (isCompleted) return;
       isCompleted = true;
       await buffer.complete();
-
-      setTimeout(() => {
-        for (const receiver of subscribers.keys()) {
-          receiver.complete!();
-        }
-        subscribers.clear();
-      }, 0);
     });
   };
 
@@ -42,12 +35,8 @@ export function createSubject<T = any>(): Subject<T> {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
       hasError = true; isCompleted = true;
+      await buffer.error(err);
       await buffer.complete();
-      for (const receiver of subscribers.keys()) {
-        receiver.error!(err);
-        receiver.complete!();
-      }
-      subscribers.clear();
     });
   };
 
@@ -66,28 +55,24 @@ export function createSubject<T = any>(): Subject<T> {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
 
-    const subscription = createSubscription(
-      () => {
-        if (!unsubscribing) {
-          unsubscribing = true;
-          queue.enqueue(async () => {
-            subscription.unsubscribe();
-            const readerId = subscribers.get(receiver);
-            if (readerId !== undefined) {
-              receiver.complete();
-              subscribers.delete(receiver);
-              await buffer.detachReader(readerId);
-            }
-          });
-        }
+    const subscription = createSubscription(() => {
+      if (!unsubscribing) {
+        unsubscribing = true;
+        queue.enqueue(async () => {
+          subscription.unsubscribe();
+          const readerId = subscribers.get(receiver);
+          if (readerId !== undefined) {
+            await buffer.detachReader(readerId);
+          }
+        });
       }
-    );
+    });
 
     queue.enqueue(async () => {
       queueMicrotask(async () => {
         const readerId = await buffer.attachReader();
+        subscribers.set(receiver, readerId);
         try {
-          subscribers.set(receiver, readerId);
           while (true) {
             const result = await pullValue(readerId);
             if (result.done) break;
@@ -96,11 +81,8 @@ export function createSubject<T = any>(): Subject<T> {
         } catch (err: any) {
           receiver.error(err);
         } finally {
-          if (!unsubscribing) {
-            subscribers.delete(receiver);
-            await buffer.detachReader(readerId);
-            receiver.complete();
-          }
+          subscribers.delete(receiver);
+          receiver.complete();
         }
       });
     });

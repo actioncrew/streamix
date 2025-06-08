@@ -24,7 +24,6 @@ describe('TimerStream', () => {
     }, 250); // Ensure subscription is stopped after some time
   });
 
-
   it('should stop emitting after unsubscribe', async () => {
     const intervalMs = 100;
     const timerStream = timer(0, intervalMs);

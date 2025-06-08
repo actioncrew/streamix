@@ -32,13 +32,6 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       if (isCompleted) return;
       isCompleted = true;
       await buffer.complete();
-
-      setTimeout(() => {
-        for (const receiver of subscribers.keys()) {
-          receiver.complete?.();
-        }
-        subscribers.clear();
-      }, 0);
     });
   };
 
@@ -46,12 +39,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
       hasError = true; isCompleted = true;
+      await buffer.error(err);
       await buffer.complete();
-      for (const receiver of subscribers.keys()) {
-        receiver.error!(err);
-        receiver.complete!();
-      }
-      subscribers.clear();
     });
   };
 
@@ -77,8 +66,6 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
           subscription.unsubscribe();
           const readerId = subscribers.get(receiver);
           if (readerId !== undefined) {
-            receiver.complete();
-            subscribers.delete(receiver);
             await buffer.detachReader(readerId);
           }
         });
@@ -98,11 +85,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
         } catch (err: any) {
           receiver.error?.(err);
         } finally {
-          if (!unsubscribing) {
-            subscribers.delete(receiver);
-            await buffer.detachReader(readerId);
-            receiver.complete?.();
-          }
+          subscribers.delete(receiver);
+          receiver.complete();
         }
       });
     });

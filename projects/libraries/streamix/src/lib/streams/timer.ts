@@ -40,6 +40,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
 
     return createSubscription(() => {
       abortController.abort();
+      subject.complete();
       subscription.unsubscribe();
     });
   };
