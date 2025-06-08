@@ -85,8 +85,9 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
         } catch (err: any) {
           receiver.error?.(err);
         } finally {
-          subscribers.delete(receiver);
+          if (!unsubscribing) { await buffer.detachReader(readerId); }
           receiver.complete();
+          subscribers.delete(receiver);
         }
       });
     });
