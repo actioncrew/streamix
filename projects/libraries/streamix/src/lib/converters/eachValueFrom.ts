@@ -17,18 +17,18 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
       }
     },
     error(err: any) {
-      subscription.unsubscribe();
       error = err;
       if (rejectNext) {
         rejectNext(err);
       }
+      subscription.unsubscribe();
     },
     complete() {
-      subscription.unsubscribe();
       completed = true;
       if (resolveNext) {
         resolveNext(undefined);
       }
+      subscription.unsubscribe();
     }
   });
 

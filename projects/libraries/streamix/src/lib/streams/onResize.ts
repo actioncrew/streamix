@@ -26,9 +26,9 @@ export function onResize(element: Element) {
     resizeObserver.observe(element);
 
     return createSubscription(() => {
-      subscription.unsubscribe();
       resizeObserver.unobserve(element);
       resizeObserver.disconnect();
+      subscription.unsubscribe();
     });
   }
 

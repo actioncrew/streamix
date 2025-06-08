@@ -14,8 +14,8 @@ export function skipUntil<T = any>(notifier: Stream): Operator {
         notifierSubscription.unsubscribe();
       },
       error: (err: any) => {
-        notifierSubscription.unsubscribe();
         output.error(err);
+        notifierSubscription.unsubscribe();
       },
       complete: () => {
         notifierSubscription.unsubscribe();

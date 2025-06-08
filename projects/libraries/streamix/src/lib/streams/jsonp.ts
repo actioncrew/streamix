@@ -28,9 +28,9 @@ export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
     document.head.appendChild(script);
 
     return createSubscription(() => {
-      subscription.unsubscribe();
       document.head.removeChild(script); // Clean up the script element
       delete (window as any)[uniqueCallbackName]; // Clean up the callback function
+      subscription.unsubscribe();
     });
   };
 

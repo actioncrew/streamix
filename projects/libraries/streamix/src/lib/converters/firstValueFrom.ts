@@ -12,14 +12,14 @@ export function firstValueFrom<T>(stream: Stream<T>): Promise<T | undefined> {
         subscription.unsubscribe();
       },
       error(err: any) {
-        subscription.unsubscribe();
         reject(err);
+        subscription.unsubscribe();
       },
       complete() {
-        subscription.unsubscribe();
         if (!seen) {
           reject(new Error("Stream completed without emitting a value"));
         }
+        subscription.unsubscribe();
       }
     });
   });

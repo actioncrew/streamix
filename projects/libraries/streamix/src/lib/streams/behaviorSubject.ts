@@ -58,11 +58,11 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
         if (!unsubscribing) {
           unsubscribing = true;
           queue.enqueue(async () => {
-            subscription.unsubscribe();
             const readerId = subscribers.get(receiver);
             if (readerId !== undefined) {
               await buffer.detachReader(readerId);
             }
+            subscription.unsubscribe();
           });
         }
       }

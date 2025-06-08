@@ -31,10 +31,10 @@ export function onOrientation() {
     const subscription = originalSubscribe.call(subject, callback);
 
     return createSubscription(() => {
-      subscription.unsubscribe();
       if (subject.completed()) {
         window.screen.orientation.removeEventListener("change", listener);
       }
+      subscription.unsubscribe();
     });
   }
 

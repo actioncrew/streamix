@@ -11,16 +11,16 @@ export function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
         hasValue = true;
       },
       error(err: any) {
-        subscription.unsubscribe();
         reject(err);
+        subscription.unsubscribe();
       },
       complete() {
-        subscription.unsubscribe();
         if (hasValue) {
           resolve(lastValue as T);
         } else {
           reject(new Error("Stream completed without emitting a value"));
         }
+        subscription.unsubscribe();
       }
     });
   });

@@ -29,7 +29,6 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
         }
       },
       error: (err: any) => {
-        subscription.unsubscribe();
         if (winnerIndex === -1) {
           winnerIndex = index;
           unsubscribeOthers(subscription);
@@ -38,9 +37,9 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
         if (index === winnerIndex) {
           subject.error(err);
         }
+        subscription.unsubscribe();
       },
       complete: () => {
-        subscription.unsubscribe();
         if (winnerIndex === -1) {
           winnerIndex = index;
           unsubscribeOthers(subscription);
@@ -49,6 +48,7 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
         if (index === winnerIndex) {
           subject.complete();
         }
+        subscription.unsubscribe();
       },
     });
 

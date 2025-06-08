@@ -30,10 +30,10 @@ export function onMediaQuery(mediaQueryString: string) {
     const subscription = originalSubscribe.call(subject, callback);
 
     return createSubscription(() => {
-      subscription.unsubscribe();
       if (subject.completed()) {
         mediaQueryList.removeEventListener("change", listener);
       }
+      subscription.unsubscribe();
     });
   }
 

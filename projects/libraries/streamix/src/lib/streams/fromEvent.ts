@@ -17,8 +17,8 @@ export function fromEvent(target: EventTarget, event: string): Stream<Event> {
     target.addEventListener(event, listener);
 
     return createSubscription(() => {
-      subscription.unsubscribe(); // Unsubscribe when done
       target.removeEventListener(event, listener); // Cleanup listener on unsubscribe
+      subscription.unsubscribe(); // Unsubscribe when done
     });
   };
 
