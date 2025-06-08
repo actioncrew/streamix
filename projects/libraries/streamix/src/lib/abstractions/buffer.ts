@@ -170,7 +170,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
   // Helper to notify all relevant readers
   const notifyReaders = () => {
     for (const [, reader] of readerOffsets.entries()) {
-      if (!reader.detached && reader.offset < readCount) {
+      if (!reader.detached || reader.offset < readCount) {
         const next = waitingReaders.shift();
         if (next) next();
       }
