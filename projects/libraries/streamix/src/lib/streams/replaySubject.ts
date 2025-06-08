@@ -67,7 +67,6 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
           if (readerId !== undefined) {
             await buffer.detachReader(readerId);
           }
-          subscription.unsubscribe();
         });
       }
     });
