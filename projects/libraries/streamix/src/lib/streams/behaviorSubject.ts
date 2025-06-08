@@ -82,8 +82,9 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
         } catch (err: any) {
           receiver.error(err);
         } finally {
-          await buffer.detachReader(readerId);
+          if (!unsubscribing) { await buffer.detachReader(readerId); }
           receiver.complete();
+          subscribers.delete(receiver);
         }
       });
     });
