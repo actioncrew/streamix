@@ -62,7 +62,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
             if (readerId !== undefined) {
               await buffer.detachReader(readerId);
             }
-            subscription.unsubscribe();
           });
         }
       }
