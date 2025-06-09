@@ -41,12 +41,9 @@ export const createSubscription = function <T = any>(onUnsubscribe?: () => void)
 
       const asyncLoop = async () => {
         try {
-          if (!_unsubscribed) {
-            for await (const value of generator()) {
-              if (_unsubscribed) break;
-              _latestValue = value;
-              receiver.next?.(value);
-            }
+          for await (const value of generator()) {
+            _latestValue = value;
+            receiver.next?.(value);
           }
         } catch (err: any) {
           receiver.error?.(err);
