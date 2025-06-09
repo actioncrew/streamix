@@ -1,7 +1,7 @@
 <h1 style="display: none;">Streamix</h1>
 
 <p align="center">
-  <img src="https://github.com/actioncrew/streamix/blob/main/projects/libraries/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="300">
+  <img src="https://github.com/actioncrew/streamix/blob/main/projects/libraries/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="400">
 </p>
 
 **Streamix** is a lightweight, no-fuss alternative to RxJS. It’s built for modern apps that care about performance but don’t want to deal with too much boilerplate. At just **9 KB zipped**, it gives you a clean and efficient way to work with reactive streams — and if you need to make HTTP requests, there’s a separate mini client (**~3 KB zipped**) ready to go.
