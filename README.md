@@ -1,45 +1,34 @@
 <h1 style="display: none;">Streamix</h1>
 
 <p align="center">
-  <img src="https://github.com/actioncrew/streamix/blob/main/projects/libraries/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="300">
+  <img src="https://github.com/actioncrew/streamix/blob/main/projects/libraries/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="400">
 </p>
 
-Streamix is a **lightweight alternative to RxJS**, offering a streamlined approach to reactive programming through a simplified concept of streams and emissions. Built for modern, performance-driven applications, Streamix strikes a balance between simplicity and efficiency, boasting an ultra-light footprint of just **6 KB (zipped)**. For added convenience, a compact HTTP client is included as a separate package, weighing approximately **3 KB (zipped)**. 
+**Streamix** is a lightweight, no-fuss alternative to RxJS. It’s built for modern apps that care about performance but don’t want to deal with too much boilerplate. At just **9 KB zipped**, it gives you a clean and efficient way to work with reactive streams — and if you need to make HTTP requests, there’s a separate mini client (**~3 KB zipped**) ready to go.
 
 [![build status](https://github.com/actioncrew/streamix/workflows/build/badge.svg)](https://github.com/actioncrew/streamix/workflows/build/badge.svg)
 [![npm version](https://img.shields.io/npm/v/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
 [![npm downloads](https://img.shields.io/npm/dm/@actioncrew%2Fstreamix.svg?style=flat-square)](https://www.npmjs.com/package/@actioncrew%2Fstreamix)
 [![min+zipped](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)
 
----
+## 🧭 Quick Links
+[🔧 Key Features /](#key-features)
+[🚀 Example /](#usage-example)
+[🔁 Operators /](#supported-operators)
+[🌐 HTTP Client /](#http-client)
+[❓Questionnare /](https://forms.gle/CDLvoXZqMMyp4VKu9)
 
-[Key Features /](#key-features)
-[Usage Example /](#usage-example)
-[Supported Operators /](#supported-operators)
-[HTTP Client /](#http-client)
+## Why Generators?
 
-## Benefits of using Generators
+Streamix is built around generators (the function* and async function* kind). That means it’s pull-based, so values are only produced when needed — nice for performance. Compare that to push-based systems like RxJS, which keep pushing data whether you're ready or not. With Streamix, you stay in control.
 
-Generators (function* and async function* in JavaScript) offer a **pull-based** model for iteration, contrasting with the **push-based** model used in RxJS and similar libraries. With generators, values are only produced when requested via .next(), allowing for more efficient execution by avoiding unnecessary computations. In contrast, traditional RxJS observables push values to subscribers regardless of whether they are ready to handle them, potentially leading to wasted processing or memory usage.
+## What Makes Streamix Cool
 
-## Revamped Operators
-Starting with **v2.0.1**, all Streamix operators have been fully rewritten using the AsyncIterator protocol. This shift marks a major milestone in the library’s evolution, bringing several key benefits:
-
-- No internal Subjects: Operators no longer rely on Subjects or hidden state.
-- No manual subscriptions: There’s no RxJS-style subscribe() logic inside operators anymore.
-- Cleaner and more efficient implementation: Leveraging native JavaScript async iteration makes the library faster and simpler.
-- Easier to debug: Without subscription chains and intermediate Subject layers, debugging operator pipelines is much more straightforward.
-
-This change makes Streamix more predictable and transparent, offering developers greater control and insight into their reactive data flows.
-
-## Key Features
-
-- **Lightweight**: With a bundle size of approximately 5 KB (zipped), Streamix is optimized for performance and efficiency.
-- **Familiar API**: If you're already familiar with RxJS, you'll find Streamix easy to pick up, as it supports many core RxJS operators.
-- **Unique Tools**: Streamix includes specialized tools for handling heavy computational tasks, making it suitable for performance-oriented applications.
-- **Asynchronous Support**: It simplifies asynchronous programming, allowing you to manage user interactions, network requests, and UI updates seamlessly.
-- **Streams and Emissions**: Streamix introduces a simplified concept of streams (represented as async generator functions) and emissions, making it easier to work with asynchronous data flows.
----
+- 🪶 **Super lightweight** — ~9 KB zipped
+- 🎯 **Easy to learn** if you’ve used RxJS
+- 🧠 **Smart tools** for heavy computation
+- 🤝 **Async-friendly**, perfect for UI, events, and networking
+- 🔁 **Simple concept**: async generators = streams
 
 ## Core Concepts
 
@@ -48,8 +37,6 @@ This change makes Streamix more predictable and transparent, offering developers
 - **Operator**: Functions that transform, filter, or combine streams.
 - **Subject**: A special type of stream that allows manual dispatching of emissions.
 
----
-
 ## Installation
 
 Install Streamix via npm:
@@ -57,9 +44,8 @@ Install Streamix via npm:
 ```bash
 npm install @actioncrew/streamix
 ```
----
 
-## Usage Example
+## 🚀 Example
 Here's an example of using Streamix to compute and render a Mandelbrot set on an HTML canvas:
 ```typescript
 import { compute, concatMap, coroutine, debounce, finalize, map, mergeMap, onResize, range, scan, startWith, Stream, tap } from '@actioncrew/streamix';
@@ -113,75 +99,15 @@ const subscription = onResize(this.canvas).pipe(
 ).subscribe();
 ```
 
----
+## 📦 Operators
 
-## Supported Operators
-
-| Operator | Description |
-|----------|-------------|
-| `EMPTY` | Represents an empty stream. |
-| `bufferCount` | Buffers emitted values and outputs them in chunks. |
-| `catchError` | Catches errors and handles them gracefully. |
-| `combineLatest` | Combines the latest values from multiple streams. |
-| `compute` | Computes values based on a transformation function. |
-| `concat` | Emits values from multiple streams sequentially. |
-| `concatMap` | Maps each value to a stream and flattens the result sequentially. |
-| `coroutine` | Enables coroutine-based stream handling. |
-| `debounce` | Delays emissions when rapid events occur. |
-| `defaultIfEmpty` | Emits a default value if no values are emitted. |
-| `defer` | Creates a stream that defers its execution until subscribed. |
-| `delay` | Delays emitted values by a specified time. |
-| `distinctUntilChanged` | Filters out consecutive duplicate values. |
-| `eachValueFrom` | Iterates over values in an async generator. |
-| `endWith` | Emits additional values at the end of a stream. |
-| `filter` | Filters values based on a predicate function. |
-| `finalize` | Runs a final action when the stream completes. |
-| `firstValueFrom` | Extracts the first emitted value from a stream. |
-| `fork` | Splits a stream into multiple independent streams. |
-| `from` | Converts an array or promise into a stream. |
-| `fromEvent` | Creates a stream from DOM events. |
-| `fromPromise` | Converts a promise into a stream. |
-| `groupBy` | Groups emitted values based on a key selector. |
-| `iif` | Conditional stream creation based on a boolean condition. |
-| `interval` | Emits values at a set interval. |
-| `jsonp` | Makes a JSONP request and returns a stream. |
-| `lastValueFrom` | Extracts the last emitted value from a stream. |
-| `loop` | Repeats emissions indefinitely. |
-| `map` | Transforms each value in the stream using a provided function. |
-| `merge` | Combines multiple streams into one. |
-| `mergeMap` | Maps each value to a stream and flattens the result concurrently. |
-| `of` | Emits a fixed set of values. |
-| `onAnimationFrame` | Emits values on each animation frame. |
-| `onIntersection` | Emits values when an element intersects with the viewport. |
-| `onMediaQuery` | Emits values based on media query changes. |
-| `onMutation` | Emits values on DOM mutations. |
-| `onResize` | Emits values when an element is resized. |
-| `range` | Emits a sequence of numbers. |
-| `reduce` | Accumulates values into a single result. |
-| `retry` | Retries a failed stream operation. |
-| `scan` | Accumulates values, emitting intermediate results. |
-| `shareReplay` | Shares and replays the last emitted value to new subscribers. |
-| `skip` | Skips a specified number of emitted values. |
-| `slidingPair` | Emits pairs of consecutive values. |
-| `startWith` | Prepends initial values before the stream starts. |
-| `switchMap` | Switches to a new inner stream whenever a new value is emitted. |
-| `take` | Emits only the first specified number of values. |
-| `takeUntil` | Emits values until another stream emits a value. |
-| `takeWhile` | Emits values while a condition holds true. |
-| `tap` | Performs side effects without modifying emissions. |
-| `timer` | Emits values after a delay. |
-| `toArray` | Collects emitted values into an array. |
-| `throwError` | Emits an error in the observable stream. |
-| `withLatestFrom` | Combines values from multiple streams. |
-| `webSocket` | Creates a stream from a WebSocket connection, emitting messages as they arrive in real time. | 
-| `zip` | Combines values from multiple streams in a one-to-one fashion. |
----
-
-... and more.
+Streamix ships with a lot of familiar (and some unique) operators:
+✅ map, filter, mergeMap, scan, tap, take, switchMap, combineLatest, delay, retry, finalize
+🔄 ...and many more.
 
 ## HTTP Client
 
-The HttpClient provided by this library is a powerful tool for making HTTP requests with middleware support and streaming capabilities. It allows you to chain middleware functions to modify requests and handle responses in a flexible manner. Below is an example of how to use the HttpClient to make a GET request and process the response as a JSON stream:
+Streamix also includes a neat HTTP client with middleware and stream support.
 
 ```typescript
 import { createHttpClient, readJson, useBase, useLogger, useTimeout } from './httpClient';
@@ -210,20 +136,20 @@ async function fetchData() {
 fetchData();
 ```
 
-## Why Streamix?
-Streamix is designed for those who need a straightforward way to manage asynchronous data without the complexity of larger frameworks. It's a great alternative to RxJS for simpler use cases, offering all the core functionality you need in a more lightweight, efficient package.
+## 🧠 Why Choose Streamix?
+If RxJS feels like overkill for your use case, Streamix gives you a clean, minimal alternative. You still get all the power, but with simpler building blocks and way less overhead.
 
-## Explore More
-To see Streamix in action, check out these sample projects:
-- [Simple animation](https://stackblitz.com/edit/stackblitz-starters-pkzdzmuk)
-- [Heavy computational task](https://stackblitz.com/edit/stackblitz-starters-73vspfzz)
-- [Travel blog](https://stackblitz.com/edit/stackblitz-starters-873uh85w)
+## 🎮 Try It Out
+Check out these live demos:
+- [🌀 Simple animation](https://stackblitz.com/edit/stackblitz-starters-pkzdzmuk)
+- [⚙️ Heavy computation](https://stackblitz.com/edit/stackblitz-starters-73vspfzz)
+- [✈️ Travel blog](https://stackblitz.com/edit/stackblitz-starters-873uh85w)
 
 Interested in extending Streamix or using it in your project? Reach out to us! We’re excited to collaborate and help bring your ideas to life.
 
 ## More Information
-[Exploring Streamix: A Lightweight Alternative to RxJS](https://medium.com/p/00d5467f0c01)
+[Exploring Streamix: A Lightweight Alternative to RxJS](https://medium.com/p/00d5467f0c01)<br>
+[Streamix 2.0.1: Embracing Async Iterators for Simpler, Faster Reactive Streams](https://medium.com/p/a1eb9e7ce1d7)<br>
+[Simplifying Reactive Programming Approach with Active Subscriptions in JavaScript](https://medium.com/p/0bfc206ad41c)<br>
 
-[Streamix 2.0.1: Embracing Async Iterators for Simpler, Faster Reactive Streams](https://medium.com/p/a1eb9e7ce1d7)
 
-[Simplifying Reactive Programming Approach with Active Subscriptions in JavaScript](https://medium.com/p/0bfc206ad41c)
