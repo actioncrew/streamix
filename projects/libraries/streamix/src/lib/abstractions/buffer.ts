@@ -1,6 +1,14 @@
 export type ReleaseFn = () => void;
 export type SimpleLock = () => Promise<ReleaseFn>;
 
+/**
+ * Creates a simple asynchronous lock mechanism. Only one caller can hold the lock at a time.
+ * Subsequent calls will queue up and wait for the lock to be released.
+ *
+ * @returns {SimpleLock} A function that, when called, attempts to acquire the lock.
+ * If successful, it returns a Promise that resolves with a `ReleaseFn` to release the lock.
+ * If the lock is held, the Promise will await until the lock becomes available.
+ */
 export const createLock = (): SimpleLock => {
   let locked = false;
   const queue: Array<(release: ReleaseFn) => void> = [];
@@ -31,18 +39,22 @@ export type Semaphore = {
   release: () => void; // Explicit release method
 };
 
+/**
+ * Creates a semaphore for controlling access to a limited number of resources.
+ *
+ * @param {number} initialCount The initial number of permits available in the semaphore.
+ * @returns {Semaphore} An object with methods to acquire, try to acquire, and release permits.
+ */
 export const createSemaphore = (initialCount: number): Semaphore => {
   let count = initialCount;
-  const queue: Array<(release: ReleaseFn) => void> = [];
+  const queue: Array<() => void> = []; // Stores functions that resolve the acquire promise
 
   const release = () => {
-    count++;
     if (queue.length > 0) {
-      const resolve = queue.shift()!;
-      count--;
-      resolve(() => {
-        release();
-      });
+      const next = queue.shift()!;
+      next(); // Immediately execute the next acquire logic, passing the permit
+    } else {
+      count++; // Only increment count if no one is waiting
     }
   };
 
@@ -50,9 +62,14 @@ export const createSemaphore = (initialCount: number): Semaphore => {
     new Promise((resolve) => {
       if (count > 0) {
         count--;
-        resolve(() => release());
+        resolve(() => release()); // Resolve with a ReleaseFn that calls our internal release
       } else {
-        queue.push(resolve);
+        // Store a function that will resolve this promise when unblocked
+        queue.push(() => {
+          // When this function is called, it means we've acquired a permit.
+          // No need to decrement count here, as it was never incremented for this "queued" acquire.
+          resolve(() => release());
+        });
       }
     });
 
@@ -67,6 +84,17 @@ export const createSemaphore = (initialCount: number): Semaphore => {
   return { acquire, tryAcquire, release };
 };
 
+/**
+ * Creates an asynchronous queue that processes operations sequentially.
+ * Operations are guaranteed to run in the order they are enqueued, one after another.
+ *
+ * @returns {object} An object containing the enqueue function and utility properties.
+ * @property {(operation: () => Promise<any>) => Promise<any>} enqueue - Enqueues an asynchronous operation.
+ * The operation will run after all previously enqueued operations have completed.
+ * Returns a Promise that resolves with the result of the operation, or rejects if the operation throws an error.
+ * @property {number} pending - A getter that returns the current number of pending operations in the queue.
+ * @property {boolean} isEmpty - A getter that returns true if there are no pending operations in the queue, false otherwise.
+ */
 export function createQueue() {
   let last = Promise.resolve();
   let pendingCount = 0;
@@ -101,6 +129,7 @@ export function createQueue() {
 
 export type CyclicBuffer<T = any> = {
   write: (item: T) => Promise<void>;
+  error(error: Error): Promise<void>;
   read: (readerId: number) => Promise<{ value: T | undefined, done: boolean }>;
   peek: () => Promise<T | undefined>;
   attachReader: () => Promise<number>;
@@ -109,68 +138,94 @@ export type CyclicBuffer<T = any> = {
   completed: (readerId: number) => boolean;
 };
 
-export function createBuffer<T = any>(
-  capacity: number,
-): CyclicBuffer<T> {
-  const buffer: T[] = new Array(capacity);
-  let writeIndex = 0;
-  let readCount = 0;
-  const readerOffsets = new Map<number, number>();
+export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
+  getValue(): Promise<T | undefined>;
+};
+
+/**
+ * Creates a single-value buffer (effectively a buffer with capacity 1).
+ * This buffer ensures that a new value can only be written once all currently active readers have consumed the previous value.
+ * It provides backpressure by waiting for readers to process the current value before allowing a new one.
+ *
+ * @template T The type of items stored in the buffer.
+ * @param {T | undefined} [initialValue=undefined] An optional initial value for the buffer.
+ * @returns {SingleValueBuffer<T>} A buffer implementation for a single value.
+ */
+
+export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
+  let value: T | undefined = initialValue;
+  let error: Error | undefined = undefined;
+  let hasValue = initialValue !== undefined;
+  let hasError = false;
+  let readCount = hasValue ? 1 : 0;
+  const readerOffsets = new Map<number, { offset: number, detached: boolean }>();
   let readerIdCounter = 0;
   let isCompleted = false;
   let activeReaders = 0;
 
-  // Track pending readers for each value
-  const pendingReaders = new Map<number, number>(); // value index → remaining readers
-
   const lock = createLock();
-  const readSemaphore = createSemaphore(0);
-  const writeSemaphore = createSemaphore(capacity);
-  const valueConsumed = createSemaphore(0);
+  const writeSemaphore = createSemaphore(1);
+  const waitingReaders: (() => void)[] = [];
 
-  // --- Writer Logic ---
+  // Helper to notify all relevant readers
+  const notifyReaders = () => {
+    for (const [, reader] of readerOffsets.entries()) {
+      if (!reader.detached || reader.offset < readCount) {
+        const next = waitingReaders.shift();
+        if (next) next();
+      }
+    }
+  };
+
   const write = async (item: T): Promise<void> => {
     if (isCompleted) throw new Error("Cannot write to completed buffer");
+    if (hasError) throw new Error("Cannot write after error");
 
-    // Only wait if we have active readers and buffer is full
-    if (activeReaders > 0 && readCount >= capacity) {
-        await writeSemaphore.acquire(); // Will block until readers consume
+    const hasActiveReaders = Array.from(readerOffsets.values()).some(r => !r.detached);
+    if (hasValue && hasActiveReaders) {
+      await writeSemaphore.acquire();
     }
 
     const releaseLock = await lock();
     try {
-        buffer[writeIndex] = item;
-        writeIndex = (writeIndex + 1) % capacity;
-        readCount++;
-
-        if (activeReaders > 0) {
-            // Track that all active readers need to consume this
-            const valueIndex = (readCount - 1) % capacity;
-            pendingReaders.set(valueIndex, activeReaders);
-
-            // Notify waiting readers
-            for (let i = 0; i < activeReaders; i++) {
-                readSemaphore.release();
-            }
-        }
+      value = item;
+      error = undefined;
+      hasValue = true;
+      hasError = false;
+      readCount++;
+      notifyReaders();
     } finally {
-        releaseLock();
+      releaseLock();
     }
   };
 
-  // --- Reader Management ---
+  const writeError = async (err: Error): Promise<void> => {
+    if (isCompleted) throw new Error("Cannot write error to completed buffer");
+
+    const releaseLock = await lock();
+    try {
+      error = err;
+      hasError = true;
+      hasValue = false;
+      value = undefined;
+      readCount++;
+      notifyReaders();
+    } finally {
+      releaseLock();
+    }
+  };
+
   const attachReader = async (): Promise<number> => {
     const releaseLock = await lock();
     try {
       const readerId = readerIdCounter++;
-      const startPos = readCount;
-      readerOffsets.set(readerId, startPos);
+      const startPos = hasValue || hasError ? readCount - 1 : readCount;
+      readerOffsets.set(readerId, { offset: startPos, detached: false });
       activeReaders++;
 
       if (startPos < readCount) {
-        readSemaphore.release();
+        notifyReaders();
       }
-
       return readerId;
     } finally {
       releaseLock();
@@ -180,53 +235,69 @@ export function createBuffer<T = any>(
   const detachReader = async (readerId: number): Promise<void> => {
     const releaseLock = await lock();
     try {
-      if (readerOffsets.delete(readerId)) {
+      const reader = readerOffsets.get(readerId);
+      if (reader?.detached) return;
+      if (reader) {
+        reader.detached = true;
         activeReaders--;
-        // Mark all pending values as partially consumed
-        for (const [index, count] of pendingReaders) {
-          if (count > 0) {
-            pendingReaders.set(index, count - 1);
-            if (count === 1) {
-              valueConsumed.release();
-            }
+
+        if ((hasValue || hasError) && reader.offset < readCount) {
+          const remainingReaders = Array.from(readerOffsets.values())
+            .filter(r => !r.detached && r.offset < readCount).length;
+
+          if (remainingReaders === 0) {
+            hasValue = false;
+            hasError = false;
+            value = undefined;
+            error = undefined;
+            writeSemaphore.release();
           }
         }
+        notifyReaders();
       }
     } finally {
       releaseLock();
     }
   };
 
-  // --- Reading Logic ---
   const read = async (readerId: number): Promise<{ value: T | undefined; done: boolean }> => {
     while (true) {
       const releaseLock = await lock();
       let result: { value: T | undefined; done: boolean } | null = null;
 
       try {
-        const readerOffset = readerOffsets.get(readerId);
-        if (readerOffset === undefined) {
+        const reader = readerOffsets.get(readerId);
+        if (!reader) {
           return { value: undefined, done: true };
         }
 
-        if (isCompleted && readerOffset >= readCount) {
+        // Immediate check if detached
+        if (reader.detached) {
           return { value: undefined, done: true };
         }
 
-        if (readerOffset < readCount) {
-          const valueIndex = readerOffset % capacity;
-          const value = buffer[valueIndex];
-          readerOffsets.set(readerId, readerOffset + 1);
-
-          // Update pending readers count
-          const remaining = (pendingReaders.get(valueIndex) ?? 0) - 1;
-          pendingReaders.set(valueIndex, remaining);
-          if (remaining === 0) {
-            valueConsumed.release();
-            writeSemaphore.release();
+        if (reader.offset < readCount) {
+          if (hasError) {
+            throw error; // Propagate the error to the reader
           }
 
-          result = { value, done: false };
+          const readValue = value;
+          reader.offset++;
+
+          if (!reader.detached) {
+            const remainingReaders = Array.from(readerOffsets.values())
+              .filter(r => !r.detached && r.offset < readCount).length;
+
+            if (remainingReaders === 0) {
+              hasValue = false;
+              value = undefined;
+              writeSemaphore.release();
+            }
+          }
+
+          result = { value: readValue, done: false };
+        } else if (isCompleted) {
+          return { value: undefined, done: true };
         }
       } finally {
         releaseLock();
@@ -235,27 +306,44 @@ export function createBuffer<T = any>(
       if (result) return result;
       if (isCompleted) return { value: undefined, done: true };
 
-      await readSemaphore.acquire();
+      // Wait for next value or completion
+      await new Promise<void>((resolve) => {
+        waitingReaders.push(() => {
+          const reader = readerOffsets.get(readerId);
+          if (!reader || reader.detached) {
+            resolve(); // Early return if detached while waiting
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      // Check if we were detached while waiting
+      const reader = readerOffsets.get(readerId);
+      if (!reader || reader.detached) {
+        return { value: undefined, done: true };
+      }
     }
   };
 
   const peek = async (): Promise<T | undefined> => {
     const releaseLock = await lock();
     try {
-      if (readCount === 0) return undefined;
-      const latestIndex = (writeIndex - 1 + capacity) % capacity;
-      return buffer[latestIndex];
+      return hasValue ? value : undefined;
     } finally {
       releaseLock();
     }
   };
 
-  // --- Completion Handling ---
-  const complete = async(): Promise<void> => {
+  const complete = async (): Promise<void> => {
     const releaseLock = await lock();
     try {
       isCompleted = true;
-      readSemaphore.release();
+      for (let i = 0; i < activeReaders; i++) {
+        const next = waitingReaders.shift();
+        if (next) next();
+      }
+      writeSemaphore?.release();
     } finally {
       releaseLock();
     }
@@ -263,37 +351,60 @@ export function createBuffer<T = any>(
 
   return {
     write,
+    error: writeError,
     read,
     peek,
     attachReader,
     detachReader,
     complete,
     completed: () => isCompleted,
-  };
-};
+    getValue: async (): Promise<T | undefined> => {
+      return hasValue ? value : undefined;
+    },
+  } as SingleValueBuffer<T>;
+}
 
-export function createReplayBuffer<T = any>(
-  capacity: number
-): CyclicBuffer<T> {
-  const isInfinite = capacity === Infinity;
-
-  const buffer: T[] = [];
+/**
+ * Creates a replay buffer with a specified capacity.
+ * This buffer stores a history of values up to its capacity and allows new readers
+ * to "replay" past values from the point they attach, up to the current value.
+ *
+ * If `capacity` is `Infinity`, it acts as an unbounded replay buffer, storing all values.
+ * Otherwise, it's a fixed-size circular buffer.
+ *
+ * @template T The type of items stored in the buffer.
+ * @param {number} capacity The maximum number of items the buffer can store. Use `Infinity` for an unbounded buffer.
+ * @returns {CyclicBuffer<T>} A replay buffer implementation.
+ */
+export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
+  const isInfinite = !isFinite(capacity);
+  const buffer: (T | { __error: Error })[] = [];
   let writeIndex = 0;
   let readCount = 0;
-  const readerOffsets = new Map<number, number>();
+  const readerOffsets = new Map<number, { offset: number, detached: boolean }>();
   let readerIdCounter = 0;
   let isCompleted = false;
   let activeReaders = 0;
 
   const pendingReaders = new Map<number, number>();
-
   const lock = createLock();
-  const readSemaphore = createSemaphore(0);
   const writeSemaphore = isInfinite ? undefined : createSemaphore(capacity);
-  const valueConsumed = createSemaphore(0);
+  const readersWaiting: Map<number, () => void> = new Map();
+
+  // Helper to notify specific reader
+  const notifyReader = (readerId: number) => {
+    const notify = readersWaiting.get(readerId);
+    if (notify) {
+      readersWaiting.delete(readerId);
+      notify();
+    }
+  };
 
   const write = async (item: T): Promise<void> => {
     if (isCompleted) throw new Error("Cannot write to completed buffer");
+    if (buffer.some(item => item && typeof item === 'object' && '__error' in item)) {
+      throw new Error("Cannot write after error");
+    }
 
     if (!isInfinite && activeReaders > 0 && readCount >= capacity) {
       await writeSemaphore!.acquire();
@@ -309,13 +420,37 @@ export function createReplayBuffer<T = any>(
       }
 
       readCount++;
+      pendingReaders.set(readCount - 1, activeReaders);
 
-      if (activeReaders > 0) {
-        const valueIndex = isInfinite ? readCount - 1 : (readCount - 1) % capacity;
-        pendingReaders.set(valueIndex, activeReaders);
+      for (const [readerId, reader] of readerOffsets.entries()) {
+        if (!reader.detached || reader.offset < readCount) {
+          notifyReader(readerId);
+        }
+      }
+    } finally {
+      releaseLock();
+    }
+  };
 
-        for (let i = 0; i < activeReaders; i++) {
-          readSemaphore.release();
+  const writeError = async (error: Error): Promise<void> => {
+    if (isCompleted) throw new Error("Cannot write error to completed buffer");
+
+    const releaseLock = await lock();
+    try {
+      const errorWrapper = { __error: error };
+      if (isInfinite) {
+        buffer.push(errorWrapper as any);
+      } else {
+        buffer[writeIndex] = errorWrapper as any;
+        writeIndex = (writeIndex + 1) % capacity;
+      }
+
+      readCount++;
+      pendingReaders.set(readCount - 1, activeReaders);
+
+      for (const [readerId, reader] of readerOffsets.entries()) {
+        if (!reader.detached || reader.offset < readCount) {
+          notifyReader(readerId);
         }
       }
     } finally {
@@ -327,12 +462,15 @@ export function createReplayBuffer<T = any>(
     const releaseLock = await lock();
     try {
       const readerId = readerIdCounter++;
-      const startPos = Math.max(0, readCount - (isInfinite ? readCount : capacity));
-      readerOffsets.set(readerId, startPos);
+      const startPos = isInfinite
+        ? 0
+        : Math.max(0, readCount - capacity);
+
+      readerOffsets.set(readerId, { offset: startPos, detached: false });
       activeReaders++;
 
       if (startPos < readCount) {
-        readSemaphore.release();
+        notifyReader(readerId);
       }
 
       return readerId;
@@ -344,17 +482,27 @@ export function createReplayBuffer<T = any>(
   const detachReader = async (readerId: number): Promise<void> => {
     const releaseLock = await lock();
     try {
-      if (readerOffsets.delete(readerId)) {
-        activeReaders--;
-        for (const [index, count] of pendingReaders) {
-          if (count > 0) {
-            pendingReaders.set(index, count - 1);
-            if (count === 1 && !isInfinite) {
-              valueConsumed.release();
+      const reader = readerOffsets.get(readerId);
+      if (!reader) return;
+
+      reader.detached = true;
+      activeReaders--;
+
+      for (const [index, count] of pendingReaders) {
+        if (count > 0 && reader.offset <= index) {
+          const remaining = count - 1;
+          if (remaining === 0) {
+            pendingReaders.delete(index);
+            if (!isInfinite) {
+              writeSemaphore!.release();
             }
+          } else {
+            pendingReaders.set(index, remaining);
           }
         }
       }
+
+      notifyReader(readerId);
     } finally {
       releaseLock();
     }
@@ -362,41 +510,71 @@ export function createReplayBuffer<T = any>(
 
   const read = async (readerId: number): Promise<{ value: T | undefined; done: boolean }> => {
     while (true) {
+      let notify: () => void;
+      const waitForValue = new Promise<void>((resolve) => {
+        notify = () => {
+          const reader = readerOffsets.get(readerId);
+          if (!reader || reader.detached) {
+            resolve(); // Early return if detached while waiting
+          } else {
+            resolve();
+          }
+        };
+      });
+
       const releaseLock = await lock();
       let result: { value: T | undefined; done: boolean } | null = null;
 
       try {
-        const readerOffset = readerOffsets.get(readerId);
-        if (readerOffset === undefined) {
+        const reader = readerOffsets.get(readerId);
+        if (!reader) {
           return { value: undefined, done: true };
         }
 
-        // Check if there are buffered values to replay, even if completed
-        if (readerOffset < readCount) {
-          const valueIndex = isInfinite ? readerOffset : readerOffset % capacity;
-          const value = buffer[valueIndex];
-          readerOffsets.set(readerId, readerOffset + 1);
+        if (reader.detached) {
+          return { value: undefined, done: true };
+        }
 
-          const remaining = (pendingReaders.get(valueIndex) ?? 0) - 1;
-          pendingReaders.set(valueIndex, remaining);
-          if (remaining === 0 && !isInfinite) {
-            valueConsumed.release();
-            writeSemaphore!.release();
+        if (reader.offset < readCount) {
+          const valueIndex = isInfinite ? reader.offset : reader.offset % capacity;
+          const item = buffer[valueIndex];
+
+          if (item && typeof item === 'object' && '__error' in item) {
+            throw (item as { __error: Error }).__error;
+          }
+
+          const value = item as T;
+          reader.offset++;
+
+          if (!reader.detached) {
+            const remaining = (pendingReaders.get(valueIndex) ?? 0) - 1;
+            if (remaining === 0) {
+              pendingReaders.delete(valueIndex);
+              if (!isInfinite) {
+                writeSemaphore!.release();
+              }
+            } else {
+              pendingReaders.set(valueIndex, remaining);
+            }
           }
 
           result = { value, done: false };
         } else if (isCompleted) {
-          // If completed and no more values, return done
           return { value: undefined, done: true };
+        } else {
+          readersWaiting.set(readerId, notify!);
         }
       } finally {
         releaseLock();
       }
 
       if (result) return result;
-      if (isCompleted) return { value: undefined, done: true };
+      await waitForValue;
 
-      await readSemaphore.acquire();
+      const reader = readerOffsets.get(readerId);
+      if (!reader || reader.detached) {
+        return { value: undefined, done: true };
+      }
     }
   };
 
@@ -407,7 +585,12 @@ export function createReplayBuffer<T = any>(
       const latestIndex = isInfinite
         ? buffer.length - 1
         : (writeIndex - 1 + capacity) % capacity;
-      return buffer[latestIndex];
+      const item = buffer[latestIndex];
+
+      if (item && typeof item === 'object' && '__error' in item) {
+        return undefined;
+      }
+      return item as T;
     } finally {
       releaseLock();
     }
@@ -417,19 +600,29 @@ export function createReplayBuffer<T = any>(
     const releaseLock = await lock();
     try {
       isCompleted = true;
-      readSemaphore.release();
+      for (const readerId of readerOffsets.keys()) {
+        notifyReader(readerId);
+      }
+      writeSemaphore?.release();
     } finally {
       releaseLock();
     }
   };
 
+  const completed = (readerId: number): boolean => {
+    const reader = readerOffsets.get(readerId);
+    if (!reader) return true;
+    return isCompleted && reader.offset >= readCount;
+  };
+
   return {
     write,
+    error: writeError,
     read,
     peek,
     attachReader,
     detachReader,
     complete,
-    completed: () => isCompleted,
+    completed,
   };
-};
+}

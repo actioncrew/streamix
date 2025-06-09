@@ -1,5 +1,7 @@
 import {
+  createQueue,
   createReceiver,
+  createReplayBuffer,
   createSubscription,
   Operator,
   pipeStream,
@@ -7,78 +9,107 @@ import {
   StreamMapper,
   Subscription,
 } from "../abstractions";
-import { createBaseSubject, Subject } from "./subject";
+import { Subject } from "./subject";
 
 export type ReplaySubject<T = any> = Subject<T>;
 
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
-  const { base, next, complete, error, pullValue } = createBaseSubject<T>(capacity, "replay");
+  const buffer = createReplayBuffer<T>(capacity);
+  const queue = createQueue();
+  const subscribers = new Map<Receiver<T>, number>();
+  let isCompleted = false;
+  let hasError = false;
+
+  const next = (value: T) => {
+    queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
+      if (value === undefined) value = null as T;
+      await buffer.write(value);
+    });
+  };
+
+  const complete = () => {
+    queue.enqueue(async () => {
+      if (isCompleted) return;
+      isCompleted = true;
+      await buffer.complete();
+    });
+  };
+
+  const error = (err: any) => {
+    queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
+      hasError = true; isCompleted = true;
+      await buffer.error(err);
+      await buffer.complete();
+    });
+  };
+
+  const pullValue = async (readerId: number): Promise<IteratorResult<T, void>> => {
+    if (hasError) return { value: undefined, done: true };
+
+    try {
+      const result = await buffer.read(readerId);
+      return result as IteratorResult<T, void>;
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  };
 
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
 
-    const subscription = createSubscription(
-      () => {
-        if (!unsubscribing) {
-          unsubscribing = true;
-          base.queue.enqueue(async () => {
-            subscription.unsubscribe();
-            if (base.subscribers.size === 1) {
-              complete();
-            }
-
-            const readerId = base.subscribers.get(receiver);
-            if (readerId !== undefined) {
-              base.subscribers.delete(receiver);
-              await base.buffer.detachReader(readerId);
-            }
-          });
-        }
+    const subscription = createSubscription(() => {
+      if (!unsubscribing) {
+        unsubscribing = true;
+        queue.enqueue(async () => {
+          const readerId = subscribers.get(receiver);
+          if (readerId !== undefined) {
+            await buffer.detachReader(readerId);
+          }
+        });
       }
-    );
+    });
 
-    base.queue.enqueue(async () => {
+    queue.enqueue(async () => {
       queueMicrotask(async () => {
-        const readerId = await base.buffer.attachReader();
+        const readerId = await buffer.attachReader();
         try {
-          base.subscribers.set(receiver, readerId);
+          subscribers.set(receiver, readerId);
           while (true) {
             const result = await pullValue(readerId);
             if (result.done) break;
             receiver.next(result.value);
           }
         } catch (err: any) {
-          receiver.error(err);
+          receiver.error?.(err);
         } finally {
-          base.subscribers.delete(receiver);
-          await base.buffer.detachReader(readerId);
+          if (!unsubscribing) { await buffer.detachReader(readerId); }
           receiver.complete();
+          subscribers.delete(receiver);
         }
-      })
+      });
     });
 
     Object.assign(subscription, {
-      value: () => peek()
+      value: () => { throw new Error("Replay subject does not support single value property"); }
     });
 
     return subscription;
-  };
-
-  const peek = async (): Promise<T | undefined> => {
-    return await base.queue.enqueue(async () => base.buffer.peek());
   };
 
   const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
     subscribe,
-    pipe: function (this: ReplaySubject, ...steps: (Operator | StreamMapper)[]) { return pipeStream(this, ...steps); },
+    pipe: function (this: ReplaySubject, ...steps: (Operator | StreamMapper)[]) {
+      return pipeStream(this, ...steps);
+    },
     next,
     complete,
-    completed: () => base.completed,
+    completed: () => isCompleted,
     error,
-    peek: () => { throw new Error("Unsupported operation."); }
   };
 
   return replaySubject;
