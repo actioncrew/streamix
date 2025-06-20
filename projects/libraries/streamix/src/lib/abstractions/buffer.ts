@@ -140,6 +140,7 @@ export type CyclicBuffer<T = any> = {
 
 export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
   getValue(): Promise<T | undefined>;
+  get value(): T | undefined;
 };
 
 /**
@@ -358,11 +359,16 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     detachReader,
     complete,
     completed: () => isCompleted,
-    getValue: async (): Promise<T | undefined> => {
+    getValue: () => peek(),
+    get value(): T | undefined {
       return hasValue ? value : undefined;
-    },
+    }
   } as SingleValueBuffer<T>;
 }
+
+export type ReplayBuffer<T = any> = CyclicBuffer<T> & {
+  get buffer(): T[];
+};
 
 /**
  * Creates a replay buffer with a specified capacity.
@@ -620,9 +626,21 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     error: writeError,
     read,
     peek,
+    get buffer(): T[] {
+      const result: T[] = [];
+      const start = isInfinite ? 0 : Math.max(0, readCount - capacity);
+      const end = readCount;
+      for (let i = start; i < end; i++) {
+        const index = isInfinite ? i : i % capacity;
+        const item = buffer[index];
+        if (item && typeof item === 'object' && '__error' in item) continue;
+        result.push(item as T);
+      }
+      return result;
+    },
     attachReader,
     detachReader,
     complete,
     completed,
-  };
+  } as ReplayBuffer;
 }

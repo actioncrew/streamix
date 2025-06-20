@@ -6,14 +6,17 @@ import {
   Operator,
   pipeStream,
   Receiver,
+  ReplayBuffer,
   Subscription,
 } from "../abstractions";
 import { Subject } from "./subject";
 
-export type ReplaySubject<T = any> = Subject<T>;
+export type ReplaySubject<T = any> = Subject<T> & {
+  get buffer(): T[];
+};
 
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
-  const buffer = createReplayBuffer<T>(capacity);
+  const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
   const queue = createQueue();
   const subscribers = new Map<Receiver<T>, number>();
   let isCompleted = false;
@@ -104,6 +107,12 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     subscribe,
     pipe: function (this: ReplaySubject, ...steps: Operator[]) {
       return pipeStream(this, ...steps);
+    },
+    get value(): T | undefined {
+      throw new Error("Replay subject does not support single value property");
+    },
+    get buffer(): T[] {
+      return buffer.buffer;
     },
     next,
     complete,

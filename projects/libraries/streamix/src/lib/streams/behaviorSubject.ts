@@ -101,6 +101,9 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     getValue: async () => {
       return queue.enqueue(() => buffer.getValue());
     },
+    get value(): T | undefined {
+      return buffer.value;
+    },
     subscribe,
     pipe: function (this: Subject, ...steps: Operator[]) {
       return pipeStream(this, ...steps);

@@ -5,6 +5,7 @@ export type Subject<T = any> = Stream<T> & {
   complete(): void;
   error(err: any): void;
   completed(): boolean;
+  get value(): T | undefined;
 };
 
 export function createSubject<T = any>(): Subject<T> {
@@ -99,6 +100,9 @@ export function createSubject<T = any>(): Subject<T> {
     name: "subject",
     getValue: async () => {
       return queue.enqueue(() => buffer.getValue());
+    },
+    get value(): T | undefined {
+      return buffer.value;
     },
     subscribe,
     pipe: function (this: Subject, ...steps: Operator[]) {
