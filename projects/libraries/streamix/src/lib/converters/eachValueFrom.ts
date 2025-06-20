@@ -39,13 +39,9 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
         throw error; // Properly throw from within the generator
       }
 
-      if(completed) {
-        break;
-      }
-
       if (queue.length > 0) {
         yield queue.shift()!;
-      } else {
+      } else if (!completed) {
         try {
           const nextValue = await new Promise<T | undefined>((resolve, reject) => {
             resolveNext = resolve;
