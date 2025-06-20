@@ -382,22 +382,24 @@ export type ReplayBuffer<T = any> = CyclicBuffer<T> & {
  * @param {number} capacity The maximum number of items the buffer can store. Use `Infinity` for an unbounded buffer.
  * @returns {CyclicBuffer<T>} A replay buffer implementation.
  */
-export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
+export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
   const isInfinite = !isFinite(capacity);
   const buffer: (T | { __error: Error })[] = [];
   let writeIndex = 0;
-  let readCount = 0;
-  const readerOffsets = new Map<number, { offset: number, detached: boolean }>();
+  let readCount = 0; // total number of values written (including overwritten)
+  const readerOffsets = new Map<number, { offset: number; detached: boolean }>();
   let readerIdCounter = 0;
   let isCompleted = false;
   let activeReaders = 0;
 
+  // Map from index to count of active readers yet to consume that index
   const pendingReaders = new Map<number, number>();
+
   const lock = createLock();
   const writeSemaphore = isInfinite ? undefined : createSemaphore(capacity);
-  const readersWaiting: Map<number, () => void> = new Map();
+  const readersWaiting = new Map<number, () => void>();
 
-  // Helper to notify specific reader
+  // Helper to notify a waiting reader that new data or completion is available
   const notifyReader = (readerId: number) => {
     const notify = readersWaiting.get(readerId);
     if (notify) {
@@ -406,13 +408,29 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     }
   };
 
+  // Helper to safely decrement pendingReaders count
+  const decrementPendingReader = (index: number) => {
+    const current = pendingReaders.get(index) ?? 0;
+    const remaining = current - 1;
+    if (remaining <= 0) {
+      pendingReaders.delete(index);
+      if (!isInfinite) {
+        writeSemaphore!.release();
+      }
+    } else {
+      pendingReaders.set(index, remaining);
+    }
+  };
+
+  // Write a new value into the buffer
   const write = async (item: T): Promise<void> => {
     if (isCompleted) throw new Error("Cannot write to completed buffer");
-    if (buffer.some(item => item && typeof item === 'object' && '__error' in item)) {
+    if (buffer.some(i => i && typeof i === "object" && "__error" in i)) {
       throw new Error("Cannot write after error");
     }
 
     if (!isInfinite && activeReaders > 0 && readCount >= capacity) {
+      // Wait for buffer space to free up
       await writeSemaphore!.acquire();
     }
 
@@ -426,8 +444,10 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
       }
 
       readCount++;
+      // Set pending readers count for this new item
       pendingReaders.set(readCount - 1, activeReaders);
 
+      // Notify readers waiting for new data
       for (const [readerId, reader] of readerOffsets.entries()) {
         if (!reader.detached || reader.offset < readCount) {
           notifyReader(readerId);
@@ -438,6 +458,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     }
   };
 
+  // Write an error into the buffer to signal error state
   const writeError = async (error: Error): Promise<void> => {
     if (isCompleted) throw new Error("Cannot write error to completed buffer");
 
@@ -464,6 +485,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     }
   };
 
+  // Attach a new reader, returns its readerId
   const attachReader = async (): Promise<number> => {
     const releaseLock = await lock();
     try {
@@ -483,6 +505,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     }
   };
 
+  // Detach a reader by its readerId, releasing resources
   const detachReader = async (readerId: number): Promise<void> => {
     const releaseLock = await lock();
     try {
@@ -492,17 +515,10 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
       reader.detached = true;
       activeReaders--;
 
+      // Decrement pending readers counts for all unread items for this reader
       for (const [index, count] of pendingReaders) {
         if (count > 0 && reader.offset <= index) {
-          const remaining = count - 1;
-          if (remaining === 0) {
-            pendingReaders.delete(index);
-            if (!isInfinite) {
-              writeSemaphore!.release();
-            }
-          } else {
-            pendingReaders.set(index, remaining);
-          }
+          decrementPendingReader(index);
         }
       }
 
@@ -512,6 +528,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     }
   };
 
+  // Read next value for a given readerId
   const read = async (readerId: number): Promise<{ value: T | undefined; done: boolean }> => {
     while (true) {
       let notify: () => void;
@@ -519,7 +536,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
         notify = () => {
           const reader = readerOffsets.get(readerId);
           if (!reader || reader.detached) {
-            resolve(); // Early return if detached while waiting
+            resolve();
           } else {
             resolve();
           }
@@ -543,7 +560,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
           const valueIndex = isInfinite ? reader.offset : reader.offset % capacity;
           const item = buffer[valueIndex];
 
-          if (item && typeof item === 'object' && '__error' in item) {
+          if (item && typeof item === "object" && "__error" in item) {
             throw (item as { __error: Error }).__error;
           }
 
@@ -551,15 +568,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
           reader.offset++;
 
           if (!reader.detached) {
-            const remaining = (pendingReaders.get(valueIndex) ?? 0) - 1;
-            if (remaining === 0) {
-              pendingReaders.delete(valueIndex);
-              if (!isInfinite) {
-                writeSemaphore!.release();
-              }
-            } else {
-              pendingReaders.set(valueIndex, remaining);
-            }
+            decrementPendingReader(valueIndex);
           }
 
           result = { value, done: false };
@@ -582,6 +591,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     }
   };
 
+  // Peek latest value in buffer without advancing any reader
   const peek = async (): Promise<T | undefined> => {
     const releaseLock = await lock();
     try {
@@ -591,7 +601,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
         : (writeIndex - 1 + capacity) % capacity;
       const item = buffer[latestIndex];
 
-      if (item && typeof item === 'object' && '__error' in item) {
+      if (item && typeof item === "object" && "__error" in item) {
         return undefined;
       }
       return item as T;
@@ -600,6 +610,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     }
   };
 
+  // Mark the buffer as completed and notify all readers
   const complete = async (): Promise<void> => {
     const releaseLock = await lock();
     try {
@@ -613,6 +624,7 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     }
   };
 
+  // Check if a reader has completed consuming all values
   const completed = (readerId: number): boolean => {
     const reader = readerOffsets.get(readerId);
     if (!reader) return true;
@@ -624,14 +636,14 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     error: writeError,
     read,
     peek,
-    get buffer(): T[] {
+    get buffer() {
       const result: T[] = [];
       const start = isInfinite ? 0 : Math.max(0, readCount - capacity);
       const end = readCount;
       for (let i = start; i < end; i++) {
         const index = isInfinite ? i : i % capacity;
         const item = buffer[index];
-        if (item && typeof item === 'object' && '__error' in item) continue;
+        if (item && typeof item === "object" && "__error" in item) continue;
         result.push(item as T);
       }
       return result;
@@ -640,5 +652,6 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     detachReader,
     complete,
     completed,
-  } as ReplayBuffer;
+  };
 }
+

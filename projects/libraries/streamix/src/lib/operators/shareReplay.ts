@@ -16,9 +16,10 @@ export function shareReplay<T>(bufferSize = Infinity) {
           if (done) break;
           await buffer.write(value);
         }
-        await buffer.complete();
       } catch (err: any) {
         await buffer.error(err);
+      } finally {
+        await buffer.complete();
       }
     }
 
