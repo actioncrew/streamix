@@ -1,89 +1,68 @@
-import { createOperator } from "../abstractions";
-import { createReplaySubject, ReplaySubject } from "../streams";
+import { createOperator, createReplayBuffer } from "../abstractions";
 
-export function shareReplay<T>(bufferSize: number = Infinity) {
-  let sharedSubject: ReplaySubject<T> | null = null;
-  let isConnected = false;
-
+export function shareReplay<T>(bufferSize = Infinity) {
   return createOperator<T>("shareReplay", (source) => {
-    if (!sharedSubject) {
-      sharedSubject = createReplaySubject<T>(bufferSize);
-    }
+    const buffer = createReplayBuffer<T>(bufferSize);
+    let connected = false;
 
-    if (!isConnected) {
-      isConnected = true;
+    // Start reading source into buffer, only once
+    async function connect() {
+      if (connected) return;
+      connected = true;
 
-      // Connect to source once
-      (async () => {
-        try {
-          let result = await source.next();
-          while (!result.done) {
-            sharedSubject!.next(result.value);
-            result = await source.next();
-          }
-          sharedSubject!.complete();
-        } catch (err) {
-          sharedSubject!.error(err);
+      try {
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+          await buffer.write(value);
         }
-      })();
-    }
-
-    // Per-consumer state
-    const queue: T[] = [];
-    let isDone = false;
-    let error: any = null;
-
-    let notify: (() => void) | null = null;
-
-    const subscription = sharedSubject.subscribe({
-      next: (value) => {
-        queue.push(value);
-        if (notify) {
-          notify();
-          notify = null;
-        }
-      },
-      complete: () => {
-        isDone = true;
-        if (notify) {
-          notify();
-          notify = null;
-        }
-      },
-      error: (err) => {
-        error = err;
-        isDone = true;
-        if (notify) {
-          notify();
-          notify = null;
-        }
+        await buffer.complete();
+      } catch (err: any) {
+        await buffer.error(err);
       }
-    });
+    }
+
+    let readerIdPromise: Promise<number> | null = null;
+    let readerId: number | null = null;
+    let done = false;
+
+    connect();
 
     return {
-      async next(): Promise<IteratorResult<T>> {
-        if (queue.length === 0 && !isDone && !error) {
-          await new Promise<void>((resolve) => {
-            notify = resolve;
-          });
+      async next() {
+        if (done) return { done: true, value: undefined };
+
+        if (!readerIdPromise) {
+          readerIdPromise = buffer.attachReader();
+        }
+        if (readerId === null) {
+          readerId = await readerIdPromise;
         }
 
-        if (error) {
-          subscription.unsubscribe();
-          throw error;
+        try {
+          const result = await buffer.read(readerId);
+          if (result.done) {
+            done = true;
+          }
+          return result;
+        } catch (err) {
+          done = true;
+          throw err;
         }
-
-        if (queue.length > 0) {
-          return { value: queue.shift()!, done: false };
-        }
-
-        subscription.unsubscribe();
-        return { value: undefined, done: true };
       },
-
-      async return(): Promise<IteratorResult<T>> {
-        subscription.unsubscribe();
-        return { value: undefined, done: true };
+      async return() {
+        if (readerId !== null) {
+          await buffer.detachReader(readerId);
+        }
+        done = true;
+        return { done: true, value: undefined };
+      },
+      async throw(err: any) {
+        if (readerId !== null) {
+          await buffer.detachReader(readerId);
+        }
+        done = true;
+        throw err;
       }
     };
   });

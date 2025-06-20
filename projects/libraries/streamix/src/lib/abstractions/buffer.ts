@@ -468,11 +468,9 @@ export function createReplayBuffer<T = any>(capacity: number): CyclicBuffer<T> {
     const releaseLock = await lock();
     try {
       const readerId = readerIdCounter++;
-      const startPos = isInfinite
-        ? 0
-        : Math.max(0, readCount - capacity);
-
+      const startPos = Math.max(0, readCount - capacity);
       readerOffsets.set(readerId, { offset: startPos, detached: false });
+
       activeReaders++;
 
       if (startPos < readCount) {
