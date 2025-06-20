@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.8
+
+Improved tracking of pending readers to prevent negative counts and ensure buffer slots are released exactly once.
+
 ## 2.0.7
 
 The buffer implementation was corrected to ensure proper synchronization between writers and readers, especially in scenarios involving concurrent access and stream completion. Previously, the readSemaphore was released for all active readers regardless of whether they were actually pending, leading to incorrect wakeups and race conditions.

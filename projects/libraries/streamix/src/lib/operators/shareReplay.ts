@@ -1,70 +1,34 @@
-import { createOperator, createReplayBuffer } from "../abstractions";
+import { createOperator } from '../abstractions';
+import { eachValueFrom } from '../converters';
+import { createReplaySubject, ReplaySubject } from '../streams';
 
-export function shareReplay<T>(bufferSize = Infinity) {
-  return createOperator<T>("shareReplay", (source) => {
-    const buffer = createReplayBuffer<T>(bufferSize);
-    let connected = false;
+export function shareReplay<T = any>(bufferSize: number = Infinity) {
+  let isConnected = false;
+  let sharedSubject: ReplaySubject<T> | undefined;
 
-    // Start reading source into buffer, only once
-    async function connect() {
-      if (connected) return;
-      connected = true;
-
-      try {
-        while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
-          await buffer.write(value);
-        }
-      } catch (err: any) {
-        await buffer.error(err);
-      } finally {
-        await buffer.complete();
-      }
+  return createOperator<T>('shareReplay', (source) => {
+    if (!sharedSubject) {
+      sharedSubject = createReplaySubject<T>(bufferSize);
     }
 
-    let readerIdPromise: Promise<number> | null = null;
-    let readerId: number | null = null;
-    let done = false;
+    if (!isConnected) {
+      isConnected = true;
 
-    connect();
-
-    return {
-      async next() {
-        if (done) return { done: true, value: undefined };
-
-        if (!readerIdPromise) {
-          readerIdPromise = buffer.attachReader();
-        }
-        if (readerId === null) {
-          readerId = await readerIdPromise;
-        }
-
+      (async () => {
         try {
-          const result = await buffer.read(readerId);
-          if (result.done) {
-            done = true;
+          let result = await source.next();
+          while (!result.done) {
+            sharedSubject.next(result.value);
+            result = await source.next();
           }
-          return result;
         } catch (err) {
-          done = true;
-          throw err;
+          sharedSubject.error(err);
+        } finally {
+          sharedSubject.complete();
         }
-      },
-      async return() {
-        if (readerId !== null) {
-          await buffer.detachReader(readerId);
-        }
-        done = true;
-        return { done: true, value: undefined };
-      },
-      async throw(err: any) {
-        if (readerId !== null) {
-          await buffer.detachReader(readerId);
-        }
-        done = true;
-        throw err;
-      }
-    };
+      })();
+    }
+
+    return eachValueFrom(sharedSubject);
   });
 }

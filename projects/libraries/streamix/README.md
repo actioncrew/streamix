@@ -12,9 +12,9 @@
 [![min+zipped](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)](https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix)
 
 ## 🧭 Quick Links
-[🔧 Key Features /](#key-features)
-[🚀 Example /](#usage-example)
-[🔁 Operators /](#supported-operators)
+[🔧 Key Features /](#what-makes-streamix-cool)
+[🚀 Example /](#example)
+[🔁 Operators /](#operators)
 [🌐 HTTP Client /](#http-client)
 [❓Questionnare /](https://forms.gle/CDLvoXZqMMyp4VKu9)
 
@@ -45,7 +45,7 @@ Install Streamix via npm:
 npm install @actioncrew/streamix
 ```
 
-## 🚀 Example
+## Example
 Here's an example of using Streamix to compute and render a Mandelbrot set on an HTML canvas:
 ```typescript
 import { compute, concatMap, coroutine, debounce, finalize, map, mergeMap, onResize, range, scan, startWith, Stream, tap } from '@actioncrew/streamix';
@@ -99,7 +99,7 @@ const subscription = onResize(this.canvas).pipe(
 ).subscribe();
 ```
 
-## 📦 Operators
+## Operators
 
 Streamix ships with a lot of familiar (and some unique) operators:
 ✅ map, filter, mergeMap, scan, tap, take, switchMap, combineLatest, delay, retry, finalize
@@ -136,10 +136,10 @@ async function fetchData() {
 fetchData();
 ```
 
-## 🧠 Why Choose Streamix?
+## Why Choose Streamix?
 If RxJS feels like overkill for your use case, Streamix gives you a clean, minimal alternative. You still get all the power, but with simpler building blocks and way less overhead.
 
-## 🎮 Try It Out
+## Try It Out
 Check out these live demos:
 - [🌀 Simple animation](https://stackblitz.com/edit/stackblitz-starters-pkzdzmuk)
 - [⚙️ Heavy computation](https://stackblitz.com/edit/stackblitz-starters-73vspfzz)
