@@ -33,35 +33,29 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
   });
 
   try {
-    while (!completed || queue.length > 0) {
-      // Check for error before each iteration
-      if (error) {
-        throw error; // Properly throw from within the generator
-      }
-
+    while (true) {
       if (queue.length > 0) {
         yield queue.shift()!;
-      } else if (!completed) {
+      } else if (completed) {
+        break;
+      } else if (error) {
+        throw error;
+      } else {
         try {
           const nextValue = await new Promise<T | undefined>((resolve, reject) => {
             resolveNext = resolve;
             rejectNext = reject;
           });
-
           if (nextValue !== undefined) {
             yield nextValue;
           }
         } catch (err) {
-          // This handles errors rejected through rejectNext
           error = err;
-          throw error;
+          throw err;
         }
       }
     }
   } finally {
     subscription.unsubscribe();
-    if (error) {
-      throw error; // Properly throw from within the generator
-    }
   }
 }
