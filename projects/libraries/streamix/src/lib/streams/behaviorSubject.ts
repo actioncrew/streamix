@@ -2,7 +2,8 @@ import { createQueue, createReceiver, createSingleValueBuffer, createSubscriptio
 import { Subject } from "./subject"; // Adjust path as needed
 
 export type BehaviorSubject<T = any> = Subject<T> & {
-  getValue(): Promise<T | undefined>;
+  getValue(): Promise<T>;
+  get value(): T;
 };
 
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
@@ -101,8 +102,8 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     getValue: async () => {
       return queue.enqueue(() => buffer.getValue());
     },
-    get value(): T | undefined {
-      return buffer.value;
+    get value(): T {
+      return buffer.value!;
     },
     subscribe,
     pipe: function (this: Subject, ...steps: Operator[]) {
