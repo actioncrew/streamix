@@ -13,10 +13,12 @@ export function createSubject<T = any>(): Subject<T> {
   const buffer = createSingleValueBuffer<T>();
   const queue = createQueue();
   const subscribers = new Map<Receiver<T>, number>();
+  let latestValue: T | undefined = undefined;
   let isCompleted = false;
   let hasError = false;
 
   const next = (value: T) => {
+    latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
       if (value === undefined) { value = null as T; }
@@ -89,20 +91,17 @@ export function createSubject<T = any>(): Subject<T> {
     });
 
     Object.assign(subscription, {
-      value: () => queue.enqueue(() => buffer.getValue())
+      value: () => latestValue
     });
 
     return subscription;
   };
 
-  const subject: Subject<T> & { getValue(): Promise<T | undefined>; } = {
+  const subject: Subject<T> = {
     type: "subject",
     name: "subject",
-    getValue: async () => {
-      return queue.enqueue(() => buffer.getValue());
-    },
     get value(): T | undefined {
-      return buffer.value;
+      return latestValue;
     },
     subscribe,
     pipe: function (this: Subject, ...steps: Operator[]) {

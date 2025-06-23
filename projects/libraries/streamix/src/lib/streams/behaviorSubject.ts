@@ -2,7 +2,6 @@ import { createQueue, createReceiver, createSingleValueBuffer, createSubscriptio
 import { Subject } from "./subject"; // Adjust path as needed
 
 export type BehaviorSubject<T = any> = Subject<T> & {
-  getValue(): Promise<T>;
   get value(): T;
 };
 
@@ -11,10 +10,12 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   const buffer = createSingleValueBuffer<T>(initialValue);
   const queue = createQueue();
   const subscribers = new Map<Receiver<T>, number>(); // Maps receiver to its readerId
+  let latestValue = initialValue;
   let isCompleted = false;
   let hasError = false;
 
   const next = (value: T) => {
+    latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
       if (value === undefined) { value = null as T; }
@@ -90,7 +91,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     });
 
     Object.assign(subscription, {
-      value: () => queue.enqueue(() => buffer.getValue())
+      value: () => latestValue
     });
 
     return subscription;
@@ -99,11 +100,8 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   const subject: BehaviorSubject<T> = {
     type: "subject",
     name: "behaviorSubject",
-    getValue: async () => {
-      return queue.enqueue(() => buffer.getValue());
-    },
     get value(): T {
-      return buffer.value!;
+      return latestValue;
     },
     subscribe,
     pipe: function (this: Subject, ...steps: Operator[]) {
