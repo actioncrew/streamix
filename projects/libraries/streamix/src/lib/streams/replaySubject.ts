@@ -11,9 +11,7 @@ import {
 } from "../abstractions";
 import { Subject } from "./subject";
 
-export type ReplaySubject<T = any> = Subject<T> & {
-  get buffer(): T[];
-};
+export type ReplaySubject<T = any> = Subject<T>;
 
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
   const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
@@ -108,11 +106,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     pipe: function (this: ReplaySubject, ...steps: Operator[]) {
       return pipeStream(this, ...steps);
     },
-    get value(): T | undefined {
+    get value(): undefined {
       throw new Error("Replay subject does not support single value property");
-    },
-    get buffer(): T[] {
-      return buffer.buffer;
     },
     next,
     complete,
