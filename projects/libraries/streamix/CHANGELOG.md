@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.10
+
+Both createSubject() and createBehaviorSubject() now expose a synchronously accessible .value property that immediately reflects the latest value passed to .next(), even before it has propagated to all subscribers.
+
 ## 2.0.8
 
 Improved tracking of pending readers to prevent negative counts and ensure buffer slots are released exactly once.
