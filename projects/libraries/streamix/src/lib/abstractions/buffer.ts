@@ -152,7 +152,6 @@ export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
  * @param {T | undefined} [initialValue=undefined] An optional initial value for the buffer.
  * @returns {SingleValueBuffer<T>} A buffer implementation for a single value.
  */
-
 export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
   let value: T | undefined = initialValue;
   let error: Error | undefined = undefined;
@@ -162,19 +161,32 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
   const readerOffsets = new Map<number, { offset: number, detached: boolean }>();
   let readerIdCounter = 0;
   let isCompleted = false;
-  let activeReaders = 0;
 
   const lock = createLock();
   const writeSemaphore = createSemaphore(1);
   const waitingReaders: (() => void)[] = [];
 
-  // Helper to notify all relevant readers
   const notifyReaders = () => {
-    for (const [, reader] of readerOffsets.entries()) {
-      if (!reader.detached || reader.offset < readCount) {
-        const next = waitingReaders.shift();
-        if (next) next();
-      }
+    // Notify all waiting readers, not just one
+    while (waitingReaders.length > 0) {
+      const next = waitingReaders.shift();
+      if (next) next();
+    }
+  };
+
+  const hasActiveReaders = () =>
+    Array.from(readerOffsets.values()).some(r => !r.detached);
+
+  const countRemainingReaders = () =>
+    Array.from(readerOffsets.values()).filter(r => !r.detached && r.offset < readCount).length;
+
+  const clearValueIfNoReaders = () => {
+    if ((hasValue || hasError) && countRemainingReaders() === 0) {
+      hasValue = false;
+      hasError = false;
+      value = undefined;
+      error = undefined;
+      writeSemaphore.release();
     }
   };
 
@@ -182,8 +194,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     if (isCompleted) throw new Error("Cannot write to completed buffer");
     if (hasError) throw new Error("Cannot write after error");
 
-    const hasActiveReaders = Array.from(readerOffsets.values()).some(r => !r.detached);
-    if (hasValue && hasActiveReaders) {
+    if (hasValue && hasActiveReaders()) {
       await writeSemaphore.acquire();
     }
 
@@ -222,7 +233,6 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       const readerId = readerIdCounter++;
       const startPos = hasValue || hasError ? readCount - 1 : readCount;
       readerOffsets.set(readerId, { offset: startPos, detached: false });
-      activeReaders++;
 
       if (startPos < readCount) {
         notifyReaders();
@@ -237,25 +247,11 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     const releaseLock = await lock();
     try {
       const reader = readerOffsets.get(readerId);
-      if (reader?.detached) return;
-      if (reader) {
-        reader.detached = true;
-        activeReaders--;
+      if (!reader || reader.detached) return;
 
-        if ((hasValue || hasError) && reader.offset < readCount) {
-          const remainingReaders = Array.from(readerOffsets.values())
-            .filter(r => !r.detached && r.offset < readCount).length;
-
-          if (remainingReaders === 0) {
-            hasValue = false;
-            hasError = false;
-            value = undefined;
-            error = undefined;
-            writeSemaphore.release();
-          }
-        }
-        notifyReaders();
-      }
+      reader.detached = true;
+      clearValueIfNoReaders();
+      notifyReaders();
     } finally {
       releaseLock();
     }
@@ -268,34 +264,18 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
 
       try {
         const reader = readerOffsets.get(readerId);
-        if (!reader) {
-          return { value: undefined, done: true };
-        }
-
-        // Immediate check if detached
-        if (reader.detached) {
+        if (!reader || reader.detached) {
           return { value: undefined, done: true };
         }
 
         if (reader.offset < readCount) {
           if (hasError) {
-            throw error; // Propagate the error to the reader
+            throw error;
           }
 
           const readValue = value;
           reader.offset++;
-
-          if (!reader.detached) {
-            const remainingReaders = Array.from(readerOffsets.values())
-              .filter(r => !r.detached && r.offset < readCount).length;
-
-            if (remainingReaders === 0) {
-              hasValue = false;
-              value = undefined;
-              writeSemaphore.release();
-            }
-          }
-
+          clearValueIfNoReaders();
           result = { value: readValue, done: false };
         } else if (isCompleted) {
           return { value: undefined, done: true };
@@ -307,19 +287,10 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       if (result) return result;
       if (isCompleted) return { value: undefined, done: true };
 
-      // Wait for next value or completion
       await new Promise<void>((resolve) => {
-        waitingReaders.push(() => {
-          const reader = readerOffsets.get(readerId);
-          if (!reader || reader.detached) {
-            resolve(); // Early return if detached while waiting
-          } else {
-            resolve();
-          }
-        });
+        waitingReaders.push(resolve);
       });
 
-      // Check if we were detached while waiting
       const reader = readerOffsets.get(readerId);
       if (!reader || reader.detached) {
         return { value: undefined, done: true };
@@ -340,7 +311,8 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     const releaseLock = await lock();
     try {
       isCompleted = true;
-      for (let i = 0; i < activeReaders; i++) {
+      // Notify all waiting readers
+      while (waitingReaders.length > 0) {
         const next = waitingReaders.shift();
         if (next) next();
       }
