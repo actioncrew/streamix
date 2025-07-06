@@ -71,7 +71,8 @@ export function createSubject<T = any>(): Subject<T> {
     });
 
     queue.enqueue(async () => {
-      const readerId = await buffer.attachReader();
+      return await buffer.attachReader();
+    }).then((readerId) => {
       subscribers.set(receiver, readerId);
       try {
         while (true) {
