@@ -73,16 +73,17 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     });
 
     queue.enqueue(async () => {
-      const readerId = await buffer.attachReader();
+      return await buffer.attachReader();
+    }).then((readerId) => {
+      subscribers.set(receiver, readerId);
       try {
-        subscribers.set(receiver, readerId);
         while (true) {
           const result = await pullValue(readerId);
           if (result.done) break;
           receiver.next(result.value);
         }
       } catch (err: any) {
-        receiver.error?.(err);
+        receiver.error(err);
       } finally {
         if (!unsubscribing) { await buffer.detachReader(readerId); }
         receiver.complete();
