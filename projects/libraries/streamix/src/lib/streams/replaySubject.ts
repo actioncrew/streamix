@@ -72,9 +72,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       }
     });
 
-    queue.enqueue(async () => {
-      return await buffer.attachReader();
-    }).then((readerId) => {
+    queue.enqueue(() => buffer.attachReader()).then(async (readerId) => {
       subscribers.set(receiver, readerId);
       try {
         while (true) {
