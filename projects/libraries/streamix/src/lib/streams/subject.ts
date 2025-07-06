@@ -71,23 +71,21 @@ export function createSubject<T = any>(): Subject<T> {
     });
 
     queue.enqueue(async () => {
-      queueMicrotask(async () => {
-        const readerId = await buffer.attachReader();
-        subscribers.set(receiver, readerId);
-        try {
-          while (true) {
-            const result = await pullValue(readerId);
-            if (result.done) break;
-            receiver.next(result.value);
-          }
-        } catch (err: any) {
-          receiver.error(err);
-        } finally {
-          if (!unsubscribing) { await buffer.detachReader(readerId); }
-          receiver.complete();
-          subscribers.delete(receiver);
+      const readerId = await buffer.attachReader();
+      subscribers.set(receiver, readerId);
+      try {
+        while (true) {
+          const result = await pullValue(readerId);
+          if (result.done) break;
+          receiver.next(result.value);
         }
-      });
+      } catch (err: any) {
+        receiver.error(err);
+      } finally {
+        if (!unsubscribing) { await buffer.detachReader(readerId); }
+        receiver.complete();
+        subscribers.delete(receiver);
+      }
     });
 
     Object.assign(subscription, {
