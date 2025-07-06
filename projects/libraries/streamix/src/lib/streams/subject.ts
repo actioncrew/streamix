@@ -70,9 +70,7 @@ export function createSubject<T = any>(): Subject<T> {
       }
     });
 
-    queue.enqueue(async () => {
-      return await buffer.attachReader();
-    }).then((readerId) => {
+    queue.enqueue(() => buffer.attachReader()).then(async (readerId) => {
       subscribers.set(receiver, readerId);
       try {
         while (true) {
