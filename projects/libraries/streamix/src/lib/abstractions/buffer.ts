@@ -130,7 +130,7 @@ export function createQueue() {
 export type CyclicBuffer<T = any> = {
   write: (item: T) => Promise<void>;
   error: (error: Error) => Promise<void>;
-  read: (readerId: number) => Promise<{ value: T | undefined, done: boolean }>;
+  read: (readerId: number) => Promise<IteratorResult<T, void>>;
   peek: () => Promise<T | undefined>;
   attachReader: () => Promise<number>;
   detachReader: (readerId: number) => Promise<void>;
@@ -438,7 +438,7 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
   }
 
   // Read next value for reader
-  async function read(id: number): Promise<{ value: T | undefined; done: boolean }> {
+  async function read(id: number): Promise<IteratorResult<T, void>> {
     while (true) {
       const release = await lock();
       const st = readers.get(id);
