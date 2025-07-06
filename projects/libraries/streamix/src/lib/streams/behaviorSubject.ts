@@ -70,7 +70,8 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     );
 
     queue.enqueue(async () => {
-      const readerId = await buffer.attachReader();
+      return await buffer.attachReader();
+    }).then((readerId) => {
       subscribers.set(receiver, readerId);
       try {
         while (true) {
