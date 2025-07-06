@@ -73,23 +73,21 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     });
 
     queue.enqueue(async () => {
-      queueMicrotask(async () => {
-        const readerId = await buffer.attachReader();
-        try {
-          subscribers.set(receiver, readerId);
-          while (true) {
-            const result = await pullValue(readerId);
-            if (result.done) break;
-            receiver.next(result.value);
-          }
-        } catch (err: any) {
-          receiver.error?.(err);
-        } finally {
-          if (!unsubscribing) { await buffer.detachReader(readerId); }
-          receiver.complete();
-          subscribers.delete(receiver);
+      const readerId = await buffer.attachReader();
+      try {
+        subscribers.set(receiver, readerId);
+        while (true) {
+          const result = await pullValue(readerId);
+          if (result.done) break;
+          receiver.next(result.value);
         }
-      });
+      } catch (err: any) {
+        receiver.error?.(err);
+      } finally {
+        if (!unsubscribing) { await buffer.detachReader(readerId); }
+        receiver.complete();
+        subscribers.delete(receiver);
+      }
     });
 
     Object.assign(subscription, {
