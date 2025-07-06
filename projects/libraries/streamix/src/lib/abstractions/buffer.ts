@@ -147,12 +147,8 @@ export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
  * Creates a single-value buffer (effectively a buffer with capacity 1).
  * This buffer ensures that a new value can only be written once all currently active readers have consumed the previous value.
  * It provides backpressure by waiting for readers to process the current value before allowing a new one.
- *
- * @template T The type of items stored in the buffer.
- * @param {T | undefined} [initialValue=undefined] An optional initial value for the buffer.
- * @returns {SingleValueBuffer<T>} A buffer implementation for a single value.
  */
-export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
+ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
   let value: T | undefined = initialValue;
   let version = initialValue !== undefined ? 1 : 0;
   let isCompleted = false;
@@ -165,7 +161,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
   const readers = new Map<number, {
     versionSeen: number;
     isActive: boolean;
-    pendingResolve?: (result: IteratorResult<T>) => void;
+    pendingResolve?: (result: IteratorResult<T, void>) => void;
     pendingReject?: (err: any) => void;
   }>();
 
@@ -178,7 +174,6 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       value = item;
       version++;
 
-      // Wake all readers waiting for new data
       for (const reader of readers.values()) {
         if (reader.isActive && reader.versionSeen < version && reader.pendingResolve) {
           reader.versionSeen = version;
@@ -229,7 +224,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     }
   };
 
-  const read = async (readerId: number): Promise<IteratorResult<T>> => {
+  const read = async (readerId: number): Promise<IteratorResult<T, void>> => {
     const release = await lock();
 
     const reader = readers.get(readerId);
@@ -240,7 +235,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
 
     if (reader.versionSeen < version) {
       reader.versionSeen = version;
-      const result = { value, done: false };
+      const result = { value, done: false } as IteratorResult<T, void>;
       release();
       return result;
     }
@@ -255,8 +250,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       return Promise.reject(error);
     }
 
-    // Suspend reader
-    return new Promise<IteratorResult<T>>((resolve, reject) => {
+    return new Promise<IteratorResult<T, void>>((resolve, reject) => {
       reader.pendingResolve = resolve;
       reader.pendingReject = reject;
       release();
