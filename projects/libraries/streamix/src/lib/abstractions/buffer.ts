@@ -129,7 +129,7 @@ export function createQueue() {
 
 export type CyclicBuffer<T = any> = {
   write: (item: T) => Promise<void>;
-  error(error: Error): Promise<void>;
+  error: (error: Error) => Promise<void>;
   read: (readerId: number) => Promise<{ value: T | undefined, done: boolean }>;
   peek: () => Promise<T | undefined>;
   attachReader: () => Promise<number>;
