@@ -8,7 +8,7 @@ import { createSubject } from '../streams';
 export function onOrientation() {
   if (!window.screen || !window.screen.orientation) {
     console.warn("Screen orientation API is not supported in this environment");
-    return createSubscription(() => "portrait"); // Fallback for unsupported environments
+    return createSubscription(() => {}); // Fallback for unsupported environments
   }
 
   const subject = createSubject<"portrait" | "landscape">();

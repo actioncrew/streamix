@@ -10,7 +10,7 @@ import { createSubject } from '../streams';
 export function onMediaQuery(mediaQueryString: string) {
   if (!window.matchMedia) {
     console.warn("matchMedia is not supported in this environment");
-    return createSubscription(() => false); // Return a dummy subscription
+    return createSubscription(() => {}); // Return a dummy subscription
   }
 
   const subject = createSubject<boolean>();
