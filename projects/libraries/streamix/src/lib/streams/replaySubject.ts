@@ -16,15 +16,13 @@ export type ReplaySubject<T = any> = Subject<T>;
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
   const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
   const queue = createQueue();
-  const subscribers = new Map<Receiver<T>, number>();
   let isCompleted = false;
   let hasError = false;
 
   const next = (value: T) => {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      if (value === undefined) value = null as T;
-      await buffer.write(value);
+      await buffer.write(value === undefined ? null as T : value);
     });
   };
 
@@ -39,58 +37,51 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   const error = (err: any) => {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      hasError = true; isCompleted = true;
+      hasError = true;
+      isCompleted = true;
       await buffer.error(err);
       await buffer.complete();
     });
   };
 
-  const pullValue = async (readerId: number): Promise<IteratorResult<T, void>> => {
-    if (hasError) return { value: undefined, done: true };
-
-    try {
-      const result = await buffer.read(readerId);
-      return result as IteratorResult<T, void>;
-    } catch (err) {
-      return Promise.reject(err);
-    }
-  };
-
   const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
+    let readerId: number | null = null;
 
     const subscription = createSubscription(() => {
       if (!unsubscribing) {
         unsubscribing = true;
         queue.enqueue(async () => {
-          const readerId = subscribers.get(receiver);
-          if (readerId !== undefined) {
+          if (readerId !== null) {
             await buffer.detachReader(readerId);
           }
         });
       }
     });
 
-    queue.enqueue(() => buffer.attachReader()).then(async (readerId) => {
-      subscribers.set(receiver, readerId);
+    queue.enqueue(() => buffer.attachReader()).then(async (id: number) => {
+      readerId = id;
       try {
         while (true) {
-          const result = await pullValue(readerId);
+          const result = await buffer.read(readerId);
           if (result.done) break;
           receiver.next(result.value);
         }
       } catch (err: any) {
         receiver.error(err);
       } finally {
-        if (!unsubscribing) { await buffer.detachReader(readerId); }
+        if (!unsubscribing && readerId !== null) {
+          await buffer.detachReader(readerId);
+        }
         receiver.complete();
-        subscribers.delete(receiver);
       }
     });
 
     Object.assign(subscription, {
-      value: () => { throw new Error("Replay subject does not support single value property"); }
+      value: () => {
+        throw new Error("Replay subject does not support single value property");
+      }
     });
 
     return subscription;
@@ -100,7 +91,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     type: "subject",
     name: "replaySubject",
     subscribe,
-    pipe: function (this: ReplaySubject, ...steps: Operator[]) {
+    pipe(...steps: Operator[]) {
       return pipeStream(this, ...steps);
     },
     get value(): undefined {
