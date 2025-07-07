@@ -148,150 +148,134 @@ export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
  * This buffer ensures that a new value can only be written once all currently active readers have consumed the previous value.
  * It provides backpressure by waiting for readers to process the current value before allowing a new one.
  */
- export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
+export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
   let value: T | undefined = initialValue;
-  let version = initialValue !== undefined ? 1 : 0;
-  let isCompleted = false;
   let error: Error | undefined = undefined;
-
-  let nextReaderId = 0;
-
-  const lock = createLock();
+  let isCompleted = false;
+  let version = initialValue !== undefined ? 1 : 0;
 
   const readers = new Map<number, {
-    versionSeen: number;
+    lastSeenVersion: number;
     isActive: boolean;
-    pendingResolve?: (result: IteratorResult<T, void>) => void;
-    pendingReject?: (err: any) => void;
   }>();
 
+  let nextReaderId = 0;
+  const waitingReaders: (() => void)[] = [];
+  const lock = createLock();
+
+  const notifyReaders = () => {
+    const toNotify = [...waitingReaders];
+    waitingReaders.length = 0;
+    toNotify.forEach(resolve => resolve());
+  };
+
   const write = async (item: T): Promise<void> => {
-    const release = await lock();
+    const releaseLock = await lock();
     try {
       if (isCompleted) throw new Error("Cannot write to completed buffer");
       if (error) throw new Error("Cannot write after error");
 
       value = item;
+      error = undefined;
       version++;
-
-      for (const reader of readers.values()) {
-        if (reader.isActive && reader.versionSeen < version && reader.pendingResolve) {
-          reader.versionSeen = version;
-          const resolve = reader.pendingResolve;
-          reader.pendingResolve = reader.pendingReject = undefined;
-          resolve({ value: item, done: false });
-        }
-      }
+      notifyReaders();
     } finally {
-      release();
+      releaseLock();
     }
   };
 
   const writeError = async (err: Error): Promise<void> => {
-    const release = await lock();
+    const releaseLock = await lock();
     try {
-      if (isCompleted) throw new Error("Cannot error a completed buffer");
+      if (isCompleted) throw new Error("Cannot write error to completed buffer");
 
       error = err;
-      isCompleted = true;
-
-      for (const reader of readers.values()) {
-        if (reader.pendingReject) {
-          const reject = reader.pendingReject;
-          reader.pendingResolve = reader.pendingReject = undefined;
-          reject(err);
-        }
-      }
+      value = undefined;
+      version++;
+      notifyReaders();
     } finally {
-      release();
+      releaseLock();
     }
-  };
-
-  const complete = async (): Promise<void> => {
-    const release = await lock();
-    try {
-      isCompleted = true;
-
-      for (const reader of readers.values()) {
-        if (reader.pendingResolve) {
-          const resolve = reader.pendingResolve;
-          reader.pendingResolve = reader.pendingReject = undefined;
-          resolve({ value: undefined, done: true });
-        }
-      }
-    } finally {
-      release();
-    }
-  };
-
-  const read = async (readerId: number): Promise<IteratorResult<T, void>> => {
-    const release = await lock();
-
-    const reader = readers.get(readerId);
-    if (!reader || !reader.isActive) {
-      release();
-      return { value: undefined, done: true };
-    }
-
-    if (reader.versionSeen < version) {
-      reader.versionSeen = version;
-      const result = { value, done: false } as IteratorResult<T, void>;
-      release();
-      return result;
-    }
-
-    if (isCompleted) {
-      release();
-      return { value: undefined, done: true };
-    }
-
-    if (error) {
-      release();
-      return Promise.reject(error);
-    }
-
-    return new Promise<IteratorResult<T, void>>((resolve, reject) => {
-      reader.pendingResolve = resolve;
-      reader.pendingReject = reject;
-      release();
-    });
   };
 
   const attachReader = async (): Promise<number> => {
-    const release = await lock();
+    const releaseLock = await lock();
     try {
-      const id = nextReaderId++;
-      readers.set(id, {
-        versionSeen: initialValue !== undefined ? 0 : version,
+      const readerId = nextReaderId++;
+      readers.set(readerId, {
+        lastSeenVersion: initialValue !== undefined ? 0 : version,
         isActive: true
       });
-      return id;
+
+      // If there's a current value, notify immediately
+      if (value !== undefined || error !== undefined) {
+        notifyReaders();
+      }
+
+      return readerId;
     } finally {
-      release();
+      releaseLock();
     }
   };
 
   const detachReader = async (readerId: number): Promise<void> => {
-    const release = await lock();
+    const releaseLock = await lock();
     try {
       readers.delete(readerId);
     } finally {
-      release();
+      releaseLock();
+    }
+  };
+
+  const read = async (readerId: number): Promise<IteratorResult<T, void>> => {
+    while (true) {
+      const releaseLock = await lock();
+      let result: { value: T | undefined; done: boolean } | null = null;
+
+      try {
+        const reader = readers.get(readerId);
+        if (!reader || !reader.isActive) {
+          return { value: undefined, done: true };
+        }
+
+        if (reader.lastSeenVersion < version) {
+          if (error) throw error;
+
+          result = { value, done: false };
+          reader.lastSeenVersion = version;
+        } else if (isCompleted) {
+          return { value: undefined, done: true };
+        }
+      } finally {
+        releaseLock();
+      }
+
+      if (result) return result as IteratorResult<T, void>;
+
+      // Wait for next value or completion
+      await new Promise<void>(resolve => {
+        waitingReaders.push(resolve);
+      });
     }
   };
 
   const peek = async (): Promise<T | undefined> => {
-    const release = await lock();
+    const releaseLock = await lock();
     try {
       return value;
     } finally {
-      release();
+      releaseLock();
     }
   };
 
-  const completed = (readerId: number): boolean => {
-    const reader = readers.get(readerId);
-    return isCompleted || !reader || !reader.isActive;
+  const complete = async (): Promise<void> => {
+    const releaseLock = await lock();
+    try {
+      isCompleted = true;
+      notifyReaders();
+    } finally {
+      releaseLock();
+    }
   };
 
   return {
@@ -302,11 +286,15 @@ export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
     attachReader,
     detachReader,
     complete,
-    completed,
+    completed: (readerId: number) => {
+      const reader = readers.get(readerId);
+      return !reader || !reader.isActive || (isCompleted && reader.lastSeenVersion >= version);
+    },
     getValue: peek,
     get value() { return value; }
   };
 }
+
 
 export type ReplayBuffer<T = any> = CyclicBuffer<T> & {
   get buffer(): T[];
