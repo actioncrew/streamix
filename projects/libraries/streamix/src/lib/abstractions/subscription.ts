@@ -6,7 +6,7 @@ export type Subscription<T = any> = {
   hasValue(): Promise<boolean>;
   value(): Promise<T | undefined>;
   unsubscribe(): void;
-  listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>): void;
+  listen(iterator: () => AsyncIterator<T>, receiver: Required<Receiver<T>>): void;
 };
 
 export const createSubscription = function <T = any>(onUnsubscribe?: () => void): Subscription<T> {
@@ -34,19 +34,20 @@ export const createSubscription = function <T = any>(onUnsubscribe?: () => void)
         onUnsubscribe?.();
       }
     },
-    listen(generator: () => AsyncGenerator<T, void, unknown>, receiver: Required<Receiver<T>>) {
+    listen(iterator: () => AsyncIterator<T>, receiver: Required<Receiver<T>>) {
       if (_unsubscribed) {
         throw new Error("Cannot listen on an unsubscribed subscription.");
       }
 
       const asyncLoop = async () => {
         try {
-          if (!_unsubscribed) {
-            for await (const value of generator()) {
-              if (_unsubscribed) break;
-              _latestValue = value;
-              receiver.next?.(value);
-            }
+          const iter = iterator();
+          while (!_unsubscribed) {
+            const result = await iter.next();
+            if (result.done || _unsubscribed) break;
+
+            _latestValue = result.value;
+            receiver.next?.(_latestValue);
           }
         } catch (err: any) {
           receiver.error?.(err);
