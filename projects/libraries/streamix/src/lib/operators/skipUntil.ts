@@ -24,7 +24,7 @@ export function skipUntil<T = any>(notifier: Stream): Operator {
 
 
     // Process source async iterator
-    (async () => {
+    setTimeout(async () => {
       try {
         while (true) {
           const { value, done } = await source.next();
@@ -36,7 +36,7 @@ export function skipUntil<T = any>(notifier: Stream): Operator {
       } finally {
         output.complete();
       }
-    })();
+    }, 0);
 
     return eachValueFrom(output);
   });
