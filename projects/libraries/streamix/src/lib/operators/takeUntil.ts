@@ -1,36 +1,46 @@
-import { createOperator, Stream } from "../abstractions";
+import { createOperator, Operator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
+import { createSubject } from '../streams';
 
-export const takeUntil = (notifier: Stream<any>) =>
-  createOperator("takeUntil", (source) => {
+/**
+ * Emits values from the source until the notifier emits its first value.
+ * Once the notifier emits, the output completes.
+ */
+export function takeUntil<T = any>(notifier: Stream): Operator {
+  return createOperator('takeUntil', (source) => {
+    const output = createSubject<T>();
     let shouldStop = false;
-    let done = false;
 
-    // Start listening to the notifier asynchronously
-    (async () => {
-      try {
-        for await (const _ of eachValueFrom(notifier)) {
-          shouldStop = true;
-          break;
-        }
-      } catch (_: any) {
-        // If notifier errors, you might optionally choose to propagate or log
+    // Subscribe to the notifier
+    const notifierSubscription = notifier.subscribe({
+      next: () => {
         shouldStop = true;
-      }
-    })();
+        notifierSubscription.unsubscribe();
+      },
+      error: (err) => {
+        if (!output.completed()) output.error(err);
+        notifierSubscription.unsubscribe();
+      },
+      complete: () => {
+        notifierSubscription.unsubscribe();
+      },
+    });
 
-    return {
-      async next() {
-        if (done || shouldStop) return { done: true, value: undefined };
-
-        const result = await source.next();
-
-        if (result.done || shouldStop) {
-          done = true;
-          return { done: true, value: undefined };
+    // Process source stream asynchronously
+    setTimeout(async () => {
+      try {
+        while (!shouldStop) {
+          const { value, done } = await source.next();
+          if (done || shouldStop) break;
+          output.next(value);
         }
-
-        return result;
+      } catch (err) {
+        if (!output.completed()) output.error(err);
+      } finally {
+        output.complete();
       }
-    };
+    }, 0);
+
+    return eachValueFrom(output);
   });
+}
