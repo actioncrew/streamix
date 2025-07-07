@@ -127,17 +127,24 @@ export function createQueue() {
   };
 }
 
+/**
+ * A concurrent async buffer allowing multiple readers to consume values independently.
+ * Each reader sees only new values written after attachment.
+ */
 export type CyclicBuffer<T = any> = {
-  write: (item: T) => Promise<void>;
-  error: (error: Error) => Promise<void>;
-  read: (readerId: number) => Promise<IteratorResult<T, void>>;
-  peek: () => Promise<T | undefined>;
-  attachReader: () => Promise<number>;
-  detachReader: (readerId: number) => Promise<void>;
-  complete: () => Promise<void>;
-  completed: (readerId: number) => boolean;
+  write(value: T): Promise<void>;
+  error(err: Error): Promise<void>;
+  read(readerId: number): Promise<IteratorResult<T, void>>;
+  peek(): Promise<T | undefined>;
+  complete(): Promise<void>;
+  attachReader(): Promise<number>;
+  detachReader(readerId: number): Promise<void>;
+  completed(readerId: number): boolean;
 };
 
+/**
+ * A simplified buffer variant that stores a single value and delivers it to all readers.
+ */
 export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
   getValue(): Promise<T | undefined>;
   get value(): T | undefined;
@@ -207,7 +214,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
         isActive: true
       });
 
-      // If there's a current value, notify immediately
+      // If there's a current value or error, wake up potential readers
       if (value !== undefined || error !== undefined) {
         notifyReaders();
       }
@@ -221,7 +228,11 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
   const detachReader = async (readerId: number): Promise<void> => {
     const releaseLock = await lock();
     try {
-      readers.delete(readerId);
+      const reader = readers.get(readerId);
+      if (reader) {
+        reader.isActive = false;
+        readers.delete(readerId);
+      }
     } finally {
       releaseLock();
     }
@@ -230,29 +241,33 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
   const read = async (readerId: number): Promise<IteratorResult<T, void>> => {
     while (true) {
       const releaseLock = await lock();
-      let result: { value: T | undefined; done: boolean } | null = null;
+      let result: IteratorResult<T, void> | null = null;
 
       try {
         const reader = readers.get(readerId);
         if (!reader || !reader.isActive) {
-          return { value: undefined, done: true };
+          return { done: true } as IteratorReturnResult<void>;
         }
 
         if (reader.lastSeenVersion < version) {
-          if (error) throw error;
+          if (error) {
+            throw error;
+          }
 
-          result = { value, done: false };
+          result = { value: value as T, done: false };
           reader.lastSeenVersion = version;
         } else if (isCompleted) {
-          return { value: undefined, done: true };
+          return { done: true } as IteratorReturnResult<void>;
         }
       } finally {
         releaseLock();
       }
 
-      if (result) return result as IteratorResult<T, void>;
+      if (result) {
+        return result;
+      }
 
-      // Wait for next value or completion
+      // Wait for a new value, error, or completion
       await new Promise<void>(resolve => {
         waitingReaders.push(resolve);
       });
@@ -283,19 +298,28 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     error: writeError,
     read,
     peek,
+    complete,
     attachReader,
     detachReader,
-    complete,
     completed: (readerId: number) => {
       const reader = readers.get(readerId);
       return !reader || !reader.isActive || (isCompleted && reader.lastSeenVersion >= version);
     },
     getValue: peek,
-    get value() { return value; }
+    get value() {
+      return value;
+    }
   };
 }
 
-
+/**
+ * A buffer that replays a fixed number of the most recent values to new readers.
+ *
+ * Extends {@link CyclicBuffer} with an additional `buffer` getter
+ * to access the internal list of buffered values.
+ *
+ * @template T The type of values stored in the buffer.
+ */
 export type ReplayBuffer<T = any> = CyclicBuffer<T> & {
   get buffer(): T[];
 };
