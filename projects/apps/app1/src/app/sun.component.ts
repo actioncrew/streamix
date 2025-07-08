@@ -1,4 +1,5 @@
 import {
+  combineLatest,
   createSubject,
   fromEvent,
   interval,
@@ -14,7 +15,6 @@ import {
 } from '@actioncrew/streamix';
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-caption',
@@ -84,7 +84,7 @@ export class CaptionComponent implements OnInit {
 @Component({
   selector: 'app-sun',
   standalone: true,
-  imports: [RouterOutlet, CaptionComponent],
+  imports: [CaptionComponent],
   template: `
   <div class="container">
     <app-caption></app-caption>
@@ -123,90 +123,88 @@ export class AppSunComponent implements AfterViewInit, OnDestroy {
       map(({ width, height }) => ({
         width,
         height,
-        rays: Array.from({ length: 30 }, (_, i) => ({ // Create 30 rays
-          angle: (i / 30) * Math.PI / 2, // Spread over quarter circle
+        rays: Array.from({ length: 30 }, (_, i) => ({
+          angle: (i / 30) * Math.PI / 2,
           position: 10,
         })),
         sun: {
-          x: 0,  // Position of the sun's center in the top-left corner
-          y: 0,  // Position of the sun's center in the top-left corner
-          radius: 120,  // Radius of the sun
+          x: 0,
+          y: 0,
+          radius: 120,
         }
-      }))
+      })),
+      shareReplay(1)
     );
 
-    const draw$ = interval(33).pipe(
-      withLatestFrom(rays$),
-      tap(([_, { width, height, rays, sun }]) => {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        this.ctx.fillRect(0, 0, width, height);
-
-        // Number of lines to draw within the upper-right quarter
-        const numLines = 15;
-        const angleStep = Math.PI / (2 * numLines); // Spread across the upper-right quarter
-        const textSpacing = 12; // Spacing between letters on each line
-        const textHeight = this.fontSize;
-
-        // Loop through each line in the upper-right quarter and draw letters inside the sun body
-        for (let i = 0; i < numLines; i++) {
-          // Calculate angle for the current line
-          const angle = i * angleStep;
-
-          // Calculate Y offset for vertical positioning along the arc
-          const yOffset = sun.y + sun.radius * Math.sin(angle);
-
-          // Start drawing letters from the edge of the sun body
-          let xOffset = sun.x + sun.radius * Math.cos(angle);
-
-          // Loop through each letter position on the line
-          for (let j = 0; j < sun.radius; j++) {
-            // Calculate a scaling factor based on the distance from the center
-            const scaleFactor = 1 - j / sun.radius;
-
-            // Adjust xOffset based on the scale factor and text spacing
-            xOffset -= textSpacing * scaleFactor; // Subtract to move inward
-
-            // Ensure the letters stay inside the sun body
-            if (xOffset > sun.x) {
-              // Random letter and color
-              const letter = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
-              const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
-
-              // Clear a rectangular area around the letter's position
-              this.ctx.fillStyle = 'black';
-              this.ctx.fillRect(xOffset - textSpacing / 2, yOffset - textHeight / 2, textSpacing, textHeight);
-
-              // Set color and draw the letter
-              this.ctx.fillStyle = color;
-              this.ctx.fillText(letter, xOffset, yOffset);
-            }
-          }
-        }
-
-        rays.forEach((ray: any) => {
-          let x = Math.cos(ray.angle) * ray.position * this.fontSize;
-          let y = Math.sin(ray.angle) * ray.position * this.fontSize;
-
-          // Color and text for the ray
-          const text = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
-          const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
-          this.ctx.fillStyle = color;
-          this.ctx.fillText(text, x, y);
-
-          // Advance position for shimmering effect
-          ray.position = (ray.position * this.fontSize > height && Math.random() > 0.9) ? 10 : ray.position + 1;
-        });
-      })
-    );
-
-    this.scene$ =  resize$.pipe(
-      tap(({ width, height }) => {
-        this.canvas.width = width;
-        this.canvas.height = height;
-        this.ctx.fillStyle = 'black';
+    this.scene$ = combineLatest([rays$, resize$]).pipe(
+      // This tap handles the initial canvas sizing and immediate black fill
+      tap(([, canvasSize]) => {
+        this.canvas.width = canvasSize.width;
+        this.canvas.height = canvasSize.height;
+        this.ctx.fillStyle = 'black'; // <--- IMMEDIATELY FILL WITH BLACK AFTER RESIZE
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       }),
-      switchMap(() => draw$),
+      switchMap(() =>
+        interval(33).pipe(
+          withLatestFrom(rays$, resize$),
+          tap(([_, raysData, canvasSize]) => {
+            // Check if dimensions have changed during an active interval frame
+            // This ensures that if a resize happens mid-frame, it's also handled.
+            // However, the `tap` before `switchMap` is the primary fix for the flicker.
+            if (this.canvas.width !== canvasSize.width || this.canvas.height !== canvasSize.height) {
+              this.canvas.width = canvasSize.width;
+              this.canvas.height = canvasSize.height;
+              this.ctx.fillStyle = 'black'; // <--- Also fill black here on subsequent resizes
+              this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            // Your existing drawing logic to draw the semi-transparent black overlay
+            // and the animated elements. This will now draw *over* the solid black background.
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            this.ctx.fillRect(0, 0, raysData.width, raysData.height);
+
+            // ... (rest of your drawing logic for sun and rays)
+            const numLines = 15;
+            const angleStep = Math.PI / (2 * numLines);
+            const textSpacing = 12;
+            const textHeight = this.fontSize;
+
+            for (let i = 0; i < numLines; i++) {
+              const angle = i * angleStep;
+              const yOffset = raysData.sun.y + raysData.sun.radius * Math.sin(angle);
+              let xOffset = raysData.sun.x + raysData.sun.radius * Math.cos(angle);
+
+              for (let j = 0; j < raysData.sun.radius; j++) {
+                const scaleFactor = 1 - j / raysData.sun.radius;
+                xOffset -= textSpacing * scaleFactor;
+
+                if (xOffset > raysData.sun.x) {
+                  const letter = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
+                  const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
+
+                  this.ctx.fillStyle = 'black';
+                  this.ctx.fillRect(xOffset - textSpacing / 2, yOffset - textHeight / 2, textSpacing, textHeight);
+
+                  this.ctx.fillStyle = color;
+                  this.ctx.fillText(letter, xOffset, yOffset);
+                }
+              }
+            }
+
+            raysData.rays.forEach((ray: any) => {
+              let x = Math.cos(ray.angle) * ray.position * this.fontSize;
+              let y = Math.sin(ray.angle) * ray.position * this.fontSize;
+
+              const text = this.letterArray[Math.floor(Math.random() * this.letterArray.length)];
+              const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
+              this.ctx.fillStyle = color;
+              this.ctx.fillText(text, x, y);
+
+              ray.position = (ray.position * this.fontSize > raysData.height && Math.random() > 0.9) ? 10 : ray.position + 1;
+            });
+          })
+        )
+      ),
       takeUntil(this.destroy$)
     );
 
