@@ -1,34 +1,33 @@
 import { createOperator } from "../abstractions";
 
-export const select = <T = any>(indexIterator: Iterator<number> | AsyncIterator<number>) =>
+export const select = <T = any>(indexIterator: Iterator<number>) =>
   createOperator("select", (source) => {
     let currentIndex = 0;
-    let nextIndexPromise = indexIterator.next();
+    let nextIndex = indexIterator.next().value;
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        let nextIndexResult = await nextIndexPromise;
-        let nextIndex = nextIndexResult.value;
-
         while (true) {
           if (nextIndex === undefined) {
+            // No more indices to select, complete
             return { done: true, value: undefined };
           }
 
           const { done, value } = await source.next();
           if (done) {
+            // Input ended
             return { done: true, value: undefined };
           }
 
           if (currentIndex === nextIndex) {
-            // Schedule next index fetch
-            nextIndexPromise = indexIterator.next();
+            // Emit this selected value and advance nextIndex
+            nextIndex = indexIterator.next().value;
             currentIndex++;
             return { done: false, value };
           }
 
           currentIndex++;
-          // Skip this value, continue loop
+          // Skip this value, continue looping
         }
       },
     };

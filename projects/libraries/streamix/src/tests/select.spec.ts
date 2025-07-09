@@ -10,11 +10,12 @@ describe('select operator tests', () => {
   });
 
   it("should emit selected values based on indexIterator", async () => {
-    const indexes = [0, 2, 4]; // We want to select the values at these indexes
+      const indexes = [0, 2, 4];
     const selectStream = source.pipe(select(indexes[Symbol.iterator]()));
     const results: any[] = [];
 
-    (async () => {
+    // Create a promise that resolves when consumption is complete
+    const consumptionPromise = (async () => {
       for await (const value of eachValueFrom(selectStream)) {
         results.push(value);
       }
@@ -26,7 +27,9 @@ describe('select operator tests', () => {
     subject.next(4);
     subject.next(5);
     subject.complete();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Wait for the consumption to finish
+    await consumptionPromise;
 
     expect(results).toEqual([1, 3, 5]); // Only values at indexes 0, 2, 4 should be emitted
   });

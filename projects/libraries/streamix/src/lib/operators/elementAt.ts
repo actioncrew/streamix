@@ -2,7 +2,7 @@ import { Operator } from "../abstractions";
 import { select } from "./select";
 
 export const elementAt = <T = any>(targetIndex: number) =>
-  select<T>(async function* () {
+  select<T>(function* () {
     if (targetIndex < 0) {
       throw new Error(`Invalid index: ${targetIndex}. Index must be non-negative.`);
     }
