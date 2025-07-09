@@ -1,23 +1,25 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
-export const reduce = (
-  accumulator: (acc: any, value: any) => CallbackReturnType<any>,
-  seed: any
+
+export const reduce = <T = any, A = any>(
+  accumulator: (acc: A, value: T) => CallbackReturnType<A>,
+  seed: A
 ) =>
-  createOperator("reduce", (source) => {
+  createOperator<T, A>("reduce", (source) => {
     let done = false;
 
     return {
-      async next(): Promise<IteratorResult<any>> {
+      async next(): Promise<IteratorResult<A>> {
         if (done) return { done: true, value: undefined };
 
         let acc = seed;
+
         for await (const result of {
           async *[Symbol.asyncIterator]() {
             while (true) {
               const { done, value } = await source.next();
               if (done) break;
-              acc = await accumulator(acc, value);
+              acc = await accumulator(acc, value as T);
             }
             yield acc;
           },
