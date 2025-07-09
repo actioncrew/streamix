@@ -1,4 +1,4 @@
-export type CallbackReturnType = void | Promise<void>;
+export type CallbackReturnType = void;
 
 export type Receiver<T = any> = {
   next?: (value: T) => CallbackReturnType;
