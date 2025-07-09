@@ -1,32 +1,35 @@
-import { CallbackReturnType, createOperator } from '../abstractions';
+import { createOperator } from '../abstractions';
 
 export const distinctUntilKeyChanged = <T extends object>(
   key: keyof T,
-  comparator?: (prev: T[typeof key], curr: T[typeof key]) => CallbackReturnType<boolean>
+  comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean | Promise<boolean>
 ) =>
   createOperator('distinctUntilKeyChanged', (source) => {
     let lastValue: T | undefined;
     let isFirst = true;
 
     return {
-      next: async (): Promise<IteratorResult<T>> => {
-        const result = await source.next();
-        if (result.done) return result;
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
+          const result = await source.next();
+          if (result.done) return result;
 
-        const current = result.value;
-        const isDistinct = isFirst || (
-          comparator
-            ? !await comparator(lastValue![key], current[key])
-            : lastValue![key] !== current[key]
-        );
+          const current = result.value;
 
-        isFirst = false;
-        if (isDistinct) {
-          lastValue = current;
-          return { value: current, done: false };
+          const isDistinct = isFirst || (
+            comparator
+              ? !(await comparator(lastValue![key], current[key]))
+              : lastValue![key] !== current[key]
+          );
+
+          isFirst = false;
+
+          if (isDistinct) {
+            lastValue = current;
+            return { value: current, done: false };
+          }
+          // else skip this value and continue looping
         }
-
-        return { value: undefined as any, done: false }; // downstream should skip undefined
       }
     };
   });

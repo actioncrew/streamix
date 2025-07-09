@@ -13,19 +13,20 @@ describe('distinctUntilKeyChanged operator', () => {
     const distinctStream = source.pipe(distinctUntilKeyChanged('key'));
     const results: any[] = [];
 
-    (async () => {
+    const consumptionPromise = (async () => {
       for await (const value of eachValueFrom(distinctStream)) {
         results.push(value);
       }
     })();
 
     subject.next({ key: 1, value: 'a' });
-    subject.next({ key: 1, value: 'b' }); // Same key, should not emit
-    subject.next({ key: 2, value: 'c' }); // New key, should emit
-    subject.next({ key: 2, value: 'd' }); // Same key, should not emit
-    subject.next({ key: 3, value: 'e' }); // New key, should emit
+    subject.next({ key: 1, value: 'b' }); // same key, skip
+    subject.next({ key: 2, value: 'c' }); // new key, emit
+    subject.next({ key: 2, value: 'd' }); // same key, skip
+    subject.next({ key: 3, value: 'e' }); // new key, emit
     subject.complete();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await consumptionPromise;
 
     expect(results).toEqual([
       { key: 1, value: 'a' },
@@ -38,17 +39,18 @@ describe('distinctUntilKeyChanged operator', () => {
     const distinctStream = source.pipe(distinctUntilKeyChanged('key'));
     const results: any[] = [];
 
-    (async () => {
+    const consumptionPromise = (async () => {
       for await (const value of eachValueFrom(distinctStream)) {
         results.push(value);
       }
     })();
 
-    subject.next({ key: 1, value: 'a' });
-    subject.next({ key: 1, value: 'b' }); // Same key, but first value, should emit
-    subject.next({ key: 1, value: 'c' }); // Same key, should not emit
+    subject.next({ key: 1, value: 'a' }); // emit
+    subject.next({ key: 1, value: 'b' }); // same key, skip
+    subject.next({ key: 1, value: 'c' }); // same key, skip
     subject.complete();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await consumptionPromise;
 
     expect(results).toEqual([
       { key: 1, value: 'a' },
@@ -59,23 +61,24 @@ describe('distinctUntilKeyChanged operator', () => {
     const distinctStream = source.pipe(distinctUntilKeyChanged('key'));
     const results: any[] = [];
 
-    (async () => {
+    const consumptionPromise = (async () => {
       for await (const value of eachValueFrom(distinctStream)) {
         results.push(value);
       }
     })();
 
     subject.complete();
-    await new Promise((resolve) => setTimeout(resolve, 100));
 
-    expect(results).toEqual([]); // No values emitted
+    await consumptionPromise;
+
+    expect(results).toEqual([]);
   });
 
   it('should propagate errors from the source stream', async () => {
     const distinctStream = source.pipe(distinctUntilKeyChanged('key'));
     let error: any = null;
 
-    (async () => {
+    const consumptionPromise = (async () => {
       try {
         for await (const _ of eachValueFrom(distinctStream)) {
           void _;
@@ -86,7 +89,8 @@ describe('distinctUntilKeyChanged operator', () => {
     })();
 
     subject.error(new Error('Test Error'));
-    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    await consumptionPromise;
 
     expect(error).toEqual(new Error('Test Error'));
   });
