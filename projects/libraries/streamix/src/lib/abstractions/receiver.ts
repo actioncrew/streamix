@@ -1,4 +1,4 @@
-export type CallbackReturnType = void;
+export type CallbackReturnType = any | Promise<any>;
 
 export type Receiver<T = any> = {
   next?: (value: T) => CallbackReturnType;
@@ -35,9 +35,8 @@ export function createReceiver<T = any>(
         }
       }
     },
-    error: async (err: Error) => {
+    error: async function (err: Error) {
       if (!_completed) {
-        _completed = true;
         try {
           await receiver.error?.call(receiver, err);
         } catch (e) {
