@@ -1,6 +1,6 @@
 import { createOperator } from "../abstractions";
 
-export const select = <T = any>(indexIterator: AsyncIterator<number>) =>
+export const select = <T = any>(indexIterator: Iterator<number> | AsyncIterator<number>) =>
   createOperator("select", (source) => {
     let currentIndex = 0;
     let nextIndexPromise = indexIterator.next();
