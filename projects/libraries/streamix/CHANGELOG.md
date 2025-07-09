@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.11
+
+All built-in operators now fully support asynchronous callbacks. You can provide async functions to operators such as map, filter, reduce, and custom operators without manual workarounds or hacks. Receivers can now be asynchronous. Streamix handles awaiting async callbacks internally, ensuring proper flow control and error propagation.
+
 ## 2.0.10
 
 Both createSubject() and createBehaviorSubject() now expose a synchronously accessible .value property that immediately reflects the latest value passed to .next(), even before it has propagated to all subscribers.

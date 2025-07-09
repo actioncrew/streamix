@@ -29,6 +29,7 @@ Streamix is built around generators (the function* and async function* kind). Th
 - 🧠 **Smart tools** for heavy computation
 - 🤝 **Async-friendly**, perfect for UI, events, and networking
 - 🔁 **Simple concept**: async generators = streams
+- ⚡ **Async callbacks** in operators and receivers now natively supported
 
 ## Core Concepts
 
