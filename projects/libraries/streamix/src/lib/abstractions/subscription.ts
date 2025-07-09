@@ -1,64 +1,66 @@
-import { Receiver } from "../abstractions";
+import { StrictReceiver } from "../abstractions";
 
 export type Subscription<T = any> = {
   (): Promise<T | undefined>;
-  unsubscribed: boolean;
-  hasValue(): Promise<boolean>;
-  value(): Promise<T | undefined>;
+  readonly unsubscribed: boolean;
+  readonly hasValue: boolean;
+  readonly value: T | undefined;
   unsubscribe(): void;
-  listen(iterator: () => AsyncIterator<T>, receiver: Required<Receiver<T>>): void;
+  listen(iterator: () => AsyncIterator<T>, receiver: StrictReceiver<T>): void;
 };
 
-export const createSubscription = function <T = any>(onUnsubscribe?: () => void): Subscription<T> {
-
+export function createSubscription<T = any>(onUnsubscribe?: () => void): Subscription<T> {
   let _latestValue: T | undefined;
   let _unsubscribed = false;
+  let _hasValue = false;
 
-  function subscription(this: Subscription<T>) {
-    return this.value();
+  const subscription = async (): Promise<T | undefined> => {
+    return _latestValue;
+  };
+
+  const unsubscribe = (): void => {
+    if (!_unsubscribed) {
+      _unsubscribed = true;
+      onUnsubscribe?.();
+    }
+  };
+
+  const listen = (iterator: () => AsyncIterator<T>, receiver: StrictReceiver<T>): void => {
+    if (_unsubscribed) {
+      throw new Error("Cannot listen on an unsubscribed subscription.");
+    }
+
+    (async () => {
+      try {
+        const iter = iterator();
+        while (!_unsubscribed) {
+          const result = await iter.next();
+          if (result.done || _unsubscribed) break;
+
+          _latestValue = result.value;
+          _hasValue = true;
+          await receiver.next(_latestValue);
+        }
+        await receiver.complete();
+      } catch (err: any) {
+        await receiver.error(err instanceof Error ? err : new Error(String(err)));
+      }
+    })().catch((err) => {
+      receiver.error(err instanceof Error ? err : new Error(String(err)));
+    });
   };
 
   return Object.assign(subscription, {
     get unsubscribed() {
       return _unsubscribed;
     },
-    async hasValue() {
-      return await this.value() === undefined;
+    get hasValue() {
+      return _hasValue;
     },
-    async value() {
-      return _latestValue!;
+    get value() {
+      return _latestValue;
     },
-    unsubscribe() {
-      if (!_unsubscribed) {
-        _unsubscribed = true;
-        onUnsubscribe?.();
-      }
-    },
-    listen(iterator: () => AsyncIterator<T>, receiver: Required<Receiver<T>>) {
-      if (_unsubscribed) {
-        throw new Error("Cannot listen on an unsubscribed subscription.");
-      }
-
-      const asyncLoop = async () => {
-        try {
-          const iter = iterator();
-          while (!_unsubscribed) {
-            const result = await iter.next();
-            if (result.done || _unsubscribed) break;
-
-            _latestValue = result.value;
-            receiver.next?.(_latestValue);
-          }
-        } catch (err: any) {
-          receiver.error?.(err);
-        } finally {
-          receiver.complete?.();
-        }
-      };
-
-      asyncLoop().catch((err) => {
-        receiver.error?.(err);
-      });
-    }
+    unsubscribe,
+    listen,
   });
-};
+}

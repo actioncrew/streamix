@@ -1,4 +1,4 @@
-import { createOperator, createReceiver, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
+import { CallbackReturnType, createOperator, createReceiver, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
 import { eachValueFrom } from '../converters';
 import { createSubject } from "../streams";
 
@@ -48,7 +48,7 @@ export function withLatestFrom<T, R extends any[]>(
 
     // Override output.subscribe to handle unsubscriptions cleanly
     const originalSubscribe = output.subscribe.bind(output);
-    output.subscribe = (callbackOrReceiver?: ((value: any) => void) | Receiver<any>): Subscription => {
+    output.subscribe = (callbackOrReceiver?: ((value: any) => CallbackReturnType) | Receiver<any>): Subscription => {
       const receiver = createReceiver(callbackOrReceiver);
       const subscription = originalSubscribe.call(output, receiver);
 

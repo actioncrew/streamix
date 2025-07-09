@@ -1,4 +1,5 @@
 import {
+  CallbackReturnType,
   createQueue,
   createReceiver,
   createSingleValueBuffer,
@@ -51,7 +52,7 @@ export function createSubject<T = any>(): Subject<T> {
     });
   };
 
-  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
     let readerId: number | null = null;

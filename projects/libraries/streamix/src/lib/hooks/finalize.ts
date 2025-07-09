@@ -1,6 +1,6 @@
-import { createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator } from "../abstractions";
 
-export const finalize = (callback: () => void | Promise<void>) =>
+export const finalize = (callback: () => CallbackReturnType) =>
   createOperator("finalize", (source) => {
     let finalized = false;
 

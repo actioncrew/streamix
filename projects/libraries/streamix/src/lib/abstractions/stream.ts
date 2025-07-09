@@ -1,6 +1,6 @@
 import { eachValueFrom } from "../converters";
 import { Operator } from "./operator";
-import { createReceiver, Receiver } from "./receiver";
+import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
 // Basic Stream type definition
@@ -43,7 +43,7 @@ export function createStream<T>(
   generatorFn: () => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
   const subscribe = (
-    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
+    callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>
   ): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     const subscription = createSubscription<T>();

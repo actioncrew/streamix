@@ -1,4 +1,4 @@
-import { createReceiver, createStream, Receiver, Stream, Subscription } from '../abstractions';
+import { CallbackReturnType, createReceiver, createStream, Receiver, Stream, Subscription } from '../abstractions';
 
 // Function to create an EmptyStream as a generator
 export const empty = <T = any>(): Stream<T> => {
@@ -8,7 +8,7 @@ export const empty = <T = any>(): Stream<T> => {
   });
 
   // Empty stream does not subscribe to any source
-  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
 
     // No data is emitted, immediately complete the receiver

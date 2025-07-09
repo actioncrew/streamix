@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { CallbackReturnType, createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 
 export function loop<T>(
   initialValue: T,
@@ -22,7 +22,7 @@ export function loop<T>(
   });
 
   const originalSubscribe = stream.subscribe;
-    stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    stream.subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
       const subscription = originalSubscribe.call(stream, callbackOrReceiver);
 
       return createSubscription(() => {

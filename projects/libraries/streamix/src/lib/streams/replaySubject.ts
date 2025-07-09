@@ -1,4 +1,5 @@
 import {
+  CallbackReturnType,
   createQueue,
   createReceiver,
   createReplayBuffer,
@@ -44,7 +45,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     });
   };
 
-  const subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
     let readerId: number | null = null;

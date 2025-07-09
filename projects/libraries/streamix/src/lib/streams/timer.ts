@@ -1,4 +1,4 @@
-import { createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { CallbackReturnType, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 import { createSubject } from './subject';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
@@ -35,7 +35,7 @@ export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> 
   })();
 
   const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callbackOrReceiver?: ((value: number) => void) | Receiver<number>): Subscription => {
+  subject.subscribe = (callbackOrReceiver?: ((value: number) => CallbackReturnType) | Receiver<number>): Subscription => {
     const subscription = originalSubscribe.call(subject, callbackOrReceiver);
 
     return createSubscription(() => {

@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { CallbackReturnType, createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 
 export function onAnimationFrame(): Stream<number> {
   const abortController = new AbortController();
@@ -20,7 +20,7 @@ export function onAnimationFrame(): Stream<number> {
   });
 
   const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: number) => void) | Receiver<number>): Subscription => {
+  stream.subscribe = (callbackOrReceiver?: ((value: number) => CallbackReturnType) | Receiver<number>): Subscription => {
     const subscription = originalSubscribe.call(stream, callbackOrReceiver);
 
     return createSubscription(() => {

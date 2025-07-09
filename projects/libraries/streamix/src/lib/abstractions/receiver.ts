@@ -1,30 +1,63 @@
+export type CallbackReturnType = void | Promise<void>;
+
 export type Receiver<T = any> = {
-  next?: (value: T) => void;
-  error?: (err: Error) => void;
-  complete?: () => void;
-  completed?: boolean;
+  next?: (value: T) => CallbackReturnType;
+  error?: (err: Error) => CallbackReturnType;
+  complete?: () => CallbackReturnType;
 };
 
+export type StrictReceiver<T = any> = Required<Receiver<T>> & { readonly completed: boolean; };
+
 export function createReceiver<T = any>(
-  callbackOrReceiver?: ((value: T) => void) | Receiver<T>
-): Required<Receiver<T>> {
-  const receiver =
-    typeof callbackOrReceiver === 'function'
-      ? { next: callbackOrReceiver }
-      : callbackOrReceiver || {};
+  callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>
+): StrictReceiver<T> {
+  let _completed = false;
 
-  let completed = false;
+  // Create base receiver with proper typing
+  const baseReceiver = {
+    get completed() { return _completed; }
+  } as { readonly completed: boolean; };
 
-  const wrappedReceiver: Required<Receiver<T>> = {
-    next: receiver.next?.bind(receiver) ?? (() => {}),
-    error: receiver.error?.bind(receiver) ?? ((err) => console.error('Unhandled error:', err)),
-    complete: () => {
-      if (!completed) {
-        completed = true;
-        receiver.complete?.call(receiver);
+  // Normalize the input to always be a Receiver object
+  const receiver = (typeof callbackOrReceiver === 'function'
+    ? { ...baseReceiver, next: callbackOrReceiver }
+    : callbackOrReceiver
+      ? { ...baseReceiver, ...callbackOrReceiver }
+      : baseReceiver) as Receiver<T>;
+
+  const wrappedReceiver: StrictReceiver<T> = {
+    next: async (value: T) => {
+      if (!_completed) {
+        try {
+          await receiver.next?.call(receiver, value);
+        } catch (err) {
+          await wrappedReceiver.error(err instanceof Error ? err : new Error(String(err)));
+        }
       }
     },
-    completed: false,
+    error: async (err: Error) => {
+      if (!_completed) {
+        _completed = true;
+        try {
+          await receiver.error?.call(receiver, err);
+        } catch (e) {
+          console.error('Unhandled error in error handler:', e);
+        }
+      }
+    },
+    complete: async () => {
+      if (!_completed) {
+        _completed = true;
+        try {
+          await receiver.complete?.call(receiver);
+        } catch (err) {
+          console.error('Unhandled error in complete handler:', err);
+        }
+      }
+    },
+    get completed() {
+      return _completed;
+    },
   };
 
   return wrappedReceiver;
