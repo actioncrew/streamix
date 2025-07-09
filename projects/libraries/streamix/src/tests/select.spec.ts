@@ -10,7 +10,7 @@ describe('select operator tests', () => {
   });
 
   it("should emit selected values based on indexIterator", async () => {
-      const indexes = [0, 2, 4];
+    const indexes = [0, 2, 4];
     const selectStream = source.pipe(select(indexes[Symbol.iterator]()));
     const results: any[] = [];
 

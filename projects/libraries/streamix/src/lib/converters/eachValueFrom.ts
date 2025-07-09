@@ -10,8 +10,11 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
   const subscription = stream.subscribe({
     next(value: T) {
       if (resolveNext) {
-        resolveNext(value);
+        // Immediately fulfill waiting promise
+        const r = resolveNext;
         resolveNext = null;
+        rejectNext = null;
+        r(value);
       } else {
         queue.push(value);
       }
@@ -19,40 +22,50 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
     error(err: any) {
       error = err;
       if (rejectNext) {
-        rejectNext(err);
+        const r = rejectNext;
+        resolveNext = null;
+        rejectNext = null;
+        r(err);
       }
       subscription.unsubscribe();
     },
     complete() {
       completed = true;
       if (resolveNext) {
-        resolveNext(undefined);
+        // resolve with undefined to signal completion
+        const r = resolveNext;
+        resolveNext = null;
+        rejectNext = null;
+        r(undefined);
       }
       subscription.unsubscribe();
     }
   });
 
   try {
-    while (!completed || queue.length > 0) {
-      // Check for error before each iteration
-      if (error) {
-        throw error; // Properly throw from within the generator
-      }
+    while (true) {
+      if (error) throw error;
 
       if (queue.length > 0) {
         yield queue.shift()!;
-      } else if (!completed) {
+      } else if (completed) {
+        // No more values expected and none buffered
+        break;
+      } else {
+        // Wait for next value or completion/error
         try {
           const nextValue = await new Promise<T | undefined>((resolve, reject) => {
             resolveNext = resolve;
             rejectNext = reject;
           });
 
-          if (nextValue !== undefined) {
+          if (nextValue === undefined) {
+            // Stream completed
+            break;
+          } else {
             yield nextValue;
           }
         } catch (err) {
-          // This handles errors rejected through rejectNext
           error = err;
           throw error;
         }
@@ -60,8 +73,5 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
     }
   } finally {
     subscription.unsubscribe();
-    if (error) {
-      throw error; // Properly throw from within the generator
-    }
   }
 }
