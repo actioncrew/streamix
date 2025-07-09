@@ -1,7 +1,8 @@
 import { createOperator } from '../abstractions';
+import { CallbackReturnType } from './../abstractions/receiver';
 
 export const filter = <T = any>(
-  predicateOrValue: ((value: T, index: number) => boolean) | T | T[]
+  predicateOrValue: ((value: T, index: number) => CallbackReturnType<boolean>) | T | T[]
 ) =>
   createOperator('filter', (source) => {
     let index = 0;
@@ -16,7 +17,7 @@ export const filter = <T = any>(
           let shouldInclude = false;
 
           if (typeof predicateOrValue === 'function') {
-            shouldInclude = (predicateOrValue as (value: T, index: number) => boolean)(value, index); // Use current index
+            shouldInclude = await (predicateOrValue as (value: T, index: number) => CallbackReturnType<boolean>)(value, index);
           } else if (Array.isArray(predicateOrValue)) {
             shouldInclude = predicateOrValue.includes(value);
           } else {

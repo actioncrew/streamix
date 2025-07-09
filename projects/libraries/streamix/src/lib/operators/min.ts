@@ -1,7 +1,7 @@
-import { createOperator } from '../abstractions';
+import { CallbackReturnType, createOperator } from '../abstractions';
 
 export const min = <T = any>(
-  comparator?: (a: T, b: T) => number
+  comparator?: (a: T, b: T) => CallbackReturnType<number>
 ) =>
   createOperator<T>('min', (source) => {
     let minValue: T | undefined;
@@ -17,7 +17,7 @@ export const min = <T = any>(
           minValue = value;
           hasMin = true;
         } else if (comparator) {
-          if (comparator(value, minValue!) < 0) {
+          if (await comparator(value, minValue!) < 0) {
             minValue = value;
           }
         } else if (value < minValue!) {

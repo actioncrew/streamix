@@ -1,6 +1,6 @@
-import { createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator } from "../abstractions";
 
-export const takeWhile = <T>(predicate: (value: T) => boolean) =>
+export const takeWhile = <T>(predicate: (value: T) => CallbackReturnType<boolean>) =>
   createOperator("takeWhile", (source) => {
     let done = false;
 
@@ -15,7 +15,7 @@ export const takeWhile = <T>(predicate: (value: T) => boolean) =>
           return result;
         }
 
-        if (!predicate(result.value)) {
+        if (!await predicate(result.value)) {
           done = true;
           return { done: true, value: undefined };
         }

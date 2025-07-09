@@ -1,7 +1,7 @@
-import { createOperator } from '../abstractions';
+import { CallbackReturnType, createOperator } from '../abstractions';
 
 export const map = <T = any, R = any>(
-  transform: (value: T, index: number) => R
+  transform: (value: T, index: number) => CallbackReturnType<R>
 ) =>
   createOperator('map', (source) => {
     let index = 0;
@@ -10,7 +10,7 @@ export const map = <T = any, R = any>(
         const result = await source.next();
         if (result.done) return result;
         return {
-          value: transform(result.value, index++),
+          value: await transform(result.value, index++),
           done: false,
         };
       },

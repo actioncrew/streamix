@@ -1,11 +1,11 @@
-import { Operator } from "../abstractions";
+import { CallbackReturnType, Operator } from "../abstractions";
 import { select } from "./select";
 
-export const elementNth = <T = any>(indexPattern: (iteration: number) => number | undefined) => {
-  const indexIterator = (function* () {
+export const elementNth = <T = any>(indexPattern: (iteration: number) => CallbackReturnType<number | undefined>) => {
+  const indexIterator = (async function* () {
     let iteration = 0;
     while (true) {
-      const nextIndex = indexPattern(iteration);
+      const nextIndex = await indexPattern(iteration);
       if (nextIndex === undefined) break;
       yield nextIndex;
       iteration++;

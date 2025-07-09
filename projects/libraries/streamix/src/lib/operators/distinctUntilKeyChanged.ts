@@ -1,8 +1,8 @@
-import { createOperator } from '../abstractions';
+import { CallbackReturnType, createOperator } from '../abstractions';
 
 export const distinctUntilKeyChanged = <T extends object>(
   key: keyof T,
-  comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean
+  comparator?: (prev: T[typeof key], curr: T[typeof key]) => CallbackReturnType<boolean>
 ) =>
   createOperator('distinctUntilKeyChanged', (source) => {
     let lastValue: T | undefined;
@@ -16,7 +16,7 @@ export const distinctUntilKeyChanged = <T extends object>(
         const current = result.value;
         const isDistinct = isFirst || (
           comparator
-            ? !comparator(lastValue![key], current[key])
+            ? !await comparator(lastValue![key], current[key])
             : lastValue![key] !== current[key]
         );
 

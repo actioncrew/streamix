@@ -1,6 +1,6 @@
-import { createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator } from "../abstractions";
 
-export const first = <T = any>(predicate?: (value: T) => boolean) =>
+export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
   createOperator('first', (source) => {
     let found = false;
     let firstValue: T | undefined;
@@ -23,7 +23,7 @@ export const first = <T = any>(predicate?: (value: T) => boolean) =>
         }
 
         const value = result.value;
-        if (!predicate || predicate(value)) {
+        if (!predicate || await predicate(value)) {
           found = true;
           firstValue = value;
           return { value: firstValue!, done: false };

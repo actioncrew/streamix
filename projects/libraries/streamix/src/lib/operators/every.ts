@@ -1,7 +1,7 @@
-import { createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator } from "../abstractions";
 
 export const every = <T = any>(
-  predicate: (value: T, index: number) => boolean
+  predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
   createOperator("every", (source) => {
     let index = 0;
@@ -19,7 +19,7 @@ export const every = <T = any>(
             return { done: false, value: true };
           }
 
-          if (!predicate(value, index++)) {
+          if (!await predicate(value, index++)) {
             emitted = true;
             return { done: false, value: false };
           }

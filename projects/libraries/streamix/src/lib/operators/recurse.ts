@@ -1,4 +1,4 @@
-import { createOperator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
 export type RecurseOptions = {
@@ -7,7 +7,7 @@ export type RecurseOptions = {
 };
 
 export const recurse = <T = any>(
-  condition: (value: T) => boolean,
+  condition: (value: T) => CallbackReturnType<boolean>,
   project: (value: T) => Stream<T>,
   options: RecurseOptions = {}
 ) =>
@@ -18,7 +18,7 @@ export const recurse = <T = any>(
 
     const enqueueChildren = async (value: T, depth: number) => {
       if (options.maxDepth !== undefined && depth >= options.maxDepth) return;
-      if (!condition(value)) return;
+      if (!await condition(value)) return;
 
       for await (const child of eachValueFrom(project(value))) {
         const item = { value: child, depth: depth + 1 };

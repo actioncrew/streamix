@@ -1,7 +1,7 @@
-import { createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator } from "../abstractions";
 
 export const scan = <T, R>(
-  accumulator: (acc: R, value: T, index: number) => R,
+  accumulator: (acc: R, value: T, index: number) => CallbackReturnType<R>,
   seed: R
 ) =>
   createOperator("scan", (source) => {
@@ -14,7 +14,7 @@ export const scan = <T, R>(
         if (done) {
           return { done: true, value: undefined };
         }
-        acc = accumulator(acc, value, index++);
+        acc = await accumulator(acc, value, index++);
         return { done: false, value: acc };
       },
     };

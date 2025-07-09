@@ -1,7 +1,7 @@
-import { createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator } from "../abstractions";
 
 export const reduce = (
-  accumulator: (acc: any, value: any) => any,
+  accumulator: (acc: any, value: any) => CallbackReturnType<any>,
   seed: any
 ) =>
   createOperator("reduce", (source) => {
@@ -17,7 +17,7 @@ export const reduce = (
             while (true) {
               const { done, value } = await source.next();
               if (done) break;
-              acc = accumulator(acc, value);
+              acc = await accumulator(acc, value);
             }
             yield acc;
           },

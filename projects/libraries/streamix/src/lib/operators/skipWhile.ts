@@ -1,6 +1,6 @@
-import { createOperator } from '../abstractions';
+import { CallbackReturnType, createOperator } from '../abstractions';
 
-export const skipWhile = <T = any>(predicate: (value: T) => boolean) =>
+export const skipWhile = <T = any>(predicate: (value: T) => CallbackReturnType<boolean>) =>
   createOperator('skipWhile', (source) => {
     let skipping = true;
 
@@ -14,7 +14,7 @@ export const skipWhile = <T = any>(predicate: (value: T) => boolean) =>
           }
 
           if (skipping) {
-            if (!predicate(value)) {
+            if (!await predicate(value)) {
               skipping = false;
               return { value, done: false };
             }

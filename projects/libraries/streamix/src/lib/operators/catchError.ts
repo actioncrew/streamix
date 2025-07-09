@@ -1,7 +1,7 @@
-import { createOperator } from '../abstractions';
+import { CallbackReturnType, createOperator } from '../abstractions';
 
 export const catchError = <T = any>(
-  handler: (error: any) => void = () => {} // Handler still returns void
+  handler: (error: any) => CallbackReturnType = () => {} // Handler still returns void
 ) =>
   createOperator('catchError', (source) => {
     let errorCaughtAndHandled = false;
@@ -24,7 +24,7 @@ export const catchError = <T = any>(
         } catch (error) {
           // An error occurred from the source
           if (!errorCaughtAndHandled) { // Only handle the first error
-            handler(error); // Call the provided handler
+            await handler(error); // Call the provided handler
             errorCaughtAndHandled = true; // Mark as handled
             // After handling, this operator completes
             return { value: undefined, done: true };

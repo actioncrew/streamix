@@ -1,6 +1,7 @@
 import { createOperator } from "../abstractions";
+import { CallbackReturnType } from './../abstractions/receiver';
 
-export const last = <T = any>(predicate?: (value: T) => boolean) =>
+export const last = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
   createOperator('last', (source) => {
     let finished = false;
     let lastValue: T | undefined;
@@ -15,7 +16,7 @@ export const last = <T = any>(predicate?: (value: T) => boolean) =>
         let result = await source.next();
         while (!result.done) {
           const value = result.value;
-          if (!predicate || predicate(value)) {
+          if (!predicate || await predicate(value)) {
             lastValue = value;
             hasMatch = true;
           }

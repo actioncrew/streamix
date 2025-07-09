@@ -1,7 +1,8 @@
 import { createOperator } from '../abstractions';
+import { CallbackReturnType } from './../abstractions/receiver';
 
 export const max = <T = any>(
-  comparator?: (a: T, b: T) => number
+  comparator?: (a: T, b: T) => CallbackReturnType<number>
 ) =>
   createOperator<T>('max', (source) => {
     let maxValue: T | undefined;
@@ -17,7 +18,7 @@ export const max = <T = any>(
           maxValue = value;
           hasMax = true;
         } else if (comparator) {
-          if (comparator(value, maxValue!) > 0) {
+          if (await comparator(value, maxValue!) > 0) {
             maxValue = value;
           }
         } else if (value > maxValue!) {

@@ -1,7 +1,7 @@
-import { createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator } from "../abstractions";
 
 export const some = <T = any>(
-  predicate: (value: T, index: number) => boolean
+  predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
   createOperator('some', (source) => {
     let evaluated = false;
@@ -20,7 +20,7 @@ export const some = <T = any>(
             if (itemResult.done) {
               break; // Source completed
             }
-            if (predicate(itemResult.value, index++)) {
+            if (await predicate(itemResult.value, index++)) {
               result = true;
               break; // Predicate matched, no need to continue
             }

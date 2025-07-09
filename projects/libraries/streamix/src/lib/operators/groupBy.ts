@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator } from "../abstractions";
 
 export type GroupItem<T = any, K = any> = {
   value: T;
@@ -6,14 +6,14 @@ export type GroupItem<T = any, K = any> = {
 };
 
 export const groupBy = <T = any, K = any>(
-  keySelector: (value: T) => K
+  keySelector: (value: T) => CallbackReturnType<K>
 ) =>
   createOperator("groupBy", (source) => ({
     async next(): Promise<IteratorResult<GroupItem<T, K>>> {
       const result = await source.next();
       if (result.done) return result;
 
-      const key = keySelector(result.value);
+      const key = await keySelector(result.value);
       return { value: { key, value: result.value }, done: false };
     }
   }));

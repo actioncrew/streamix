@@ -1,8 +1,8 @@
-import { createOperator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
 export interface ForkOption<T, R> {
-  on: (value: T, index: number) => boolean;
+  on: (value: T, index: number) => CallbackReturnType<boolean>;
   handler: (value: T) => Stream<R>;
 }
 
@@ -21,7 +21,15 @@ export const fork = <T, R>(options: ForkOption<T, R>[]) =>
               return { done: true, value: undefined };
             }
 
-            const matched = options.find(({ on }) => on(outerResult.value, outerIndex++));
+            let matched: typeof options[number] | undefined;
+
+            for (const option of options) {
+              if (await option.on(outerResult.value, outerIndex++)) {
+                matched = option;
+                break;
+              }
+            }
+
             if (!matched) {
               throw new Error(`No handler found for value: ${outerResult.value}`);
             }

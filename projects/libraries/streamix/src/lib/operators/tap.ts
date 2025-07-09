@@ -1,6 +1,7 @@
 import { createOperator } from '../abstractions';
+import { CallbackReturnType } from './../abstractions/receiver';
 
-export const tap = (tapFunction: (value: any) => void) =>
+export const tap = (tapFunction: (value: any) => CallbackReturnType) =>
   createOperator('tap', (source) => {
     return {
       async next() {
@@ -10,7 +11,7 @@ export const tap = (tapFunction: (value: any) => void) =>
           return { done: true, value: undefined };
         }
 
-        tapFunction(result.value); // Apply side effect
+        await tapFunction(result.value); // Apply side effect
         return { done: false, value: result.value };
       }
     };
