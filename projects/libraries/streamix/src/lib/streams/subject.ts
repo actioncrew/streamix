@@ -74,15 +74,15 @@ export function createSubject<T = any>(): Subject<T> {
         while (true) {
           const result = await buffer.read(readerId);
           if (result.done) break;
-          receiver.next(result.value);
+          await receiver.next(result.value);
         }
       } catch (err: any) {
-        receiver.error(err);
+        await receiver.error(err);
       } finally {
         if (!unsubscribing && readerId !== null) {
           await buffer.detachReader(readerId);
         }
-        receiver.complete();
+        await receiver.complete();
       }
     });
 
