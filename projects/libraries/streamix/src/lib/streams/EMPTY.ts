@@ -12,7 +12,7 @@ export const empty = <T = any>(): Stream<T> => {
     const receiver = createReceiver(callbackOrReceiver);
 
     // No data is emitted, immediately complete the receiver
-    queueMicrotask(() => receiver.complete && receiver.complete());
+    queueMicrotask(async () => receiver.complete && await receiver.complete());
 
     return {
       unsubscribed: false,
