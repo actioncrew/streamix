@@ -1,50 +1,35 @@
 import { createOperator } from '../abstractions';
-import { eachValueFrom } from '../converters';
-import { createSubject } from '../streams';
 
 /**
  * Schedules the emission of values from the source on a specified execution context.
  *
- * @param context A string indicating the desired execution context.
+ * @param queue A string indicating the desired execution context.
  * Currently supports 'microtask' for microtask queue scheduling,
- * and any other string for macrotask queue scheduling (setTimeout(..., 0)).
+ * and 'macrotask' queue scheduling (setTimeout(..., 0)).
  * @returns An operator function that transforms a source stream.
  */
-export function observeOn<T = any>(queue: "microtask" | "macrotask") {
-  return createOperator('observeOn', (source) => {
-    const output = createSubject<T>();
+export function observeOn(queue: "microtask" | "macrotask") {
+  return createOperator("observeOn", (source) => {
+    const schedule =
+      queue === "microtask"
+        ? () => new Promise<void>((resolve) => queueMicrotask(resolve))
+        : () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-    (async () => {
-      try {
-        while (true) {
+    return {
+      async next() {
+        try {
           const result = await source.next();
-          if (result.done) break;
-
-          // Schedule the emission based on the provided context
-          if (queue === 'microtask') {
-            await new Promise<void>((resolve) => {
-              queueMicrotask(() => {
-                output.next(result.value);
-                resolve();
-              });
-            });
-          } else if (queue === 'macrotask') {
-            // Default to macrotask (setTimeout) for other contexts
-            await new Promise<void>((resolve) => {
-              setTimeout(() => {
-                output.next(result.value);
-                resolve();
-              });
-            });
+          if (result.done) {
+            return result;
           }
-        }
-      } catch (err) {
-        output.error(err);
-      } finally {
-        output.complete();
-      }
-    })();
 
-    return eachValueFrom(output);
+          await schedule();
+
+          return { value: result.value, done: false };
+        } catch (err) {
+          throw err;
+        }
+      }
+    };
   });
 }
