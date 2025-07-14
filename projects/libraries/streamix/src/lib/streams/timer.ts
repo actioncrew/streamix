@@ -1,5 +1,5 @@
 import { CallbackReturnType, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
-import { createSubject } from './subject';
+import { createSubject } from '../subjects/sync/subject';
 
 export function timer(delayMs: number = 0, intervalMs?: number): Stream<number> {
   let timerValue = 0;

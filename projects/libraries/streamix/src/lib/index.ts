@@ -3,4 +3,6 @@ export * from './converters';
 export * from './hooks';
 export * from './operators';
 export * from './streams';
+export * from './subjects/sync';
+
 

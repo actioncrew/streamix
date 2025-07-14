@@ -1,4 +1,5 @@
-import { createStream, Stream } from "../abstractions";
+
+import { Stream, createStream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 // Combine multiple streams and emit the latest value from each stream
@@ -18,22 +19,30 @@ export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
       const asyncIterables = streams.map(stream => eachValueFrom(stream));
       const iterators = asyncIterables.map(iterable => iterable[Symbol.asyncIterator]());
 
+      // Track active promises for cleanup
+      const activePromises = new Set<Promise<any>>();
+
       // Create promises for each stream's next value
       const createPromise = (index: number) => {
-        return iterators[index].next().then(result => ({
+        const promise = iterators[index].next().then(result => ({
           index,
           value: result.value,
           done: result.done
         }));
+        activePromises.add(promise);
+        return promise;
       };
 
       // Initialize promises for all streams
       let promises = streams.map((_, index) => createPromise(index));
 
-      while (completedStreams < streams.length) {
-        try {
+      try {
+        while (completedStreams < streams.length) {
           // Wait for the first stream to emit
           const result = await Promise.race(promises);
+
+          // Remove completed promise from active set
+          activePromises.delete(promises[result.index]);
 
           if (result.done) {
             completedStreams++;
@@ -52,13 +61,22 @@ export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
           }
 
           // Replace the resolved promise with a new one for the same stream
-          promises.findIndex(p => p === promises.find(p => p.then));
           promises[result.index] = createPromise(result.index);
-
-        } catch (error) {
-          // If any stream errors, the combined stream should error
-          throw error;
         }
+      } finally {
+        // Cleanup: Cancel all active iterators
+        for (const iterator of iterators) {
+          if (iterator.return) {
+            try {
+              await iterator.return(undefined);
+            } catch {
+              // Ignore cleanup errors
+            }
+          }
+        }
+
+        // Clear active promises
+        activePromises.clear();
       }
     }
   );

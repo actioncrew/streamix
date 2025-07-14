@@ -1,4 +1,6 @@
-export * from './behaviorSubject';
+export * from '../subjects/sync/behaviorSubject';
+export * from '../subjects/sync/replaySubject';
+export * from '../subjects/sync/subject';
 export * from './combineLatest';
 export * from './compute';
 export * from './concat';
@@ -21,9 +23,7 @@ export * from './onOrientation';
 export * from './onResize';
 export * from './race';
 export * from './range';
-export * from './replaySubject';
 export * from './retry';
-export * from './subject';
 export * from './timer';
 export * from './webSocket';
 export * from './zip';

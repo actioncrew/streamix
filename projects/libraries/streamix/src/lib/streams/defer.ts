@@ -1,38 +1,24 @@
-import { createSubscription, Receiver, Stream } from "../abstractions";
-import { createSubject, Subject } from "../streams";
 
-export function defer<T = any>(factory: () => Stream<T>): Subject<T> {
-  const subject = createSubject<T>(); // Create a subject to hold emitted values
+import { Stream, createStream } from '../abstractions';
+import { eachValueFrom } from '../converters';
 
-  // Redefine subscribe to lazily initialize the inner stream
-  const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
-    // Lazily create the inner stream when the subject is subscribed to
-    const innerStream = factory();
+export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
+  return createStream(
+    "defer",
+    async function* () {
+      // Lazily create the inner stream when the generator is first consumed
+      const innerStream = factory();
 
-    const subscription = originalSubscribe.call(subject, callback);
-
-    // Subscribe to the inner stream and emit its values
-    const innerSubscription = innerStream.subscribe({
-      next: (value: T) => {
-        subject.next(value); // Emit values from the inner stream to the subject
-      },
-      complete: () => {
-        subject.complete(); // Complete the subject when the inner stream completes
-        innerSubscription.unsubscribe();
-      },
-      error: (err: any) => {
-        subject.error(err); // Propagate errors from the inner stream to the subject
-        innerSubscription.unsubscribe();
-      },
-    });
-
-    return createSubscription(() => {
-      subscription.unsubscribe();
-      innerSubscription.unsubscribe(); // Cleanup both inner and outer subscriptions
-    });
-  };
-
-  subject.name = 'defer';
-  return subject;
+      try {
+        // Convert the inner stream to async iterable and yield all values
+        for await (const value of eachValueFrom(innerStream)) {
+          yield value;
+        }
+      } catch (error) {
+        // Re-throw any errors from the inner stream
+        throw error;
+      }
+      // Cleanup is automatic when the async generator completes
+    }
+  );
 }

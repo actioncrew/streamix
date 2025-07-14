@@ -2,35 +2,32 @@ import {
   CallbackReturnType,
   createQueue,
   createReceiver,
-  createSingleValueBuffer,
+  createReplayBuffer,
   createSubscription,
   Operator,
   pipeStream,
   Receiver,
-  Subscription
-} from "../abstractions";
-import { Subject } from "./subject";
+  ReplayBuffer,
+  Subscription,
+} from "../../abstractions";
+import { AsyncSubject } from "./subject";
 
-export type BehaviorSubject<T = any> = Subject<T> & {
-  get value(): T;
-};
+export type AsyncReplaySubject<T = any> = AsyncSubject<T>;
 
-export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
-  const buffer = createSingleValueBuffer<T>(initialValue);
+export function createAsyncReplaySubject<T = any>(capacity: number = Infinity): AsyncReplaySubject<T> {
+  const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
   const queue = createQueue();
-  let latestValue = initialValue;
   let isCompleted = false;
   let hasError = false;
 
-  const next = (value: T) => {
-    latestValue = value;
+  const next = async (value: T) => {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write(value);
+      await buffer.write(value === undefined ? null as T : value);
     });
   };
 
-  const complete = () => {
+  const complete = async () => {
     queue.enqueue(async () => {
       if (isCompleted) return;
       isCompleted = true;
@@ -38,7 +35,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     });
   };
 
-  const error = (err: any) => {
+  const error = async (err: any) => {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
       hasError = true;
@@ -83,21 +80,23 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     });
 
     Object.assign(subscription, {
-      value: () => latestValue
+      value: () => {
+        throw new Error("Replay subject does not support single value property");
+      }
     });
 
     return subscription;
   };
 
-  const subject: BehaviorSubject<T> = {
+  const replaySubject: AsyncReplaySubject<T> = {
     type: "subject",
-    name: "behaviorSubject",
-    get value() {
-      return latestValue;
-    },
+    name: "replaySubject",
     subscribe,
     pipe(...steps: Operator[]) {
       return pipeStream(this, ...steps);
+    },
+    get value(): undefined {
+      throw new Error("Replay subject does not support single value property");
     },
     next,
     complete,
@@ -105,5 +104,5 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     error,
   };
 
-  return subject;
+  return replaySubject;
 }

@@ -9,7 +9,7 @@ import {
   Receiver,
   Stream,
   Subscription
-} from "../abstractions";
+} from "../../abstractions";
 
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
