@@ -1,19 +1,14 @@
-import { createSubject, Subject } from '../streams';
+import { createStream, Stream } from "../abstractions";
 
-// Function to create a FromPromiseStream using Subject
-export function fromPromise<T = any>(promise: Promise<T>): Subject<T> {
-  // Create a new Subject to handle emissions
-  const subject = createSubject<T>();
-
-  // Handle the promise resolution
-  promise
-    .then((resolvedValue) => {
-      subject.next(resolvedValue);
-    })
-    .catch((error) => {
-      subject.error(error); // Handle promise rejection by passing the error
-    }).finally(() => subject.complete());
-
-  subject.name = 'fromPromise';
-  return subject;
+export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
+  return createStream(
+    'fromPromise',
+    async function* () {
+      try {
+        yield await promise;
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
 }
