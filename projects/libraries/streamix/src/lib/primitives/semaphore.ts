@@ -1,4 +1,4 @@
-type ReleaseFn = () => void;
+import { ReleaseFn } from "./lock";
 
 export type Semaphore = {
   acquire: () => Promise<ReleaseFn>;
