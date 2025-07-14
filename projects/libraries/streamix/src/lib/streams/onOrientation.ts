@@ -1,43 +1,48 @@
-import { createSubscription, Receiver } from '../abstractions';
-import { createSubject } from '../streams';
-/**
- * Creates a subscription that emits orientation changes.
- *
- * @returns A Subscription function that returns "portrait" or "landscape".
- */
-export function onOrientation() {
-  if (!window.screen || !window.screen.orientation) {
-    console.warn("Screen orientation API is not supported in this environment");
-    return createSubscription(() => {}); // Fallback for unsupported environments
-  }
+import { createStream, Stream } from '../abstractions';
 
-  const subject = createSubject<"portrait" | "landscape">();
-  const getOrientation = () =>
-    window.screen.orientation.angle === 0 || window.screen.orientation.angle === 180
-      ? "portrait"
-      : "landscape";
+export function onOrientation(): Stream<"portrait" | "landscape"> {
+  return createStream<"portrait" | "landscape">('onOrientation', async function* () {
+    if (
+      typeof window === 'undefined' ||
+      !window.screen ||
+      !window.screen.orientation ||
+      typeof window.screen.orientation.angle !== 'number'
+    ) {
+      console.warn("Screen orientation API is not supported in this environment");
+      return;
+    }
 
-  let latestOrientation: "portrait" | "landscape" = getOrientation();
+    const getOrientation = () =>
+      window.screen.orientation.angle === 0 || window.screen.orientation.angle === 180
+        ? "portrait"
+        : "landscape";
 
-  const listener = () => {
-    latestOrientation = getOrientation();
-    subject.next(latestOrientation);
-  };
+    let resolveNext: ((value: "portrait" | "landscape") => void) | null = null;
+    let isActive = true;
 
-  window.screen.orientation.addEventListener("change", listener);
-
-  const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callback?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">) => {
-    const subscription = originalSubscribe.call(subject, callback);
-
-    return createSubscription(() => {
-      if (subject.completed()) {
-        window.screen.orientation.removeEventListener("change", listener);
+    const listener = () => {
+      if (!isActive) return;
+      if (resolveNext) {
+        resolveNext(getOrientation());
+        resolveNext = null;
       }
-      subscription.unsubscribe();
-    });
-  }
+    };
 
-  subject.name = 'onOrientation';
-  return subject;
+    window.screen.orientation.addEventListener("change", listener);
+
+    try {
+      // Emit initial orientation immediately
+      yield getOrientation();
+
+      while (isActive) {
+        const nextOrientation = await new Promise<"portrait" | "landscape">((resolve) => {
+          resolveNext = resolve;
+        });
+        yield nextOrientation;
+      }
+    } finally {
+      isActive = false;
+      window.screen.orientation.removeEventListener("change", listener);
+    }
+  });
 }

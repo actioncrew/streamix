@@ -1,39 +1,53 @@
-import { createSubscription, Receiver, Stream } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { createStream, Stream } from "../abstractions";
+import { eachValueFrom } from "../converters";
 
-export function merge<T = any>(...sources: Stream<T>[]): Subject<T> {
-  const subject = createSubject<T>();
+/**
+ * Merges multiple source streams into a single stream, emitting values as they arrive from any source.
+ * The merged stream completes only after all source streams have completed. If any source stream
+ * errors, the merged stream immediately errors.
+ *
+ * @param sources A list of streams to merge.
+ * @returns A new stream that emits values from all source streams.
+ */
+export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
+  return createStream<T>('merge', async function* () {
+    if (sources.length === 0) return;
 
-  const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
-    const subscription = originalSubscribe.call(subject, callback);
+    const iterators = sources.map(s => eachValueFrom(s)[Symbol.asyncIterator]());
+    const nextPromises: Array<Promise<IteratorResult<T>> | null> = iterators.map(it => it.next());
+    let activeCount = iterators.length;
 
-    let completedCount = 0;
+    const reflect = (promise: Promise<IteratorResult<T>>, index: number) =>
+      promise.then(
+        result => ({ ...result, index, status: 'fulfilled' as const }),
+        error => ({ error, index, status: 'rejected' as const })
+      );
 
-    // Subscribe to each source stream
-    const subscriptions = sources.map((source) =>
-      source.subscribe({
-        next: (value) => {
-          subject.next(value); // Emit value directly to the subject
-        },
-        complete: () => {
-          completedCount++;
-          if (completedCount === sources.length) {
-            subject.complete(); // Complete when all sources have completed
-          }
-        },
-        error: (err) => {
-          subject.error(err); // Propagate error to the subject
-        },
-      })
-    );
+    while (activeCount > 0) {
+      const race = Promise.race(
+        nextPromises
+          .map((p, i) => (p ? reflect(p, i) : null))
+          .filter(Boolean) as Promise<
+            | { index: number; value: T; done: boolean; status: 'fulfilled' }
+            | { index: number; error: any; status: 'rejected' }
+          >[]
+      );
 
-    return createSubscription(() => {
-      subscription.unsubscribe();
-      subscriptions.forEach((sub) => sub.unsubscribe()); // Cleanup all subscriptions
-    });
-  };
+      const winner = await race;
 
-  subject.name = 'merge';
-  return subject;
+      if (winner.status === 'rejected') {
+        throw winner.error;
+      }
+
+      const { value, done, index } = winner;
+
+      if (done) {
+        nextPromises[index] = null;
+        activeCount--;
+      } else {
+        yield value;
+        nextPromises[index] = iterators[index].next();
+      }
+    }
+  });
 }

@@ -1,39 +1,28 @@
-import { createSubscription, Receiver } from "../abstractions";
-import { createSubject, Subject } from "../streams";
+import { Stream, createStream } from '../abstractions';
 
-export function jsonp<T = any>(url: string, callbackName: string): Subject<T> {
-  const subject = createSubject<T>();
+export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<T> {
+  return createStream('jsonp', async function* () {
+    const uniqueCallbackName = `${callbackParam}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement('script');
 
-  const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callback?: ((value: T) => void) | Receiver<T>) => {
-    const subscription = originalSubscribe.call(subject, callback);
+    const fullUrl = `${url}${url.includes('?') ? '&' : '?'}${callbackParam}=${encodeURIComponent(uniqueCallbackName)}`;
 
-    const uniqueCallbackName = `${callbackName}_${Math.random().toString(36).substring(2)}`;
-    const script = document.createElement("script");
+    // This will be called by the JSONP response
+    const dataPromise = new Promise<T>((resolve, reject) => {
+      (window as any)[uniqueCallbackName] = (data: T) => resolve(data);
 
-    // Create the callback function
-    (window as any)[uniqueCallbackName] = (data: T) => {
-      subject.next(data); // Emit the data once the script loads
-      subject.complete(); // Complete the subject
-    };
+      script.onerror = () => reject(new Error(`JSONP request failed: ${fullUrl}`));
+    });
 
-    // Handle script errors
-    script.onerror = (error) => {
-      subject.error(new Error(`JSONP request failed: ${error}`)); // Emit error if JSONP request fails
-      document.head.removeChild(script); // Clean up the script element
-    };
-
-    // Append the script element to the document head
-    script.src = `${url}${url.includes('?') ? '&' : '?'}callback=${encodeURIComponent(uniqueCallbackName)}`;
+    script.src = fullUrl;
     document.head.appendChild(script);
 
-    return createSubscription(() => {
-      document.head.removeChild(script); // Clean up the script element
-      delete (window as any)[uniqueCallbackName]; // Clean up the callback function
-      subscription.unsubscribe();
-    });
-  };
-
-  subject.name = 'jsonp';
-  return subject;
+    try {
+      const data = await dataPromise;
+      yield data;
+    } finally {
+      delete (window as any)[uniqueCallbackName];
+      document.head.removeChild(script);
+    }
+  });
 }

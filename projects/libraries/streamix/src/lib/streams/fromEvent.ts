@@ -1,5 +1,4 @@
-import { createStream } from '@actioncrew/streamix';
-import { Stream } from "../abstractions";
+import { createStream, Stream } from '../abstractions';
 
 export function fromEvent(target: EventTarget, event: string): Stream<Event> {
   return createStream(

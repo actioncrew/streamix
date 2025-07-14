@@ -1,37 +1,41 @@
-import { createSubscription, Receiver } from '../abstractions';
-import { createSubject } from '../streams';
+import { createStream, Stream } from '../abstractions';
 
 /**
- * Creates a subscription using `MutationObserver` to observe DOM mutations.
+ * Creates a stream of `MutationRecord[]` arrays for mutations observed on the element.
  *
  * @param element - The DOM element to observe.
- * @param options - Optional configuration for `MutationObserver`.
- * @returns A Subscription function that returns the latest mutation records.
+ * @param options - Optional MutationObserverInit options.
+ * @returns A stream emitting arrays of MutationRecords on each mutation.
  */
 export function onMutation(
   element: Element,
   options?: MutationObserverInit
-) {
-  const subject = createSubject<MutationRecord[]>();
-
-  const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callback?: ((value: MutationRecord[]) => void) | Receiver<MutationRecord[]>) => {
-    let latestMutations: MutationRecord[] = [];
+): Stream<MutationRecord[]> {
+  return createStream<MutationRecord[]>('onMutation', async function* () {
+    let resolveNext: ((value: MutationRecord[]) => void) | null = null;
+    let isObserving = true;
 
     const observer = new MutationObserver((mutations) => {
-      latestMutations = [...mutations]; // Store latest mutations
-      subject.next(latestMutations);
+      if (!isObserving) return;
+
+      if (resolveNext) {
+        resolveNext([...mutations]); // emit a copy
+        resolveNext = null;
+      }
     });
 
     observer.observe(element, options);
 
-    const subscription = originalSubscribe.call(subject, callback);
-    return createSubscription(() => {
+    try {
+      while (isObserving) {
+        const mutations = await new Promise<MutationRecord[]>((resolve) => {
+          resolveNext = resolve;
+        });
+        yield mutations;
+      }
+    } finally {
+      isObserving = false;
       observer.disconnect();
-      subscription.unsubscribe();
-    });
-  }
-
-  subject.name = 'onMutation';
-  return subject;
+    }
+  });
 }

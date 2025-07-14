@@ -1,42 +1,44 @@
-import { createSubscription, Receiver } from '../abstractions';
-import { createSubject } from '../streams';
+import { createStream, Stream } from '../abstractions';
 
 /**
- * Creates a subscription from `window.matchMedia` for reactive media query handling.
+ * Creates a stream from `window.matchMedia` that emits whenever the media query matches or not.
  *
  * @param mediaQueryString - The media query string to observe.
- * @returns A Subscription function that returns the latest media query state.
+ * @returns A stream of `true`/`false` values based on match state.
  */
-export function onMediaQuery(mediaQueryString: string) {
-  if (!window.matchMedia) {
-    console.warn("matchMedia is not supported in this environment");
-    return createSubscription(() => {}); // Return a dummy subscription
-  }
+export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
+  return createStream<boolean>('onMediaQuery', async function* () {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      console.warn('matchMedia is not supported in this environment');
+      return;
+    }
 
-  const subject = createSubject<boolean>();
+    const mediaQueryList = window.matchMedia(mediaQueryString);
+    let resolveNext: ((value: boolean) => void) | null = null;
+    let isActive = true;
 
-  const mediaQueryList = window.matchMedia(mediaQueryString);
-  let latestValue = mediaQueryList.matches; // Initial state
-
-  const listener = (event: MediaQueryListEvent) => {
-    latestValue = event.matches;
-    subject.next(latestValue);
-  };
-
-  mediaQueryList.addEventListener("change", listener);
-
-  const originalSubscribe = subject.subscribe;
-  subject.subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
-    const subscription = originalSubscribe.call(subject, callback);
-
-    return createSubscription(() => {
-      if (subject.completed()) {
-        mediaQueryList.removeEventListener("change", listener);
+    const listener = (event: MediaQueryListEvent) => {
+      if (isActive && resolveNext) {
+        resolveNext(event.matches);
+        resolveNext = null;
       }
-      subscription.unsubscribe();
-    });
-  }
+    };
 
-  subject.name = 'onMediaQuery';
-  return subject;
+    mediaQueryList.addEventListener('change', listener);
+
+    try {
+      // Emit initial value immediately
+      yield mediaQueryList.matches;
+
+      while (isActive) {
+        const next = await new Promise<boolean>((resolve) => {
+          resolveNext = resolve;
+        });
+        yield next;
+      }
+    } finally {
+      isActive = false;
+      mediaQueryList.removeEventListener('change', listener);
+    }
+  });
 }

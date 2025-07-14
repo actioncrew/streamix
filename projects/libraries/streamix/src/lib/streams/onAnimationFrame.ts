@@ -1,33 +1,47 @@
-import { CallbackReturnType, createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
+/**
+ * Creates a stream that emits the time delta between `requestAnimationFrame` calls.
+ */
 export function onAnimationFrame(): Stream<number> {
-  const abortController = new AbortController();
-  const { signal } = abortController;
+  return createStream<number>('onAnimationFrame', async function* () {
+    let isRunning = true;
+    let resolveNext: ((value: number) => void) | null = null;
+    let lastTime = performance.now();
+    let rafId: number | null = null;
 
-  const stream = createStream<number>('onAnimationFrame', async function* (this: Stream<number>) {
-    let lastFrameTime = performance.now();
+    const tick = (now: number) => {
+      if (!isRunning) return;
 
-    while (!signal.aborted) {
-      const currentTime = await new Promise<number>((resolve) =>
-        requestAnimationFrame(resolve)
-      );
+      const delta = now - lastTime;
+      lastTime = now;
 
-      const elapsedTime = currentTime - lastFrameTime;
-      lastFrameTime = currentTime;
+      if (resolveNext) {
+        resolveNext(delta);
+        resolveNext = null;
+      }
 
-      yield elapsedTime;
+      requestNextFrame();
+    };
+
+    const requestNextFrame = () => {
+      rafId = requestAnimationFrame(tick);
+    };
+
+    requestNextFrame();
+
+    try {
+      while (isRunning) {
+        const delta = await new Promise<number>((resolve) => {
+          resolveNext = resolve;
+        });
+        yield delta;
+      }
+    } finally {
+      isRunning = false;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: number) => CallbackReturnType) | Receiver<number>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      abortController.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

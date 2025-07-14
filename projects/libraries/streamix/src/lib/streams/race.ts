@@ -1,60 +1,71 @@
-import { Stream } from "../abstractions";
-import { createSubject } from "../streams";
+import { Stream, createStream } from "../abstractions";
+import { eachValueFrom } from "../converters"; // Assuming this converter exists
 
+/**
+ * Returns a Stream that mirrors the first source Stream to emit a value, error, or completion.
+ * Once a stream wins the race, all other source streams are unsubscribed.
+ *
+ * @param streams A list of streams to race against each other.
+ * @returns A new stream that mirrors the winning source stream.
+ */
 export function race<T>(...streams: Stream<T>[]): Stream<T> {
-  const subject = createSubject<T>();
-  let winnerIndex = -1;
-  const subscriptions: { unsubscribe: () => void }[] = [];
-  let raceComplete = false; // Track if a winner has been found
-
-  const unsubscribeOthers = (winnerSub: { unsubscribe: () => void }) => {
-    for (const s of subscriptions) {
-      if (s !== winnerSub) s.unsubscribe();
+  return createStream<T>('race', async function* () {
+    // If no streams are provided, the resulting stream completes immediately.
+    if (streams.length === 0) {
+      return;
     }
-    raceComplete = true; // Indicate the race is complete
-  };
 
-  streams.forEach((stream, index) => {
-    if (raceComplete) return; // Exit early if winner is already found
+    // Convert all streams to async iterators for manual control.
+    const iterators = streams.map(s => eachValueFrom(s)[Symbol.asyncIterator]());
 
-    const subscription = stream.subscribe({
-      next: (value: any) => {
-        if (winnerIndex === -1) {
-          winnerIndex = index;
-          unsubscribeOthers(subscription);
-        }
+    try {
+      /**
+       * A helper to wrap a promise. This lets us know which promise won the race
+       * and prevents an early error from crashing Promise.race.
+       */
+      const reflect = (promise: Promise<IteratorResult<T>>, index: number) =>
+        promise.then(
+          result => ({ ...result, index, status: 'fulfilled' as const }),
+          error => ({ error, index, status: 'rejected' as const })
+        );
 
-        if (index === winnerIndex) {
-          subject.next(value);
-        }
-      },
-      error: (err: any) => {
-        if (winnerIndex === -1) {
-          winnerIndex = index;
-          unsubscribeOthers(subscription);
-        }
+      // 1. Create the race by asking for the next value from every iterator.
+      const racePromises = iterators.map((it, i) => reflect(it.next(), i));
+      const winner = await Promise.race(racePromises);
 
-        if (index === winnerIndex) {
-          subject.error(err);
-        }
-        subscription.unsubscribe();
-      },
-      complete: () => {
-        if (winnerIndex === -1) {
-          winnerIndex = index;
-          unsubscribeOthers(subscription);
-        }
+      // 2. Handle the winner.
+      if (winner.status === 'rejected') {
+        // The first stream to emit, errored. Propagate the error.
+        throw winner.error;
+      }
 
-        if (index === winnerIndex) {
-          subject.complete();
-        }
-        subscription.unsubscribe();
-      },
-    });
+      const { value, done, index } = winner;
+      const winningIterator = iterators[index];
 
-    subscriptions.push(subscription);
+      if (done) {
+        // The winning stream completed without emitting a value. So we complete.
+        return;
+      }
+
+      // 3. Yield the first value from the winning stream.
+      yield value;
+
+      // 4. Now, exclusively follow the winning iterator until it's done.
+      let nextResult = await winningIterator.next();
+      while (!nextResult.done) {
+        yield nextResult.value;
+        nextResult = await winningIterator.next();
+      }
+
+    } finally {
+      // 5. Cleanup: Ensure all iterators are closed to prevent leaks.
+      // This is the equivalent of unsubscribing.
+      for (const iterator of iterators) {
+        if (typeof iterator.return === 'function') {
+          // Tell the underlying source to stop producing values.
+          iterator.return(undefined);
+        }
+      }
+    }
   });
-
-  subject.name = 'race';
-  return subject;
 }
