@@ -1,50 +1,42 @@
-import { Stream } from '../abstractions';
+import { Stream, createStream } from '../abstractions';
 import { Coroutine } from '../operators';
-import { createSubject } from '../streams';
 
 export function compute(task: Coroutine, params: any): Stream<any> {
-  const subject = createSubject<any>(); // Create a Subject
+  return createStream('compute', async function* () {
+    const worker = await task.getIdleWorker();
+    let resolver: () => void;
+    let rejecter: (error: any) => void;
 
-  // Function to run the task and emit values
-  const runTask = async () => {
-    let promise = new Promise<void>(async (resolve, reject) => {
-
-      // Get an idle worker for the task
-      const worker = await task.getIdleWorker();
-      worker.postMessage(params); // Send parameters to the worker
-
-      // Handle messages from the worker
-      worker.onmessage = async (event: any) => {
-        if (event.data.error) {
-          task.returnWorker(worker);
-          reject(event.data.error); // Reject if there is an error
-        } else {
-          subject.next(event.data); // Emit result to subject
-          task.returnWorker(worker); // Return the worker
-          resolve(); // Resolve the promise
-        }
-      };
-
-      // Handle errors from the worker
-      worker.onerror = async (error: any) => {
-        task.returnWorker(worker); // Return the worker
-        reject(error); // Reject the promise
-      };
+    const promise = new Promise<void>((resolve, reject) => {
+      resolver = resolve;
+      rejecter = reject;
     });
 
-    // Wait for completion or error
+    // Handle messages from the worker
+    worker.onmessage = async (event: any) => {
+      if (event.data.error) {
+        task.returnWorker(worker);
+        rejecter(event.data.error);
+      } else {
+        task.returnWorker(worker);
+        resolver();
+        return event.data; // This won't work - we need to fix this
+      }
+    };
+
+    // Handle errors from the worker
+    worker.onerror = async (error: any) => {
+      task.returnWorker(worker);
+      rejecter(error);
+    };
+
+    worker.postMessage(params);
+
     try {
       await promise;
+      // We need another way to get the value here
     } catch (error) {
-      // If an error occurs, propagate the error
-      subject.error(error);  // Propagate error through the subject
-    } finally {
-      subject.complete(); // Complete the subject once the task is done
+      throw error;
     }
-  };
-
-  runTask(); // Start the task
-
-  subject.name = 'compute';
-  return subject; // Return the Subject
+  });
 }
