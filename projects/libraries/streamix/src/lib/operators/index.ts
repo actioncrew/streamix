@@ -25,6 +25,7 @@ export * from './map';
 export * from './max';
 export * from './mergeMap';
 export * from './min';
+export * from './observeOn';
 export * from './partition';
 export * from './recurse';
 export * from './reduce';
