@@ -1,28 +1,23 @@
 import {
   CallbackReturnType,
-  createQueue,
   createReceiver,
-  createSingleValueBuffer,
   createSubscription,
   Operator,
   pipeStream,
   Receiver,
-  Stream,
   Subscription
-} from "../../abstractions";
+} from "../abstractions";
+import { createQueue, createSingleValueBuffer } from "../primitives";
+import { Subject } from "./subject";
 
-export type Subject<T = any> = Stream<T> & {
-  next(value: T): void;
-  complete(): void;
-  error(err: any): void;
-  completed(): boolean;
-  get value(): T | undefined;
+export type BehaviorSubject<T = any> = Subject<T> & {
+  get value(): T;
 };
 
-export function createSubject<T = any>(): Subject<T> {
-  const buffer = createSingleValueBuffer<T>();
+export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
+  const buffer = createSingleValueBuffer<T>(initialValue);
   const queue = createQueue();
-  let latestValue: T | undefined = undefined;
+  let latestValue = initialValue;
   let isCompleted = false;
   let hasError = false;
 
@@ -93,9 +88,9 @@ export function createSubject<T = any>(): Subject<T> {
     return subscription;
   };
 
-  const subject: Subject<T> = {
+  const subject: BehaviorSubject<T> = {
     type: "subject",
-    name: "subject",
+    name: "behaviorSubject",
     get value() {
       return latestValue;
     },

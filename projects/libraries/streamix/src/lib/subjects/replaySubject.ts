@@ -1,40 +1,31 @@
 import {
   CallbackReturnType,
-  createQueue,
   createReceiver,
-  createSingleValueBuffer,
   createSubscription,
   Operator,
   pipeStream,
   Receiver,
-  Stream,
-  Subscription
-} from "../../abstractions";
+  Subscription,
+} from "../abstractions";
+import { createQueue, createReplayBuffer, ReplayBuffer } from "../primitives";
+import { Subject } from "./subject";
 
-export type AsyncSubject<T = any> = Stream<T> & {
-  next(value: T): Promise<void>;
-  complete(): Promise<void>;
-  error(err: any): Promise<void>;
-  completed(): boolean;
-  get value(): T | undefined;
-};
+export type ReplaySubject<T = any> = Subject<T>;
 
-export function createAsyncSubject<T = any>(): AsyncSubject<T> {
-  const buffer = createSingleValueBuffer<T>();
+export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
+  const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
   const queue = createQueue();
-  let latestValue: T | undefined = undefined;
   let isCompleted = false;
   let hasError = false;
 
-  const next = async (value: T) => {
-    latestValue = value;
+  const next = (value: T) => {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write(value);
+      await buffer.write(value === undefined ? null as T : value);
     });
   };
 
-  const complete = async () => {
+  const complete = () => {
     queue.enqueue(async () => {
       if (isCompleted) return;
       isCompleted = true;
@@ -42,7 +33,7 @@ export function createAsyncSubject<T = any>(): AsyncSubject<T> {
     });
   };
 
-  const error = async (err: any) => {
+  const error = (err: any) => {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
       hasError = true;
@@ -87,21 +78,23 @@ export function createAsyncSubject<T = any>(): AsyncSubject<T> {
     });
 
     Object.assign(subscription, {
-      value: () => latestValue
+      value: () => {
+        throw new Error("Replay subject does not support single value property");
+      }
     });
 
     return subscription;
   };
 
-  const subject: AsyncSubject<T> = {
+  const replaySubject: ReplaySubject<T> = {
     type: "subject",
-    name: "subject",
-    get value() {
-      return latestValue;
-    },
+    name: "replaySubject",
     subscribe,
     pipe(...steps: Operator[]) {
       return pipeStream(this, ...steps);
+    },
+    get value(): undefined {
+      throw new Error("Replay subject does not support single value property");
     },
     next,
     complete,
@@ -109,5 +102,5 @@ export function createAsyncSubject<T = any>(): AsyncSubject<T> {
     error,
   };
 
-  return subject;
+  return replaySubject;
 }
