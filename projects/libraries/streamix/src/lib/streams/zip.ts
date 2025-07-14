@@ -1,48 +1,69 @@
-import { Stream } from "../abstractions";
-import { Subscription } from "../abstractions/subscription";
-import { createSubject } from "../streams";
+import { Stream, createStream } from '../abstractions';
+import { eachValueFrom } from '../converters';
 
-// Combine multiple streams by emitting values when all have emitted
+/**
+ * Combines multiple streams by emitting an array of latest values,
+ * but only emits when all streams have emitted at least once.
+ *
+ * After emitting, it waits for the next batch of values from all streams again.
+ *
+ * Completes when any stream completes.
+ * Errors propagate immediately.
+ */
 export function zip(streams: Stream<any>[]): Stream<any[]> {
-  const subject = createSubject<any[]>(); // Combined stream output
-  const subscriptions: Subscription[] = [];
+  return createStream<any[]>('zip', async function* () {
+    if (streams.length === 0) {
+      return;
+    }
 
-  const latestValues: any[] = Array(streams.length).fill(undefined);
-  const hasEmitted: boolean[] = Array(streams.length).fill(false);
-  let completedStreams = 0;
+    // Create async iterators for all streams
+    const iterators = streams.map(s => eachValueFrom(s)[Symbol.asyncIterator]());
 
-  // Subscribe to each input stream
-  streams.forEach((stream, index) => {
-    const subscription = stream.subscribe({
-      next: (value) => {
-        latestValues[index] = value;
-        hasEmitted[index] = true;
+    // Buffer for each stream's latest value
+    let latestValues: (any | undefined)[] = Array(streams.length).fill(undefined);
+    // Flags to track if stream has emitted for current "round"
+    let hasValue: boolean[] = Array(streams.length).fill(false);
 
-        // Emit when all streams have emitted at least once
-        if (hasEmitted.every(Boolean)) {
-          subject.next([...latestValues]);
-          latestValues.fill(undefined);
-          hasEmitted.fill(false);
-        }
-      },
+    // Track completion
+    let done = false;
 
-      complete: () => {
-        completedStreams++;
-        if (completedStreams === streams.length) {
-          subject.complete();
-          subscriptions.forEach(sub => sub.unsubscribe());
-        }
-      },
-
-      error: (err) => {
-        subject.error(err);
-        subscriptions.forEach(sub => sub.unsubscribe());
+    // Helper: get next value for a specific iterator, catching error/completion
+    async function getNext(i: number): Promise<IteratorResult<any, any>> {
+      try {
+        return await iterators[i].next();
+      } catch (err) {
+        done = true;
+        throw err;
       }
-    });
+    }
 
-    subscriptions.push(subscription);
+    while (!done) {
+      // For each iterator that does not have value yet for this round, request next
+      for (let i = 0; i < iterators.length; i++) {
+        if (!hasValue[i]) {
+          const { done: d, value } = await getNext(i);
+          if (d) {
+            done = true;
+            break;
+          }
+          latestValues[i] = value;
+          hasValue[i] = true;
+        }
+      }
+
+      if (done) break;
+
+      // Once all have emitted, yield the combined array and reset flags
+      if (hasValue.every(Boolean)) {
+        yield [...latestValues] as any[];
+        hasValue.fill(false);
+        latestValues.fill(undefined);
+      }
+    }
+
+    // Cleanup iterators if they have return()
+    await Promise.all(
+      iterators.map(it => (it.return ? it.return(undefined) : Promise.resolve()))
+    );
   });
-
-  subject.name = "zip";
-  return subject;
 }

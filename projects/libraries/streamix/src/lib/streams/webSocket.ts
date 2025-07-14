@@ -1,83 +1,122 @@
-import { Stream } from "../abstractions";
-import { createSubject } from '../streams';
+import { Stream, createStream } from '../abstractions';
 
 export type WebSocketStream<T = any> = Stream<T> & {
   send: (message: T) => void;
-}
+};
 
 /**
- * Creates a WebSocket-based Stream that allows bidirectional communication.
+ * Creates a WebSocket stream for bidirectional communication.
  *
- * @param url - The WebSocket URL to connect to.
- * @returns A WebSocketStream with message emission and sending capabilities.
+ * Incoming messages are emitted as stream values.
+ * Outgoing messages are sent via the `.send()` method.
  */
 export function webSocket<T = any>(url: string): WebSocketStream<T> {
-  const output = createSubject<T>();
-  let socket: WebSocket | null = new WebSocket(url);
-  const queue: T[] = [];
+  let socket: WebSocket | null = null;
   let isOpen = false;
+  const sendQueue: T[] = [];
+  let resolveNext: ((value: T | PromiseLike<T>) => void) | null = null;
+  let rejectNext: ((error: any) => void) | null = null;
 
-  const sendMessage = (message: T) => {
+  let done = false;
+
+  // The async generator yields incoming messages
+  async function* messageGenerator() {
+    socket = new WebSocket(url);
+
+    const messageQueue: T[] = [];
+    const errorQueue: any[] = [];
+
+    const onOpen = () => {
+      isOpen = true;
+      // Flush any queued sends
+      while (sendQueue.length > 0) {
+        const msg = sendQueue.shift()!;
+        socket!.send(JSON.stringify(msg));
+      }
+    };
+
+    const onMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        messageQueue.push(data);
+        if (resolveNext) {
+          resolveNext(messageQueue.shift()!);
+          resolveNext = null;
+        }
+      } catch (err) {
+        errorQueue.push(err);
+        if (resolveNext) {
+          resolveNext(Promise.reject(err));
+          resolveNext = null;
+        }
+      }
+    };
+
+    const onClose = () => {
+      done = true;
+      if (resolveNext) {
+        resolveNext(Promise.reject(new Error('WebSocket closed')));
+        resolveNext = null;
+      }
+    };
+
+    const onError = () => {
+      done = true;
+      const err = new Error('WebSocket error');
+      if (rejectNext) {
+        rejectNext(err);
+        rejectNext = null;
+        resolveNext = null;
+      }
+    };
+
+    socket.addEventListener('open', onOpen);
+    socket.addEventListener('message', onMessage);
+    socket.addEventListener('close', onClose);
+    socket.addEventListener('error', onError);
+
+    try {
+      while (!done) {
+        if (errorQueue.length > 0) {
+          throw errorQueue.shift();
+        }
+        if (messageQueue.length > 0) {
+          yield messageQueue.shift()!;
+        } else {
+          // Wait for next message or error
+          const nextValue = await new Promise<T>((resolve, reject) => {
+            resolveNext = resolve;
+            rejectNext = reject;
+          });
+          yield nextValue;
+        }
+      }
+    } finally {
+      // Cleanup
+      if (socket) {
+        socket.removeEventListener('open', onOpen);
+        socket.removeEventListener('message', onMessage);
+        socket.removeEventListener('close', onClose);
+        socket.removeEventListener('error', onError);
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.close();
+        }
+        socket = null;
+      }
+    }
+  }
+
+  // Create the stream wrapping the generator
+  const stream = createStream<T>('webSocket', messageGenerator);
+
+  // Attach send method
+  (stream as WebSocketStream<T>).send = (message: T) => {
     if (socket && isOpen) {
       socket.send(JSON.stringify(message));
     } else {
-      queue.push(message);
+      sendQueue.push(message);
     }
   };
 
-  const handleOpen = () => {
-    isOpen = true;
-    while (queue.length > 0) {
-      socket?.send(JSON.stringify(queue.shift()));
-    }
-  };
-
-  const handleMessage = (event: MessageEvent) => {
-    try {
-      const data = JSON.parse(event.data);
-      output.next(data);
-    } catch (error) {
-      console.error("Failed to parse WebSocket message:", error);
-    }
-  };
-
-  const handleClose = () => {
-    isOpen = false;
-    if (!output.completed()) {
-      output.complete(); // Only call complete if not already done
-    }
-    console.warn("WebSocket closed.");
-  };
-
-  const cleanup = () => {
-    if (socket) {
-      socket.removeEventListener("open", handleOpen);
-      socket.removeEventListener("message", handleMessage);
-      socket.removeEventListener("close", handleClose);
-      socket.close();
-      socket = null;
-    }
-  };
-
-  // Wrap original complete/error to include cleanup
-  const originalComplete = output.complete;
-  output.complete = () => {
-    originalComplete.call(output);
-    cleanup();
-  };
-
-  const originalError = output.error;
-  output.error = (err) => {
-    originalError.call(output, err);
-    cleanup();
-  };
-
-  socket.addEventListener("open", handleOpen);
-  socket.addEventListener("message", handleMessage);
-  socket.addEventListener("close", handleClose);
-
-  return Object.assign(output, {
-    name: "webSocket",
-    send: sendMessage
-  }) as WebSocketStream<T>;
+  return stream as WebSocketStream<T>;
 }
