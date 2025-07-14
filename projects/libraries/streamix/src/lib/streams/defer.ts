@@ -2,6 +2,13 @@
 import { Stream, createStream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
+/**
+ * Creates a stream that defers the creation of the inner stream
+ * until the moment the stream is actually consumed (lazy initialization).
+ *
+ * - The `factory` function is called each time the stream is subscribed to.
+ * - Useful for creating streams with side effects that should be delayed until use.
+ */
 export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
   return createStream(
     "defer",

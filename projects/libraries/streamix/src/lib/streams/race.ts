@@ -4,9 +4,6 @@ import { eachValueFrom } from "../converters"; // Assuming this converter exists
 /**
  * Returns a Stream that mirrors the first source Stream to emit a value, error, or completion.
  * Once a stream wins the race, all other source streams are unsubscribed.
- *
- * @param streams A list of streams to race against each other.
- * @returns A new stream that mirrors the winning source stream.
  */
 export function race<T>(...streams: Stream<T>[]): Stream<T> {
   return createStream<T>('race', async function* () {

@@ -2,7 +2,10 @@
 import { Stream, createStream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
-// Combine multiple streams and emit the latest value from each stream
+/**
+ * Combines multiple streams and emits an array containing the latest values
+ * from each stream whenever any stream emits a new value.
+ */
 export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
   return createStream(
     "combineLatest",

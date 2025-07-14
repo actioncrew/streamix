@@ -1,5 +1,13 @@
 import { createStream, Stream } from "../abstractions";
 
+/**
+ * Retries a stream-producing factory function up to a given number of times
+ * when an error occurs during execution.
+ *
+ * - Re-subscribes to the stream on error.
+ * - Yields all emitted values upon successful completion.
+ * - Delays between retries if specified.
+ */
 export function retry<T = any>(
   factory: () => Stream<T>,
   maxRetries: number = 3,

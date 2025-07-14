@@ -3,8 +3,6 @@ import { createStream, Stream } from '../abstractions';
 /**
  * Creates a stream that emits the width and height of the element whenever it resizes.
  *
- * @param element - The DOM element to observe.
- * @returns A stream of `{ width, height }` objects.
  */
 export function onResize(element: Element): Stream<{ width: number; height: number }> {
   return createStream('onResize', async function* () {

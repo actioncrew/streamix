@@ -2,10 +2,6 @@ import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream of `MutationRecord[]` arrays for mutations observed on the element.
- *
- * @param element - The DOM element to observe.
- * @param options - Optional MutationObserverInit options.
- * @returns A stream emitting arrays of MutationRecords on each mutation.
  */
 export function onMutation(
   element: Element,

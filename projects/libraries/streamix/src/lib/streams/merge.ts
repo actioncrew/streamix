@@ -5,9 +5,6 @@ import { eachValueFrom } from "../converters";
  * Merges multiple source streams into a single stream, emitting values as they arrive from any source.
  * The merged stream completes only after all source streams have completed. If any source stream
  * errors, the merged stream immediately errors.
- *
- * @param sources A list of streams to merge.
- * @returns A new stream that emits values from all source streams.
  */
 export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
   return createStream<T>('merge', async function* () {

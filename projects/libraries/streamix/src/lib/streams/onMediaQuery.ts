@@ -2,9 +2,6 @@ import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream from `window.matchMedia` that emits whenever the media query matches or not.
- *
- * @param mediaQueryString - The media query string to observe.
- * @returns A stream of `true`/`false` values based on match state.
  */
 export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
   return createStream<boolean>('onMediaQuery', async function* () {

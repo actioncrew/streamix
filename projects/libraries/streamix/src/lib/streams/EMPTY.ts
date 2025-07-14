@@ -1,8 +1,12 @@
 import { CallbackReturnType, createReceiver, createStream, Receiver, Stream, Subscription } from '../abstractions';
 
-// Function to create an EmptyStream as a generator
+/**
+ * Creates an empty stream that emits no values and completes immediately.
+ *
+ * - Useful as a placeholder or base case in stream compositions.
+ * - The subscription completes immediately without emitting any values.
+ */
 export const empty = <T = any>(): Stream<T> => {
-  // Custom run function for the EmptyStream using generator
   const stream = createStream<T>('EMPTY', async function* (this: Stream<T>): AsyncGenerator<T> {
     // No emissions, just complete immediately
   });

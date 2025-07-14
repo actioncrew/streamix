@@ -1,5 +1,12 @@
 import { createStream, Stream } from '../abstractions';
 
+/**
+ * Creates a stream that emits DOM events from the specified target and event type.
+ *
+ * - Listens for events on the provided `EventTarget`.
+ * - Buffers events if the consumer is not ready.
+ * - Cleans up the event listener on stream completion or cancellation.
+ */
 export function fromEvent(target: EventTarget, event: string): Stream<Event> {
   return createStream(
     'fromEvent',
