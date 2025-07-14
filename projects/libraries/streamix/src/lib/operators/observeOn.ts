@@ -1,4 +1,6 @@
-import { createOperator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
+import { eachValueFrom } from '../converters';
+import { createSubject } from '../streams';
 
 /**
  * Schedules the emission of values from the source on a specified execution context.
@@ -8,28 +10,29 @@ import { createOperator } from '../abstractions';
  * and 'macrotask' queue scheduling (setTimeout(..., 0)).
  * @returns An operator function that transforms a source stream.
  */
-export function observeOn(queue: "microtask" | "macrotask") {
-  return createOperator("observeOn", (source) => {
-    const schedule =
-      queue === "microtask"
-        ? () => new Promise<void>((resolve) => queueMicrotask(resolve))
-        : () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+export const observeOn = <T = any>(context: "microtask" | "macrotask"): Operator => {
+  return createOperator<T>('observeOn', (source) => {
+    const output = createSubject<T>();
 
-    return {
-      async next() {
-        try {
-          const result = await source.next();
-          if (result.done) {
-            return result;
+    (async () => {
+      try {
+        while (true) {
+          const { value, done } = await source.next();
+          if (done) break;
+
+          if (context === 'microtask') {
+            queueMicrotask(() => output.next(value));
+          } else {
+            setTimeout(() => output.next(value));
           }
-
-          await schedule();
-
-          return { value: result.value, done: false };
-        } catch (err) {
-          throw err;
         }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        output.complete();
       }
-    };
+    })();
+
+    return eachValueFrom(output);
   });
-}
+};
