@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.12
+
+Refactored core operators to use pure AsyncIterator logic without relying on Subject, resulting in cleaner and more predictable behavior. Added the observeOn operator for microtask/macrotask scheduling. Renamed the value property of Subject to snappy to better reflect its intention and humorous design.
+
 ## 2.0.11
 
 All built-in operators now fully support asynchronous callbacks. You can provide async functions to operators such as map, filter, reduce, and custom operators without manual workarounds or hacks. Receivers can now be asynchronous. Streamix handles awaiting async callbacks internally, ensuring proper flow control and error propagation.

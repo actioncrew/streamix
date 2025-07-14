@@ -47,6 +47,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
     let readerId: number | null = null;
+    let latestValue: T | undefined;
 
     const subscription = createSubscription(() => {
       if (!unsubscribing) {
@@ -65,7 +66,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
         while (true) {
           const result = await buffer.read(readerId);
           if (result.done) break;
-          await receiver.next(result.value);
+          latestValue = result.value;
+          await receiver.next(latestValue!);
         }
       } catch (err: any) {
         await receiver.error(err);
@@ -79,7 +81,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
 
     Object.assign(subscription, {
       value: () => {
-        throw new Error("Replay subject does not support single value property");
+        return latestValue;
       }
     });
 
@@ -93,8 +95,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     pipe(...steps: Operator[]) {
       return pipeStream(this, ...steps);
     },
-    get value(): undefined {
-      throw new Error("Replay subject does not support single value property");
+    get snappy(): undefined {
+      throw new Error("Replay subject does not support snappy.");
     },
     next,
     complete,

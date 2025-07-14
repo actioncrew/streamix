@@ -11,7 +11,7 @@ import { createQueue, createSingleValueBuffer } from "../primitives";
 import { Subject } from "./subject";
 
 export type BehaviorSubject<T = any> = Subject<T> & {
-  get value(): T;
+  get snappy(): T;
 };
 
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
@@ -91,7 +91,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   const subject: BehaviorSubject<T> = {
     type: "subject",
     name: "behaviorSubject",
-    get value() {
+    get snappy() {
       return latestValue;
     },
     subscribe,

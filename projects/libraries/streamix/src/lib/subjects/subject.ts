@@ -15,7 +15,7 @@ export type Subject<T = any> = Stream<T> & {
   complete(): void;
   error(err: any): void;
   completed(): boolean;
-  get value(): T | undefined;
+  get snappy(): T | undefined;
 };
 
 export function createSubject<T = any>(): Subject<T> {
@@ -95,7 +95,7 @@ export function createSubject<T = any>(): Subject<T> {
   const subject: Subject<T> = {
     type: "subject",
     name: "subject",
-    get value() {
+    get snappy() {
       return latestValue;
     },
     subscribe,

@@ -25,17 +25,17 @@ describe('BehaviorSubject', () => {
     const behaviorSubject = createBehaviorSubject(initial);
 
     // Immediately after creation, getValue() resolves to the initial value
-    expect(behaviorSubject.value).toBe(42);
+    expect(behaviorSubject.snappy).toBe(42);
 
     // After next(), getValue() resolves to the updated value
     behaviorSubject.next(100);
-    expect(behaviorSubject.value).toBe(100);
+    expect(behaviorSubject.snappy).toBe(100);
 
     behaviorSubject.next(999);
-    expect(behaviorSubject.value).toBe(999);
+    expect(behaviorSubject.snappy).toBe(999);
 
     // Completing should not change the last value
     behaviorSubject.complete();
-    expect(behaviorSubject.value).toBe(999);
+    expect(behaviorSubject.snappy).toBe(999);
   });
 });
