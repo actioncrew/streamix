@@ -1,36 +1,20 @@
-import { Stream, Subscription } from "../abstractions"; // Assuming you have these types
-import { createSubject } from "../streams"; // Assuming createSubject is in utils.
+import { createStream, Stream } from "../abstractions";
+import { eachValueFrom } from "../converters";
 
 export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
-  const subject = createSubject<T>();
-  let currentSourceIndex = 0;
-  let currentSubscription: Subscription | null = null;
+  return createStream('concat', async function* () {
+    for (const source of sources) {
+      // Use eachValueFrom to properly handle the stream
+      const iterator = eachValueFrom(source);
 
-  const subscribeToNextSource = () => {
-    if (currentSourceIndex >= sources.length) {
-      subject.complete();
-      return;
-    }
-
-    const currentSource = sources[currentSourceIndex];
-    currentSubscription = currentSource.subscribe({
-      next: (value) => {
-        subject.next(value);
-      },
-      complete: () => {
-        currentSubscription?.unsubscribe();
-        currentSubscription = null;
-        currentSourceIndex++;
-        subscribeToNextSource();
-      },
-      error: (error) => {
-        subject.error(error);
+      try {
+        for await (const value of iterator) {
+          yield value;
+        }
+      } catch (error) {
+        // Propagate any errors from the source
+        throw error;
       }
-    });
-  };
-
-  subscribeToNextSource();
-
-  subject.name = 'concat';
-  return subject;
+    }
+  });
 }
