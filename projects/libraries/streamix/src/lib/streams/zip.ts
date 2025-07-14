@@ -19,51 +19,42 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
     // Create async iterators for all streams
     const iterators = streams.map(s => eachValueFrom(s)[Symbol.asyncIterator]());
 
-    // Buffer for each stream's latest value
-    let latestValues: (any | undefined)[] = Array(streams.length).fill(undefined);
-    // Flags to track if stream has emitted for current "round"
-    let hasValue: boolean[] = Array(streams.length).fill(false);
+    // Buffers for each stream's values
+    const buffers: any[][] = streams.map(() => []);
 
-    // Track completion
-    let done = false;
+    // Track active streams
+    let activeCount = streams.length;
 
-    // Helper: get next value for a specific iterator, catching error/completion
-    async function getNext(i: number): Promise<IteratorResult<any, any>> {
-      try {
-        return await iterators[i].next();
-      } catch (err) {
-        done = true;
-        throw err;
-      }
-    }
-
-    while (!done) {
-      // For each iterator that does not have value yet for this round, request next
-      for (let i = 0; i < iterators.length; i++) {
-        if (!hasValue[i]) {
-          const { done: d, value } = await getNext(i);
-          if (d) {
-            done = true;
-            break;
+    while (activeCount > 0) {
+      // Request next values from all streams that need them
+      const requests = iterators.map(async (it, i) => {
+        if (buffers[i].length === 0 && it.next) {
+          const { done, value } = await it.next();
+          if (done) {
+            activeCount--;
+          } else {
+            buffers[i].push(value);
           }
-          latestValues[i] = value;
-          hasValue[i] = true;
         }
+      });
+
+      await Promise.all(requests);
+
+      // Check if we can emit a zipped value
+      const canEmit = buffers.every(buffer => buffer.length > 0);
+      if (canEmit) {
+        yield buffers.map(buffer => buffer.shift()!);
       }
 
-      if (done) break;
-
-      // Once all have emitted, yield the combined array and reset flags
-      if (hasValue.every(Boolean)) {
-        yield [...latestValues] as any[];
-        hasValue.fill(false);
-        latestValues.fill(undefined);
+      // If any stream is done and we can't emit, break
+      if (activeCount < streams.length && !canEmit) {
+        break;
       }
     }
 
-    // Cleanup iterators if they have return()
+    // Cleanup iterators
     await Promise.all(
-      iterators.map(it => (it.return ? it.return(undefined) : Promise.resolve()))
+      iterators.map(it => it.return?.(undefined))
     );
   });
 }
