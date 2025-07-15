@@ -1,6 +1,4 @@
-import { createStream, Stream } from '../abstractions';
-
-;
+import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 
 /**
  * Creates a stream that emits `"portrait"` or `"landscape"` whenever the screen orientation changes.
@@ -11,48 +9,57 @@ import { createStream, Stream } from '../abstractions';
  * - Cleans up the event listener on stream completion.
  */
 export function onOrientation(): Stream<"portrait" | "landscape"> {
-  return createStream<"portrait" | "landscape">('onOrientation', async function* () {
+  const controller = new AbortController();
+  const signal = controller.signal;
+
+  const stream = createStream<"portrait" | "landscape">('onOrientation', async function* () {
     if (
       typeof window === 'undefined' ||
-      !window.screen ||
-      !window.screen.orientation ||
+      !window.screen?.orientation ||
       typeof window.screen.orientation.angle !== 'number'
     ) {
       console.warn("Screen orientation API is not supported in this environment");
       return;
     }
 
-    const getOrientation = () =>
+    const getOrientation = (): "portrait" | "landscape" =>
       window.screen.orientation.angle === 0 || window.screen.orientation.angle === 180
         ? "portrait"
         : "landscape";
 
     let resolveNext: ((value: "portrait" | "landscape") => void) | null = null;
-    let isActive = true;
 
     const listener = () => {
-      if (!isActive) return;
-      if (resolveNext) {
-        resolveNext(getOrientation());
-        resolveNext = null;
-      }
+      if (signal.aborted) return;
+      resolveNext?.(getOrientation());
+      resolveNext = null;
     };
 
     window.screen.orientation.addEventListener("change", listener);
 
     try {
-      // Emit initial orientation immediately
+      // Emit the initial orientation immediately
       yield getOrientation();
 
-      while (isActive) {
-        const nextOrientation = await new Promise<"portrait" | "landscape">((resolve) => {
+      while (!signal.aborted) {
+        const next = await new Promise<"portrait" | "landscape">((resolve) => {
           resolveNext = resolve;
         });
-        yield nextOrientation;
+        yield next;
       }
     } finally {
-      isActive = false;
       window.screen.orientation.removeEventListener("change", listener);
     }
   });
+
+  const originalSubscribe = stream.subscribe;
+  stream.subscribe = (callbackOrReceiver?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">): Subscription => {
+    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+    return createSubscription(() => {
+      controller.abort();
+      subscription.unsubscribe();
+    });
+  };
+
+  return stream;
 }

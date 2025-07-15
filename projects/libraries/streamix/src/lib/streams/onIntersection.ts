@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 
 /**
  * Creates a stream that emits a boolean indicating whether the element is intersecting the viewport.
@@ -8,34 +8,43 @@ export function onIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  return createStream<boolean>('onIntersection', async function* () {
+  const controller = new AbortController();
+  const signal = controller.signal;
+
+  const stream = createStream<boolean>('onIntersection', async function* () {
     let resolveNext: ((value: boolean) => void) | null = null;
-    let isObserving = true;
 
     const observer = new IntersectionObserver((entries) => {
-      if (!isObserving) return;
+      if (signal.aborted) return;
 
       const isIntersecting = entries[0]?.isIntersecting ?? false;
-
-      if (resolveNext) {
-        resolveNext(isIntersecting);
-        resolveNext = null;
-      }
+      resolveNext?.(isIntersecting);
+      resolveNext = null;
     }, options);
 
     observer.observe(element);
 
     try {
-      while (isObserving) {
+      while (!signal.aborted) {
         const value = await new Promise<boolean>((resolve) => {
           resolveNext = resolve;
         });
         yield value;
       }
     } finally {
-      isObserving = false;
       observer.unobserve(element);
       observer.disconnect();
     }
   });
+
+  const originalSubscribe = stream.subscribe;
+  stream.subscribe = (callbackOrReceiver?: ((value: boolean) => void) | Receiver<boolean>): Subscription => {
+    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+    return createSubscription(() => {
+      controller.abort();
+      subscription.unsubscribe();
+    });
+  };
+
+  return stream;
 }
