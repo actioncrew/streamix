@@ -1,5 +1,4 @@
-
-import { Stream, createStream } from "../abstractions";
+import { createStream, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -7,80 +6,98 @@ import { eachValueFrom } from "../converters";
  * from each stream whenever any stream emits a new value.
  */
 export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
-  return createStream(
-    "combineLatest",
-    async function* () {
-      if (streams.length === 0) {
-        return;
-      }
+  const controller = new AbortController();
+  const signal = controller.signal;
 
-      const latestValues: T[] = Array(streams.length).fill(undefined);
-      const hasEmitted = Array(streams.length).fill(false);
-      let completedStreams = 0;
+  async function* generator() {
+    if (streams.length === 0) {
+      return;
+    }
 
-      // Convert each stream to async iterable
-      const asyncIterables = streams.map(stream => eachValueFrom(stream));
-      const iterators = asyncIterables.map(iterable => iterable[Symbol.asyncIterator]());
+    const latestValues: T[] = Array(streams.length).fill(undefined);
+    const hasEmitted = Array(streams.length).fill(false);
+    let completedStreams = 0;
 
-      // Track active promises for cleanup
-      const activePromises = new Set<Promise<any>>();
+    // Convert each stream to async iterable
+    const asyncIterables = streams.map((stream) => eachValueFrom(stream));
+    const iterators = asyncIterables.map((iterable) => iterable[Symbol.asyncIterator]());
 
-      // Create promises for each stream's next value
-      const createPromise = (index: number) => {
-        const promise = iterators[index].next().then(result => ({
+    // Track active promises for cleanup
+    const activePromises = new Set<Promise<any>>();
+
+    // Create promises for each stream's next value
+    const createPromise = (index: number) => {
+      const promise = iterators[index]
+        .next()
+        .then((result) => ({
           index,
           value: result.value,
-          done: result.done
+          done: result.done,
         }));
-        activePromises.add(promise);
-        return promise;
-      };
+      activePromises.add(promise);
+      return promise;
+    };
 
-      // Initialize promises for all streams
-      let promises = streams.map((_, index) => createPromise(index));
+    // Initialize promises for all streams
+    let promises = streams.map((_, index) => createPromise(index));
 
-      try {
-        while (completedStreams < streams.length) {
-          // Wait for the first stream to emit
-          const result = await Promise.race(promises);
+    try {
+      while (completedStreams < streams.length && !signal.aborted) {
+        // Wait for the first stream to emit
+        const result = await Promise.race(promises);
 
-          // Remove completed promise from active set
-          activePromises.delete(promises[result.index]);
+        // Remove completed promise from active set
+        activePromises.delete(promises[result.index]);
 
-          if (result.done) {
-            completedStreams++;
-            // Remove the completed stream's promise
-            promises = promises.filter((_, i) => i !== result.index);
-            continue;
-          }
-
-          // Update the latest value for this stream
-          latestValues[result.index] = result.value;
-          hasEmitted[result.index] = true;
-
-          // Emit combined values only when all streams have emitted at least once
-          if (hasEmitted.every(Boolean)) {
-            yield [...latestValues];
-          }
-
-          // Replace the resolved promise with a new one for the same stream
-          promises[result.index] = createPromise(result.index);
-        }
-      } finally {
-        // Cleanup: Cancel all active iterators
-        for (const iterator of iterators) {
-          if (iterator.return) {
-            try {
-              await iterator.return(undefined);
-            } catch {
-              // Ignore cleanup errors
-            }
-          }
+        if (result.done) {
+          completedStreams++;
+          // Remove the completed stream's promise
+          promises = promises.filter((_, i) => i !== result.index);
+          continue;
         }
 
-        // Clear active promises
-        activePromises.clear();
+        // Update the latest value for this stream
+        latestValues[result.index] = result.value;
+        hasEmitted[result.index] = true;
+
+        // Emit combined values only when all streams have emitted at least once
+        if (hasEmitted.every(Boolean)) {
+          yield [...latestValues];
+        }
+
+        // Replace the resolved promise with a new one for the same stream
+        promises[result.index] = createPromise(result.index);
       }
+    } finally {
+      // Cleanup: Cancel all active iterators
+      for (const iterator of iterators) {
+        if (iterator.return) {
+          try {
+            await iterator.return(undefined);
+          } catch {
+            // Ignore cleanup errors
+          }
+        }
+      }
+
+      activePromises.clear();
     }
-  );
+  }
+
+  const stream = createStream<T[]>("combineLatest", generator);
+
+  // Override subscribe to abort on unsubscribe
+  const originalSubscribe = stream.subscribe;
+  stream.subscribe = (
+    callbackOrReceiver?: ((value: T[]) => void) | Receiver<T[]>
+  ): Subscription => {
+    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+
+    return createSubscription(() => {
+      controller.abort();
+      subscription.unsubscribe();
+    });
+  };
+
+  return stream;
 }

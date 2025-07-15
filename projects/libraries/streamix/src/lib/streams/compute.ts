@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 import { Coroutine } from '../operators';
 
 /**
@@ -6,14 +6,20 @@ import { Coroutine } from '../operators';
  * yielding the result once the computation completes.
  */
 export function compute(task: Coroutine, params: any): Stream<any> {
-  return createStream('compute', async function* () {
+  const controller = new AbortController();
+  const signal = controller.signal;
+
+  const stream = createStream('compute', async function* () {
+    // If aborted before starting
+    if (signal.aborted) return;
+
     const worker = await task.getIdleWorker();
 
     try {
-      // Create a promise that resolves when we get a message
       const result = await new Promise<any>((resolve, reject) => {
-        // Set up message handler
+        // Setup message handler
         worker.onmessage = (event: any) => {
+          if (signal.aborted) return;
           if (event.data.error) {
             reject(event.data.error);
           } else {
@@ -21,23 +27,38 @@ export function compute(task: Coroutine, params: any): Stream<any> {
           }
         };
 
-        // Set up error handler
+        // Setup error handler
         worker.onerror = (error: any) => {
+          if (signal.aborted) return;
           reject(error);
         };
 
         // Start the computation
         worker.postMessage(params);
+
+        // Optional: handle abort to terminate worker early
+        signal.addEventListener('abort', () => {
+          // You might want to terminate the worker here or handle cleanup
+          // worker.terminate(); // if safe to do so
+          reject(new DOMException('Aborted', 'AbortError'));
+        });
       });
 
-      // Yield the successful result
       yield result;
-    } catch (error) {
-      // Propagate any errors through the stream
-      throw error;
     } finally {
-      // Always return the worker to the pool
       task.returnWorker(worker);
     }
   });
+
+  const originalSubscribe = stream.subscribe;
+  stream.subscribe = (callbackOrReceiver?: ((value: any) => void) | Receiver<any>): Subscription => {
+    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+
+    return createSubscription(() => {
+      controller.abort();
+      subscription.unsubscribe();
+    });
+  };
+
+  return stream;
 }

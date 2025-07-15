@@ -1,4 +1,4 @@
-import { Stream, createStream } from '../abstractions';
+import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 
 export type WebSocketStream<T = any> = Stream<T> & {
   send: (message: T) => void;
@@ -16,6 +16,9 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
   const sendQueue: T[] = [];
   let resolveNext: ((value: T | PromiseLike<T>) => void) | null = null;
   let rejectNext: ((error: any) => void) | null = null;
+
+  const controller = new AbortController();
+  const signal = controller.signal;
 
   let done = false;
 
@@ -36,6 +39,7 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
     };
 
     const onMessage = (event: MessageEvent) => {
+      if (signal.aborted) return;
       try {
         const data = JSON.parse(event.data);
         messageQueue.push(data);
@@ -76,7 +80,7 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
     socket.addEventListener('error', onError);
 
     try {
-      while (!done) {
+      while (!done && !signal.aborted) {
         if (errorQueue.length > 0) {
           throw errorQueue.shift();
         }
@@ -92,7 +96,6 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
         }
       }
     } finally {
-      // Cleanup
       if (socket) {
         socket.removeEventListener('open', onOpen);
         socket.removeEventListener('message', onMessage);
@@ -111,11 +114,22 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
 
   // Attach send method
   (stream as WebSocketStream<T>).send = (message: T) => {
-    if (socket && isOpen) {
+    if (socket && isOpen && !signal.aborted) {
       socket.send(JSON.stringify(message));
     } else {
       sendQueue.push(message);
     }
+  };
+
+  // Override subscribe to abort on unsubscribe
+  const originalSubscribe = stream.subscribe;
+  stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+
+    return createSubscription(() => {
+      controller.abort();
+      subscription.unsubscribe();
+    });
   };
 
   return stream as WebSocketStream<T>;

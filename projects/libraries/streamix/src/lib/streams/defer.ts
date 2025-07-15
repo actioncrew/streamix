@@ -1,5 +1,4 @@
-
-import { Stream, createStream } from '../abstractions';
+import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 /**
@@ -10,22 +9,45 @@ import { eachValueFrom } from '../converters';
  * - Useful for creating streams with side effects that should be delayed until use.
  */
 export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
-  return createStream(
-    "defer",
-    async function* () {
-      // Lazily create the inner stream when the generator is first consumed
-      const innerStream = factory();
+  const controller = new AbortController();
+  const signal = controller.signal;
 
+  async function* generator() {
+    const innerStream = factory();
+
+    try {
+      const iterator = eachValueFrom(innerStream);
       try {
-        // Convert the inner stream to async iterable and yield all values
-        for await (const value of eachValueFrom(innerStream)) {
+        for await (const value of iterator) {
+          if (signal.aborted) break;
           yield value;
         }
-      } catch (error) {
-        // Re-throw any errors from the inner stream
-        throw error;
+      } finally {
+        if (iterator.return) {
+          try {
+            await iterator.return(undefined);
+          } catch {
+            // ignore
+          }
+        }
       }
-      // Cleanup is automatic when the async generator completes
+    } catch (error) {
+      throw error;
     }
-  );
+  }
+
+  const stream = createStream<T>('defer', generator);
+
+  // Override subscribe to abort on unsubscribe
+  const originalSubscribe = stream.subscribe;
+  stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+
+    return createSubscription(() => {
+      controller.abort();
+      subscription.unsubscribe();
+    });
+  };
+
+  return stream;
 }

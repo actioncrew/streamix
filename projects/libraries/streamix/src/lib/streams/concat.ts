@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -9,19 +9,47 @@ import { eachValueFrom } from "../converters";
  * - Propagates errors from any source stream immediately.
  */
 export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
-  return createStream('concat', async function* () {
+  const controller = new AbortController();
+  const signal = controller.signal;
+
+  async function* generator() {
     for (const source of sources) {
-      // Use eachValueFrom to properly handle the stream
+      if (signal.aborted) break;
+
       const iterator = eachValueFrom(source);
 
       try {
         for await (const value of iterator) {
+          if (signal.aborted) break;
           yield value;
         }
       } catch (error) {
-        // Propagate any errors from the source
         throw error;
+      } finally {
+        // Attempt to close iterator early on abort or completion
+        if (iterator.return) {
+          try {
+            await iterator.return(undefined);
+          } catch {
+            // ignore
+          }
+        }
       }
     }
-  });
+  }
+
+  const stream = createStream<T>("concat", generator);
+
+  // Override subscribe to abort on unsubscribe
+  const originalSubscribe = stream.subscribe;
+  stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
+    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+
+    return createSubscription(() => {
+      controller.abort();
+      subscription.unsubscribe();
+    });
+  };
+
+  return stream;
 }

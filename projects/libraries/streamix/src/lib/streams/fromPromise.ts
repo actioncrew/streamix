@@ -7,14 +7,11 @@ import { createStream, Stream } from "../abstractions";
  * - Emits an error if the promise rejects.
  */
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
-  return createStream(
-    'fromPromise',
-    async function* () {
-      try {
-        yield await promise;
-      } catch (error) {
-        throw error;
-      }
+  return createStream('fromPromise', async function* () {
+    try {
+      yield await promise;
+    } catch (error) {
+      throw error;
     }
-  );
+  });
 }

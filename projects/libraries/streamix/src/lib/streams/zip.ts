@@ -1,4 +1,4 @@
-import { Stream, createStream } from '../abstractions';
+import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 /**
@@ -11,7 +11,10 @@ import { eachValueFrom } from '../converters';
  * Errors propagate immediately.
  */
 export function zip(streams: Stream<any>[]): Stream<any[]> {
-  return createStream<any[]>('zip', async function* () {
+  const controller = new AbortController();
+  const signal = controller.signal;
+
+  const stream = createStream<any[]>('zip', async function* () {
     if (streams.length === 0) {
       return;
     }
@@ -25,36 +28,51 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
     // Track active streams
     let activeCount = streams.length;
 
-    while (activeCount > 0) {
-      // Request next values from all streams that need them
-      const requests = iterators.map(async (it, i) => {
-        if (buffers[i].length === 0 && it.next) {
-          const { done, value } = await it.next();
-          if (done) {
-            activeCount--;
-          } else {
-            buffers[i].push(value);
+    try {
+      while (activeCount > 0 && !signal.aborted) {
+        // Request next values from all streams that need them
+        const requests = iterators.map(async (it, i) => {
+          if (buffers[i].length === 0 && it.next) {
+            const { done, value } = await it.next();
+            if (done) {
+              activeCount--;
+            } else {
+              buffers[i].push(value);
+            }
           }
+        });
+
+        await Promise.all(requests);
+
+        // Check if we can emit a zipped value
+        const canEmit = buffers.every(buffer => buffer.length > 0);
+        if (canEmit) {
+          yield buffers.map(buffer => buffer.shift()!);
         }
-      });
 
-      await Promise.all(requests);
-
-      // Check if we can emit a zipped value
-      const canEmit = buffers.every(buffer => buffer.length > 0);
-      if (canEmit) {
-        yield buffers.map(buffer => buffer.shift()!);
+        // If any stream is done and we can't emit, break
+        if (activeCount < streams.length && !canEmit) {
+          break;
+        }
       }
-
-      // If any stream is done and we can't emit, break
-      if (activeCount < streams.length && !canEmit) {
-        break;
-      }
+    } finally {
+      // Cleanup iterators
+      await Promise.all(
+        iterators.map(it => it.return?.(undefined).catch(() => { /* ignore errors */ }))
+      );
     }
-
-    // Cleanup iterators
-    await Promise.all(
-      iterators.map(it => it.return?.(undefined))
-    );
   });
+
+  // Override subscribe to abort on unsubscribe
+  const originalSubscribe = stream.subscribe;
+  stream.subscribe = (callbackOrReceiver?: ((value: any[]) => void) | Receiver<any[]>): Subscription => {
+    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
+
+    return createSubscription(() => {
+      controller.abort();
+      subscription.unsubscribe();
+    });
+  };
+
+  return stream;
 }
