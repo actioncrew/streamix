@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.14
+
+We have added AbortController support to most stream creators to enable proper cancellation and resource cleanup when subscribers unsubscribe. This allows streams to stop producing values promptly, avoid memory leaks, and clean up internal iterators or event listeners automatically.
+
 ## 2.0.12
 
 Refactored core operators to use pure AsyncIterator logic without relying on Subject, resulting in cleaner and more predictable behavior. Added the observeOn operator for microtask/macrotask scheduling. Renamed the value property of Subject to snappy to better reflect its intention and humorous design.
