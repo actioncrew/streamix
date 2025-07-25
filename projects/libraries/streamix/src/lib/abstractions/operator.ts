@@ -1,23 +1,18 @@
-export type Operator = {
+// Core operator definition: transforms one iterator into another
+export type Operator<T = any, R = any> = {
   name?: string;
   type: 'operator';
-  apply: (source: AsyncIterable<any>) => AsyncIterable<any>;
+  apply: (source: AsyncIterator<T>) => AsyncIterator<R>;
 };
 
+// Create a named operator with a transform function (iterator in, iterator out)
 export function createOperator<T = any, R = any>(
   name: string,
-  transformFn: (sourceIterator: AsyncIterator<T>) => AsyncIterator<R> // <--- transformFn expects AsyncIterator
-): Operator {
+  transformFn: (source: AsyncIterator<T>) => AsyncIterator<R>
+): Operator<T, R> {
   return {
     name,
-    type: "operator",
-    apply: (sourceIterable: AsyncIterable<T>) => {
-      return {
-        [Symbol.asyncIterator]() {
-          const actualSourceIterator = sourceIterable[Symbol.asyncIterator]();
-          return transformFn(actualSourceIterator);
-        }
-      };
-    }
+    type: 'operator',
+    apply: transformFn
   };
 }
