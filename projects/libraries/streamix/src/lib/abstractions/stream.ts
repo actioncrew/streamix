@@ -13,14 +13,14 @@ export type Stream<T = any> = {
 
 export function pipeStream<T = any>(
   source: Stream<any>,
-  operators: Operator<any, any>[]
+  ...steps: Operator<any, any>[]
 ): Stream<T> {
-  if (operators.length === 0) return source as unknown as Stream<T>;
+  if (!steps?.length) return source as unknown as Stream<T>;
   
   const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
 
   // Apply all operators in sequence (pure iterator transform)
-  const finalIterator = operators.reduce<AsyncIterator<any>>((iterator, operator) => {
+  const finalIterator = steps.reduce<AsyncIterator<any>>((iterator, operator) => {
     return operator.apply(iterator);
   }, baseIterator);
 
