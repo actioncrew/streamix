@@ -15,6 +15,8 @@ export function pipeStream<T = any, R = any>(
   source: Stream<T>,
   operators: Operator<any, any>[]
 ): Stream<R> {
+  if (operators.length === 0) return source as Stream<R>;
+  
   const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
 
   // Apply all operators in sequence (pure iterator transform)
@@ -22,7 +24,7 @@ export function pipeStream<T = any, R = any>(
     return operator.apply(iterator);
   }, baseIterator);
 
-  const sink = createStream(`sink`, async function* () {
+  const sink = createStream<R>(`sink`, async function* () {
     yield* {
       [Symbol.asyncIterator]() {
         return iterator;
