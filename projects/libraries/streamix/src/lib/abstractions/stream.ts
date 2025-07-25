@@ -11,28 +11,24 @@ export type Stream<T = any> = {
   pipe: (...steps: Operator[]) => Stream<any>;
 };
 
-export function pipeStream<T = any>(
-  stream: Stream<T>,
-  ...steps: Operator[]
-): Stream<any> {
-  const base: AsyncIterable<any> = eachValueFrom(stream);
+export function pipeStream<T = any, R = any>(
+  source: Stream<T>,
+  operators: Operator<any, any>[]
+): Stream<R> {
+  const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
 
-  // Apply operators to get the final AsyncIterable
-  const piped = steps.reduce<AsyncIterable<any>>((iter, op) => {
-    return op.apply(iter);
-  }, base);
+  // Apply all operators in sequence (pure iterator transform)
+  const finalIterator = operators.reduce((iterator, operator) => {
+    return operator.apply(iterator);
+  }, baseIterator);
 
-  const sink = createStream(
-    `pipe(${steps.map(op => op.name ?? 'anonymous').join(' → ')})`,
-    async function* () {
-      const iterator = piped[Symbol.asyncIterator]();
-      while (true) {
-        const { value, done } = await iterator.next();
-        if (done) break;
-        yield value;
+  const sink = createStream(`sink`, async function* () {
+    yield* {
+      [Symbol.asyncIterator]() {
+        return iterator;
       }
-    }
-  );
+    };
+  });
 
   return sink;
 }
