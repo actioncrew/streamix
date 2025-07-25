@@ -28,7 +28,8 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
         }
       })();
     }
-
-    return eachValueFrom(sharedSubject);
+    
+    const iterable = eachValueFrom(sharedSubject);
+    return iterable[Symbol.asyncIterator]();
   });
 }
