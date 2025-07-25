@@ -20,7 +20,7 @@ export function pipeStream<T = any>(
   const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
 
   // Apply all operators in sequence (pure iterator transform)
-  const finalIterator = operators.reduce((iterator, operator) => {
+  const finalIterator = operators.reduce<AsyncIterator<any>>((iterator, operator) => {
     return operator.apply(iterator);
   }, baseIterator);
 
