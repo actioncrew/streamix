@@ -11,11 +11,11 @@ export type Stream<T = any> = {
   pipe: (...steps: Operator[]) => Stream<any>;
 };
 
-export function pipeStream<T = any, R = any>(
-  source: Stream<T>,
+export function pipeStream<T = any>(
+  source: Stream<any>,
   operators: Operator<any, any>[]
-): Stream<R> {
-  if (operators.length === 0) return source as Stream<R>;
+): Stream<T> {
+  if (operators.length === 0) return source as unknown as Stream<T>;
   
   const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
 
@@ -24,15 +24,15 @@ export function pipeStream<T = any, R = any>(
     return operator.apply(iterator);
   }, baseIterator);
 
-  const sink = createStream<R>(`sink`, async function* () {
+  const sink = createStream(`sink`, async function* () {
     yield* {
       [Symbol.asyncIterator]() {
-        return iterator;
+        return finalIterator;
       }
     };
   });
 
-  return sink;
+  return sink as unknown as Stream<T>;
 }
 
 // The stream factory function
