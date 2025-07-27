@@ -60,6 +60,7 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
       }
     })();
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });
 }

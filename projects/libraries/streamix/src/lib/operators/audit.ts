@@ -45,6 +45,7 @@ export const audit = <T = any>(duration: number): Operator => {
       }
     })();
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });
 };

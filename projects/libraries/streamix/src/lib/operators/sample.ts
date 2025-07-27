@@ -46,5 +46,6 @@ export const sample = <T = any>(period: number) =>
       }
     })();
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });

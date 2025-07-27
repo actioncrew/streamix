@@ -52,6 +52,7 @@ export function buffer<T = any>(period: number): Operator {
       }
     })();
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });
 }

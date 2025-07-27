@@ -22,6 +22,7 @@ export function delay<T>(ms: number) {
       }
     })();
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });
 }

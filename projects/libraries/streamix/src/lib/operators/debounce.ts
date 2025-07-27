@@ -54,6 +54,7 @@ export function debounce<T = any>(duration: number) {
       }
     })();
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });
 }

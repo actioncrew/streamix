@@ -16,15 +16,18 @@ export function pipeStream<T = any>(
   ...steps: Operator<any, any>[]
 ): Stream<T> {
   if (!steps?.length) return source as unknown as Stream<T>;
-  
-  const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
-
-  // Apply all operators in sequence (pure iterator transform)
-  const finalIterator = steps.reduce<AsyncIterator<any>>((iterator, operator) => {
-    return operator.apply(iterator);
-  }, baseIterator);
 
   const sink = createStream(`sink`, async function* () {
+    // Create a fresh base iterator for each subscription
+    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
+
+    // Apply all operators using reduce
+    const finalIterator = steps.reduce<AsyncIterator<any>>(
+      (iterator, operator) => operator.apply(iterator),
+      baseIterator
+    );
+
+    // Yield from the composed iterator
     yield* {
       [Symbol.asyncIterator]() {
         return finalIterator;

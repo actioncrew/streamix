@@ -38,6 +38,7 @@ export function skipUntil<T = any>(notifier: Stream): Operator {
       }
     }, 0);
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });
 }

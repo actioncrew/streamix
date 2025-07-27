@@ -4,11 +4,11 @@ import { createReplaySubject, ReplaySubject } from '../streams';
 
 export function shareReplay<T = any>(bufferSize: number = Infinity) {
   let isConnected = false;
-  let sharedSubject: ReplaySubject<T> | undefined;
+  let output: ReplaySubject<T> | undefined;
 
   return createOperator<T>('shareReplay', (source) => {
-    if (!sharedSubject) {
-      sharedSubject = createReplaySubject<T>(bufferSize);
+    if (!output) {
+      output = createReplaySubject<T>(bufferSize);
     }
 
     if (!isConnected) {
@@ -18,18 +18,18 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
         try {
           let result = await source.next();
           while (!result.done) {
-            sharedSubject.next(result.value);
+            output.next(result.value);
             result = await source.next();
           }
         } catch (err) {
-          sharedSubject.error(err);
+          output.error(err);
         } finally {
-          sharedSubject.complete();
+          output.complete();
         }
       })();
     }
-    
-    const iterable = eachValueFrom(sharedSubject);
+
+    const iterable = eachValueFrom(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

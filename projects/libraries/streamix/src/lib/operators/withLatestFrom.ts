@@ -62,6 +62,7 @@ export function withLatestFrom<T, R extends any[]>(
       });
     };
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });
 }

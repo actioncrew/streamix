@@ -33,6 +33,7 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask"): Operator
       }
     })();
 
-    return eachValueFrom(output);
+    const iterable = eachValueFrom(output);
+    return iterable[Symbol.asyncIterator]();
   });
 };
