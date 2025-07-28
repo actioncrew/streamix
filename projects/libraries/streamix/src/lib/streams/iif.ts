@@ -6,9 +6,6 @@ export function iif<T = any>(
   trueStream: Stream<T>,
   falseStream: Stream<T>
 ): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   async function* generator(): AsyncGenerator<T, void, unknown> {
     // Evaluate condition lazily when the stream starts
     const sourceStream = condition() ? trueStream : falseStream;
@@ -16,7 +13,7 @@ export function iif<T = any>(
     const iterator = asyncIterable[Symbol.asyncIterator]();
 
     try {
-      while (!signal.aborted) {
+      while (true) {
         const result = await iterator.next();
         if (result.done) break;
         yield result.value;

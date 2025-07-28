@@ -14,13 +14,11 @@ export function loop<T>(
   iterateFn: (value: T) => T
 ): Stream<T> {
   let currentValue = initialValue;
-  const abortController = new AbortController();
-  const { signal } = abortController;
 
   // Create the stream with a custom run function using a generator
   return createStream<T>('loop', async function* (this: Stream<T>): AsyncGenerator<T> {
     // Loop while condition is true and the stream is not completed
-    while (condition(currentValue) && !signal.aborted) {
+    while (condition(currentValue)) {
       // Create and yield the emission for the current value
       yield currentValue;
 

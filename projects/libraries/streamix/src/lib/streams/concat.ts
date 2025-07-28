@@ -9,18 +9,13 @@ import { eachValueFrom } from "../converters";
  * - Propagates errors from any source stream immediately.
  */
 export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   async function* generator() {
     for (const source of sources) {
-      if (signal.aborted) break;
 
       const iterator = eachValueFrom(source);
 
       try {
         for await (const value of iterator) {
-          if (signal.aborted) break;
           yield value;
         }
       } catch (error) {

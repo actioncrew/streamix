@@ -9,9 +9,6 @@ import { createStream, Stream } from '../abstractions';
  * - Cleans up the event listener on stream completion.
  */
 export function onOrientation(): Stream<"portrait" | "landscape"> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   return createStream<"portrait" | "landscape">('onOrientation', async function* () {
     if (
       typeof window === 'undefined' ||
@@ -30,7 +27,6 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
     let resolveNext: ((value: "portrait" | "landscape") => void) | null = null;
 
     const listener = () => {
-      if (signal.aborted) return;
       resolveNext?.(getOrientation());
       resolveNext = null;
     };
@@ -41,7 +37,7 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
       // Emit the initial orientation immediately
       yield getOrientation();
 
-      while (!signal.aborted) {
+      while (true) {
         const next = await new Promise<"portrait" | "landscape">((resolve) => {
           resolveNext = resolve;
         });

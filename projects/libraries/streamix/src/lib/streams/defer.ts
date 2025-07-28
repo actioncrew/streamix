@@ -9,9 +9,6 @@ import { eachValueFrom } from '../converters';
  * - Useful for creating streams with side effects that should be delayed until use.
  */
 export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   async function* generator() {
     const innerStream = factory();
 
@@ -19,7 +16,6 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
       const iterator = eachValueFrom(innerStream);
       try {
         for await (const value of iterator) {
-          if (signal.aborted) break;
           yield value;
         }
       } finally {

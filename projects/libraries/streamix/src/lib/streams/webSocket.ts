@@ -17,9 +17,6 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
   let resolveNext: ((value: T | PromiseLike<T>) => void) | null = null;
   let rejectNext: ((error: any) => void) | null = null;
 
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   let done = false;
 
   // The async generator yields incoming messages
@@ -39,7 +36,6 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
     };
 
     const onMessage = (event: MessageEvent) => {
-      if (signal.aborted) return;
       try {
         const data = JSON.parse(event.data);
         messageQueue.push(data);
@@ -80,7 +76,7 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
     socket.addEventListener('error', onError);
 
     try {
-      while (!done && !signal.aborted) {
+      while (!done) {
         if (errorQueue.length > 0) {
           throw errorQueue.shift();
         }
@@ -114,7 +110,7 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
 
   // Attach send method
   stream.send = (message: T) => {
-    if (socket && isOpen && !signal.aborted) {
+    if (socket && isOpen) {
       socket.send(JSON.stringify(message));
     } else {
       sendQueue.push(message);

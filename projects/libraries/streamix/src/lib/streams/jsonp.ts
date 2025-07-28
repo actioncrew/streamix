@@ -9,9 +9,6 @@ import { createStream, Stream } from '../abstractions';
  * - Supports cancellation via AbortController.
  */
 export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   return createStream<T>('jsonp', async function* () {
     const uniqueCallbackName = `${callbackParam}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement('script');
@@ -38,19 +35,7 @@ export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<
 
     try {
       // Race the dataPromise against abort signal
-      const data = await Promise.race([
-        dataPromise,
-        new Promise<never>((_, reject) => {
-          signal.addEventListener('abort', () => reject(new Error('JSONP aborted')));
-        }),
-      ]);
-
-      if (signal.aborted) {
-        cleanup();
-        return;
-      }
-
-      yield data;
+      yield await dataPromise;
     } finally {
       cleanup();
     }

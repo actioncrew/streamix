@@ -8,15 +8,10 @@ export function onIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   return createStream<boolean>('onIntersection', async function* () {
     let resolveNext: ((value: boolean) => void) | null = null;
 
     const observer = new IntersectionObserver((entries) => {
-      if (signal.aborted) return;
-
       const isIntersecting = entries[0]?.isIntersecting ?? false;
       resolveNext?.(isIntersecting);
       resolveNext = null;
@@ -25,7 +20,7 @@ export function onIntersection(
     observer.observe(element);
 
     try {
-      while (!signal.aborted) {
+      while (true) {
         const value = await new Promise<boolean>((resolve) => {
           resolveNext = resolve;
         });

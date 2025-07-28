@@ -8,9 +8,6 @@ import { eachValueFrom } from "../converters";
  * Supports cancellation via AbortController.
  */
 export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   return createStream<T>('merge', async function* () {
     if (sources.length === 0) return;
 
@@ -24,7 +21,7 @@ export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
         error => ({ error, index, status: 'rejected' as const })
       );
 
-    while (activeCount > 0 && !signal.aborted) {
+    while (activeCount > 0) {
       const race = Promise.race(
         nextPromises
           .map((p, i) => (p ? reflect(p, i) : null))
@@ -34,14 +31,7 @@ export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
           >[]
       );
 
-      const winner = await Promise.race([
-        race,
-        new Promise<never>((_, reject) => {
-          signal.addEventListener('abort', () => reject(new Error('merge aborted')));
-        }),
-      ]);
-
-      if (signal.aborted) break;
+      const winner = await race;
 
       if (winner.status === 'rejected') {
         throw winner.error;

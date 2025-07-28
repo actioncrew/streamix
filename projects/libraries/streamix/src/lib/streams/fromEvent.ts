@@ -1,16 +1,13 @@
 import { createStream, Stream } from '../abstractions';
 
 export function fromEvent(target: EventTarget, event: string): Stream<Event> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   async function* generator() {
     let eventQueue: Event[] = [];
     let resolveNext: ((event: Event) => void) | null = null;
     let isListening = true;
 
     const listener = (ev: Event) => {
-      if (!isListening || signal.aborted) return;
+      if (!isListening) return;
 
       if (resolveNext) {
         resolveNext(ev);
@@ -23,7 +20,7 @@ export function fromEvent(target: EventTarget, event: string): Stream<Event> {
     target.addEventListener(event, listener);
 
     try {
-      while (isListening && !signal.aborted) {
+      while (isListening) {
         if (eventQueue.length > 0) {
           yield eventQueue.shift()!;
         } else {

@@ -6,9 +6,6 @@ import { eachValueFrom } from "../converters";
  * from each stream whenever any stream emits a new value.
  */
 export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   async function* generator() {
     if (streams.length === 0) {
       return;
@@ -42,7 +39,7 @@ export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
     let promises = streams.map((_, index) => createPromise(index));
 
     try {
-      while (completedStreams < streams.length && !signal.aborted) {
+      while (completedStreams < streams.length) {
         // Wait for the first stream to emit
         const result = await Promise.race(promises);
 
