@@ -13,13 +13,11 @@ export type Stream<T = any> = {
 export function createStream<T>(
   name: string,
   generatorFn: () => AsyncGenerator<T, void, unknown>,
-  isMulticast: boolean = true
 ): Stream<T> {
-  // For multicast streams
-  let activeSubscriptions: {
+  const activeSubscriptions = new Set<{
     receiver: Receiver<T>;
     subscription: Subscription<T>;
-  }[] = [];
+  }>();
   let isRunning = false;
   let abortController = new AbortController();
 
@@ -28,45 +26,32 @@ export function createStream<T>(
   ): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     const subscription = createSubscription<T>(() => {
-      if (isMulticast) {
-        // Find and remove this specific subscription
-        const subscriptionIndex = activeSubscriptions.findIndex(
-          sub => sub.subscription === subscription
-        );
-
-        if (subscriptionIndex !== -1) {
-          const { receiver: cancelledReceiver } = activeSubscriptions[subscriptionIndex];
-          activeSubscriptions.splice(subscriptionIndex, 1);
-
-          // Complete the cancelled receiver
-          if (cancelledReceiver.complete) {
-            try {
-              cancelledReceiver.complete();
-            } catch (error) {
-              console.warn("Error completing cancelled receiver:", error);
+      for (const sub of activeSubscriptions) {
+        if (sub.subscription === subscription) {
+          activeSubscriptions.delete(sub);
+          try {
+            if (sub.receiver.complete) {
+              sub.receiver.complete();
             }
+          } catch (error) {
+            console.warn("Error completing cancelled receiver:", error);
           }
+          break;
         }
+      }
 
-        if (activeSubscriptions.length === 0) {
-          abortController.abort();
-          // Reset state for potential future subscriptions
-          isRunning = false;
-        }
+      if (activeSubscriptions.size === 0) {
+        abortController.abort();
+        isRunning = false;
       }
     });
 
-    if (isMulticast) {
-      activeSubscriptions.push({ receiver, subscription });
+    activeSubscriptions.add({ receiver, subscription });
 
-      if (!isRunning) {
-        isRunning = true;
-        // Create a new abort controller for this multicast session
-        abortController = new AbortController();
-        startMulticastLoop(generatorFn);
-      }
-    } else {
-      subscription.listen(generatorFn, receiver);
+    if (!isRunning) {
+      isRunning = true;
+      abortController = new AbortController();
+      startMulticastLoop(generatorFn);
     }
 
     return subscription;
@@ -83,7 +68,7 @@ export function createStream<T>(
         signal.addEventListener("abort", () => reject("aborted"), { once: true });
       });
 
-      while (activeSubscriptions.length > 0 && !signal.aborted) {
+      while (!signal.aborted) {
         let result: IteratorResult<T> | { aborted: true };
 
         try {
@@ -99,7 +84,7 @@ export function createStream<T>(
         if ('aborted' in result) break;
         if (result.done) break;
 
-        const subscribers = [...activeSubscriptions];
+        const subscribers = Array.from(activeSubscriptions);
         await Promise.all(
           subscribers.map(async ({ receiver }) => {
             try {
@@ -115,7 +100,7 @@ export function createStream<T>(
     } catch (err) {
       if (!signal.aborted) {
         const error = err instanceof Error ? err : new Error(String(err));
-        const subscribers = [...activeSubscriptions];
+        const subscribers = Array.from(activeSubscriptions);
         await Promise.all(
           subscribers.map(async ({ receiver }) => {
             try {
@@ -133,8 +118,7 @@ export function createStream<T>(
         } catch {}
       }
 
-      // Only complete remaining active subscriptions (those that weren't individually cancelled)
-      const subscribers = [...activeSubscriptions];
+      const subscribers = Array.from(activeSubscriptions);
       await Promise.all(
         subscribers.map(async ({ receiver }) => {
           try {
@@ -149,57 +133,59 @@ export function createStream<T>(
     }
   };
 
-  const multicast = (): Stream<T> => {
-    if (isMulticast) return stream;
-    return createStream(name, generatorFn, true);
-  };
-
   const stream: Stream<T> = {
-    type: isMulticast ? "subject" : "stream",
+    type: "stream",
     name,
     subscribe,
     pipe(...steps: Operator[]) {
       return pipeStream(this, ...steps);
-    },
-    multicast
+    }
   } as any;
 
   return stream;
 }
 
-export function pipeStream<T = any>(
-  source: Stream<any>,
-  ...steps: Operator<any, any>[]
-): Stream<T> {
-  if (!steps?.length) return source as unknown as Stream<T>;
-
-  const sink = createStream(`sink`, async function* () {
+export function pipeStream<T = any>(source: Stream<T>, ...steps: Operator[]): Stream<any> {
+  const createTransformedIterator = () => {
     const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
-    const finalIterator = steps.reduce<AsyncIterator<any>>(
-      (iterator, operator) => operator.apply(iterator),
-      baseIterator
-    );
+    return steps.reduce<AsyncIterator<T>>((iterator, op) => op.apply(iterator), baseIterator);
+  };
 
-    try {
-      while (true) {
-        const result = await finalIterator.next();
+  return {
+    name: 'piped',
+    type: 'stream',
+    subscribe: (cb) => {
+      const receiver = createReceiver(cb);
+      let active = true;
 
-        if (result.done) break;
-        yield result.value;
-      }
-    } catch (err) {
-      // Forward timeout or iterator errors if needed
-      throw err;
-    } finally {
-      if (finalIterator.return) {
+      const transformedIterator = createTransformedIterator();
+
+      (async () => {
         try {
-          await finalIterator.return(undefined);
-        } catch {
-          // Ignore cleanup errors
+          while (active) {
+            const result = await transformedIterator.next();
+            if (result.done) break;
+            await receiver.next(result.value);
+          }
+        } catch (err: any) {
+          await receiver.error(err);
+        } finally {
+          await receiver.complete();
         }
-      }
-    }
-  }, false); // Use unicast for piped streams to avoid sharing state
+      })();
 
-  return sink as unknown as Stream<T>;
+      return createSubscription(() => {
+        active = false;
+        if (transformedIterator.return) {
+          transformedIterator.return().catch(() => {});
+        }
+      });
+    },
+    [Symbol.asyncIterator]() {
+      return createTransformedIterator();
+    },
+    pipe(...ops) {
+      return pipeStream(this, ...ops);
+    }
+  } as Stream;
 }
