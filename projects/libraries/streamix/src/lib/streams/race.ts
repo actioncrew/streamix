@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
+import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -10,7 +10,7 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
   const controller = new AbortController();
   const signal = controller.signal;
 
-  const stream = createStream<T>('race', async function* () {
+  return createStream<T>('race', async function* () {
     if (streams.length === 0) {
       return;
     }
@@ -67,18 +67,4 @@ export function race<T>(...streams: Stream<T>[]): Stream<T> {
       }
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (
-    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
-  ): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

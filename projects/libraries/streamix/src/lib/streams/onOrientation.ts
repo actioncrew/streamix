@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits `"portrait"` or `"landscape"` whenever the screen orientation changes.
@@ -12,7 +12,7 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
   const controller = new AbortController();
   const signal = controller.signal;
 
-  const stream = createStream<"portrait" | "landscape">('onOrientation', async function* () {
+  return createStream<"portrait" | "landscape">('onOrientation', async function* () {
     if (
       typeof window === 'undefined' ||
       !window.screen?.orientation ||
@@ -51,15 +51,4 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
       window.screen.orientation.removeEventListener("change", listener);
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

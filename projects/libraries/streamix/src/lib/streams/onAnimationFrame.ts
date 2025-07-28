@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits the time delta between `requestAnimationFrame` calls.
@@ -7,7 +7,7 @@ export function onAnimationFrame(): Stream<number> {
   const controller = new AbortController();
   const signal = controller.signal;
 
-  const stream = createStream<number>('onAnimationFrame', async function* () {
+  return createStream<number>('onAnimationFrame', async function* () {
     let resolveNext: ((value: number) => void) | null = null;
     let lastTime = performance.now();
     let rafId: number | null = null;
@@ -43,15 +43,4 @@ export function onAnimationFrame(): Stream<number> {
       }
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: number) => void) | Receiver<number>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

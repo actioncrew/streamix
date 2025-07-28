@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 export function iif<T = any>(
@@ -33,20 +33,5 @@ export function iif<T = any>(
     }
   }
 
-  const stream = createStream('iif', generator);
-
-  // Override subscribe to handle cleanup
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (
-    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
-  ): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
+  return createStream('iif', generator);
 }

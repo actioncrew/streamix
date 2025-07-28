@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 export function fromEvent(target: EventTarget, event: string): Stream<Event> {
   const controller = new AbortController();
@@ -39,18 +39,5 @@ export function fromEvent(target: EventTarget, event: string): Stream<Event> {
     }
   }
 
-  const stream = createStream('fromEvent', generator);
-
-  // Override subscribe to abort on unsubscribe
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: Event) => void) | Receiver<Event>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
+  return createStream('fromEvent', generator);
 }

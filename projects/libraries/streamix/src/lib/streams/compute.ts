@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 
 /**
@@ -9,7 +9,7 @@ export function compute(task: Coroutine, params: any): Stream<any> {
   const controller = new AbortController();
   const signal = controller.signal;
 
-  const stream = createStream('compute', async function* () {
+  return createStream('compute', async function* () {
     // If aborted before starting
     if (signal.aborted) return;
 
@@ -49,16 +49,4 @@ export function compute(task: Coroutine, params: any): Stream<any> {
       task.returnWorker(worker);
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: any) => void) | Receiver<any>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

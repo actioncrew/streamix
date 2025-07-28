@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a timer stream that emits numbers starting from 0.
@@ -48,19 +48,5 @@ export function timer(delayMs = 0, intervalMs?: number): Stream<number> {
     }
   }
 
-  const stream = createStream<number>('timer', timerGenerator);
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (
-    callbackOrReceiver?: ((value: number) => void) | Receiver<number>
-  ): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
+  return createStream<number>('timer', timerGenerator);
 }

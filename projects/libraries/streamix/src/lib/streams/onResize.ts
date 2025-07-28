@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits the width and height of the element whenever it resizes.
@@ -7,7 +7,7 @@ export function onResize(element: Element): Stream<{ width: number; height: numb
   const controller = new AbortController();
   const signal = controller.signal;
 
-  const stream = createStream('onResize', async function* () {
+  return createStream('onResize', async function* () {
     let resolveNext: ((value: { width: number; height: number }) => void) | null = null;
 
     const observer = new ResizeObserver((entries) => {
@@ -34,15 +34,4 @@ export function onResize(element: Element): Stream<{ width: number; height: numb
       observer.disconnect();
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: { width: number; height: number }) => void) | Receiver<{ width: number; height: number }>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

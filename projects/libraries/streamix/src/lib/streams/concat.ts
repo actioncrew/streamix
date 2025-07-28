@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
+import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -38,18 +38,5 @@ export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
     }
   }
 
-  const stream = createStream<T>("concat", generator);
-
-  // Override subscribe to abort on unsubscribe
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: T) => void) | Receiver<T>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
+  return createStream<T>("concat", generator);
 }

@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream from `window.matchMedia` that emits whenever the media query matches or not.
@@ -7,7 +7,7 @@ export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
   const controller = new AbortController();
   const signal = controller.signal;
 
-  const stream = createStream<boolean>('onMediaQuery', async function* () {
+  return createStream<boolean>('onMediaQuery', async function* () {
     if (typeof window === 'undefined' || !window.matchMedia) {
       console.warn('matchMedia is not supported in this environment');
       return;
@@ -38,15 +38,4 @@ export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
       mediaQueryList.removeEventListener('change', listener);
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: boolean) => void) | Receiver<boolean>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }
