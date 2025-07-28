@@ -17,16 +17,15 @@ export function timer(delayMs = 0, intervalMs?: number): Stream<number> {
     function sleep(ms: number): Promise<void> {
       return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
-          signal.removeEventListener('abort', onAbort);
           resolve();
         }, ms);
 
         const onAbort = () => {
           clearTimeout(timeoutId);
-          reject(new Error('Timer aborted'));
+          reject(new Error('aborted'));
         };
 
-        signal.addEventListener('abort', onAbort);
+        signal.addEventListener('abort', onAbort, { once: true });
       });
     }
 
@@ -43,8 +42,10 @@ export function timer(delayMs = 0, intervalMs?: number): Stream<number> {
         await sleep(actualInterval);
         yield count++;
       }
-    } finally {
-      controller.abort();
+    } catch (err: any) {
+      if ((err as any).message !== 'aborted') {
+        throw err;
+      }
     }
   }
 

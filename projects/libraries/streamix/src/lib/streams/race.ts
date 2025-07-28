@@ -1,70 +1,37 @@
 import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
-/**
- * Returns a Stream that mirrors the first source Stream to emit a value, error, or completion.
- * Once a stream wins the race, all other source streams are unsubscribed.
- * Supports cancellation via AbortController.
- */
 export function race<T>(...streams: Stream<T>[]): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   return createStream<T>('race', async function* () {
-    if (streams.length === 0) {
-      return;
-    }
+    if (streams.length === 0) return;
 
-    const iterators = streams.map(s => eachValueFrom(s)[Symbol.asyncIterator]());
+    const controllers = streams.map(() => new AbortController());
+    const iterators = streams.map((s) => eachValueFrom(s)[Symbol.asyncIterator]());
 
     try {
-      const reflect = (promise: Promise<IteratorResult<T>>, index: number) =>
-        promise.then(
-          result => ({ ...result, index, status: 'fulfilled' as const }),
-          error => ({ error, index, status: 'rejected' as const })
+      while (true) {
+        // Create promises for all iterators
+        const promises = iterators.map((it, i) =>
+          it.next().then(result => ({ ...result, index: i }))
         );
 
-      // Create the race by requesting next value from every iterator
-      const racePromises = iterators.map((it, i) => reflect(it.next(), i));
-      const winner = await Promise.race([
-        Promise.race(racePromises),
-        new Promise<never>((_, reject) => {
-          signal.addEventListener('abort', () => reject(new Error('race aborted')));
-        }),
-      ]);
+        // Race all iterators
+        const { value, done, index } = await Promise.race(promises);
 
-      if (signal.aborted) return;
+        if (done) {
+          // Cancel all other streams
+          controllers.forEach((c, i) => i !== index && c.abort());
+          return;
+        }
 
-      if (winner.status === 'rejected') {
-        throw winner.error;
-      }
+        yield value;
 
-      const { value, done, index } = winner;
-      const winningIterator = iterators[index];
-
-      if (done) {
-        return;
-      }
-
-      yield value;
-
-      // Now exclusively follow the winning iterator until completion or abort
-      let nextResult = await winningIterator.next();
-      while (!nextResult.done && !signal.aborted) {
-        yield nextResult.value;
-        nextResult = await winningIterator.next();
+        // Cancel losing streams
+        controllers.forEach((c, i) => i !== index && c.abort());
       }
     } finally {
-      // Cleanup all iterators (unsubscribe)
-      for (const iterator of iterators) {
-        if (iterator.return) {
-          try {
-            await iterator.return(undefined);
-          } catch {
-            // ignore
-          }
-        }
-      }
+      // Cleanup all controllers
+      controllers.forEach(c => c.abort());
     }
   });
 }
