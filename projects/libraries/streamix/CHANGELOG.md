@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.15
+
+All streams are now **multicast** by default, enabling shared execution and improved performance across multiple subscribers
+
 ## 2.0.14
 
 We have added AbortController support to most stream creators to enable proper cancellation and resource cleanup when subscribers unsubscribe. This allows streams to stop producing values promptly, avoid memory leaks, and clean up internal iterators or event listeners automatically.
