@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
+import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -6,9 +6,6 @@ import { eachValueFrom } from "../converters";
  * from each stream whenever any stream emits a new value.
  */
 export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   async function* generator() {
     if (streams.length === 0) {
       return;
@@ -42,7 +39,7 @@ export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
     let promises = streams.map((_, index) => createPromise(index));
 
     try {
-      while (completedStreams < streams.length && !signal.aborted) {
+      while (completedStreams < streams.length) {
         // Wait for the first stream to emit
         const result = await Promise.race(promises);
 
@@ -84,20 +81,5 @@ export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
     }
   }
 
-  const stream = createStream<T[]>("combineLatest", generator);
-
-  // Override subscribe to abort on unsubscribe
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (
-    callbackOrReceiver?: ((value: T[]) => void) | Receiver<T[]>
-  ): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
+  return createStream<T[]>("combineLatest", generator);
 }

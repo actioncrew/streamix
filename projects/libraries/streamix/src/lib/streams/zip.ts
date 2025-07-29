@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 /**
@@ -14,7 +14,7 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
   const controller = new AbortController();
   const signal = controller.signal;
 
-  const stream = createStream<any[]>('zip', async function* () {
+  return createStream<any[]>('zip', async function* () {
     if (streams.length === 0) {
       return;
     }
@@ -62,17 +62,4 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
       );
     }
   });
-
-  // Override subscribe to abort on unsubscribe
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: any[]) => void) | Receiver<any[]>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

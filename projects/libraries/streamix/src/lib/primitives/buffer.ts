@@ -9,7 +9,7 @@ export type CyclicBuffer<T = any> = {
   write(value: T): Promise<void>;
   error(err: Error): Promise<void>;
   read(readerId: number): Promise<IteratorResult<T, void>>;
-  peek(): Promise<T | undefined>;
+  peek(readerId: number): Promise<IteratorResult<T, void>>;
   complete(): Promise<void>;
   attachReader(): Promise<number>;
   detachReader(readerId: number): Promise<void>;
@@ -20,7 +20,6 @@ export type CyclicBuffer<T = any> = {
  * A simplified buffer variant that stores a single value and delivers it to all readers.
  */
 export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
-  getValue(): Promise<T | undefined>;
   get value(): T | undefined;
 };
 
@@ -148,12 +147,29 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     }
   };
 
-  const peek = async (): Promise<T | undefined> => {
-    const releaseLock = await lock();
+  const peek = async (readerId: number): Promise<IteratorResult<T, void>> => {
+    const release = await lock();
     try {
-      return value;
+      const reader = readers.get(readerId);
+      if (!reader || !reader.isActive) {
+        return { done: true } as IteratorReturnResult<void>;
+      }
+
+      if (reader.lastSeenVersion < version) {
+        if (error) {
+          throw error;
+        }
+
+        return { value: value as T, done: false };
+      }
+
+      if (isCompleted) {
+        return { done: true } as IteratorReturnResult<void>;
+      }
+
+      return { value: undefined as any, done: false }; // No new value yet
     } finally {
-      releaseLock();
+      release();
     }
   };
 
@@ -179,7 +195,6 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       const reader = readers.get(readerId);
       return !reader || !reader.isActive || (isCompleted && reader.lastSeenVersion >= version);
     },
-    getValue: peek,
     get value() {
       return value;
     }
@@ -357,17 +372,25 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
   }
 
   // Peek latest
-  async function peek(): Promise<T | undefined> {
+  const peek = async function(id: number): Promise<IteratorResult<T>> {
     const release = await lock();
     try {
-      if (totalWritten === 0) return undefined;
-      const idx = isInfinite ? totalWritten - 1 : (writeIndex - 1 + capacity) % capacity;
+      const st = readers.get(id);
+
+      if (totalWritten === 0 || st!.offset >= totalWritten) {
+        return { value: undefined as any, done: true };
+      }
+      const readPos = st!.offset;
+      const idx = isInfinite ? readPos : readPos % capacity;
       const item = buffer[idx];
-      return isErrorItem(item) ? undefined : (item as T);
+      if (isErrorItem(item)) {
+        return Promise.reject(item) as any;
+      }
+      return { value: item as T, done: false };
     } finally {
       release();
     }
-  }
+  };
 
   // Check completed for reader
   function completed(id: number): boolean {

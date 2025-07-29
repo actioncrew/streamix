@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
+import { createStream, Stream } from "../abstractions";
 
 /**
  * Retries a stream-producing factory function up to a given number of times
@@ -14,15 +14,10 @@ export function retry<T = any>(
   maxRetries: number = 3,
   delay: number = 1000
 ): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
-  const stream = createStream<T>("retry", async function* () {
+  return createStream<T>("retry", async function* () {
     let retryCount = 0;
 
     while (retryCount <= maxRetries) {
-      if (signal.aborted) break;
-
       try {
         const sourceStream = factory();
         const values: T[] = [];
@@ -44,11 +39,6 @@ export function retry<T = any>(
               subscription.unsubscribe();
             },
           });
-
-          signal.addEventListener("abort", () => {
-            subscription.unsubscribe();
-            reject(new Error("retry aborted"));
-          });
         });
 
         if (streamError) {
@@ -67,28 +57,8 @@ export function retry<T = any>(
           throw error;
         }
 
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(resolve, delay);
-          signal.addEventListener("abort", () => {
-            clearTimeout(timeout);
-            resolve();
-          });
-        });
+        await new Promise<void>((resolve) => setTimeout(resolve, delay));
       }
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (
-    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
-  ): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

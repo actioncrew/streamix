@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream that performs a JSONP request and emits the resulting data once.
@@ -9,10 +9,7 @@ import { createStream, createSubscription, Receiver, Stream, Subscription } from
  * - Supports cancellation via AbortController.
  */
 export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
-  const stream = createStream<T>('jsonp', async function* () {
+  return createStream<T>('jsonp', async function* () {
     const uniqueCallbackName = `${callbackParam}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement('script');
 
@@ -38,35 +35,9 @@ export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<
 
     try {
       // Race the dataPromise against abort signal
-      const data = await Promise.race([
-        dataPromise,
-        new Promise<never>((_, reject) => {
-          signal.addEventListener('abort', () => reject(new Error('JSONP aborted')));
-        }),
-      ]);
-
-      if (signal.aborted) {
-        cleanup();
-        return;
-      }
-
-      yield data;
+      yield await dataPromise;
     } finally {
       cleanup();
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (
-    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
-  ): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

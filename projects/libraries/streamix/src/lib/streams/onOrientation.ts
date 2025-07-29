@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits `"portrait"` or `"landscape"` whenever the screen orientation changes.
@@ -9,10 +9,7 @@ import { createStream, createSubscription, Receiver, Stream, Subscription } from
  * - Cleans up the event listener on stream completion.
  */
 export function onOrientation(): Stream<"portrait" | "landscape"> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
-  const stream = createStream<"portrait" | "landscape">('onOrientation', async function* () {
+  return createStream<"portrait" | "landscape">('onOrientation', async function* () {
     if (
       typeof window === 'undefined' ||
       !window.screen?.orientation ||
@@ -30,7 +27,6 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
     let resolveNext: ((value: "portrait" | "landscape") => void) | null = null;
 
     const listener = () => {
-      if (signal.aborted) return;
       resolveNext?.(getOrientation());
       resolveNext = null;
     };
@@ -41,7 +37,7 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
       // Emit the initial orientation immediately
       yield getOrientation();
 
-      while (!signal.aborted) {
+      while (true) {
         const next = await new Promise<"portrait" | "landscape">((resolve) => {
           resolveNext = resolve;
         });
@@ -51,15 +47,4 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
       window.screen.orientation.removeEventListener("change", listener);
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

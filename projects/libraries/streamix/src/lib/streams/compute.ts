@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 import { Coroutine } from '../operators';
 
 /**
@@ -6,20 +6,13 @@ import { Coroutine } from '../operators';
  * yielding the result once the computation completes.
  */
 export function compute(task: Coroutine, params: any): Stream<any> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
-  const stream = createStream('compute', async function* () {
-    // If aborted before starting
-    if (signal.aborted) return;
-
+  return createStream('compute', async function* () {
     const worker = await task.getIdleWorker();
 
     try {
       const result = await new Promise<any>((resolve, reject) => {
         // Setup message handler
         worker.onmessage = (event: any) => {
-          if (signal.aborted) return;
           if (event.data.error) {
             reject(event.data.error);
           } else {
@@ -29,19 +22,11 @@ export function compute(task: Coroutine, params: any): Stream<any> {
 
         // Setup error handler
         worker.onerror = (error: any) => {
-          if (signal.aborted) return;
           reject(error);
         };
 
         // Start the computation
         worker.postMessage(params);
-
-        // Optional: handle abort to terminate worker early
-        signal.addEventListener('abort', () => {
-          // You might want to terminate the worker here or handle cleanup
-          // worker.terminate(); // if safe to do so
-          reject(new DOMException('Aborted', 'AbortError'));
-        });
       });
 
       yield result;
@@ -49,16 +34,4 @@ export function compute(task: Coroutine, params: any): Stream<any> {
       task.returnWorker(worker);
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (callbackOrReceiver?: ((value: any) => void) | Receiver<any>): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

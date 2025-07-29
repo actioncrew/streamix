@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from "../abstractions";
+import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -8,10 +8,7 @@ import { eachValueFrom } from "../converters";
  * Supports cancellation via AbortController.
  */
 export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
-  const stream = createStream<T>('merge', async function* () {
+  return createStream<T>('merge', async function* () {
     if (sources.length === 0) return;
 
     const iterators = sources.map(s => eachValueFrom(s)[Symbol.asyncIterator]());
@@ -24,7 +21,7 @@ export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
         error => ({ error, index, status: 'rejected' as const })
       );
 
-    while (activeCount > 0 && !signal.aborted) {
+    while (activeCount > 0) {
       const race = Promise.race(
         nextPromises
           .map((p, i) => (p ? reflect(p, i) : null))
@@ -34,14 +31,7 @@ export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
           >[]
       );
 
-      const winner = await Promise.race([
-        race,
-        new Promise<never>((_, reject) => {
-          signal.addEventListener('abort', () => reject(new Error('merge aborted')));
-        }),
-      ]);
-
-      if (signal.aborted) break;
+      const winner = await race;
 
       if (winner.status === 'rejected') {
         throw winner.error;
@@ -69,18 +59,4 @@ export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
       }
     }
   });
-
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (
-    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
-  ): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
 }

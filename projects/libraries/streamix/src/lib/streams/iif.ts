@@ -1,4 +1,4 @@
-import { createStream, createSubscription, Receiver, Stream, Subscription } from '../abstractions';
+import { createStream, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 export function iif<T = any>(
@@ -6,9 +6,6 @@ export function iif<T = any>(
   trueStream: Stream<T>,
   falseStream: Stream<T>
 ): Stream<T> {
-  const controller = new AbortController();
-  const signal = controller.signal;
-
   async function* generator(): AsyncGenerator<T, void, unknown> {
     // Evaluate condition lazily when the stream starts
     const sourceStream = condition() ? trueStream : falseStream;
@@ -16,7 +13,7 @@ export function iif<T = any>(
     const iterator = asyncIterable[Symbol.asyncIterator]();
 
     try {
-      while (!signal.aborted) {
+      while (true) {
         const result = await iterator.next();
         if (result.done) break;
         yield result.value;
@@ -33,20 +30,5 @@ export function iif<T = any>(
     }
   }
 
-  const stream = createStream('iif', generator);
-
-  // Override subscribe to handle cleanup
-  const originalSubscribe = stream.subscribe;
-  stream.subscribe = (
-    callbackOrReceiver?: ((value: T) => void) | Receiver<T>
-  ): Subscription => {
-    const subscription = originalSubscribe.call(stream, callbackOrReceiver);
-
-    return createSubscription(() => {
-      controller.abort();
-      subscription.unsubscribe();
-    });
-  };
-
-  return stream;
+  return createStream('iif', generator);
 }

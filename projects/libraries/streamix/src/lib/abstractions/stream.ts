@@ -3,7 +3,6 @@ import { Operator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
-// Basic Stream type definition
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
@@ -11,45 +10,123 @@ export type Stream<T = any> = {
   pipe: (...steps: Operator[]) => Stream<any>;
 };
 
-export function pipeStream<T = any>(
-  source: Stream<any>,
-  ...steps: Operator<any, any>[]
-): Stream<T> {
-  if (!steps?.length) return source as unknown as Stream<T>;
-
-  const sink = createStream(`sink`, async function* () {
-    // Create a fresh base iterator for each subscription
-    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
-
-    // Apply all operators using reduce
-    const finalIterator = steps.reduce<AsyncIterator<any>>(
-      (iterator, operator) => operator.apply(iterator),
-      baseIterator
-    );
-
-    // Yield from the composed iterator
-    yield* {
-      [Symbol.asyncIterator]() {
-        return finalIterator;
-      }
-    };
-  });
-
-  return sink as unknown as Stream<T>;
-}
-
-// The stream factory function
 export function createStream<T>(
   name: string,
-  generatorFn: () => AsyncGenerator<T, void, unknown>
+  generatorFn: (signal?: AbortSignal) => AsyncGenerator<T, void, unknown>,
 ): Stream<T> {
+  const activeSubscriptions = new Set<{
+    receiver: Receiver<T>;
+    subscription: Subscription<T>;
+  }>();
+  let isRunning = false;
+  let abortController = new AbortController();
+
   const subscribe = (
     callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>
   ): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const subscription = createSubscription<T>();
-    subscription.listen(generatorFn, receiver);
+    const subscription = createSubscription<T>(() => {
+      for (const sub of activeSubscriptions) {
+        if (sub.subscription === subscription) {
+          activeSubscriptions.delete(sub);
+          try {
+            if (sub.receiver.complete) {
+              sub.receiver.complete();
+            }
+          } catch (error) {
+            console.warn("Error completing cancelled receiver:", error);
+          }
+          break;
+        }
+      }
+
+      if (activeSubscriptions.size === 0) {
+        abortController.abort();
+        isRunning = false;
+      }
+    });
+
+    activeSubscriptions.add({ receiver, subscription });
+
+    if (!isRunning) {
+      isRunning = true;
+      startMulticastLoop(generatorFn, abortController.signal);
+    }
+
     return subscription;
+  };
+
+  const startMulticastLoop = (genFn: (signal?: AbortSignal) => AsyncGenerator<T, void, unknown>, signal: AbortSignal) => {
+    (async () => {
+      let currentIterator: AsyncIterator<T> | null = null;
+
+      const abortPromise = new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+        } else {
+          signal.addEventListener("abort", () => resolve(), { once: true });
+        }
+      });
+
+      try {
+        currentIterator = genFn(signal)[Symbol.asyncIterator]();
+        while (true) {
+          const winner = await Promise.race([
+            abortPromise.then(() => ({ aborted: true })),
+            currentIterator.next().then(result => ({ result }))
+          ]);
+
+          if ('aborted' in winner || signal.aborted) break;
+          if (winner.result.done) break;
+
+          const subscribers = Array.from(activeSubscriptions);
+          await Promise.all(
+            subscribers.map(async ({ receiver }) => {
+              try {
+                if (receiver.next) {
+                  await receiver.next(winner.result.value);
+                }
+              } catch (error) {
+                console.warn("Subscriber error:", error);
+              }
+            })
+          );
+        }
+      } catch (err) {
+        if (!signal.aborted) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          const subscribers = Array.from(activeSubscriptions);
+          await Promise.all(
+            subscribers.map(async ({ receiver }) => {
+              try {
+                if (receiver.error) {
+                  await receiver.error(error);
+                }
+              } catch {}
+            })
+          );
+        }
+      } finally {
+        if (currentIterator?.return) {
+          try {
+            await currentIterator.return(undefined);
+          } catch {}
+        }
+
+        const subscribers = Array.from(activeSubscriptions);
+        await Promise.all(
+          subscribers.map(async ({ receiver }) => {
+            try {
+              if (receiver.complete) {
+                await receiver.complete();
+              }
+            } catch {}
+          })
+        );
+
+        isRunning = false;
+      }
+    })();
   };
 
   const stream: Stream<T> = {
@@ -64,3 +141,61 @@ export function createStream<T>(
   return stream;
 }
 
+export function pipeStream<T = any>(source: Stream<T>, ...steps: Operator[]): Stream<any> {
+  const createTransformedIterator = () => {
+    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
+    return steps.reduce<AsyncIterator<T>>((iterator, op) => op.apply(iterator), baseIterator);
+  };
+
+  return {
+    name: 'piped',
+    type: 'stream',
+    subscribe: (cb) => {
+      const receiver = createReceiver(cb);
+      const transformedIterator = createTransformedIterator();
+
+      const abortController = new AbortController();
+      const { signal } = abortController;
+
+      const abortPromise = new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+        } else {
+          signal.addEventListener("abort", () => resolve(), { once: true });
+        }
+      });
+
+      (async () => {
+        try {
+          while (true) {
+            const winner = await Promise.race([
+              abortPromise.then(() => ({ aborted: true })),
+              transformedIterator.next().then(result => ({ result }))
+            ]);
+
+            if ('aborted' in winner || signal.aborted) break;
+            if (winner.result.done) break;
+
+            await receiver.next(winner.result.value);
+          }
+        } catch (err: any) {
+          if (!signal.aborted) {
+            await receiver.error?.(err);
+          }
+        } finally {
+          await receiver.complete?.();
+        }
+      })();
+
+      return createSubscription(() => {
+        abortController.abort();
+        if (transformedIterator.return) {
+          transformedIterator.return().catch(() => {});
+        }
+      });
+    },
+    pipe(...ops) {
+      return pipeStream(this, ...ops);
+    }
+  } as Stream;
+}
