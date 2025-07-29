@@ -1,6 +1,6 @@
 {
   "name": "streamix",
-  "version": "2.0.16",
+  "version": "2.0.15",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
