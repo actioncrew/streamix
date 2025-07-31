@@ -192,7 +192,8 @@ Here's how to build a live search with API calls and error handling:
 ```typescript
 import {
   eachValueFrom,
-  fromEvent, 
+  fromEvent,
+  fromPromise,
   debounce, 
   map, 
   filter, 
