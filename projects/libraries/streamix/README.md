@@ -190,7 +190,8 @@ for await (const activeUsers of eachValueFrom(dataStream)) {
 Here's how to build a live search with API calls and error handling:
 
 ```typescript
-import { 
+import {
+  eachValueFrom,
   fromEvent, 
   debounce, 
   map, 
