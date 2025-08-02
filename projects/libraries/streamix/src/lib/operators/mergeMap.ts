@@ -1,4 +1,4 @@
-import { createOperator, Operator, Stream } from '../abstractions';
+import { createOperator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -10,7 +10,7 @@ import { createSubject } from '../streams';
  */
 export function mergeMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R>,
-): Operator {
+) {
   return createOperator<T, R>('mergeMap', (source) => {
     const output = createSubject<R>();
 

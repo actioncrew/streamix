@@ -1,4 +1,4 @@
-import { createOperator, Operator, Stream } from '../abstractions';
+import { createOperator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -6,7 +6,7 @@ import { createSubject } from '../streams';
  * Emits values from the source until the notifier emits its first value.
  * Once the notifier emits, the output stream completes immediately.
  */
-export function takeUntil<T = any>(notifier: Stream): Operator {
+export function takeUntil<T = any>(notifier: Stream) {
   return createOperator<T, T>('takeUntil', (source) => {
     const output = createSubject<T>();
     let shouldStop = false;

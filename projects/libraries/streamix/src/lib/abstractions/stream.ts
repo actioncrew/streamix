@@ -9,7 +9,7 @@ import { createSubscription, Subscription } from "./subscription";
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
-  pipe: <Chain extends Operator<any, any>[]>(
+  pipe: <Chain extends OperatorChain<T>>(
     ...steps: Chain
   ) => Stream<GetChainOutput<T, Chain>>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
@@ -17,32 +17,28 @@ export type Stream<T = any> = {
 };
 
 /**
- * Recursively represents a tuple (chain) of operators applied sequentially,
- * transforming an input type `TIn` to an output type `TOut`.
- *
- * The third generic `Ts` tracks the actual operator tuple being processed,
- * allowing recursive inference along the chain.
+ * A more flexible operator chain type that handles spread operations properly.
+ * This allows both strict typing and dynamic operator arrays.
  */
-export type OperatorChain<
-  TIn,
-  TOut,
-  Ts extends any[] = []
-> =
-  Ts extends [infer Head, ...infer Tail]
-    ? Head extends Operator<infer A, infer B>
-      ? [Operator<TIn, A>, ...OperatorChain<B, TOut, Tail>]
-      : []
-    : [] | [Operator<TIn, TOut>];
+export type OperatorChain<TIn> =
+  | readonly []
+  | readonly [Operator<TIn, any>, ...Operator<any, any>[]]
+  | Operator<any, any>[];
 
 /**
- * Infers the output type of an operator chain.
- *
- * Given an input type `TIn` and a chain of operators (`TChain`),
- * this type resolves to the final output type after all operators are applied.
+ * Infers the output type of an operator chain by following the type transformations.
+ * Handles `never` types properly for throwing operators.
  */
-export type GetChainOutput<TIn, TChain extends Operator<any, any>[]> =
-  TChain extends [...any[], Operator<any, infer TOut>] ? TOut : TIn;
-
+export type GetChainOutput<TIn, TChain extends readonly Operator<any, any>[]> =
+  TChain extends readonly []
+    ? TIn
+    : TChain extends readonly [Operator<TIn, infer TOut>]
+      ? TOut
+    : TChain extends readonly [Operator<TIn, infer TMid>, ...infer Rest]
+      ? Rest extends readonly Operator<any, any>[]
+        ? GetChainOutput<TMid, Rest>
+        : TMid
+    : TIn;
 /**
  * Creates a cold stream from an async generator function.
  * Handles multicasting, subscription lifecycle, and graceful teardown.
@@ -161,7 +157,7 @@ export function createStream<T>(
   return {
     type: "stream",
     name,
-    pipe<Chain extends Operator<any, any>[]>(
+    pipe<Chain extends OperatorChain<T>>(
       ...steps: Chain
     ): Stream<GetChainOutput<T, Chain>> {
       return pipeStream(this, ...steps);
@@ -178,24 +174,24 @@ export function createStream<T>(
  * returning a new derived stream.
  */
 export function pipeStream<
-  TIn = any,
-  Chain extends Operator<any, any>[] = []
+  TIn,
+  Chain extends OperatorChain<TIn>
 >(
   source: Stream<TIn>,
   ...steps: Chain
 ): Stream<GetChainOutput<TIn, Chain>> {
   const createTransformedIterator = (): AsyncIterator<any> => {
-    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
-    return (steps as Operator<any, any>[]).reduce<AsyncIterator<any>>(
+    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
+    return steps.reduce<AsyncIterator<any>>(
       (iterator: AsyncIterator<any>, op: Operator<any, any>) => op.apply(iterator),
       baseIterator
     );
   };
 
   return {
-    name: `piped(${source.name ?? "stream"})`,
+    name: "piped",
     type: "stream",
-    pipe<NextChain extends Operator<any, any>[]>(
+    pipe<NextChain extends OperatorChain<GetChainOutput<TIn, Chain>>>(
       ...ops: NextChain
     ): Stream<GetChainOutput<GetChainOutput<TIn, Chain>, NextChain>> {
       return pipeStream(this, ...ops);

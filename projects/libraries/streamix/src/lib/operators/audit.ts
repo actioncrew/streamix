@@ -1,4 +1,4 @@
-import { createOperator, Operator } from '../abstractions';
+import { createOperator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -8,7 +8,7 @@ import { createSubject } from '../streams';
  *
  * Useful to limit the rate of emitted values (throttling with trailing edge).
  */
-export const audit = <T = any>(duration: number): Operator => {
+export const audit = <T = any>(duration: number) => {
   return createOperator<T, T>('audit', (source) => {
     const output = createSubject<T>();
 

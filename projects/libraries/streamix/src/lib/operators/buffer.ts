@@ -1,4 +1,4 @@
-import { createOperator, Operator } from "../abstractions";
+import { createOperator } from "../abstractions";
 import { eachValueFrom } from '../converters';
 import { createSubject, timer } from "../streams";
 
@@ -9,7 +9,7 @@ import { createSubject, timer } from "../streams";
  * Emits buffered values periodically and completes when the source completes.
  * Errors from source or timer propagate immediately.
  */
-export function buffer<T = any>(period: number): Operator {
+export function buffer<T = any>(period: number) {
   return createOperator<T, T[]>('buffer', (source) => {
     const output = createSubject<T[]>();
     let buffer: T[] = [];
@@ -59,7 +59,6 @@ export function buffer<T = any>(period: number): Operator {
       }
     })();
 
-    const iterable = eachValueFrom<T[]>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom<T[]>(output)[Symbol.asyncIterator]() as AsyncIterator<T[]>;
   });
 }

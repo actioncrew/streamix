@@ -2,8 +2,7 @@ import {
   CallbackReturnType,
   createReceiver,
   createSubscription,
-  GetChainOutput,
-  Operator,
+  OperatorChain,
   pipeStream,
   Receiver,
   Stream,
@@ -11,6 +10,7 @@ import {
 } from "../abstractions";
 import { firstValueFrom } from "../converters";
 import { createQueue, createSingleValueBuffer } from "../primitives";
+import { GetChainOutput } from './../abstractions/stream';
 
 /**
  * A `Subject` is a special type of `Stream` that can be manually pushed new values.
@@ -113,10 +113,10 @@ export function createSubject<T = any>(): Subject<T> {
     get snappy() {
       return latestValue;
     },
-    pipe<Chain extends Operator<any, any>[]>(
-      ...steps: Chain
+    pipe<Chain extends OperatorChain<T>>(
+      ...operators: Chain
     ): Stream<GetChainOutput<T, Chain>> {
-      return pipeStream(this, ...steps);
+      return pipeStream(this, ...operators);
     },
     subscribe,
     async query(): Promise<T> {

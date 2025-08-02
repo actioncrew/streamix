@@ -2,8 +2,7 @@ import {
   CallbackReturnType,
   createReceiver,
   createSubscription,
-  GetChainOutput,
-  Operator,
+  OperatorChain,
   pipeStream,
   Receiver,
   Stream,
@@ -11,6 +10,7 @@ import {
 } from "../abstractions";
 import { firstValueFrom } from "../converters";
 import { createQueue, createReplayBuffer, ReplayBuffer } from "../primitives";
+import { GetChainOutput } from './../abstractions/stream';
 import { Subject } from "./subject";
 
 /**
@@ -104,10 +104,10 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
-    pipe<Chain extends Operator<any, any>[]>(
-      ...steps: Chain
+    pipe<Chain extends OperatorChain<T>>(
+      ...operators: Chain
     ): Stream<GetChainOutput<T, Chain>> {
-      return pipeStream(this, ...steps);
+      return pipeStream(this, ...operators);
     },
     subscribe,
     async query(): Promise<T> {

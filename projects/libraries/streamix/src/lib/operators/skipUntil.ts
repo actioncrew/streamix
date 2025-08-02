@@ -1,11 +1,11 @@
-import { createOperator, Operator, Stream } from '../abstractions';
+import { createOperator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 /**
  * Skips values from the source stream until the notifier emits.
  */
-export function skipUntil<T = any>(notifier: Stream): Operator {
+export function skipUntil<T = any>(notifier: Stream) {
   return createOperator<T, T>('skipUntil', (source) => {
     const output = createSubject<T>();
     let canEmit = false;
