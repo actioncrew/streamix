@@ -1,3 +1,4 @@
+import { Operator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
 import { select } from "./select";
 
@@ -10,7 +11,7 @@ import { select } from "./select";
  */
 export const elementNth = <T = any>(
   indexPattern: (iteration: number) => CallbackReturnType<number | undefined>
-) => {
+): Operator<T, T> => {
   const indexIterator: AsyncGenerator<number> = (async function* () {
     let iteration = 0;
     while (true) {

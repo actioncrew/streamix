@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 
 /**
  * Emits values from the source stream only if the specified key's value differs from the previous emitted value.
@@ -7,7 +7,7 @@ import { createOperator } from '../abstractions';
 export const distinctUntilKeyChanged = <T extends object = any>(
   key: keyof T,
   comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean | Promise<boolean>
-) =>
+): Operator<T, T> =>
   createOperator<T, T>('distinctUntilKeyChanged', (source) => {
     let lastValue: T | undefined;
     let isFirst = true;
