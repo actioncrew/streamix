@@ -229,10 +229,10 @@ export function pipeStream<
         }
       })();
 
-      return createSubscription(() => {
+      return createSubscription(async () => {
         abortController.abort();
         if (transformedIterator.return) {
-          transformedIterator.return().catch(() => {});
+          await transformedIterator.return().catch(() => {});
         }
       });
     },
