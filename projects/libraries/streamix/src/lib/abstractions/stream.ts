@@ -180,12 +180,12 @@ export function pipeStream<
   source: Stream<TIn>,
   ...steps: Chain
 ): Stream<GetChainOutput<TIn, Chain>> {
-  const createTransformedIterator = (): AsyncIterator<any> => {
-    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
-    return steps.reduce<AsyncIterator<any>>(
-      (iterator: AsyncIterator<any>, op: Operator<any, any>) => op.apply(iterator),
-      baseIterator
-    );
+  const createTransformedIterator = async (): Promise<AsyncIterator<any>> => {
+    let iterator: AsyncIterator<any> = eachValueFrom(source)[Symbol.asyncIterator]();
+    for (const op of steps) {
+      iterator = await op.apply(iterator); // Support async apply
+    }
+    return iterator;
   };
 
   return {
@@ -209,6 +209,8 @@ export function pipeStream<
 
       (async () => {
         try {
+          const transformedIterator = await createTransformedIterator();
+          
           while (true) {
             const winner = await Promise.race([
               abortPromise.then(() => ({ aborted: true })),
