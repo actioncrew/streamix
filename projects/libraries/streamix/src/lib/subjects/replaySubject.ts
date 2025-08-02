@@ -2,9 +2,11 @@ import {
   CallbackReturnType,
   createReceiver,
   createSubscription,
+  GetChainOutput,
   Operator,
   pipeStream,
   Receiver,
+  Stream,
   Subscription,
 } from "../abstractions";
 import { createQueue, createReplayBuffer, ReplayBuffer } from "../primitives";
@@ -102,7 +104,9 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     type: "subject",
     name: "replaySubject",
     subscribe,
-    pipe(...steps: Operator[]) {
+    pipe<Chain extends Operator<any, any>[]>(
+      ...steps: Chain
+    ): Stream<GetChainOutput<T, Chain>> {
       return pipeStream(this, ...steps);
     },
     get snappy(): undefined {

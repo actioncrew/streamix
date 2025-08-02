@@ -2,6 +2,7 @@ import {
   CallbackReturnType,
   createReceiver,
   createSubscription,
+  GetChainOutput,
   Operator,
   pipeStream,
   Receiver,
@@ -112,7 +113,9 @@ export function createSubject<T = any>(): Subject<T> {
       return latestValue;
     },
     subscribe,
-    pipe(...steps: Operator[]) {
+    pipe<Chain extends Operator<any, any>[]>(
+      ...steps: Chain
+    ): Stream<GetChainOutput<T, Chain>> {
       return pipeStream(this, ...steps);
     },
     next,

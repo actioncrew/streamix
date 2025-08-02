@@ -34,10 +34,10 @@ describe('distinctUntilChanged', () => {
   });
 
   it('should handle non-primitive values correctly', (done) => {
-    const test = from([1, 1, 2, 2, 3, 3]);
-    const distinctStream = test.pipe(distinctUntilChanged<{ id: number }>());
+    const test = from([{ id: 1 }, { id: 1 }, { id: 2 }, { id: 2 }, { id: 3 }, { id: 3 }]);
+    const distinctStream = test.pipe(distinctUntilChanged<{ id: number }>((a, b) => a.id === b.id));
 
-    const expectedValues = [1, 2, 3];
+    const expectedValues = [{ id: 1 }, { id: 2 }, { id: 3 }];
     let index = 0;
 
     distinctStream.subscribe((value) => {

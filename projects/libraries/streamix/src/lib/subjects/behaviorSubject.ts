@@ -2,9 +2,11 @@ import {
   CallbackReturnType,
   createReceiver,
   createSubscription,
+  GetChainOutput,
   Operator,
   pipeStream,
   Receiver,
+  Stream,
   Subscription
 } from "../abstractions";
 import { createQueue, createSingleValueBuffer } from "../primitives";
@@ -107,7 +109,9 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       return latestValue;
     },
     subscribe,
-    pipe(...steps: Operator[]) {
+    pipe<Chain extends Operator<any, any>[]>(
+      ...steps: Chain
+    ): Stream<GetChainOutput<T, Chain>> {
       return pipeStream(this, ...steps);
     },
     next,

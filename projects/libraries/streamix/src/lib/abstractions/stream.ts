@@ -10,8 +10,37 @@ export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
-  pipe: (...steps: Operator[]) => Stream<any>;
+  pipe: <Chain extends Operator<any, any>[]>(
+    ...steps: Chain
+  ) => Stream<GetChainOutput<T, Chain>>;
 };
+
+/**
+ * Recursively represents a tuple (chain) of operators applied sequentially,
+ * transforming an input type `TIn` to an output type `TOut`.
+ *
+ * The third generic `Ts` tracks the actual operator tuple being processed,
+ * allowing recursive inference along the chain.
+ */
+export type OperatorChain<
+  TIn,
+  TOut,
+  Ts extends any[] = []
+> =
+  Ts extends [infer Head, ...infer Tail]
+    ? Head extends Operator<infer A, infer B>
+      ? [Operator<TIn, A>, ...OperatorChain<B, TOut, Tail>]
+      : []
+    : [] | [Operator<TIn, TOut>];
+
+/**
+ * Infers the output type of an operator chain.
+ *
+ * Given an input type `TIn` and a chain of operators (`TChain`),
+ * this type resolves to the final output type after all operators are applied.
+ */
+export type GetChainOutput<TIn, TChain extends Operator<any, any>[]> =
+  TChain extends [...any[], Operator<any, infer TOut>] ? TOut : TIn;
 
 /**
  * Creates a cold stream from an async generator function.
@@ -19,7 +48,7 @@ export type Stream<T = any> = {
  */
 export function createStream<T>(
   name: string,
-  generatorFn: () => AsyncGenerator<T, void, unknown>,
+  generatorFn: () => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
   const activeSubscriptions = new Set<{
     receiver: Receiver<T>;
@@ -37,9 +66,7 @@ export function createStream<T>(
         if (sub.subscription === subscription) {
           activeSubscriptions.delete(sub);
           try {
-            if (sub.receiver.complete) {
-              sub.receiver.complete();
-            }
+            sub.receiver.complete?.();
           } catch (error) {
             console.warn("Error completing cancelled receiver:", error);
           }
@@ -63,16 +90,16 @@ export function createStream<T>(
     return subscription;
   };
 
-  const startMulticastLoop = (genFn: () => AsyncGenerator<T, void, unknown>, signal: AbortSignal) => {
+  const startMulticastLoop = (
+    genFn: () => AsyncGenerator<T, void, unknown>,
+    signal: AbortSignal
+  ) => {
     (async () => {
       let currentIterator: AsyncIterator<T> | null = null;
 
       const abortPromise = new Promise<void>((resolve) => {
-        if (signal.aborted) {
-          resolve();
-        } else {
-          signal.addEventListener("abort", () => resolve(), { once: true });
-        }
+        if (signal.aborted) resolve();
+        else signal.addEventListener("abort", () => resolve(), { once: true });
       });
 
       try {
@@ -83,16 +110,14 @@ export function createStream<T>(
             currentIterator.next().then(result => ({ result }))
           ]);
 
-          if ('aborted' in winner || signal.aborted) break;
+          if ("aborted" in winner || signal.aborted) break;
           if (winner.result.done) break;
 
           const subscribers = Array.from(activeSubscriptions);
           await Promise.all(
             subscribers.map(async ({ receiver }) => {
               try {
-                if (receiver.next) {
-                  await receiver.next(winner.result.value);
-                }
+                await receiver.next?.(winner.result.value);
               } catch (error) {
                 console.warn("Subscriber error:", error);
               }
@@ -106,9 +131,7 @@ export function createStream<T>(
           await Promise.all(
             subscribers.map(async ({ receiver }) => {
               try {
-                if (receiver.error) {
-                  await receiver.error(error);
-                }
+                await receiver.error?.(error);
               } catch {}
             })
           );
@@ -124,9 +147,7 @@ export function createStream<T>(
         await Promise.all(
           subscribers.map(async ({ receiver }) => {
             try {
-              if (receiver.complete) {
-                await receiver.complete();
-              }
+              await receiver.complete?.();
             } catch {}
           })
         );
@@ -136,44 +157,49 @@ export function createStream<T>(
     })();
   };
 
-  const stream: Stream<T> = {
+  return {
     type: "stream",
     name,
     subscribe,
-    pipe(...steps: Operator[]) {
+    pipe<Chain extends Operator<any, any>[]>(
+      ...steps: Chain
+    ): Stream<GetChainOutput<T, Chain>> {
       return pipeStream(this, ...steps);
     }
   };
-
-  return stream;
 }
 
 /**
  * Pipes a stream through a series of transformation operators,
  * returning a new derived stream.
  */
-export function pipeStream<T = any>(source: Stream<T>, ...steps: Operator[]): Stream<any> {
-  const createTransformedIterator = () => {
+export function pipeStream<
+  TIn = any,
+  Chain extends Operator<any, any>[] = []
+>(
+  source: Stream<TIn>,
+  ...steps: Chain
+): Stream<GetChainOutput<TIn, Chain>> {
+  const createTransformedIterator = (): AsyncIterator<any> => {
     const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();
-    return steps.reduce<AsyncIterator<T>>((iterator, op) => op.apply(iterator), baseIterator);
+    return (steps as Operator<any, any>[]).reduce<AsyncIterator<any>>(
+      (iterator: AsyncIterator<any>, op: Operator<any, any>) => op.apply(iterator),
+      baseIterator
+    );
   };
 
   return {
-    name: 'piped',
-    type: 'stream',
+    name: "piped",
+    type: "stream",
     subscribe: (cb) => {
       const receiver = createReceiver(cb);
       const transformedIterator = createTransformedIterator();
-
       const abortController = new AbortController();
       const { signal } = abortController;
 
       const abortPromise = new Promise<void>((resolve) => {
-        if (signal.aborted) {
-          resolve();
-        } else {
-          signal.addEventListener("abort", () => resolve(), { once: true });
-        }
+        if (signal.aborted) resolve();
+        else signal.addEventListener("abort", () => resolve(), { once: true });
       });
 
       (async () => {
@@ -184,7 +210,7 @@ export function pipeStream<T = any>(source: Stream<T>, ...steps: Operator[]): St
               transformedIterator.next().then(result => ({ result }))
             ]);
 
-            if ('aborted' in winner || signal.aborted) break;
+            if ("aborted" in winner || signal.aborted) break;
             if (winner.result.done) break;
 
             await receiver.next(winner.result.value);
@@ -205,8 +231,10 @@ export function pipeStream<T = any>(source: Stream<T>, ...steps: Operator[]): St
         }
       });
     },
-    pipe(...ops) {
+    pipe<NextChain extends Operator<any, any>[]>(
+      ...ops: NextChain
+    ): Stream<GetChainOutput<GetChainOutput<TIn, Chain>, NextChain>> {
       return pipeStream(this, ...ops);
     }
-  } as Stream;
+  };
 }
