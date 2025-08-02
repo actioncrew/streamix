@@ -61,5 +61,5 @@ export function buffer<T = any>(period: number) {
 
     const iterable = eachValueFrom<T[]>(output);
     return iterable[Symbol.asyncIterator]();
-  }
+  });
 }
