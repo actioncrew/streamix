@@ -1,5 +1,11 @@
 import { Stream, Subscription } from "../abstractions";
 
+/**
+ * Returns a promise that resolves with the first emitted value from a `Stream`.
+ *
+ * If the stream completes without emitting a value, the promise rejects.
+ * Automatically unsubscribes after receiving the first value or error/completion.
+ */
 export function firstValueFrom<T = any>(stream: Stream<T>): Promise<T> {
   let subscription: Subscription;
   let seen = false;

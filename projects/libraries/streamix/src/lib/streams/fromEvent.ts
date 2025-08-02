@@ -1,5 +1,8 @@
 import { createStream, Stream } from '../abstractions';
 
+/**
+ * Creates a stream that emits events of the specified type from the given EventTarget.
+ */
 export function fromEvent<T extends Event = Event>(
   target: EventTarget,
   event: string

@@ -1,5 +1,9 @@
 import { createOperator } from "../abstractions";
 
+/**
+ * Emits pairs of values from the source where each pair consists of the previous
+ * and the current value. The first pair will have `undefined` as the previous value.
+ */
 export const slidingPair = <T = any>() =>
   createOperator<T, [T | undefined, T]>('slidingPair', (source) => {
     let prev: T | undefined = undefined;

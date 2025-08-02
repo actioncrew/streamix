@@ -2,6 +2,11 @@ import { createOperator } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
+/**
+ * Emits the most recent value from the source stream only after
+ * a specified duration has passed without another new value.
+ * Resets the timer on each new value, debouncing the output.
+ */
 export function debounce<T = any>(duration: number) {
   return createOperator<T, T>("debounce", (source) => {
     let output = createSubject<T>();

@@ -1,5 +1,8 @@
 import { createOperator } from '../abstractions';
 
+/**
+ * Skips the first specified number of values from the source stream.
+ */
 export const skip = <T = any>(count: number) =>
   createOperator<T, T>('skip', (source) => {
     let counter = count;

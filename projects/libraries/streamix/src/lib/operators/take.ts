@@ -1,5 +1,9 @@
 import { createOperator } from "../abstractions";
 
+/**
+ * Emits only the first `count` values from the source stream,
+ * then completes the output stream.
+ */
 export const take = <T = any>(count: number) =>
   createOperator<T, T>("take", (source) => {
     let emitted = 0;

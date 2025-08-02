@@ -1,5 +1,9 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
 
+/**
+ * Skips values from the source while the predicate returns true.
+ * Emits values once the predicate returns false for the first time.
+ */
 export const skipWhile = <T = any>(predicate: (value: T) => CallbackReturnType<boolean>) =>
   createOperator<T, T>('skipWhile', (source) => {
     let skipping = true;

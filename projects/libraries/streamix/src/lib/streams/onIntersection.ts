@@ -1,8 +1,12 @@
 import { createStream, Stream } from '../abstractions';
 
 /**
- * Creates a stream that emits a boolean indicating whether the element is intersecting the viewport.
- * Emits every time the intersection state changes.
+ * Creates a stream that emits `true` when a given element enters the
+ * viewport and `false` when it leaves.
+ *
+ * This operator is a wrapper around the `IntersectionObserver` API,
+ * making it easy to create reactive streams for "lazy loading" or
+ * triggering events when an element becomes visible.
  */
 export function onIntersection(
   element: Element,

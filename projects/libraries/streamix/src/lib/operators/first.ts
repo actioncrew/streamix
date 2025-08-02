@@ -1,5 +1,9 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
+/**
+ * Emits only the first element from the source stream that matches the optional predicate.
+ * If no predicate is provided, it emits the very first element.
+ */
 export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
   createOperator<T, T>('first', (source) => {
     let found = false;

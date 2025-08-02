@@ -1,6 +1,13 @@
 import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
+/**
+ * Returns a stream that races multiple input streams.
+ * It emits values from the first stream that produces a value,
+ * then cancels all other streams.
+ *
+ * Once the winning stream completes, the output stream completes.
+ */
 export function race<T extends readonly unknown[] = any[]>(
   ...streams: { [K in keyof T]: Stream<T[K]> }
 ): Stream<T[number]> {

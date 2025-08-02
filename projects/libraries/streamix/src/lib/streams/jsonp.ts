@@ -3,10 +3,10 @@ import { createStream, Stream } from '../abstractions';
 /**
  * Creates a stream that performs a JSONP request and emits the resulting data once.
  *
- * - Dynamically injects a `<script>` tag to load data via JSONP.
- * - Uses a unique callback name for each request.
- * - Automatically cleans up the script element and global callback after the response or error.
- * - Supports cancellation via AbortController.
+ * This function provides a reactive way to handle JSONP requests, which are
+ * often used to bypass the same-origin policy for loading data from a different
+ * domain. It dynamically creates a `<script>` tag, handles the response via a
+ * global callback, and then cleans up after itself.
  */
 export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<T> {
   return createStream<T>('jsonp', async function* () {

@@ -206,8 +206,6 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
  *
  * Extends {@link CyclicBuffer} with an additional `buffer` getter
  * to access the internal list of buffered values.
- *
- * @template T The type of values stored in the buffer.
  */
 export type ReplayBuffer<T = any> = CyclicBuffer<T> & {
   get buffer(): T[];
@@ -232,10 +230,6 @@ export function createNotifier() {
  *
  * If `capacity` is `Infinity`, it acts as an unbounded replay buffer, storing all values.
  * Otherwise, it's a fixed-size circular buffer.
- *
- * @template T The type of items stored in the buffer.
- * @param {number} capacity The maximum number of items the buffer can store. Use `Infinity` for an unbounded buffer.
- * @returns {CyclicBuffer<T>} A replay buffer implementation.
  */
 export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
   const isInfinite = !isFinite(capacity);

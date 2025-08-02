@@ -1,5 +1,10 @@
 import { createOperator } from "../abstractions";
 
+/**
+ * Emits all values from the source stream.
+ * If the source completes without emitting any values,
+ * emits the provided default value once before completing.
+ */
 export const defaultIfEmpty = <T = any>(defaultValue: T) =>
   createOperator<T, T>("defaultIfEmpty", (source) => {
     let emitted = false;

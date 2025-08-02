@@ -10,6 +10,10 @@ import {
 } from "../abstractions";
 import { createQueue, createSingleValueBuffer } from "../primitives";
 
+/**
+ * A `Subject` is a special type of `Stream` that can be manually pushed new values.
+ * It acts as both a source of values and a consumer, multicasting to multiple subscribers.
+ */
 export type Subject<T = any> = Stream<T> & {
   next(value: T): void;
   complete(): void;
@@ -18,6 +22,15 @@ export type Subject<T = any> = Stream<T> & {
   get snappy(): T | undefined;
 };
 
+/**
+ * Creates a new Subject instance.
+ *
+ * A Subject can be used to manually control a stream, emitting values
+ * to all active subscribers.
+ *
+ * @template T The type of the values that the subject will emit.
+ * @returns A new Subject instance.
+ */
 export function createSubject<T = any>(): Subject<T> {
   const buffer = createSingleValueBuffer<T>();
   const queue = createQueue();

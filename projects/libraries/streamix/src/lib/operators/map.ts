@@ -1,5 +1,9 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
 
+/**
+ * Applies a transformation function to each value emitted by the source stream,
+ * emitting the transformed values.
+ */
 export const map = <T = any, R = any>(
   transform: (value: T, index: number) => CallbackReturnType<R>
 ) =>

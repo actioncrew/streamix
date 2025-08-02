@@ -1,6 +1,13 @@
 import { CallbackReturnType } from './../abstractions/receiver';
 import { select } from "./select";
 
+/**
+ * Emits elements from the source stream at dynamic indices specified
+ * by the asynchronous index pattern function.
+ *
+ * The `indexPattern` function receives the current iteration count
+ * and returns the next index to emit or `undefined` to stop.
+ */
 export const elementNth = <T = any>(
   indexPattern: (iteration: number) => CallbackReturnType<number | undefined>
 ) => {

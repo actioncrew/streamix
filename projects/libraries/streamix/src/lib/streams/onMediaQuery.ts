@@ -1,7 +1,12 @@
 import { createStream, Stream } from '../abstractions';
 
 /**
- * Creates a stream from `window.matchMedia` that emits whenever the media query matches or not.
+ * Creates a stream that emits `true` or `false` when a CSS media query's
+ * status changes.
+ *
+ * This is a reactive wrapper around the `window.matchMedia` API,
+ * allowing you to easily react to changes in screen size, orientation,
+ * or other media features.
  */
 export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
   return createStream<boolean>('onMediaQuery', async function* () {

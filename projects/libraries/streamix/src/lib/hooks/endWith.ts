@@ -1,5 +1,8 @@
 import { createOperator } from "../abstractions";
 
+/**
+ * Emits all values from the source stream, then emits a final specified value before completing.
+ */
 export const endWith = <T = any>(finalValue: T) =>
   createOperator<T, T>("endWith", (source) => {
     let sourceDone = false;

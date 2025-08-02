@@ -1,6 +1,10 @@
 import { createOperator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
 
+/**
+ * Emits the maximum value from the source stream, using an optional comparator.
+ * If no comparator is provided, values are compared using the ">" operator.
+ */
 export const max = <T = any>(
   comparator?: (a: T, b: T) => CallbackReturnType<number>
 ) =>

@@ -1,5 +1,9 @@
 import { createOperator } from '../abstractions';
 
+/**
+ * Emits values from the source stream only if the specified key's value differs from the previous emitted value.
+ * Uses an optional comparator function for custom equality check of the key's values; defaults to strict inequality.
+ */
 export const distinctUntilKeyChanged = <T extends object = any>(
   key: keyof T,
   comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean | Promise<boolean>

@@ -4,7 +4,7 @@ import { createSubject } from '../streams';
 
 /**
  * Emits values from the source until the notifier emits its first value.
- * Once the notifier emits, the output completes.
+ * Once the notifier emits, the output stream completes immediately.
  */
 export function takeUntil<T = any>(notifier: Stream): Operator {
   return createOperator<T, T>('takeUntil', (source) => {

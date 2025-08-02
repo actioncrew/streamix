@@ -1,6 +1,14 @@
 import { createOperator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
 
+/**
+ * Filters values emitted by the source stream based on a predicate function
+ * or a specific value (or array of values) to include.
+ *
+ * When a predicate function is provided, values for which the predicate returns
+ * true are included. When a value or array is provided, only matching values
+ * are included.
+ */
 export const filter = <T = any>(
   predicateOrValue: ((value: T, index: number) => CallbackReturnType<boolean>) | T | T[]
 ) =>

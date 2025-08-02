@@ -1,6 +1,10 @@
 import { createStream, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
+/**
+ * Creates a stream that chooses between two streams based on a condition.
+ * The condition is evaluated lazily when the stream starts.
+ */
 export function iif<T = any>(
   condition: () => boolean,
   trueStream: Stream<T>,

@@ -3,10 +3,12 @@ import { loop } from './loop';
 
 /**
  * Creates a stream that emits a sequence of numbers, starting from `start`,
- * incrementing by `step`, and emitting `count` values.
+ * incrementing by `step`, and emitting a total of `count` values.
  *
- * - Similar to `Array.from({ length: count }, (_, i) => start + i * step)` but as a stream.
- * - Useful for generating numerical sequences in reactive flows.
+ * This operator is a powerful way to generate a numerical sequence in a
+ * reactive context. It's similar to a standard `for` loop but produces
+ * values as a stream. It's built upon the `loop` operator for its
+ * underlying logic.
  */
 export function range(start: number, count: number, step: number = 1): Stream<number> {
   const end = start + count * step;

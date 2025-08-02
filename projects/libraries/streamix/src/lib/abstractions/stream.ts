@@ -3,6 +3,9 @@ import { Operator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
+/**
+ * Represents a reactive stream that supports subscriptions and operator chaining.
+ */
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
@@ -10,6 +13,10 @@ export type Stream<T = any> = {
   pipe: (...steps: Operator[]) => Stream<any>;
 };
 
+/**
+ * Creates a cold stream from an async generator function.
+ * Handles multicasting, subscription lifecycle, and graceful teardown.
+ */
 export function createStream<T>(
   name: string,
   generatorFn: () => AsyncGenerator<T, void, unknown>,
@@ -141,6 +148,10 @@ export function createStream<T>(
   return stream;
 }
 
+/**
+ * Pipes a stream through a series of transformation operators,
+ * returning a new derived stream.
+ */
 export function pipeStream<T = any>(source: Stream<T>, ...steps: Operator[]): Stream<any> {
   const createTransformedIterator = () => {
     const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]();

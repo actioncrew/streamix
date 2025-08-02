@@ -3,7 +3,12 @@ import { eachValueFrom } from "../converters";
 
 /**
  * Combines multiple streams and emits a tuple containing the latest values
- * from each stream whenever any stream emits a new value.
+ * from each stream whenever any of the source streams emits a new value.
+ *
+ * This operator is useful for scenarios where you need to react to changes
+ * in multiple independent data sources simultaneously. The output stream
+ * will not emit a value until all source streams have emitted at least one
+ * value.
  */
 export function combineLatest<T extends unknown[] = any[]>(
   streams: { [K in keyof T]: Stream<T[K]> }

@@ -1,5 +1,9 @@
 import { createOperator } from "../abstractions";
 
+/**
+ * Collects all emitted values into an array and emits the array once
+ * the source completes.
+ */
 export const toArray = <T = any>() =>
   createOperator<T, T[]>("toArray", (source) => {
     let collected: T[] | null = null;

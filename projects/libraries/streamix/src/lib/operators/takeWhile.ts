@@ -1,5 +1,9 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
+/**
+ * Emits values from the source until the predicate returns false.
+ * Completes immediately when the predicate fails.
+ */
 export const takeWhile = <T = any>(predicate: (value: T) => CallbackReturnType<boolean>) =>
   createOperator<T, T>("takeWhile", (source) => {
     let done = false;

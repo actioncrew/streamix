@@ -1,5 +1,9 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
 
+/**
+ * Emits values from the source stream only if they differ from the previous emitted value.
+ * Uses an optional comparator function for custom equality check; defaults to strict equality.
+ */
 export const distinctUntilChanged = <T = any>(
   comparator?: (prev: T, curr: T) => CallbackReturnType<boolean>
 ) =>

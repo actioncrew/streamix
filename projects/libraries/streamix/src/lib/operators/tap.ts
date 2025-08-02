@@ -1,6 +1,10 @@
 import { createOperator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
 
+/**
+ * Performs a side-effect for each value from the source without modifying the value.
+ * The side-effect function can be asynchronous.
+ */
 export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType) =>
   createOperator<T, T>('tap', (source) => {
     return {

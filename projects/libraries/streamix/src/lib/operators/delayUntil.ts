@@ -1,6 +1,11 @@
 import { createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
+/**
+ * Delays emission of values from the source stream until the notifier stream emits at least once.
+ * Buffers source values until notifier emits, then flushes buffer and forwards subsequent values immediately.
+ * If notifier completes without emitting, buffered values are eventually flushed.
+ */
 export const delayUntil = <T = any>(notifier: Stream<any>) =>
   createOperator<T, T>("delayUntil", (source) => {
     let canEmit = false;

@@ -1,6 +1,11 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 import { GroupItem } from "./groupBy";
 
+/**
+ * Splits the source stream into two groups based on a predicate.
+ * Emits items wrapped in an object containing the key `"true"` or `"false"`,
+ * indicating whether each item satisfies the predicate.
+ */
 export const partition = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>

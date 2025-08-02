@@ -10,6 +10,13 @@ import {
 import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
+/**
+ * Combines the source stream with the latest values from the provided streams.
+ * Emits a tuple containing the latest value from the source followed by the latest values from all other streams,
+ * only after all streams have emitted at least once.
+ *
+ * The output completes or errors if the source or any provided stream completes/errors.
+ */
 export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(...streams: { [K in keyof R]: Stream<R[K]> }) {
   return createOperator<T, [T, ...R]>("withLatestFrom", (source) => {
     const output = createSubject<[T, ...R]>();

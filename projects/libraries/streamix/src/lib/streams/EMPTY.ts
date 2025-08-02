@@ -3,8 +3,11 @@ import { CallbackReturnType, createReceiver, createStream, Receiver, Stream, Sub
 /**
  * Creates an empty stream that emits no values and completes immediately.
  *
- * - Useful as a placeholder or base case in stream compositions.
- * - The subscription completes immediately without emitting any values.
+ * This function creates a stream that serves as a useful utility for
+ * scenarios where a stream is expected but no values need to be produced.
+ * It completes immediately upon subscription, allowing a sequence of
+ * other streams to proceed without delay.
+ *
  */
 export const empty = <T = any>(): Stream<T> => {
   const stream = createStream<T>('EMPTY', async function* (this: Stream<T>): AsyncGenerator<T> {
@@ -27,5 +30,11 @@ export const empty = <T = any>(): Stream<T> => {
   return Object.assign(stream, { subscribe, completed: () => true });
 };
 
-// Export a singleton instance of EmptyStream
+/**
+ * A singleton instance of an empty stream.
+ *
+ * This constant provides a reusable, empty stream that immediately completes
+ * upon subscription without emitting any values. It is useful in stream
+ * compositions as a placeholder or to represent a sequence with no elements.
+ */
 export const EMPTY = empty();

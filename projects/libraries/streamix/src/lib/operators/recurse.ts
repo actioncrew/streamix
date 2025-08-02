@@ -1,10 +1,22 @@
 import { CallbackReturnType, createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
+/**
+ * Options to configure the recursive traversal behavior.
+ */
 export type RecurseOptions = {
   traversal?: 'depth' | 'breadth';
   maxDepth?: number;
 };
+
+/**
+ * Recursively processes values from a source stream by applying a projection
+ * function to each value that meets a condition. Supports configurable
+ * traversal strategies (depth-first or breadth-first) and max recursion depth.
+ *
+ * Emits each processed value, including those from the original source and
+ * those yielded by recursively projected streams.
+ */
 
 export const recurse = <T = any>(
   condition: (value: T) => CallbackReturnType<boolean>,

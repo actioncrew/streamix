@@ -1,7 +1,12 @@
 import { createStream, Stream } from '../abstractions';
 
 /**
- * Creates a stream of `MutationRecord[]` arrays for mutations observed on the element.
+ * Creates a stream that emits an array of `MutationRecord` objects whenever
+ * a change is detected on a given DOM element.
+ *
+ * This function provides a reactive wrapper around the browser's native
+ * `MutationObserver` API, making it easy to respond to changes in the DOM,
+ * such as a change in attributes, child nodes, or character data.
  */
 export function onMutation(
   element: Element,

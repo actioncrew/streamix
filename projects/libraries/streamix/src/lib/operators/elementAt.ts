@@ -1,5 +1,9 @@
 import { select } from "./select";
 
+/**
+ * Emits only the element at the specified zero-based index from the source stream.
+ * Throws an error if the index is negative.
+ */
 export const elementAt = <T = any>(targetIndex: number) =>
   select<T>(async function* () {
     if (targetIndex < 0) {

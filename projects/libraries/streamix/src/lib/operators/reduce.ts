@@ -1,6 +1,9 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
-
+/**
+ * Accumulates all values from the source stream using the provided accumulator function,
+ * emitting the final accumulated result once the source completes.
+ */
 export const reduce = <T = any, A = any>(
   accumulator: (acc: A, value: T) => CallbackReturnType<A>,
   seed: A

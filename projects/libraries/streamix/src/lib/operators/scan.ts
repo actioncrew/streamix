@@ -1,5 +1,9 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
+/**
+ * Accumulates values from the source stream using the provided accumulator function,
+ * emitting each intermediate accumulated result.
+ */
 export const scan = <T = any, R = any>(
   accumulator: (acc: R, value: T, index: number) => CallbackReturnType<R>,
   seed: R

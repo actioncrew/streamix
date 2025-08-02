@@ -2,6 +2,12 @@ import { createOperator, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
+/**
+ * Emits the latest value from the source stream at most once per specified duration.
+ * Ignores intermediate values within the duration window and emits only the last one.
+ *
+ * Useful to limit the rate of emitted values (throttling with trailing edge).
+ */
 export const audit = <T = any>(duration: number): Operator => {
   return createOperator<T, T>('audit', (source) => {
     const output = createSubject<T>();

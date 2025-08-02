@@ -2,6 +2,10 @@ import { createOperator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
+/**
+ * Emits the most recent value from the source stream at a fixed periodic interval.
+ * If no new value arrives between intervals, the last emitted value is re-emitted.
+ */
 export const sample = <T = any>(period: number) =>
   createOperator<T, T>('sample', (source) => {
     const output = createSubject<T>();

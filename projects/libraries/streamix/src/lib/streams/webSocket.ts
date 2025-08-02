@@ -1,5 +1,10 @@
 import { createStream, Stream } from '../abstractions';
 
+/**
+ * A stream that represents a WebSocket-like interface.
+ * It extends a standard async Stream with a `send` method
+ * to send messages into the stream.
+ */
 export type WebSocketStream<T = any> = Stream<T> & {
   send: (message: T) => void;
 };

@@ -10,10 +10,22 @@ import {
 import { createQueue, createSingleValueBuffer } from "../primitives";
 import { Subject } from "./subject";
 
+/**
+ * A BehaviorSubject is a special type of Subject that maintains
+ * a current value and emits that value immediately to new subscribers.
+ * It allows synchronous retrieval of the latest emitted value via `.snappy`.
+ */
 export type BehaviorSubject<T = any> = Subject<T> & {
   get snappy(): T;
 };
 
+/**
+ * Creates a BehaviorSubject that holds a current value and emits it immediately to new subscribers.
+ * It maintains the latest value internally and allows synchronous access via the `snappy` getter.
+ *
+ * The subject queues emitted values and delivers them to subscribers asynchronously,
+ * supporting safe concurrent access and orderly processing.
+ */
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
   const buffer = createSingleValueBuffer<T>(initialValue);
   const queue = createQueue();

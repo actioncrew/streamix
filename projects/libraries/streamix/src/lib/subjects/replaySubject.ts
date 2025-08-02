@@ -10,8 +10,18 @@ import {
 import { createQueue, createReplayBuffer, ReplayBuffer } from "../primitives";
 import { Subject } from "./subject";
 
+/**
+ * A type alias for a ReplaySubject, which is a type of Subject.
+ */
 export type ReplaySubject<T = any> = Subject<T>;
 
+/**
+ * Creates a new ReplaySubject.
+ *
+ * A ReplaySubject is a variant of a Subject that stores a specified number of
+ * the latest values it has emitted and "replays" them to any new subscribers.
+ * This allows late subscribers to receive past values they may have missed.
+ */
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
   const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
   const queue = createQueue();

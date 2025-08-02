@@ -2,11 +2,12 @@ import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
- * Concatenates multiple streams by subscribing to each one sequentially.
+ * Creates a stream that subscribes to multiple streams in sequence.
  *
- * - Emits all values from the first stream, then moves to the next.
- * - Completes when all source streams have completed.
- * - Propagates errors from any source stream immediately.
+ * This operator will subscribe to the first stream and yield all of its
+ * values. Once the first stream completes, it will then subscribe to the
+ * second stream, and so on, until all streams have completed. The resulting
+ * stream will complete only after the last source stream has completed.
  */
 export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
   async function* generator() {

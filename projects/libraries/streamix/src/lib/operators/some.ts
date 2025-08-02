@@ -1,5 +1,10 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
+/**
+ * Emits `true` if any item in the source satisfies the predicate,
+ * otherwise emits `false` after the source completes.
+ * Completes after emitting the result.
+ */
 export const some = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>

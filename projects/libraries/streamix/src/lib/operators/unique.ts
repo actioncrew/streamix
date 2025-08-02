@@ -1,6 +1,10 @@
 import { createOperator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
 
+/**
+ * Emits only distinct values, comparing by the key selector or by value if no selector is provided.
+ * Duplicate keys/values are skipped.
+ */
 export const unique = <T = any, K = any>(
   keySelector?: (value: T) => CallbackReturnType<K>
 ) =>

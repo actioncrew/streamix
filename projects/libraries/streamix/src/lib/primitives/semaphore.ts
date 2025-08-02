@@ -8,9 +8,6 @@ export type Semaphore = {
 
 /**
  * Creates a semaphore for controlling access to a limited number of resources.
- *
- * @param {number} initialCount The initial number of permits available in the semaphore.
- * @returns {Semaphore} An object with methods to acquire, try to acquire, and release permits.
  */
 export const createSemaphore = (initialCount: number): Semaphore => {
   let count = initialCount;

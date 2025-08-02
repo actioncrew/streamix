@@ -1,5 +1,11 @@
 import { Stream } from "../abstractions";
 
+/**
+ * Converts a `Stream` into an async generator, yielding each emitted value.
+ *
+ * Values are yielded as they arrive. The generator ends on stream completion,
+ * or throws on error. Buffered values are drained before waiting for new ones.
+ */
 export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator<T> {
   let resolveNext: ((value: T | undefined) => void) | null = null;
   let rejectNext: ((error: any) => void) | null = null;

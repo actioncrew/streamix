@@ -2,6 +2,12 @@ import { createOperator, Stream, Subscription } from "../abstractions";
 import { eachValueFrom } from '../converters';
 import { createSubject } from "../streams";
 
+/**
+ * Maps each value from the source into a new inner stream and flattens the
+ * most recent inner stream, cancelling previous ones.
+ * Emits values from the latest projected stream only.
+ * Completes when the source completes and the current inner stream completes.
+ */
 export function switchMap<T = any, R = any>(project: (value: T, index: number) => Stream<R>) {
   return createOperator<T, R>("switchMap", (source) => {
     const output = createSubject<R>();

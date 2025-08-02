@@ -2,6 +2,9 @@ import { createOperator } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
+/**
+ * Emits only the values at the specified indexes from the source stream.
+ */
 export const select = <T = any>(
   indexIterator: Iterator<number> | AsyncIterator<number>
 ) =>

@@ -1,10 +1,11 @@
 import { createStream, Stream } from "../abstractions";
 
 /**
- * Converts a Promise into a Stream that emits the resolved value once and then completes.
+ * Creates a stream that emits the resolved value of a Promise and then completes.
  *
- * - Emits the resolved value of the promise.
- * - Emits an error if the promise rejects.
+ * This is a simple but powerful operator for converting a single, asynchronous
+ * value into a stream. If the promise is rejected, the stream will emit an
+ * error.
  */
 export function fromPromise<T = any>(promise: Promise<T>): Stream<T> {
   return createStream<T>('fromPromise', async function* () {

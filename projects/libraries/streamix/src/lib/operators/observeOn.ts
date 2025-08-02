@@ -3,12 +3,10 @@ import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 /**
- * Schedules the emission of values from the source on a specified execution context.
+ * Delays the emission of each item from the source stream
+ * by scheduling it on the specified JavaScript task queue context.
  *
- * @param queue A string indicating the desired execution context.
- * Currently supports 'microtask' for microtask queue scheduling,
- * and 'macrotask' queue scheduling (setTimeout(..., 0)).
- * @returns An operator function that transforms a source stream.
+ * Supports `"microtask"` (via `queueMicrotask`) and `"macrotask"` (via `setTimeout`).
  */
 export const observeOn = <T = any>(context: "microtask" | "macrotask") => {
   return createOperator<T, T>('observeOn', (source) => {

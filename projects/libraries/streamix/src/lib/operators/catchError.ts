@@ -1,5 +1,10 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
 
+/**
+ * Catches errors from the source stream and handles them via a provided handler function.
+ * After the first error is caught and handled, the stream completes.
+ * Subsequent errors are re-thrown.
+ */
 export const catchError = <T = any>(
   handler: (error: any) => CallbackReturnType = () => {} // Handler still returns void
 ) =>

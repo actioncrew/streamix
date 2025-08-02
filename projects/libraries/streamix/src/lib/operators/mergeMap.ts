@@ -2,6 +2,12 @@ import { createOperator, Operator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
+/**
+ * Maps each value from the source stream to an inner stream via the project function,
+ * and concurrently emits all values from all inner streams in a merged fashion.
+ *
+ * Inner streams run concurrently without waiting for each other.
+ */
 export function mergeMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R>,
 ): Operator {

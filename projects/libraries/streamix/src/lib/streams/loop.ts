@@ -1,12 +1,13 @@
 import { createStream, Stream } from '../abstractions';
 
 /**
- * Creates a stream that emits values in a loop using a `condition` and `iterateFn`.
+ * Creates a stream that emits values in a loop based on a condition and an
+ * iteration function.
  *
- * - Starts with `initialValue`.
- * - Emits values while `condition(currentValue)` returns `true`.
- * - Uses `iterateFn(currentValue)` to calculate the next value.
- * - Supports cancellation via `unsubscribe()`.
+ * This operator is useful for generating a sequence of values until a specific
+ * condition is no longer met. It starts with an `initialValue` and, for each
+ * iteration, it yields the current value and then uses `iterateFn` to
+ * calculate the next value in the sequence.
  */
 export function loop<T = any>(
   initialValue: T,

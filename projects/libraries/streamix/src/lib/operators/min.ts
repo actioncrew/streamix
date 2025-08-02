@@ -1,5 +1,9 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
 
+/**
+ * Emits the minimum value from the source stream, based on an optional comparator.
+ * Waits for the source to complete before emitting the minimum.
+ */
 export const min = <T = any>(
   comparator?: (a: T, b: T) => CallbackReturnType<number>
 ) =>

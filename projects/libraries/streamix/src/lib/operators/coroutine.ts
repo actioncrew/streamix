@@ -1,5 +1,13 @@
 import { createOperator, Operator } from "../abstractions";
 
+/**
+ * Extended Operator that manages a pool of Web Workers for concurrent task processing.
+ *
+ * - `finalize`: Cleans up resources and terminates workers.
+ * - `processTask`: Sends data to a worker and returns the processed result.
+ * - `getIdleWorker`: Retrieves an available worker from the pool or creates a new one.
+ * - `returnWorker`: Returns a worker back to the pool for reuse.
+ */
 export type Coroutine<T = any, R = any> = Operator<T, R> & {
   finalize: () => Promise<void>;
   processTask: (data: any) => Promise<R>;
@@ -11,6 +19,15 @@ let helperScriptCache: string | null = null;
 let fetchingHelperScript = false;
 let helperScriptPromise: Promise<string> | null = null; // Corrected type to string
 
+/**
+ * Coroutine operator to run tasks in a pool of Web Workers.
+ * It manages a worker pool limited by hardware concurrency,
+ * injects dependencies as functions, fetches a helper script if async functions detected,
+ * and processes source stream values in workers sequentially.
+ *
+ * The operator exposes methods to finalize, process tasks directly,
+ * get and return workers manually.
+ */
 export const coroutine = <T = any, R = any>(main: Function, ...functions: Function[]): Coroutine<T, R> => {
   const maxWorkers = navigator.hardwareConcurrency || 4;
   const workerPool: Worker[] = [];

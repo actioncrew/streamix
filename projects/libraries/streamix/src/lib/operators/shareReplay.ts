@@ -2,6 +2,9 @@ import { createOperator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createReplaySubject, ReplaySubject } from '../streams';
 
+/**
+ * Shares the source stream and replays the last `bufferSize` values to new subscribers.
+ */
 export function shareReplay<T = any>(bufferSize: number = Infinity) {
   let isConnected = false;
   let output: ReplaySubject<T> | undefined;

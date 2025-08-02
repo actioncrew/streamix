@@ -1,5 +1,9 @@
 import { createOperator } from "../abstractions";
 
+/**
+ * Buffers a fixed number of values from the source stream and emits them as arrays.
+ * Emits when the buffer reaches the specified size or when the source completes.
+ */
 export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
   createOperator<T, T[]>("bufferCount", (source) => {
     let done = false;

@@ -1,5 +1,9 @@
 import { CallbackReturnType, StrictReceiver } from "../abstractions";
 
+/**
+ * Represents a subscription to a stream-like source.
+ * Tracks lifecycle, latest value, and supports active listening.
+ */
 export type Subscription<T = any> = {
   (): Promise<T | undefined>;
   readonly unsubscribed: boolean;
@@ -9,6 +13,10 @@ export type Subscription<T = any> = {
   listen(iterator: () => AsyncIterator<T>, receiver: StrictReceiver<T>): Promise<void>;
 };
 
+/**
+ * Creates a new subscription with optional cleanup logic.
+ * Captures the latest value and manages cancellation state.
+ */
 export function createSubscription<T = any>(
   onUnsubscribe?: () => CallbackReturnType
 ): Subscription<T> {

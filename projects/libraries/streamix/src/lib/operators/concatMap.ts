@@ -1,6 +1,11 @@
 import { createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
+/**
+ * Projects each value from the source stream to an inner stream,
+ * then flattens those inner streams sequentially (one after another).
+ * Emits all values from one inner stream before moving to the next.
+ */
 export const concatMap = <T = any, R = any>(
   project: (value: T, index: number) => Stream<R>
 ) =>
