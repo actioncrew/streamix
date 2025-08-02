@@ -212,7 +212,7 @@ export function pipeStream<
           while (true) {
             const winner = await Promise.race([
               abortPromise.then(() => ({ aborted: true })),
-              await transformedIterator.next().then(result => ({ result }))
+              transformedIterator.next().then(result => ({ result }))
             ]);
 
             if ("aborted" in winner || signal.aborted) break;
