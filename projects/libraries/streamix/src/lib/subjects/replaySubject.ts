@@ -9,6 +9,7 @@ import {
   Stream,
   Subscription,
 } from "../abstractions";
+import { firstValueFrom } from "../converters";
 import { createQueue, createReplayBuffer, ReplayBuffer } from "../primitives";
 import { Subject } from "./subject";
 
@@ -103,11 +104,14 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
-    subscribe,
     pipe<Chain extends Operator<any, any>[]>(
       ...steps: Chain
     ): Stream<GetChainOutput<T, Chain>> {
       return pipeStream(this, ...steps);
+    },
+    subscribe,
+    async query(): Promise<T> {
+      return await firstValueFrom(this);
     },
     get snappy(): undefined {
       throw new Error("Replay subject does not support snappy.");

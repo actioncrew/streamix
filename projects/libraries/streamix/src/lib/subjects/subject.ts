@@ -9,6 +9,7 @@ import {
   Stream,
   Subscription
 } from "../abstractions";
+import { firstValueFrom } from "../converters";
 import { createQueue, createSingleValueBuffer } from "../primitives";
 
 /**
@@ -112,11 +113,14 @@ export function createSubject<T = any>(): Subject<T> {
     get snappy() {
       return latestValue;
     },
-    subscribe,
     pipe<Chain extends Operator<any, any>[]>(
       ...steps: Chain
     ): Stream<GetChainOutput<T, Chain>> {
       return pipeStream(this, ...steps);
+    },
+    subscribe,
+    async query(): Promise<T> {
+      return await firstValueFrom(this);
     },
     next,
     complete,

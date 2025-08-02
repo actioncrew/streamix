@@ -1,4 +1,4 @@
-import { eachValueFrom } from "../converters";
+import { eachValueFrom, firstValueFrom } from "../converters";
 import { Operator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
@@ -9,10 +9,11 @@ import { createSubscription, Subscription } from "./subscription";
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
-  subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   pipe: <Chain extends Operator<any, any>[]>(
     ...steps: Chain
   ) => Stream<GetChainOutput<T, Chain>>;
+  subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
+  query: () => Promise<T>;
 };
 
 /**
@@ -160,12 +161,15 @@ export function createStream<T>(
   return {
     type: "stream",
     name,
-    subscribe,
     pipe<Chain extends Operator<any, any>[]>(
       ...steps: Chain
     ): Stream<GetChainOutput<T, Chain>> {
       return pipeStream(this, ...steps);
-    }
+    },
+    subscribe,
+    query: async function (): Promise<T> {
+      return await firstValueFrom(this);
+    },
   };
 }
 
@@ -189,9 +193,14 @@ export function pipeStream<
   };
 
   return {
-    name: "piped",
+    name: `piped(${source.name ?? "stream"})`,
     type: "stream",
-    subscribe: (cb) => {
+    pipe<NextChain extends Operator<any, any>[]>(
+      ...ops: NextChain
+    ): Stream<GetChainOutput<GetChainOutput<TIn, Chain>, NextChain>> {
+      return pipeStream(this, ...ops);
+    },
+    subscribe(cb) {
       const receiver = createReceiver(cb);
       const transformedIterator = createTransformedIterator();
       const abortController = new AbortController();
@@ -231,10 +240,8 @@ export function pipeStream<
         }
       });
     },
-    pipe<NextChain extends Operator<any, any>[]>(
-      ...ops: NextChain
-    ): Stream<GetChainOutput<GetChainOutput<TIn, Chain>, NextChain>> {
-      return pipeStream(this, ...ops);
+    async query(): Promise<GetChainOutput<TIn, Chain>> {
+      return await firstValueFrom(this);
     }
   };
 }
