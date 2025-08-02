@@ -61,7 +61,7 @@ pnpm add @actioncrew/streamix
 ### Basic Stream Operations
 
 ```typescript
-import { range, map, filter, take } from '@actioncrew/streamix';
+import { eachValueFrom, range, map, filter, take } from '@actioncrew/streamix';
 
 // Create a stream of numbers, transform them, and consume
 const stream = range(1, 100)
@@ -80,7 +80,7 @@ for await (const value of eachValueFrom(stream)) {
 ### Handling User Events
 
 ```typescript
-import { fromEvent, debounce, map } from '@actioncrew/streamix';
+import { eachValueFrom, fromEvent, debounce, map, filter } from '@actioncrew/streamix';
 
 // Debounced search as user types
 const searchInput = document.getElementById('search');
@@ -120,7 +120,7 @@ const stream = createStream('numberStream', numberStream);
 Transform, filter, and combine streams with familiar operators:
 
 ```typescript
-import { map, filter, mergeMap, combineLatest } from '@actioncrew/streamix';
+import { map, filter, mergeMap } from '@actioncrew/streamix';
 
 const processedStream = sourceStream
   .pipe(
@@ -134,7 +134,7 @@ const processedStream = sourceStream
 Manually control stream emissions:
 
 ```typescript
-import { Subject, createSubject } from '@actioncrew/streamix';
+import { eachValueFrom, Subject, createSubject } from '@actioncrew/streamix';
 
 const subject = createSubject<string>();
 
@@ -156,6 +156,7 @@ subject.complete();
 Streamix includes a powerful HTTP client perfect for reactive applications:
 
 ```typescript
+import { eachValueFrom, map, retry } from '@actioncrew/streamix';
 import { 
   createHttpClient, 
   readJson, 
@@ -189,8 +190,10 @@ for await (const activeUsers of eachValueFrom(dataStream)) {
 Here's how to build a live search with API calls and error handling:
 
 ```typescript
-import { 
-  fromEvent, 
+import {
+  eachValueFrom,
+  fromEvent,
+  fromPromise,
   debounce, 
   map, 
   filter, 
