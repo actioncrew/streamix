@@ -11,7 +11,7 @@ export const recurse = <T = any>(
   project: (value: T) => Stream<T>,
   options: RecurseOptions = {}
 ) =>
-  createOperator('recurse', (source) => {
+  createOperator<T, T>('recurse', (source) => {
     type QueueItem = { value: T; depth: number };
     const queue: QueueItem[] = [];
     let sourceDone = false;
@@ -57,7 +57,7 @@ export const recurse = <T = any>(
           }
 
           // Yield control briefly (avoid busy waiting)
-          await new Promise((resolve) => setTimeout(resolve, 0));
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
         }
       },
     };

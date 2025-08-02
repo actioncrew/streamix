@@ -2,7 +2,7 @@ import { createOperator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
 
 export const last = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator('last', (source) => {
+  createOperator<T, T>('last', (source) => {
     let finished = false;
     let lastValue: T | undefined;
     let hasMatch = false;

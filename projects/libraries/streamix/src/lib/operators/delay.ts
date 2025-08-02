@@ -2,8 +2,8 @@ import { createOperator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
-export function delay<T>(ms: number) {
-  return createOperator('delay', (source) => {
+export function delay<T = any>(ms: number) {
+  return createOperator<T, T>('delay', (source) => {
     const output = createSubject<T>();
 
     (async () => {
@@ -22,7 +22,7 @@ export function delay<T>(ms: number) {
       }
     })();
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

@@ -1,12 +1,12 @@
 import { createOperator } from "../abstractions";
 
-export const toArray = () =>
-  createOperator("toArray", (source) => {
-    let collected: any[] | null = null;
+export const toArray = <T = any>() =>
+  createOperator<T, T[]>("toArray", (source) => {
+    let collected: T[] | null = null;
     let emitted = false;
 
     return {
-      async next(): Promise<IteratorResult<any[]>> {
+      async next(): Promise<IteratorResult<T[]>> {
         if (emitted) return { done: true, value: undefined };
 
         collected = [];

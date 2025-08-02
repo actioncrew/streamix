@@ -4,7 +4,7 @@ import { GroupItem } from "./groupBy";
 export const partition = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator('partition', (source) => {
+  createOperator<T, GroupItem<T, "true" | "false">>('partition', (source) => {
     let index = 0;
 
     return {

@@ -3,7 +3,7 @@ import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export const audit = <T = any>(duration: number): Operator => {
-  return createOperator<T>('audit', (source) => {
+  return createOperator<T, T>('audit', (source) => {
     const output = createSubject<T>();
 
     let lastValue: T | undefined = undefined;
@@ -45,7 +45,7 @@ export const audit = <T = any>(duration: number): Operator => {
       }
     })();
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
 };

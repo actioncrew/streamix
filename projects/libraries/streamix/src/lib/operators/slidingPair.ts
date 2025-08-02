@@ -1,7 +1,7 @@
 import { createOperator } from "../abstractions";
 
 export const slidingPair = <T = any>() =>
-  createOperator('slidingPair', (source) => {
+  createOperator<T, [T | undefined, T]>('slidingPair', (source) => {
     let prev: T | undefined = undefined;
     let first = true;
 
@@ -10,7 +10,7 @@ export const slidingPair = <T = any>() =>
         const { value, done } = await source.next();
 
         if (done) {
-          return { value: undefined, done: true };
+          return { value: undefined as any, done: true };
         }
 
         const result: [T | undefined, T] = [first ? undefined : prev, value];

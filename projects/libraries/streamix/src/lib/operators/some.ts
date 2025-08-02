@@ -3,7 +3,7 @@ import { CallbackReturnType, createOperator } from "../abstractions";
 export const some = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator('some', (source) => {
+  createOperator<T, boolean>('some', (source) => {
     let evaluated = false;
     let result: boolean = false;
     let index = 0;

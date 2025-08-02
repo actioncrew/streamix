@@ -3,7 +3,7 @@ import { CallbackReturnType, createOperator } from '../abstractions';
 export const distinctUntilChanged = <T = any>(
   comparator?: (prev: T, curr: T) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T>('distinctUntilChanged', (source) => {
+  createOperator<T, T>('distinctUntilChanged', (source) => {
     let lastValue: T | undefined;
     let hasLast = false;
 

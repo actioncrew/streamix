@@ -1,7 +1,7 @@
 import { createOperator } from "../abstractions";
 
-export const count = () =>
-  createOperator("count", (source) => {
+export const count = <T = any>() =>
+  createOperator<T, number>("count", (source) => {
     let counted = false;
     let total = 0;
 

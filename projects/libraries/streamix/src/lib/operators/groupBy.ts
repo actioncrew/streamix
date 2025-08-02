@@ -8,7 +8,7 @@ export type GroupItem<T = any, K = any> = {
 export const groupBy = <T = any, K = any>(
   keySelector: (value: T) => CallbackReturnType<K>
 ) =>
-  createOperator("groupBy", (source) => ({
+  createOperator<T, GroupItem<T, K>>("groupBy", (source) => ({
     async next(): Promise<IteratorResult<GroupItem<T, K>>> {
       const result = await source.next();
       if (result.done) return result;

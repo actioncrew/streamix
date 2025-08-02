@@ -1,10 +1,10 @@
-import { Stream } from "../abstractions";
+import { Stream, Subscription } from "../abstractions";
 
-export function firstValueFrom<T>(stream: Stream<T>): Promise<T | undefined> {
-  let subscription: ReturnType<Stream<T>["subscribe"]>;
+export function firstValueFrom<T = any>(stream: Stream<T>): Promise<T> {
+  let subscription: Subscription;
   let seen = false;
 
-  return new Promise<T | undefined>((resolve, reject) => {
+  return new Promise<T>((resolve, reject) => {
     subscription = stream.subscribe({
       next(value: T) {
         seen = true;

@@ -2,10 +2,10 @@ import { createOperator, Operator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
-export function mergeMap<T, R>(
-  project: (value: T, index: number) => Stream<R>, // or Stream<R>
+export function mergeMap<T = any, R = any>(
+  project: (value: T, index: number) => Stream<R>,
 ): Operator {
-  return createOperator('mergeMap', (source) => {
+  return createOperator<T, R>('mergeMap', (source) => {
     const output = createSubject<R>();
 
     let index = 0;
@@ -57,6 +57,6 @@ export function mergeMap<T, R>(
       }
     })();
 
-    return eachValueFrom(output);
+    return eachValueFrom<R>(output);
   });
 }

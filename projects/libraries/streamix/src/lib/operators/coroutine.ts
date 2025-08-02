@@ -1,8 +1,8 @@
 import { createOperator, Operator } from "../abstractions";
 
-export type Coroutine = Operator & {
+export type Coroutine<T = any, R = any> = Operator<T, R> & {
   finalize: () => Promise<void>;
-  processTask: (data: any) => Promise<any>;
+  processTask: (data: any) => Promise<R>;
   getIdleWorker: () => Promise<Worker>;
   returnWorker: (worker: Worker) => void;
 };
@@ -11,7 +11,7 @@ let helperScriptCache: string | null = null;
 let fetchingHelperScript = false;
 let helperScriptPromise: Promise<string> | null = null; // Corrected type to string
 
-export const coroutine = (main: Function, ...functions: Function[]): Coroutine => {
+export const coroutine = <T = any, R = any>(main: Function, ...functions: Function[]): Coroutine<T, R> => {
   const maxWorkers = navigator.hardwareConcurrency || 4;
   const workerPool: Worker[] = [];
   const waitingQueue: Array<(worker: Worker) => void> = [];
@@ -120,10 +120,10 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
     }
   };
 
-  const processTask = async (value: any): Promise<any> => {
+  const processTask = async (value: R): Promise<R> => {
     const worker = await getIdleWorker();
     try {
-      return await new Promise<any>((resolve, reject) => {
+      return await new Promise<R>((resolve, reject) => {
         const messageHandler = (event: MessageEvent) => {
           worker.removeEventListener('message', messageHandler); // Clean up listener
           worker.removeEventListener('error', errorHandler);     // Clean up listener
@@ -173,9 +173,9 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
     helperScriptPromise = null;
   };
 
-  const operator = createOperator("coroutine", (source) => {
+  const operator = createOperator<T, R>("coroutine", (source) => {
     return {
-      async next(): Promise<IteratorResult<any>> {
+      async next(): Promise<IteratorResult<R>> {
         if (isFinalizing) {
           // If already finalizing, complete immediately
           return { done: true, value: undefined };
@@ -189,7 +189,7 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
         }
 
         try {
-          const processedValue = await processTask(value);
+          const processedValue = await processTask(value as any);
           return { done: false, value: processedValue };
         } catch (error) {
           // Propagate error and finalize
@@ -198,12 +198,12 @@ export const coroutine = (main: Function, ...functions: Function[]): Coroutine =
         }
       },
 
-      async return(): Promise<IteratorResult<any>> {
+      async return(): Promise<IteratorResult<R>> {
         await finalize(); // Finalize on early return
         return { done: true, value: undefined };
       },
 
-      async throw(error?: any): Promise<IteratorResult<any>> {
+      async throw(error?: any): Promise<IteratorResult<R>> {
         await finalize(); // Finalize on error from upstream
         throw error;
       }

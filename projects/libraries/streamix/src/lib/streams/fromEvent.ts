@@ -1,19 +1,24 @@
 import { createStream, Stream } from '../abstractions';
 
-export function fromEvent(target: EventTarget, event: string): Stream<Event> {
+export function fromEvent<T extends Event = Event>(
+  target: EventTarget,
+  event: string
+): Stream<T> {
   async function* generator() {
-    let eventQueue: Event[] = [];
-    let resolveNext: ((event: Event) => void) | null = null;
+    let eventQueue: T[] = [];
+    let resolveNext: ((event: T) => void) | null = null;
     let isListening = true;
 
     const listener = (ev: Event) => {
       if (!isListening) return;
 
+      const typedEvent = ev as T;
+
       if (resolveNext) {
-        resolveNext(ev);
+        resolveNext(typedEvent);
         resolveNext = null;
       } else {
-        eventQueue.push(ev);
+        eventQueue.push(typedEvent);
       }
     };
 
@@ -24,7 +29,7 @@ export function fromEvent(target: EventTarget, event: string): Stream<Event> {
         if (eventQueue.length > 0) {
           yield eventQueue.shift()!;
         } else {
-          const nextEvent = await new Promise<Event>((resolve) => {
+          const nextEvent = await new Promise<T>((resolve) => {
             resolveNext = resolve;
           });
           yield nextEvent;
@@ -36,5 +41,5 @@ export function fromEvent(target: EventTarget, event: string): Stream<Event> {
     }
   }
 
-  return createStream('fromEvent', generator);
+  return createStream<T>('fromEvent', generator);
 }

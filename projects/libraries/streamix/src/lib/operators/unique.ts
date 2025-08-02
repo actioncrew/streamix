@@ -1,8 +1,10 @@
 import { createOperator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
 
-export const unique = <T = any, K = any>(keySelector?: (value: T) => CallbackReturnType<K>) =>
-  createOperator("unique", (source) => {
+export const unique = <T = any, K = any>(
+  keySelector?: (value: T) => CallbackReturnType<K>
+) =>
+  createOperator<T, T>("unique", (source) => {
     const seen = new Set<K | T>();
 
     return {
@@ -17,7 +19,7 @@ export const unique = <T = any, K = any>(keySelector?: (value: T) => CallbackRet
             seen.add(key);
             return { done: false, value };
           }
-          // otherwise, continue to next item
+          // skip duplicate
         }
       }
     };

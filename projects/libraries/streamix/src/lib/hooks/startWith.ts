@@ -1,7 +1,7 @@
 import { createOperator } from "../abstractions";
 
 export const startWith = <T = any>(initialValue: T) =>
-  createOperator("startWith", (source) => {
+  createOperator<T, T>("startWith", (source) => {
     let emittedInitial = false;
 
     return {

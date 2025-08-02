@@ -9,7 +9,7 @@ export function iif<T = any>(
   async function* generator(): AsyncGenerator<T, void, unknown> {
     // Evaluate condition lazily when the stream starts
     const sourceStream = condition() ? trueStream : falseStream;
-    const asyncIterable = eachValueFrom(sourceStream);
+    const asyncIterable = eachValueFrom<T>(sourceStream);
     const iterator = asyncIterable[Symbol.asyncIterator]();
 
     try {
@@ -30,5 +30,5 @@ export function iif<T = any>(
     }
   }
 
-  return createStream('iif', generator);
+  return createStream<T>('iif', generator);
 }

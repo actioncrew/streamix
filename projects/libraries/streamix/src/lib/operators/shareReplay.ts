@@ -6,7 +6,7 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
   let isConnected = false;
   let output: ReplaySubject<T> | undefined;
 
-  return createOperator<T>('shareReplay', (source) => {
+  return createOperator<T, T>('shareReplay', (source) => {
     if (!output) {
       output = createReplaySubject<T>(bufferSize);
     }
@@ -29,7 +29,7 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
       })();
     }
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

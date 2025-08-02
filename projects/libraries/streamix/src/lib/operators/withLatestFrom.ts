@@ -10,8 +10,8 @@ import {
 import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
-export function withLatestFrom<T, R extends any[]>(...streams: Stream<any>[]) {
-  return createOperator("withLatestFrom", (source) => {
+export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(...streams: { [K in keyof R]: Stream<R[K]> }) {
+  return createOperator<T, [T, ...R]>("withLatestFrom", (source) => {
     const output = createSubject<[T, ...R]>();
     const latestValues: any[] = new Array(streams.length).fill(undefined);
     const hasValue: boolean[] = new Array(streams.length).fill(false);
@@ -69,7 +69,7 @@ export function withLatestFrom<T, R extends any[]>(...streams: Stream<any>[]) {
 
     const originalSubscribe = output.subscribe;
     output.subscribe = (
-      callbackOrReceiver?: ((value: any) => CallbackReturnType) | Receiver<any>
+      callbackOrReceiver?: ((value: [T, ...R]) => CallbackReturnType) | Receiver<[T, ...R]>
     ): Subscription => {
       const receiver = createReceiver(callbackOrReceiver);
       const subscription = originalSubscribe.call(output, receiver);
@@ -85,7 +85,7 @@ export function withLatestFrom<T, R extends any[]>(...streams: Stream<any>[]) {
       });
     };
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<[T, ...R]>(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

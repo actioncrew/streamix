@@ -1,10 +1,10 @@
 import { createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
-export const concatMap = <T, R>(
+export const concatMap = <T = any, R = any>(
   project: (value: T, index: number) => Stream<R>
 ) =>
-  createOperator("concatMap", (source) => {
+  createOperator<T, R>("concatMap", (source) => {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
 
@@ -18,7 +18,7 @@ export const concatMap = <T, R>(
             if (outerResult.done) {
               return { done: true, value: undefined };
             }
-            innerIterator = eachValueFrom(project(outerResult.value, outerIndex++));
+            innerIterator = eachValueFrom<R>(project(outerResult.value, outerIndex++));
           }
 
           // Pull from the active inner iterator

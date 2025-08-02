@@ -1,11 +1,11 @@
 import { createOperator } from "../abstractions";
 
-export const bufferCount = (bufferSize: number = Infinity) =>
-  createOperator("bufferCount", (source) => {
+export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
+  createOperator<T, T[]>("bufferCount", (source) => {
     let done = false;
 
     return {
-      async next(): Promise<IteratorResult<any[]>> {
+      async next(): Promise<IteratorResult<T[]>> {
         if (done) return { done: true, value: undefined };
 
         const buffer: any[] = [];

@@ -3,7 +3,7 @@ import { eachValueFrom } from '../converters';
 import { createSubject, timer } from "../streams";
 
 export function buffer<T = any>(period: number): Operator {
-  return createOperator('buffer', (source) => {
+  return createOperator<T, T[]>('buffer', (source) => {
     const output = createSubject<T[]>();
     let buffer: T[] = [];
     let completed = false;
@@ -52,7 +52,7 @@ export function buffer<T = any>(period: number): Operator {
       }
     })();
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T[]>(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

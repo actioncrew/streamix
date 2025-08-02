@@ -3,7 +3,7 @@ import { CallbackReturnType, createOperator } from '../abstractions';
 export const catchError = <T = any>(
   handler: (error: any) => CallbackReturnType = () => {} // Handler still returns void
 ) =>
-  createOperator('catchError', (source) => {
+  createOperator<T, T>('catchError', (source) => {
     let errorCaughtAndHandled = false;
     let sourceCompleted = false;
 

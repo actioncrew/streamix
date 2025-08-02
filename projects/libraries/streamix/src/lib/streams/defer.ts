@@ -13,7 +13,7 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
     const innerStream = factory();
 
     try {
-      const iterator = eachValueFrom(innerStream);
+      const iterator = eachValueFrom<T>(innerStream);
       try {
         for await (const value of iterator) {
           yield value;

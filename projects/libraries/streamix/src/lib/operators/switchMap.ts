@@ -2,8 +2,8 @@ import { createOperator, Stream, Subscription } from "../abstractions";
 import { eachValueFrom } from '../converters';
 import { createSubject } from "../streams";
 
-export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>) {
-  return createOperator("switchMap", (source) => {
+export function switchMap<T = any, R = any>(project: (value: T, index: number) => Stream<R>) {
+  return createOperator<T, R>("switchMap", (source) => {
     const output = createSubject<R>();
 
     let currentSubscription: Subscription | null = null;
@@ -60,7 +60,7 @@ export function switchMap<T, R>(project: (value: T, index: number) => Stream<R>)
       }
     })();
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<R>(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

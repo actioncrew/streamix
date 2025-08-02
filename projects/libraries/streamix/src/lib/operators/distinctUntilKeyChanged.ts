@@ -1,10 +1,10 @@
 import { createOperator } from '../abstractions';
 
-export const distinctUntilKeyChanged = <T extends object>(
+export const distinctUntilKeyChanged = <T extends object = any>(
   key: keyof T,
   comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean | Promise<boolean>
 ) =>
-  createOperator('distinctUntilKeyChanged', (source) => {
+  createOperator<T, T>('distinctUntilKeyChanged', (source) => {
     let lastValue: T | undefined;
     let isFirst = true;
 

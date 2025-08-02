@@ -1,11 +1,11 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
-export const finalize = (callback: () => CallbackReturnType) =>
-  createOperator("finalize", (source) => {
+export const finalize = <T = any>(callback: () => CallbackReturnType) =>
+  createOperator<T, T>("finalize", (source) => {
     let finalized = false;
 
     return {
-      async next(): Promise<IteratorResult<any>> {
+      async next(): Promise<IteratorResult<T>> {
         try {
           const result = await source.next();
 

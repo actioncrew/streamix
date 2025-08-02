@@ -1,8 +1,10 @@
 import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
-export function race<T>(...streams: Stream<T>[]): Stream<T> {
-  return createStream<T>('race', async function* () {
+export function race<T extends readonly unknown[] = any[]>(
+  ...streams: { [K in keyof T]: Stream<T[K]> }
+): Stream<T[number]> {
+  return createStream<T[number]>('race', async function* () {
     if (streams.length === 0) return;
 
     const controllers = streams.map(() => new AbortController());

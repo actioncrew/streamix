@@ -4,7 +4,7 @@ import { CallbackReturnType } from './../abstractions/receiver';
 export const filter = <T = any>(
   predicateOrValue: ((value: T, index: number) => CallbackReturnType<boolean>) | T | T[]
 ) =>
-  createOperator('filter', (source) => {
+  createOperator<T, T>('filter', (source) => {
     let index = 0;
 
     return {

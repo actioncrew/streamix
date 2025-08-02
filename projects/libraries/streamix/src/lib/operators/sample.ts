@@ -3,7 +3,7 @@ import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export const sample = <T = any>(period: number) =>
-  createOperator<T>('sample', (source) => {
+  createOperator<T, T>('sample', (source) => {
     const output = createSubject<T>();
 
     let lastValue: T | undefined;
@@ -46,6 +46,6 @@ export const sample = <T = any>(period: number) =>
       }
     })();
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });

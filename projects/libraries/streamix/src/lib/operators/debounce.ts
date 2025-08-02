@@ -3,8 +3,8 @@ import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 export function debounce<T = any>(duration: number) {
-  return createOperator("debounce", (source) => {
-    let output = createSubject();
+  return createOperator<T, T>("debounce", (source) => {
+    let output = createSubject<T>();
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let latestValue: T | null = null;
     let hasValues = false;

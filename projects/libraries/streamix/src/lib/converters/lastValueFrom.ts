@@ -1,6 +1,6 @@
 import { Stream } from "../abstractions";
 
-export function lastValueFrom<T>(stream: Stream<T>): Promise<T> {
+export function lastValueFrom<T = any>(stream: Stream<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     let lastValue: T | undefined;
     let hasValue = false;

@@ -12,7 +12,7 @@ export type Stream<T = any> = {
 
 export function createStream<T>(
   name: string,
-  generatorFn: (signal?: AbortSignal) => AsyncGenerator<T, void, unknown>,
+  generatorFn: () => AsyncGenerator<T, void, unknown>,
 ): Stream<T> {
   const activeSubscriptions = new Set<{
     receiver: Receiver<T>;
@@ -56,7 +56,7 @@ export function createStream<T>(
     return subscription;
   };
 
-  const startMulticastLoop = (genFn: (signal?: AbortSignal) => AsyncGenerator<T, void, unknown>, signal: AbortSignal) => {
+  const startMulticastLoop = (genFn: () => AsyncGenerator<T, void, unknown>, signal: AbortSignal) => {
     (async () => {
       let currentIterator: AsyncIterator<T> | null = null;
 
@@ -69,7 +69,7 @@ export function createStream<T>(
       });
 
       try {
-        currentIterator = genFn(signal)[Symbol.asyncIterator]();
+        currentIterator = genFn()[Symbol.asyncIterator]();
         while (true) {
           const winner = await Promise.race([
             abortPromise.then(() => ({ aborted: true })),

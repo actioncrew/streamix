@@ -1,4 +1,4 @@
-import { createOperator, Operator } from '../abstractions';
+import { createOperator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -10,8 +10,8 @@ import { createSubject } from '../streams';
  * and 'macrotask' queue scheduling (setTimeout(..., 0)).
  * @returns An operator function that transforms a source stream.
  */
-export const observeOn = <T = any>(context: "microtask" | "macrotask"): Operator => {
-  return createOperator<T>('observeOn', (source) => {
+export const observeOn = <T = any>(context: "microtask" | "macrotask") => {
+  return createOperator<T, T>('observeOn', (source) => {
     const output = createSubject<T>();
 
     (async () => {
@@ -33,7 +33,7 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask"): Operator
       }
     })();
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
 };

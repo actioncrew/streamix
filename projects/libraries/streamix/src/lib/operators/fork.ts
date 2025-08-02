@@ -1,13 +1,13 @@
 import { CallbackReturnType, createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
-export interface ForkOption<T, R> {
+export interface ForkOption<T = any, R = any> {
   on: (value: T, index: number) => CallbackReturnType<boolean>;
   handler: (value: T) => Stream<R>;
 }
 
-export const fork = <T, R>(options: ForkOption<T, R>[]) =>
-  createOperator('fork', (source) => {
+export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
+  createOperator<T, R>('fork', (source) => {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
 

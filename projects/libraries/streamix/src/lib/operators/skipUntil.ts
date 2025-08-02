@@ -3,7 +3,7 @@ import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 export function skipUntil<T = any>(notifier: Stream): Operator {
-  return createOperator('skipUntil', (source) => {
+  return createOperator<T, T>('skipUntil', (source) => {
     const output = createSubject<T>();
     let canEmit = false;
 
@@ -38,7 +38,7 @@ export function skipUntil<T = any>(notifier: Stream): Operator {
       }
     }, 0);
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

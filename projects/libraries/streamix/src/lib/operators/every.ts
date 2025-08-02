@@ -3,7 +3,7 @@ import { CallbackReturnType, createOperator } from "../abstractions";
 export const every = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator("every", (source) => {
+  createOperator<T, boolean>("every", (source) => {
     let index = 0;
     let emitted = false;
 

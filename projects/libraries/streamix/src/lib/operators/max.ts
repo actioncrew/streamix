@@ -4,7 +4,7 @@ import { CallbackReturnType } from './../abstractions/receiver';
 export const max = <T = any>(
   comparator?: (a: T, b: T) => CallbackReturnType<number>
 ) =>
-  createOperator<T>('max', (source) => {
+  createOperator<T, T>('max', (source) => {
     let maxValue: T | undefined;
     let hasMax = false;
 

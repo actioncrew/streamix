@@ -1,7 +1,7 @@
 import { createOperator } from "../abstractions";
 
 export const endWith = <T = any>(finalValue: T) =>
-  createOperator("endWith", (source) => {
+  createOperator<T, T>("endWith", (source) => {
     let sourceDone = false;
     let finalEmitted = false;
 

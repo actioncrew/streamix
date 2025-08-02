@@ -3,7 +3,7 @@ import { CallbackReturnType, createOperator } from '../abstractions';
 export const min = <T = any>(
   comparator?: (a: T, b: T) => CallbackReturnType<number>
 ) =>
-  createOperator<T>('min', (source) => {
+  createOperator<T, T>('min', (source) => {
     let minValue: T | undefined;
     let hasMin = false;
 

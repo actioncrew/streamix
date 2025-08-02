@@ -2,37 +2,39 @@ import { createStream, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 /**
- * Combines multiple streams by emitting an array of latest values,
- * but only emits when all streams have emitted at least once.
+ * Combines multiple streams by emitting an array of values,
+ * only when all streams have emitted at least one value.
  *
- * After emitting, it waits for the next batch of values from all streams again.
+ * After emitting, waits for the next batch of values from all streams.
  *
  * Completes when any stream completes.
  * Errors propagate immediately.
  */
-export function zip(streams: Stream<any>[]): Stream<any[]> {
+export function zip<T extends readonly unknown[] = any[]>(
+  streams: { [K in keyof T]: Stream<T[K]> }
+): Stream<T> {
+  // Note: controller is currently unused for aborting from outside
+  // You may want to expose it or remove if unused
   const controller = new AbortController();
   const signal = controller.signal;
 
-  return createStream<any[]>('zip', async function* () {
-    if (streams.length === 0) {
-      return;
-    }
+  return createStream<T>('zip', async function* (): AsyncGenerator<T, void, unknown> {
+    if (streams.length === 0) return;
 
     // Create async iterators for all streams
     const iterators = streams.map(s => eachValueFrom(s)[Symbol.asyncIterator]());
 
-    // Buffers for each stream's values
-    const buffers: any[][] = streams.map(() => []);
+    // Buffers to hold emitted values per stream, typed per stream output
+    const buffers: { [K in keyof T]: T[K][] } = streams.map(() => []) as any;
 
-    // Track active streams
+    // Track active streams count
     let activeCount = streams.length;
 
     try {
       while (activeCount > 0 && !signal.aborted) {
-        // Request next values from all streams that need them
-        const requests = iterators.map(async (it, i) => {
-          if (buffers[i].length === 0 && it.next) {
+        // Request next value for buffers that are empty
+        await Promise.all(iterators.map(async (it, i) => {
+          if (buffers[i].length === 0) {
             const { done, value } = await it.next();
             if (done) {
               activeCount--;
@@ -40,17 +42,16 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
               buffers[i].push(value);
             }
           }
-        });
+        }));
 
-        await Promise.all(requests);
-
-        // Check if we can emit a zipped value
+        // Check if all buffers have at least one value
         const canEmit = buffers.every(buffer => buffer.length > 0);
         if (canEmit) {
-          yield buffers.map(buffer => buffer.shift()!);
+          // Yield one zipped tuple of values
+          yield buffers.map(buffer => buffer.shift()!) as unknown as T;
         }
 
-        // If any stream is done and we can't emit, break
+        // If any stream completed and we can't emit full tuple, end
         if (activeCount < streams.length && !canEmit) {
           break;
         }
@@ -58,7 +59,7 @@ export function zip(streams: Stream<any>[]): Stream<any[]> {
     } finally {
       // Cleanup iterators
       await Promise.all(
-        iterators.map(it => it.return?.(undefined).catch(() => { /* ignore errors */ }))
+        iterators.map(it => it.return?.(undefined).catch(() => {}))
       );
     }
   });

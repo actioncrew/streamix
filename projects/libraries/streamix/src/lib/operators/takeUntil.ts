@@ -7,7 +7,7 @@ import { createSubject } from '../streams';
  * Once the notifier emits, the output completes.
  */
 export function takeUntil<T = any>(notifier: Stream): Operator {
-  return createOperator('takeUntil', (source) => {
+  return createOperator<T, T>('takeUntil', (source) => {
     const output = createSubject<T>();
     let shouldStop = false;
 
@@ -41,7 +41,7 @@ export function takeUntil<T = any>(notifier: Stream): Operator {
       }
     }, 0);
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

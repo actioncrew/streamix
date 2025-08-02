@@ -1,10 +1,10 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
-export const scan = <T, R>(
+export const scan = <T = any, R = any>(
   accumulator: (acc: R, value: T, index: number) => CallbackReturnType<R>,
   seed: R
 ) =>
-  createOperator("scan", (source) => {
+  createOperator<T, R>("scan", (source) => {
     let acc = seed;
     let index = 0;
 

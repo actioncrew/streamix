@@ -1,9 +1,10 @@
-import { Operator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
 import { select } from "./select";
 
-export const elementNth = <T = any>(indexPattern: (iteration: number) => CallbackReturnType<number | undefined>) => {
-  const indexIterator = (async function* () {
+export const elementNth = <T = any>(
+  indexPattern: (iteration: number) => CallbackReturnType<number | undefined>
+) => {
+  const indexIterator: AsyncGenerator<number> = (async function* () {
     let iteration = 0;
     while (true) {
       const nextIndex = await indexPattern(iteration);
@@ -13,5 +14,5 @@ export const elementNth = <T = any>(indexPattern: (iteration: number) => Callbac
     }
   })();
 
-  return select<T>(indexIterator) as Operator;
-}
+  return select<T>(indexIterator);
+};

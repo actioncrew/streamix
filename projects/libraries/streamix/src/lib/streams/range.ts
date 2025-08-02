@@ -9,7 +9,12 @@ import { loop } from './loop';
  * - Useful for generating numerical sequences in reactive flows.
  */
 export function range(start: number, count: number, step: number = 1): Stream<number> {
-  const stream = loop(start, current => current < start + count, current => current + step);
+  const end = start + count * step;
+  const stream = loop(
+    start,
+    current => (step > 0 ? current < end : current > end),
+    current => current + step
+  );
 
   stream.name = 'range';
   return stream;

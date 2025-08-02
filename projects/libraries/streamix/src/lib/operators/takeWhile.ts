@@ -1,7 +1,7 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
 
-export const takeWhile = <T>(predicate: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator("takeWhile", (source) => {
+export const takeWhile = <T = any>(predicate: (value: T) => CallbackReturnType<boolean>) =>
+  createOperator<T, T>("takeWhile", (source) => {
     let done = false;
 
     return {

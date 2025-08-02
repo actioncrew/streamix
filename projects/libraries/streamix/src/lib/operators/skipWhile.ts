@@ -1,7 +1,7 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
 
 export const skipWhile = <T = any>(predicate: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator('skipWhile', (source) => {
+  createOperator<T, T>('skipWhile', (source) => {
     let skipping = true;
 
     return {

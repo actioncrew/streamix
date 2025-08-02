@@ -1,12 +1,12 @@
 import { createOperator } from "../abstractions";
 
-export const defaultIfEmpty = (defaultValue: any) =>
-  createOperator("defaultIfEmpty", (source) => {
+export const defaultIfEmpty = <T = any>(defaultValue: T) =>
+  createOperator<T, T>("defaultIfEmpty", (source) => {
     let emitted = false;
     let done = false;
 
     return {
-      async next(): Promise<IteratorResult<any>> {
+      async next(): Promise<IteratorResult<T>> {
         if (done) return { done: true, value: undefined };
 
         const result = await source.next();

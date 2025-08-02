@@ -2,27 +2,24 @@ import { createStream, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
- * Combines multiple streams and emits an array containing the latest values
+ * Combines multiple streams and emits a tuple containing the latest values
  * from each stream whenever any stream emits a new value.
  */
-export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
+export function combineLatest<T extends unknown[] = any[]>(
+  streams: { [K in keyof T]: Stream<T[K]> }
+): Stream<T> {
   async function* generator() {
-    if (streams.length === 0) {
-      return;
-    }
+    if (streams.length === 0) return;
 
-    const latestValues: T[] = Array(streams.length).fill(undefined);
-    const hasEmitted = Array(streams.length).fill(false);
+    const latestValues: Partial<T>[] = [];
+    const hasEmitted = new Array(streams.length).fill(false);
     let completedStreams = 0;
 
-    // Convert each stream to async iterable
-    const asyncIterables = streams.map((stream) => eachValueFrom(stream));
-    const iterators = asyncIterables.map((iterable) => iterable[Symbol.asyncIterator]());
+    const asyncIterables = streams.map(eachValueFrom);
+    const iterators = asyncIterables.map((it) => it[Symbol.asyncIterator]());
 
-    // Track active promises for cleanup
-    const activePromises = new Set<Promise<any>>();
+    const promisesByIndex: Array<Promise<any> | null> = new Array(streams.length).fill(null);
 
-    // Create promises for each stream's next value
     const createPromise = (index: number) => {
       const promise = iterators[index]
         .next()
@@ -31,42 +28,37 @@ export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
           value: result.value,
           done: result.done,
         }));
-      activePromises.add(promise);
+      promisesByIndex[index] = promise;
       return promise;
     };
 
-    // Initialize promises for all streams
-    let promises = streams.map((_, index) => createPromise(index));
+    // Initialize
+    for (let i = 0; i < streams.length; i++) {
+      createPromise(i);
+    }
 
     try {
       while (completedStreams < streams.length) {
-        // Wait for the first stream to emit
-        const result = await Promise.race(promises);
-
-        // Remove completed promise from active set
-        activePromises.delete(promises[result.index]);
+        const result = await Promise.race(
+          promisesByIndex.filter((p): p is Promise<any> => p !== null)
+        );
 
         if (result.done) {
           completedStreams++;
-          // Remove the completed stream's promise
-          promises = promises.filter((_, i) => i !== result.index);
+          promisesByIndex[result.index] = null;
           continue;
         }
 
-        // Update the latest value for this stream
         latestValues[result.index] = result.value;
         hasEmitted[result.index] = true;
 
-        // Emit combined values only when all streams have emitted at least once
         if (hasEmitted.every(Boolean)) {
-          yield [...latestValues];
+          yield [...latestValues] as T;
         }
 
-        // Replace the resolved promise with a new one for the same stream
-        promises[result.index] = createPromise(result.index);
+        createPromise(result.index);
       }
     } finally {
-      // Cleanup: Cancel all active iterators
       for (const iterator of iterators) {
         if (iterator.return) {
           try {
@@ -76,10 +68,8 @@ export function combineLatest<T = any>(streams: Stream<T>[]): Stream<T[]> {
           }
         }
       }
-
-      activePromises.clear();
     }
   }
 
-  return createStream<T[]>("combineLatest", generator);
+  return createStream<T>("combineLatest", generator);
 }

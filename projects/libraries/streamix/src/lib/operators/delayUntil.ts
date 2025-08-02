@@ -2,7 +2,7 @@ import { createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
 export const delayUntil = <T = any>(notifier: Stream<any>) =>
-  createOperator("delayUntil", (source) => {
+  createOperator<T, T>("delayUntil", (source) => {
     let canEmit = false;
     let notifierDone = false;
     let notifierStarted = false;

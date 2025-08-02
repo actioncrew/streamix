@@ -50,7 +50,7 @@ export const select = <T = any>(
 
       if (indexDone) return;
 
-      for await (const value of eachValueFrom(subject)) {
+      for await (const value of eachValueFrom<T>(subject)) {
         if (currentIndex === nextTargetIndex) {
           yield value;
 
