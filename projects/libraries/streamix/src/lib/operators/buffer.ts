@@ -59,6 +59,6 @@ export function buffer<T = any>(period: number) {
       }
     })();
 
-    return eachValueFrom<T[]>(output)[Symbol.asyncIterator]() as AsyncIterator<T[]>;
+    return eachValueFrom<T[]>(output)[Symbol.asyncIterator]();
   });
 }
