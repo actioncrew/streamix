@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.16
+
+Comprehensive JSDoc comments were added to all public functions. The codebase now features stronger TypeScript types, leading to better code completion and compile-time error checking.
+
 ## 2.0.15
 
 All streams are now **multicast** by default, enabling shared execution and improved performance across multiple subscribers
