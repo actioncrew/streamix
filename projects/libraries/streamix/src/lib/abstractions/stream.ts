@@ -219,7 +219,7 @@ export function createStream<T>(
     name,
     // Attach pipe with full overload + recursive support
     pipe(...operators: Operator<any, any>[]) {
-      return pipeStream(this, ...operators as [any]);
+      return pipeStream(this, ...operators);
     },
     subscribe,
     query: async function (): Promise<T> {
