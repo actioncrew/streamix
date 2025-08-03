@@ -131,7 +131,7 @@ export function createStream<T>(
         abortController.abort();
         isRunning = false;
       }
-    };
+    });
 
     activeSubscriptions.add({ receiver, subscription });
 
