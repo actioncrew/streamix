@@ -9,9 +9,12 @@ import { createSubscription, Subscription } from "./subscription";
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
-  pipe: <Chain extends OperatorChain<T>>(
+  pipe<Chain extends OperatorChain<T>>(
     ...steps: Chain
-  ) => Stream<GetChainOutput<T, Chain>>;
+  ): Stream<GetChainOutput<T, Chain>>;
+  pipe(
+    ...steps: Operator<any, any>[]
+  ): Stream<any>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   query: () => Promise<T>;
 };
@@ -22,8 +25,7 @@ export type Stream<T = any> = {
  */
 export type OperatorChain<TIn> =
   | readonly []
-  | readonly [Operator<TIn, any>, ...Operator<any, any>[]]
-  | Operator<any, any>[];
+  | readonly [Operator<TIn, any>, ...Operator<any, any>[]];
 
 /**
  * Infers the output type of an operator chain by following the type transformations.
