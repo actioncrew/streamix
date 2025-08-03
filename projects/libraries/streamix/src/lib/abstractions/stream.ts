@@ -3,12 +3,16 @@ import { Operator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
+export type ExtractOperatorOutput<TIn, Op> =
+  Op extends Operator<TIn, infer TOut> ? TOut : never;
+
 /**
  * Represents a chain of operators where each output feeds into the next input.
  */
 export type OperatorChain<TIn> =
   [] |
-  [Operator<TIn, infer TOut>, ...OperatorChain<TOut>];
+  [Operator<TIn, infer TOut>] |
+  [Operator<TIn, infer TOut>, ...OperatorChain<ExtractOperatorOutput<TIn, Operator<TIn, TOut>>>];
 
 /**
  * Recursively computes the final output type after applying a chain of operators.
