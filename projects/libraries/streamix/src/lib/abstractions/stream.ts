@@ -178,13 +178,18 @@ export function createStream<T>(
  * Pipes a stream through a series of transformation operators,
  * returning a new derived stream.
  */
-export function pipeStream<
-  TIn,
-  Chain extends OperatorChain<TIn>
->(
+export function pipeStream<TIn, Chain extends OperatorChain<TIn>>(
   source: Stream<TIn>,
   ...steps: Chain
-): Stream<GetChainOutput<TIn, Chain>> {
+): Stream<GetChainOutput<TIn, Chain>>;
+export function pipeStream<TIn>(
+  source: Stream<TIn>,
+  ...steps: Operator<any, any>[]
+): Stream<any>;
+export function pipeStream<TIn>(
+  source: Stream<TIn>,
+  ...steps: Operator<any, any>[]
+): Stream<any> {
   const createTransformedIterator = (): AsyncIterator<any> => {
     const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
     return steps.reduce<AsyncIterator<any>>(
@@ -196,10 +201,8 @@ export function pipeStream<
   return {
     name: "piped",
     type: "stream",
-    pipe<NextChain extends OperatorChain<GetChainOutput<TIn, Chain>>>(
-      ...ops: NextChain
-    ): Stream<GetChainOutput<GetChainOutput<TIn, Chain>, NextChain>> {
-      return pipeStream(this, ...ops);
+    pipe(...steps: Operator<any, any>[]): Stream<any> {
+      return pipeStream(this, ...steps);
     },
     subscribe(cb) {
       const receiver = createReceiver(cb);
@@ -241,8 +244,8 @@ export function pipeStream<
         }
       });
     },
-    async query(): Promise<GetChainOutput<TIn, Chain>> {
-      return await firstValueFrom(this);
+    async query(): Promise<GetChainOutput<TIn, typeof steps>> {
+      return firstValueFrom(this as Stream<GetChainOutput<TIn, typeof steps>>);
     }
   };
-  }
+}
