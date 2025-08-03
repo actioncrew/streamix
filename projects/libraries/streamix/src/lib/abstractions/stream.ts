@@ -5,10 +5,11 @@ import { createSubscription, Subscription } from "./subscription";
 
 /**
  * Represents a chain of operators where each output feeds into the next input.
+ * Uses `any` in recursion for flexibility — type safety is enforced in GetChainOutput.
  */
 export type OperatorChain<TIn> =
-  [] |
-  [Operator<TIn, any>, ...OperatorChain<any>];
+  | []
+  | [Operator<TIn, any>, ...OperatorChain<any>];
 
 /**
  * Recursively computes the final output type after applying a chain of operators.
@@ -16,16 +17,13 @@ export type OperatorChain<TIn> =
 export type GetChainOutput<TIn, Chain extends readonly Operator<any, any>[]> =
   Chain extends []
     ? TIn
-    : Chain extends [Operator<TIn, infer TOut>]
-      ? TOut
-    : Chain extends [Operator<TIn, infer TMid>, ...infer Rest]
-      ? TMid extends never
-        ? never
-        : Rest extends readonly Operator<any, any>[]
-          ? GetChainOutput<TMid, Rest>
-          : TMid
-    : TIn;
-
+    : Chain extends [infer First, ...infer Rest]
+      ? First extends Operator<TIn, infer TOut>
+        ? Rest extends readonly Operator<any, any>[]
+          ? GetChainOutput<TOut, Rest>
+          : TOut
+        : never
+      : TIn;
 
 /**
  * Represents a reactive stream that supports subscriptions and operator chaining.
