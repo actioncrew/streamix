@@ -4,6 +4,25 @@ import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
 /**
+ * Represents a chain of operators where each output feeds into the next input.
+ */
+export type OperatorChain<T> = [Operator<T, any>, ...Operator<any, any>[]];
+
+/**
+ * Recursively computes the final output type after applying a chain of operators.
+ */
+export type GetChainOutput<T, Chain extends Operator<any, any>[]> = 
+  Chain extends []
+    ? T
+    : Chain extends [infer First, ...infer Rest]
+      ? First extends Operator<T, infer U>
+        ? Rest extends Operator<any, any>[]
+          ? GetChainOutput<U, Rest>
+          : never
+        : never
+      : never;
+
+/**
  * Represents a reactive stream that supports subscriptions and operator chaining.
  */
 export type Stream<T = any> = {
@@ -68,8 +87,11 @@ export type Stream<T = any> = {
     op8: Operator<G, H>
   ): Stream<H>;
 
-  pipe(...operators: Operator<any, any>[]): Stream<any>;
-  subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
+  pipe<Chain extends OperatorChain<T>>(
+    ...operators: Chain
+  ): Stream<GetChainOutput<T, Chain>>;
+
+  subscribe: (callback?: ((value: T) => CallbackReturnType) | Receiver<T>) => Subscription;
   query: () => Promise<T>;
 };
 
@@ -109,7 +131,7 @@ export function createStream<T>(
         abortController.abort();
         isRunning = false;
       }
-    });
+    };
 
     activeSubscriptions.add({ receiver, subscription });
 
@@ -191,7 +213,8 @@ export function createStream<T>(
   return {
     type: "stream",
     name,
-    pipe(...operators: Operator<any, any>[]): Stream<any> {
+    // Attach pipe with full overload + recursive support
+    pipe(...operators: Operator<any, any>[]) {
       return pipeStream(this, ...operators as [any]);
     },
     subscribe,
@@ -220,8 +243,9 @@ export function pipeStream<TIn>(
   return {
     name: "piped",
     type: "stream",
-    pipe(...operators: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...operators as [any]);
+    // Same pipe logic with full overload + recursive support
+    pipe(...nextOps: Operator<any, any>[]): Stream<any> {
+      return pipeStream(this, ...nextOps);
     },
     subscribe(cb) {
       const receiver = createReceiver(cb);
