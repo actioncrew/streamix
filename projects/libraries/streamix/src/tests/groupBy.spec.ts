@@ -31,8 +31,8 @@ describe('groupBy and custom partitioning', () => {
     const customOperator = map((value: any) => `Processed ${value}`);
 
     const paths: any = {
-      low: [customOperator],
-      high: [customOperator],
+      low: [customOperator] as const,
+      high: [customOperator] as const,
     };
 
     // Partitioned streams
@@ -83,8 +83,8 @@ describe('groupBy and custom partitioning', () => {
 
     // Partition and split values into "low" and "high" ranges
     const paths: any = {
-      low: [map((value: number) => (value <= 5 ? 'low' : 'high'))],
-      high: [map((value: number) => (value > 5 ? 'high' : 'low'))],
+      low: [map((value: number) => (value <= 5 ? 'low' : 'high'))] as const,
+      high: [map((value: number) => (value > 5 ? 'high' : 'low'))] as const,
     };
 
     const groupsMap = new Map<string, any[]>();
