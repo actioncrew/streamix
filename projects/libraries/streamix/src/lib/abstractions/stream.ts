@@ -6,19 +6,19 @@ import { createSubscription, Subscription } from "./subscription";
 /**
  * Represents a chain of operators where each output feeds into the next input.
  */
-export type OperatorChain<T> = [Operator<T, any>, ...Operator<any, any>[]];
+export type OperatorChain<TIn> =
+  [] |
+  [Operator<TIn, infer TOut>, ...OperatorChain<TOut>];
 
 /**
  * Recursively computes the final output type after applying a chain of operators.
  */
-export type GetChainOutput<T, Chain extends Operator<any, any>[]> = 
+export type GetChainOutput<TIn, Chain extends OperatorChain<TIn>> =
   Chain extends []
-    ? T
-    : Chain extends [infer First, ...infer Rest]
-      ? First extends Operator<T, infer U>
-        ? Rest extends Operator<any, any>[]
-          ? GetChainOutput<U, Rest>
-          : never
+    ? TIn
+    : Chain extends [Operator<TIn, infer TOut>, ...infer Rest]
+      ? Rest extends OperatorChain<TOut>
+        ? GetChainOutput<TOut, Rest>
         : never
       : never;
 
