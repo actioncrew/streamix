@@ -29,16 +29,19 @@ export type OperatorChain<TIn> =
  * Infers the output type of an operator chain by following the type transformations.
  * Handles `never` types properly for throwing operators.
  */
-export type GetChainOutput<TIn, TChain extends readonly Operator<any, any>[]> =
-  TChain extends readonly []
+export type GetChainOutput<TIn, Chain extends readonly Operator<any, any>[]> =
+  Chain extends []
     ? TIn
-    : TChain extends readonly [Operator<TIn, infer TOut>]
+    : Chain extends [Operator<TIn, infer TOut>]
       ? TOut
-    : TChain extends readonly [Operator<TIn, infer TMid>, ...infer Rest]
-      ? Rest extends readonly Operator<any, any>[]
-        ? GetChainOutput<TMid, Rest>
-        : TMid
+    : Chain extends [Operator<TIn, infer TMid>, ...infer Rest]
+      ? TMid extends never
+        ? never // 🔥 stop chain on throwing operator
+        : Rest extends readonly Operator<any, any>[]
+          ? GetChainOutput<TMid, Rest>
+          : TMid
     : TIn;
+
 /**
  * Creates a cold stream from an async generator function.
  * Handles multicasting, subscription lifecycle, and graceful teardown.
