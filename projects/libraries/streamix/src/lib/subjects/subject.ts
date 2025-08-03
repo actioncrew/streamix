@@ -104,8 +104,8 @@ export function createSubject<T = any>(): Subject<T> {
     get snappy() {
       return latestValue;
     },
-    pipe(...operators: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...operators as [any]);
+    pipe<O extends readonly [Operator<any, any>, ...Operator<any, any>[]]>(...operators: O): Stream<any> {
+      return pipeStream(this, ...operators);
     },
     subscribe,
     async query(): Promise<T> {
