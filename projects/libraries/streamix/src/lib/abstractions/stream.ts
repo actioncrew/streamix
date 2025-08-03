@@ -91,6 +91,10 @@ export type Stream<T = any> = {
     ...operators: Chain
   ): Stream<GetChainOutput<T, Chain>>;
 
+  pipe(
+    ...operators: Operator<any, any>[]
+  ): Stream<any>;
+  
   subscribe: (callback?: ((value: T) => CallbackReturnType) | Receiver<T>) => Subscription;
   query: () => Promise<T>;
 };
