@@ -103,8 +103,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
-    pipe(...steps: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...steps);
+    pipe(...operators: Operator<any, any>[]): Stream<any> {
+      return pipeStream(this, ...operators as [any]);
     },
     subscribe,
     async query(): Promise<T> {

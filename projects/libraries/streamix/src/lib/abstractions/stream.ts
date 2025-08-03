@@ -9,40 +9,69 @@ import { createSubscription, Subscription } from "./subscription";
 export type Stream<T = any> = {
   type: "stream" | "subject";
   name?: string;
-  pipe<Chain extends OperatorChain<T>>(
-    ...steps: Chain
-  ): Stream<GetChainOutput<T, Chain>>;
-  pipe(
-    ...steps: Operator<any, any>[]
-  ): Stream<any>;
+
+  pipe<A>(op1: Operator<T, A>): Stream<A>;
+
+  pipe<A, B>(
+    op1: Operator<T, A>,
+    op2: Operator<A, B>
+  ): Stream<B>;
+
+  pipe<A, B, C>(
+    op1: Operator<T, A>,
+    op2: Operator<A, B>,
+    op3: Operator<B, C>
+  ): Stream<C>;
+
+  pipe<A, B, C, D>(
+    op1: Operator<T, A>,
+    op2: Operator<A, B>,
+    op3: Operator<B, C>,
+    op4: Operator<C, D>
+  ): Stream<D>;
+
+  pipe<A, B, C, D, E>(
+    op1: Operator<T, A>,
+    op2: Operator<A, B>,
+    op3: Operator<B, C>,
+    op4: Operator<C, D>,
+    op5: Operator<D, E>
+  ): Stream<E>;
+
+  pipe<A, B, C, D, E, F>(
+    op1: Operator<T, A>,
+    op2: Operator<A, B>,
+    op3: Operator<B, C>,
+    op4: Operator<C, D>,
+    op5: Operator<D, E>,
+    op6: Operator<E, F>
+  ): Stream<F>;
+
+  pipe<A, B, C, D, E, F, G>(
+    op1: Operator<T, A>,
+    op2: Operator<A, B>,
+    op3: Operator<B, C>,
+    op4: Operator<C, D>,
+    op5: Operator<D, E>,
+    op6: Operator<E, F>,
+    op7: Operator<F, G>
+  ): Stream<G>;
+
+  pipe<A, B, C, D, E, F, G, H>(
+    op1: Operator<T, A>,
+    op2: Operator<A, B>,
+    op3: Operator<B, C>,
+    op4: Operator<C, D>,
+    op5: Operator<D, E>,
+    op6: Operator<E, F>,
+    op7: Operator<F, G>,
+    op8: Operator<G, H>
+  ): Stream<H>;
+
+  pipe(...operators: Operator<any, any>[]): Stream<any>;
   subscribe: (callback?: ((value: T) => void) | Receiver<T>) => Subscription;
   query: () => Promise<T>;
 };
-
-/**
- * A more flexible operator chain type that handles spread operations properly.
- * This allows both strict typing and dynamic operator arrays.
- */
-export type OperatorChain<TIn> =
-  | readonly []
-  | readonly [Operator<TIn, any>, ...Operator<any, any>[]];
-
-/**
- * Infers the output type of an operator chain by following the type transformations.
- * Handles `never` types properly for throwing operators.
- */
-export type GetChainOutput<TIn, Chain extends readonly Operator<any, any>[]> =
-  Chain extends []
-    ? TIn
-    : Chain extends [Operator<TIn, infer TOut>]
-      ? TOut
-    : Chain extends [Operator<TIn, infer TMid>, ...infer Rest]
-      ? TMid extends never
-        ? never // 🔥 stop chain on throwing operator
-        : Rest extends readonly Operator<any, any>[]
-          ? GetChainOutput<TMid, Rest>
-          : TMid
-    : TIn;
 
 /**
  * Creates a cold stream from an async generator function.
@@ -162,15 +191,13 @@ export function createStream<T>(
   return {
     type: "stream",
     name,
-    pipe<Chain extends OperatorChain<T>>(
-      ...steps: Chain
-    ): Stream<GetChainOutput<T, Chain>> {
-      return pipeStream(this, ...steps);
+    pipe(...operators: Operator<any, any>[]): Stream<any> {
+      return pipeStream(this, ...operators as [any]);
     },
     subscribe,
     query: async function (): Promise<T> {
       return await firstValueFrom(this);
-    },
+    }
   };
 }
 
@@ -178,21 +205,13 @@ export function createStream<T>(
  * Pipes a stream through a series of transformation operators,
  * returning a new derived stream.
  */
-export function pipeStream<TIn, Chain extends OperatorChain<TIn>>(
-  source: Stream<TIn>,
-  ...steps: Chain
-): Stream<GetChainOutput<TIn, Chain>>;
 export function pipeStream<TIn>(
   source: Stream<TIn>,
-  ...steps: Operator<any, any>[]
-): Stream<any>;
-export function pipeStream<TIn>(
-  source: Stream<TIn>,
-  ...steps: Operator<any, any>[]
+  ...operators: Operator<any, any>[]
 ): Stream<any> {
   const createTransformedIterator = (): AsyncIterator<any> => {
     const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
-    return steps.reduce<AsyncIterator<any>>(
+    return operators.reduce<AsyncIterator<any>>(
       (iterator: AsyncIterator<any>, op: Operator<any, any>) => op.apply(iterator),
       baseIterator
     );
@@ -201,8 +220,8 @@ export function pipeStream<TIn>(
   return {
     name: "piped",
     type: "stream",
-    pipe(...steps: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...steps);
+    pipe(...operators: Operator<any, any>[]): Stream<any> {
+      return pipeStream(this, ...operators as [any]);
     },
     subscribe(cb) {
       const receiver = createReceiver(cb);
@@ -244,8 +263,8 @@ export function pipeStream<TIn>(
         }
       });
     },
-    async query(): Promise<GetChainOutput<TIn, typeof steps>> {
-      return firstValueFrom(this as Stream<GetChainOutput<TIn, typeof steps>>);
+    async query() {
+      return firstValueFrom(this);
     }
   };
 }
