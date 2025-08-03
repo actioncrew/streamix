@@ -3,28 +3,29 @@ import { Operator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
-export type ExtractOperatorOutput<TIn, Op> =
-  Op extends Operator<TIn, infer TOut> ? TOut : never;
-
 /**
  * Represents a chain of operators where each output feeds into the next input.
  */
 export type OperatorChain<TIn> =
   [] |
-  [Operator<TIn, infer TOut>] |
-  [Operator<TIn, infer TOut>, ...OperatorChain<ExtractOperatorOutput<TIn, Operator<TIn, TOut>>>];
+  [Operator<TIn, any>, ...OperatorChain<any>];
 
 /**
  * Recursively computes the final output type after applying a chain of operators.
  */
-export type GetChainOutput<TIn, Chain extends OperatorChain<TIn>> =
+export type GetChainOutput<TIn, Chain extends readonly Operator<any, any>[]> =
   Chain extends []
     ? TIn
-    : Chain extends [Operator<TIn, infer TOut>, ...infer Rest]
-      ? Rest extends OperatorChain<TOut>
-        ? GetChainOutput<TOut, Rest>
-        : never
-      : never;
+    : Chain extends [Operator<TIn, infer TOut>]
+      ? TOut
+    : Chain extends [Operator<TIn, infer TMid>, ...infer Rest]
+      ? TMid extends never
+        ? never
+        : Rest extends readonly Operator<any, any>[]
+          ? GetChainOutput<TMid, Rest>
+          : TMid
+    : TIn;
+
 
 /**
  * Represents a reactive stream that supports subscriptions and operator chaining.
