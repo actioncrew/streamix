@@ -31,8 +31,8 @@ describe('groupBy and custom partitioning', () => {
     const customOperator = map((value: any) => `Processed ${value}`);
 
     const paths: any = {
-      low: [customOperator] as const,
-      high: [customOperator] as const,
+      low: [customOperator],
+      high: [customOperator]
     };
 
     // Partitioned streams
@@ -50,7 +50,7 @@ describe('groupBy and custom partitioning', () => {
         const operators = paths[key] || []; // Get the operators for this group
 
         return of(groupItem.value).pipe(
-          ...operators,
+          ...operators as [any],
           tap(value => {
             const groupValues = groupsMap.get(key) || [];
             groupValues.push(value); // Add the current value to the group
@@ -83,8 +83,8 @@ describe('groupBy and custom partitioning', () => {
 
     // Partition and split values into "low" and "high" ranges
     const paths: any = {
-      low: [map((value: number) => (value <= 5 ? 'low' : 'high'))] as const,
-      high: [map((value: number) => (value > 5 ? 'high' : 'low'))] as const,
+      low: [map((value: number) => (value <= 5 ? 'low' : 'high'))],
+      high: [map((value: number) => (value > 5 ? 'high' : 'low'))]
     };
 
     const groupsMap = new Map<string, any[]>();
@@ -97,7 +97,7 @@ describe('groupBy and custom partitioning', () => {
         const operators = paths[key] || []; // Get the operators for this group
 
         return of(groupItem.value).pipe(
-          ...operators,
+          ...operators as [any],
           tap(value => {
             const groupValues = groupsMap.get(key) || [];
             groupValues.push(value); // Add the current value to the group
