@@ -25,6 +25,12 @@ export type Subject<T = any> = Stream<T> & {
 
 /**
  * Creates a new Subject instance.
+ *
+ * A Subject can be used to manually control a stream, emitting values
+ * to all active subscribers.
+ *
+ * @template T The type of the values that the subject will emit.
+ * @returns A new Subject instance.
  */
 export function createSubject<T = any>(): Subject<T> {
   const buffer = createSingleValueBuffer<T>();
@@ -34,34 +40,32 @@ export function createSubject<T = any>(): Subject<T> {
   let hasError = false;
 
   const next = (value: T) => {
-    if (isCompleted || hasError) return;
     latestValue = value;
     queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
       await buffer.write(value);
     });
   };
 
   const complete = () => {
-    if (isCompleted) return;
-    isCompleted = true;
     queue.enqueue(async () => {
+      if (isCompleted) return;
+      isCompleted = true;
       await buffer.complete();
     });
   };
 
   const error = (err: any) => {
-    if (isCompleted || hasError) return;
-    hasError = true;
-    isCompleted = true;
     queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
+      hasError = true;
+      isCompleted = true;
       await buffer.error(err);
       await buffer.complete();
     });
   };
 
-  const subscribe = (
-    callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>
-  ): Subscription => {
+  const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
     let readerId: number | null = null;
@@ -80,19 +84,23 @@ export function createSubject<T = any>(): Subject<T> {
     queue.enqueue(() => buffer.attachReader()).then(async (id: number) => {
       readerId = id;
       try {
-        while (!unsubscribing) {
+        while (true) {
           const result = await buffer.read(readerId);
           if (result.done) break;
-          await receiver.next?.(result.value);
+          await receiver.next(result.value);
         }
       } catch (err: any) {
-        await receiver.error?.(err);
+        await receiver.error(err);
       } finally {
         if (!unsubscribing && readerId !== null) {
           await buffer.detachReader(readerId);
         }
-        await receiver.complete?.();
+        await receiver.complete();
       }
+    });
+
+    Object.assign(subscription, {
+      value: () => latestValue
     });
 
     return subscription;
@@ -104,8 +112,8 @@ export function createSubject<T = any>(): Subject<T> {
     get snappy() {
       return latestValue;
     },
-    pipe<O extends readonly [Operator<any, any>, ...Operator<any, any>[]]>(...operators: O): Stream<any> {
-      return pipeStream(this, ...operators);
+    pipe(...steps: Operator<any, any>[]): Stream<any> {
+      return pipeStream(this, ...steps);
     },
     subscribe,
     async query(): Promise<T> {
