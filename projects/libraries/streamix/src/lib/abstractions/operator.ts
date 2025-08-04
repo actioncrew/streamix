@@ -12,7 +12,7 @@ export type Operator<T = any, R = T> = {
  * Creates a reusable stream operator with a given name and transformation logic.
  * The operator can be applied to any compatible async iterator to produce transformed output.
  */
-export function createOperator<T = any, R = any>(
+export function createOperator<T = any, R = T>(
   name: string,
   transformFn: (source: AsyncIterator<T>) => AsyncIterator<R>
 ): Operator<T, R> {
