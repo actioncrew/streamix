@@ -7,12 +7,7 @@ import { createSubscription, Subscription } from "./subscription";
  * Represents a chain of operators where each output feeds into the next input.
  * Uses `any` in recursion for flexibility — type safety is enforced in GetChainOutput.
  */
-export type OperatorChain<TIn> = [Operator<TIn, any>, ...Operator<any, any>[]];
-
-/**
- * Extracts the output type of an operator function.
- */
-type OutputOf<T> = T extends (source: any) => infer U ? U : never;
+export type OperatorChain<TIn> = [] | [Operator<TIn, any>, ...Operator<any, any>[]];
 
 /**
  * Recursively computes the final output type after applying a chain of operators.
@@ -22,12 +17,12 @@ export type GetChainOutput<
   TOps extends OperatorChain<TInitial>
 > = TOps extends []
   ? TInitial
-  : TOps extends [infer First, ...infer Rest]
-  ? First extends Operator<any, any>
-    ? Rest extends OperatorChain<OutputOf<First>>
-      ? GetChainOutput<OutputOf<First>, Rest>
-      : never
-    : never
+  : TOps extends [Operator<TInitial, infer TFirst>]
+  ? TFirst
+  : TOps extends [Operator<TInitial, infer TFirst>, ...infer TRest]
+  ? TRest extends OperatorChain<TFirst>
+    ? GetChainOutput<TFirst, TRest>
+    : TFirst
   : never;
 
 /**
