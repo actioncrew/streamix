@@ -7,14 +7,11 @@ import { createSubscription, Subscription } from "./subscription";
  * Represents a chain of operators where each output feeds into the next input.
  * Uses `any` in recursion for flexibility — type safety is enforced in GetChainOutput.
  */
-export type OperatorChain<TIn> =
-  | []
-  | [Operator<TIn, any>, ...Operator<any, any>[]];
+export type OperatorChain<TIn> = [Operator<TIn, any>, ...Operator<any, any>[]];
 
 /**
- * Extract input and output types of an operator
+ * Extracts the output type of an operator function.
  */
-type InputOf<T> = T extends (source: infer U) => any ? U : never;
 type OutputOf<T> = T extends (source: any) => infer U ? U : never;
 
 /**
@@ -22,12 +19,12 @@ type OutputOf<T> = T extends (source: any) => infer U ? U : never;
  */
 export type GetChainOutput<
   TInitial,
-  TOps extends ((source: any) => any)[]
+  TOps extends OperatorChain<TInitial>
 > = TOps extends []
   ? TInitial
   : TOps extends [infer First, ...infer Rest]
   ? First extends Operator<any, any>
-    ? Rest extends ((source: any) => any)[]
+    ? Rest extends OperatorChain<OutputOf<First>>
       ? GetChainOutput<OutputOf<First>, Rest>
       : never
     : never
@@ -105,7 +102,7 @@ export type Stream<T = any> = {
   pipe(
     ...operators: Operator<any, any>[]
   ): Stream<any>;
-  
+
   subscribe: (callback?: ((value: T) => CallbackReturnType) | Receiver<T>) => Subscription;
   query: () => Promise<T>;
 };
@@ -207,7 +204,7 @@ export function createStream<T>(
       } finally {
         if (currentIterator?.return) {
           try {
-            await currentIterator.return(undefined);
+            await currentIterator.return();
           } catch {}
         }
 
@@ -258,7 +255,6 @@ export function pipeStream<TIn>(
   return {
     name: "piped",
     type: "stream",
-    // Same pipe logic with full overload + recursive support
     pipe(...nextOps: Operator<any, any>[]): Stream<any> {
       return pipeStream(this, ...nextOps);
     },

@@ -50,7 +50,7 @@ describe('groupBy and custom partitioning', () => {
         const operators = paths[key] || []; // Get the operators for this group
 
         return of(groupItem.value).pipe(
-          ...operators as [any],
+          ...operators,
           tap(value => {
             const groupValues = groupsMap.get(key) || [];
             groupValues.push(value); // Add the current value to the group
@@ -97,7 +97,7 @@ describe('groupBy and custom partitioning', () => {
         const operators = paths[key] || []; // Get the operators for this group
 
         return of(groupItem.value).pipe(
-          ...operators as [any],
+          ...operators,
           tap(value => {
             const groupValues = groupsMap.get(key) || [];
             groupValues.push(value); // Add the current value to the group
