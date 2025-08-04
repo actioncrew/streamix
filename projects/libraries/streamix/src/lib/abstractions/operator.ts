@@ -2,7 +2,7 @@
  * Defines a stream operator that transforms an async iterator of type T into another of type R.
  * Operators are composable units used to manipulate or filter stream values.
  */
-export type Operator<T = any, R = any> = {
+export type Operator<T = any, R = T> = {
   name?: string;
   type: 'operator';
   apply: (source: AsyncIterator<T>) => AsyncIterator<R>;
