@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.17
+
+You now have a robust, type-safe, and ergonomic reactive streaming library built on modern TypeScript patterns. Well done! 🎉
+
 ## 2.0.16
 
 Comprehensive JSDoc comments were added to all public functions. The codebase now features stronger TypeScript types, leading to better code completion and compile-time error checking.

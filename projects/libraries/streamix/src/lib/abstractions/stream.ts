@@ -1,78 +1,41 @@
 import { eachValueFrom, firstValueFrom } from "../converters";
-import { Operator } from "./operator";
+import { Operator, OperatorChain } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
+
+// Utility: Recursively compute output type after chaining operators
+type ChainOperators<T, Ops extends Operator<any, any>[]> =
+  Ops extends []
+    ? T
+    : Ops extends [infer First, ...infer Rest]
+      ? First extends Operator<any, infer U>
+        ? Rest extends Operator<any, any>[]
+          ? ChainOperators<U, Rest>
+          : U
+        : never
+      : never;
 
 /**
  * Represents a reactive stream that supports subscriptions and operator chaining.
  */
 export type Stream<T = any> = {
-  type: "stream" | "subject";
-  name?: string;
+  readonly type: "stream" | "subject";
+  readonly name?: string;
 
-  pipe<A>(op1: Operator<T, A>): Stream<A>;
+  /**
+   * Chains operators to transform the stream.
+   * Uses `OperatorChain<T>` for overload typing, but returns a new `Stream<R>`.
+   */
+  pipe: OperatorChain<T>;
 
-  pipe<A, B>(
-    op1: Operator<T, A>,
-    op2: Operator<A, B>
-  ): Stream<B>;
-
-  pipe<A, B, C>(
-    op1: Operator<T, A>,
-    op2: Operator<A, B>,
-    op3: Operator<B, C>
-  ): Stream<C>;
-
-  pipe<A, B, C, D>(
-    op1: Operator<T, A>,
-    op2: Operator<A, B>,
-    op3: Operator<B, C>,
-    op4: Operator<C, D>
-  ): Stream<D>;
-
-  pipe<A, B, C, D, E>(
-    op1: Operator<T, A>,
-    op2: Operator<A, B>,
-    op3: Operator<B, C>,
-    op4: Operator<C, D>,
-    op5: Operator<D, E>
-  ): Stream<E>;
-
-  pipe<A, B, C, D, E, F>(
-    op1: Operator<T, A>,
-    op2: Operator<A, B>,
-    op3: Operator<B, C>,
-    op4: Operator<C, D>,
-    op5: Operator<D, E>,
-    op6: Operator<E, F>
-  ): Stream<F>;
-
-  pipe<A, B, C, D, E, F, G>(
-    op1: Operator<T, A>,
-    op2: Operator<A, B>,
-    op3: Operator<B, C>,
-    op4: Operator<C, D>,
-    op5: Operator<D, E>,
-    op6: Operator<E, F>,
-    op7: Operator<F, G>
-  ): Stream<G>;
-
-  pipe<A, B, C, D, E, F, G, H>(
-    op1: Operator<T, A>,
-    op2: Operator<A, B>,
-    op3: Operator<B, C>,
-    op4: Operator<C, D>,
-    op5: Operator<D, E>,
-    op6: Operator<E, F>,
-    op7: Operator<F, G>,
-    op8: Operator<G, H>
-  ): Stream<H>;
-
-  pipe(
-    ...operators: Operator<any, any>[]
-  ): Stream<any>;
-
+  /**
+   * Subscribes to the stream with a callback or receiver.
+   */
   subscribe: (callback?: ((value: T) => CallbackReturnType) | Receiver<T>) => Subscription;
+
+  /**
+   * Queries the first emitted value from the stream.
+   */
   query: () => Promise<T>;
 };
 
@@ -140,7 +103,7 @@ export function createStream<T>(
         currentIterator = genFn()[Symbol.asyncIterator]();
         while (true) {
           const winner = await Promise.race([
-            abortPromise.then(() => ({ aborted: true })),
+            abortPromise.then(() => ({ aborted: true } as const)),
             currentIterator.next().then(result => ({ result }))
           ]);
 
@@ -191,42 +154,49 @@ export function createStream<T>(
     })();
   };
 
-  return {
+  // We must define self first so pipe can capture it
+  let self: Stream<T>;
+
+  // Create pipe function that uses self
+  const pipe: OperatorChain<T> = ((...operators: Operator<any, any>[]) => {
+    return pipeStream(self, ...operators);
+  });
+
+  // Now define self, closing over pipe
+  self = {
     type: "stream",
     name,
-    // Attach pipe with full overload + recursive support
-    pipe(...operators: Operator<any, any>[]) {
-      return pipeStream(this, ...operators);
-    },
+    pipe,
     subscribe,
-    query: async function (): Promise<T> {
-      return await firstValueFrom(this);
-    }
+    query: () => firstValueFrom(self)
   };
+
+  return self;
 }
 
 /**
  * Pipes a stream through a series of transformation operators,
  * returning a new derived stream.
  */
-export function pipeStream<TIn>(
+export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
-  ...operators: Operator<any, any>[]
-): Stream<any> {
-  const createTransformedIterator = (): AsyncIterator<any> => {
+  ...operators: [...Ops]
+): Stream<ChainOperators<TIn, Ops>> {
+  const createTransformedIterator = (): AsyncIterator<ChainOperators<TIn, Ops>> => {
     const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
     return operators.reduce<AsyncIterator<any>>(
-      (iterator: AsyncIterator<any>, op: Operator<any, any>) => op.apply(iterator),
+      (iter, op) => op.apply(iter),
       baseIterator
     );
   };
 
-  return {
+  const pipedStream: Stream<ChainOperators<TIn, Ops>> = {
     name: "piped",
     type: "stream",
-    pipe(...nextOps: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...nextOps);
-    },
+    pipe: ((...nextOps: Operator<any, any>[]) => {
+      return pipeStream(pipedStream, ...nextOps);
+    }),
+
     subscribe(cb) {
       const receiver = createReceiver(cb);
       const transformedIterator = createTransformedIterator();
@@ -242,14 +212,14 @@ export function pipeStream<TIn>(
         try {
           while (true) {
             const winner = await Promise.race([
-              abortPromise.then(() => ({ aborted: true })),
+              abortPromise.then(() => ({ aborted: true } as const)),
               transformedIterator.next().then(result => ({ result }))
             ]);
 
             if ("aborted" in winner || signal.aborted) break;
             if (winner.result.done) break;
 
-            await receiver.next(winner.result.value);
+            await receiver.next?.(winner.result.value);
           }
         } catch (err: any) {
           if (!signal.aborted) {
@@ -267,8 +237,11 @@ export function pipeStream<TIn>(
         }
       });
     },
+
     async query() {
-      return firstValueFrom(this);
+      return await firstValueFrom(pipedStream);
     }
   };
+
+  return pipedStream;
 }
