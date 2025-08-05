@@ -3,7 +3,9 @@ import { Operator, OperatorChain } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
-// Utility: Recursively compute output type after chaining operators
+/**
+ * Utility: Recursively compute output type after chaining operators
+ */
 type ChainOperators<T, Ops extends Operator<any, any>[]> =
   Ops extends []
     ? T
@@ -19,23 +21,10 @@ type ChainOperators<T, Ops extends Operator<any, any>[]> =
  * Represents a reactive stream that supports subscriptions and operator chaining.
  */
 export type Stream<T = any> = {
-  readonly type: "stream" | "subject";
-  readonly name?: string;
-
-  /**
-   * Chains operators to transform the stream.
-   * Uses `OperatorChain<T>` for overload typing, but returns a new `Stream<R>`.
-   */
+  type: "stream" | "subject";
+  name?: string;
   pipe: OperatorChain<T>;
-
-  /**
-   * Subscribes to the stream with a callback or receiver.
-   */
   subscribe: (callback?: ((value: T) => CallbackReturnType) | Receiver<T>) => Subscription;
-
-  /**
-   * Queries the first emitted value from the stream.
-   */
   query: () => Promise<T>;
 };
 
