@@ -59,7 +59,7 @@ export const coroutine = <T = any, R = any>(main: Function, ...functions: Functi
       if (!helperScriptCache && !fetchingHelperScript) {
         fetchingHelperScript = true;
         helperScriptPromise = fetch(
-          'https://unpkg.com/@actioncrew/streamix@2.0.16/fesm2022/actioncrew-streamix-coroutine.mjs',
+          'https://unpkg.com/@actioncrew/streamix@2.0.17/fesm2022/actioncrew-streamix-coroutine.mjs',
         )
           .then((response) => {
             if (!response.ok) {
