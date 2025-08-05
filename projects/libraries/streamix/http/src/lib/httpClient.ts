@@ -85,8 +85,8 @@ export type HttpClient = {
    */
   get<T = any>(
     url: string,
-    parser: ParserFunction<T>,
-    options?: HttpOptions,
+    options?: HttpOptions | ParserFunction<T>,
+    parser?: ParserFunction<T>,
   ): HttpStream<T>;
 
   /**
@@ -94,8 +94,8 @@ export type HttpClient = {
    */
   post<T = any>(
     url: string,
-    parser: ParserFunction<T>,
-    options?: HttpOptions,
+    options?: HttpOptions | ParserFunction<T>,
+    parser?: ParserFunction<T>,
   ): HttpStream<T>;
 
   /**
@@ -103,8 +103,8 @@ export type HttpClient = {
    */
   put<T = any>(
     url: string,
-    parser: ParserFunction<T>,
-    options?: HttpOptions,
+    options?: HttpOptions | ParserFunction<T>,
+    parser?: ParserFunction<T>,
   ): HttpStream<T>;
 
   /**
@@ -112,8 +112,8 @@ export type HttpClient = {
    */
   patch<T = any>(
     url: string,
-    parser: ParserFunction<T>,
-    options?: HttpOptions,
+    options?: HttpOptions | ParserFunction<T>,
+    parser?: ParserFunction<T>,
   ): HttpStream<T>;
 
   /**
@@ -121,8 +121,8 @@ export type HttpClient = {
    */
   delete<T = any>(
     url: string,
-    parser: ParserFunction<T>,
-    options?: HttpOptions,
+    options?: HttpOptions | ParserFunction<T>,
+    parser?: ParserFunction<T>,
   ): HttpStream<T>;
 };
 
@@ -528,12 +528,20 @@ export const createHttpClient = (): HttpClient => {
   const request = <T = any>(
     method: string,
     url: string,
-    parser: ParserFunction<T>,
-    options: HttpOptions = {}
+    optionsOrParser?: HttpOptions | ParserFunction<T>,
+    maybeParser?: ParserFunction<T>,
   ): HttpStream<T> => {
     const abortController = new AbortController();
 
-    let context: Context = {
+    // Determine whether optionsOrParser is the parser or options
+    const isParser = typeof optionsOrParser === 'function';
+
+    const options: HttpOptions = isParser ? {} : optionsOrParser || {};
+    const parser: ParserFunction<T> = isParser
+      ? (optionsOrParser as ParserFunction<T>)
+      : (maybeParser ?? (readStatus as ParserFunction<T>));
+
+    const context: Context = {
       url,
       method,
       headers: { ...defaultHeaders, ...options.headers },
@@ -542,10 +550,10 @@ export const createHttpClient = (): HttpClient => {
       credentials: options.withCredentials ? 'include' : 'same-origin',
       signal: abortController.signal,
       fetch: globalThis.fetch.bind(globalThis),
-      parser
+      parser,
     };
 
-    let promise = chainMiddleware(middlewares)(async (ctx) => ctx)(context);
+    const promise = chainMiddleware(middlewares)(async (ctx) => ctx)(context);
 
     const stream = createStream('httpData', async function* () {
       const ctx = await promise;
@@ -556,7 +564,6 @@ export const createHttpClient = (): HttpClient => {
     return stream;
   };
 
-
   return {
     withDefaults: function (this: HttpClient, ...newMiddlewares: Middleware[]) {
       middlewares.push(...newMiddlewares);
@@ -564,31 +571,50 @@ export const createHttpClient = (): HttpClient => {
     },
     get: <T>(
       url: string,
+      options: HttpOptions,
       parser: ParserFunction<T>,
-      options?: HttpOptions,
-    ): HttpStream<T> => request<T>('GET', url, parser, options),
+    ): HttpStream<T> => request<T>('GET', url, options, parser),
     post: <T>(
       url: string,
+      options: HttpOptions,
       parser: ParserFunction<T>,
-      options?: HttpOptions,
-    ): HttpStream<T> => request<T>('POST', url, parser, options),
+    ): HttpStream<T> => request<T>('POST', url, options, parser),
     put: <T>(
       url: string,
+      options: HttpOptions,
       parser: ParserFunction<T>,
-      options?: HttpOptions,
-    ): HttpStream<T> => request<T>('PUT', url, parser, options),
+    ): HttpStream<T> => request<T>('PUT', url, options, parser),
     patch: <T>(
       url: string,
+      options: HttpOptions,
       parser: ParserFunction<T>,
-      options?: HttpOptions,
-    ): HttpStream<T> => request<T>('PATCH', url, parser, options),
+    ): HttpStream<T> => request<T>('PATCH', url, options, parser),
     delete: <T>(
       url: string,
+      options: HttpOptions,
       parser: ParserFunction<T>,
-      options?: HttpOptions,
-    ): HttpStream<T> => request<T>('DELETE', url, parser, options),
+    ): HttpStream<T> => request<T>('DELETE', url, options, parser),
   };
 };
+
+/**
+ * Yields the response status and status text as a single object.
+ *
+ * This parser ignores the response body and emits the HTTP status metadata only.
+ */
+export const readStatus: ParserFunction<{ status: number; statusText: string; headers: Record<string, string>; }> =
+  async function* (response) {
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+
+    yield {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    };
+  };
 
 /**
  * Parses a Response object as JSON.
