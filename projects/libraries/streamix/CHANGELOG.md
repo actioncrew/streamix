@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.19
+
+Small fix in range stream
+
 ## 2.0.18
 
 Default Parser Support: request<T> now uses readStatus as a default parser if none is provided. Reordered parameters in all HTTP methods (`get`, `post`, `put`, `patch`, `delete`): `parser` now comes **after** optional `options`
