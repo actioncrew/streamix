@@ -91,7 +91,7 @@ export class AppSandComponent implements AfterViewInit, OnDestroy {
     const canvas = this.canvasRef.nativeElement;
 
     const mouseMove$ = fromEvent(canvas, 'mousemove').pipe(
-      tap(e => {
+      tap((e: any) => {
         this.mouseX = e.clientX;
         this.mouseY = e.clientY;
         this.checkMouseProximity(); // Check proximity on mouse move

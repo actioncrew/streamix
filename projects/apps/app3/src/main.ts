@@ -52,7 +52,7 @@ const setupTextAnimation = (element: HTMLElement): Stream<void> => {
 };
 
 // Breathing effect with Streamix operators
-const setupBreathingEffect = (element: HTMLElement): Stream<void> => {
+const setupBreathingEffect = (element: HTMLElement): Stream<number> => {
   let targetScale = 1.05;
   let currentScale = 1;
   let direction = 1;
