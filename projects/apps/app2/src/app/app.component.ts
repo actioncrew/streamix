@@ -54,20 +54,8 @@ function computeMandelbrotInChunks(data: { index: number, width: number, height:
   const result: { px: number, py: number, r: number, g: number, b: number }[] = [];
   const end = Math.min(index * chunkSize + chunkSize, width * height);
   for (let i = index * chunkSize; i < end; i++) {
-    const chunkData = {
-      index: i,
-      width,
-      height,
-      maxIterations,
-      zoom,
-      centerX,
-      centerY,
-      panX,
-      panY
-    };
-
-    const px = (chunkData.index % width);
-    const py = Math.floor(chunkData.index / width);
+    const px = i % width;
+    const py = Math.floor(i / width);
     result.push(computeMandelbrot({
       px,
       py,
@@ -146,11 +134,15 @@ export class AppComponent implements OnInit {
       }),
       debounce(100),
       concatMap(({width, height}: any) => {
-
         const imageData = this.ctx.createImageData(width, height);
         const data = imageData.data;
+        
+        // Calculate the number of chunks needed
+        const chunkSize = 1000;
+        const totalPixels = width * height;
+        const numChunks = Math.ceil(totalPixels / chunkSize);
 
-        return range(0, Math.ceil((width * height) / 1000), 1000).pipe(
+        return range(0, numChunks).pipe(
           map(index => ({ index, width, height, maxIterations: 20, zoom: 200, centerX: width / 2, centerY: height / 2, panX: 0.5, panY: 0 })),
           mergeMap((params) => compute(task, params)),
           tap((result: any) => {
@@ -163,8 +155,8 @@ export class AppComponent implements OnInit {
               data[index + 3] = 255;
             });
           }),
-          scan((acc, _, index) => {
-            const progress = ((index! + 1) * 1000 / (width * height)) * 100;
+          scan((acc, _, chunkIndex) => {
+            const progress = ((chunkIndex + 1) / numChunks) * 100;
             requestAnimationFrame(() => this.updateProgressBar(progress));
             return acc;
           }, 0),
@@ -172,7 +164,8 @@ export class AppComponent implements OnInit {
             this.ctx.putImageData(imageData, 0, 0);
             this.hideProgressOverlay();
           })
-      )}),
+        );
+      }),
       finalize(() => {
         task.finalize();
       })
