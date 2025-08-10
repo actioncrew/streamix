@@ -18,7 +18,7 @@ export function loop<T = any>(
 
   return createStream<T>(
     'loop',
-    async function* (this: Stream<T>): AsyncGenerator<T, void, unknown> {
+    async function* (): AsyncGenerator<T, void, unknown> {
       while (condition(currentValue)) {
         yield currentValue;
         currentValue = iterateFn(currentValue);
