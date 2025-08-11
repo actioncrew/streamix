@@ -8,6 +8,7 @@ import { Coroutine, CoroutineMessage } from "./coroutine";
  * and a dispose method for releasing the worker back to the pool.
  */
 export interface SeizedWorker<T = any, R = T> {
+  workerId: number;
   outbound$: Stream<CoroutineMessage>;
   sendTask: (data: T) => Promise<R>,
   dispose: () => void;
@@ -82,6 +83,7 @@ export function seize<T = any, R = T>(
       // Yield the seized worker interface
       yield {
         outbound$: subject,
+        workerId,
         sendTask: (data: T) => task.assignTask(workerId, data),
         dispose: () => {
           if (!disposed) {

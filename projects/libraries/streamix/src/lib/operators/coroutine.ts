@@ -101,13 +101,14 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
       .join(";\n");
 
     const mainTaskBody = main.toString().replace(/function[\s]*\(/, `function ${main.name || ""}(`);
+    const workerId = ++workerIdentifierCounter;
 
     const workerBody = `
       ${helperScript}
       ${injectedDependencies};
       const mainTask = ${mainTaskBody};
 
-      const progressCallback = (progressData) => {
+      const progressCallback = (workerId, messageId) => (progressData) => {
         postMessage({ workerId, messageId, payload: progressData, type: 'progress' });
       };
 
@@ -117,11 +118,11 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
 
         try {
           if (type === 'task') {
-            const result = await mainTask(payload, progressCallback);
+            const result = await mainTask(payload, progressCallback(workerId, messageId));
             postMessage({ workerId, messageId, payload: result, type: 'response' });
           } else if (type === 'broadcast') {
             // Handle broadcast messages - can send responses back
-            const result = await mainTask(payload, progressCallback);
+            const result = await mainTask(payload, progressCallback(workerId, messageId));
             postMessage({ workerId, messageId, payload: result, type: 'broadcast' });
           }
         } catch (error) {
@@ -135,7 +136,6 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
       blobUrlCache = URL.createObjectURL(blob);
     }
 
-    const workerId = ++workerIdentifierCounter;
     const worker = new Worker(blobUrlCache, { type: "module" });
 
     // Set up message handling for this worker
