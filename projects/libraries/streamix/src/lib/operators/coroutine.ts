@@ -31,6 +31,23 @@ export type Coroutine<T = any, R = T> = Operator<T, R> & {
 };
 
 /**
+ * Callback function to report progress updates from a task.
+ *
+ * @param progressData - The data representing the current progress state.
+ */
+export type ProgressCallback = (progressData: any) => void;
+
+/**
+ * Type for the main task function running inside the worker.
+ *
+ * @template T - Input task parameter type.
+ * @template R - Return type of the task.
+ */
+export type MainTask<T = any, R = any> =
+  | ((data: T) => Promise<R> | R)
+  | ((data: T, progress: ProgressCallback) => Promise<R> | R);
+
+/**
  * Minified helper script used inside Web Worker blobs.
  */
 const HELPER_SCRIPT = `var __defProp=Object.defineProperty,__getOwnPropDescs=Object.getOwnPropertyDescriptors,__getOwnPropSymbols=Object.getOwnPropertySymbols,__hasOwnProp=Object.prototype.hasOwnProperty,__propIsEnum=Object.prototype.propertyIsEnumerable,__knownSymbol=(r,e)=>(e=Symbol[r])?e:Symbol.for("Symbol."+r),__defNormalProp=(r,e,o)=>e in r?__defProp(r,e,{enumerable:!0,configurable:!0,writable:!0,value:o}):r[e]=o,__spreadValues=(r,e)=>{for(var o in e||={})__hasOwnProp.call(e,o)&&__defNormalProp(r,o,e[o]);if(__getOwnPropSymbols)for(var o of __getOwnPropSymbols(e))__propIsEnum.call(e,o)&&__defNormalProp(r,o,e[o]);return r},__spreadProps=(r,e)=>__defProps(r,__getOwnPropDescs(e)),__async=(r,e,o)=>new Promise((n,t)=>{var a=r=>{try{p(o.next(r))}catch(e){t(e)}},l=r=>{try{p(o.throw(r))}catch(e){t(e)}},p=r=>r.done?n(r.value):Promise.resolve(r.value).then(a,l);p((o=o.apply(r,e)).next())}),__await=function(r,e){this[0]=r,this[1]=e},__asyncGenerator=(r,e,o)=>{var n=(r,e,t,a)=>{try{var l=o[r](e),p=(e=l.value)instanceof __await,s=l.done;Promise.resolve(p?e[0]:e).then(o=>p?n("return"===r?r:"next",e[1]?{done:o.done,value:o.value}:o,t,a):t({value:o,done:s})).catch(r=>n("throw",r,t,a))}catch(y){a(y)}},t=r=>a[r]=e=>new Promise((o,t)=>n(r,e,o,t)),a={};return o=o.apply(r,e),a[__knownSymbol("asyncIterator")]=()=>a,t("next"),t("throw"),t("return"),a},__forAwait=(r,e,o)=>(e=r[__knownSymbol("asyncIterator")])?e.call(r):(r=r[__knownSymbol("iterator")](),e={},(o=(o,n)=>(n=r[o])&&(e[o]=e=>new Promise((o,t,a)=>(a=(e=n.call(r,e)).done,Promise.resolve(e.value).then(r=>o({value:r,done:a}),t)))))("next"),o("return"),e);`;
@@ -40,17 +57,6 @@ const HELPER_SCRIPT = `var __defProp=Object.defineProperty,__getOwnPropDescs=Obj
  * Incremented each time a new worker instance is spawned to maintain uniqueness.
  */
 let workerIdentifierCounter = 0;
-
-/**
- * Type for the main task function running inside the worker.
- *
- * @template T - Input task parameter type.
- * @template R - Return type of the task.
- */
-export type MainTask<T = any, R = any> = (
-  data: T,
-  progress: (progressData: any) => void
-) => Promise<R> | R;
 
 /**
  * Coroutine operator to run tasks in a pool of Web Workers with Subject-based communication.
@@ -84,29 +90,35 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     const workerId = ++workerIdentifierCounter;
 
     const workerBody = `
-      ${helperScript}
-      ${injectedDependencies};
-      const mainTask = ${mainTaskBody};
+${helperScript}
+${injectedDependencies};
+const mainTask = ${mainTaskBody};
 
-      const progressCallback = (workerId, taskId) => (progressData) => {
-        postMessage({ workerId, taskId, payload: progressData, type: 'progress' });
-      };
+const progressCallback = (workerId, taskId) => (progressData) => {
+  postMessage({ workerId, taskId, payload: progressData, type: 'progress' });
+};
 
-      // Handle different message types
-      onmessage = async (event) => {
-        const { workerId, taskId, payload, type = 'task' } = event.data;
+// Handle different message types
+onmessage = async (event) => {
+  const { workerId, taskId, payload, type = 'task' } = event.data;
 
-        try {
-          if (type === 'task') {
-            const result = await mainTask(payload, progressCallback(workerId, taskId));
-            postMessage({ workerId, taskId, payload: result, type: 'response' });
-          }
-        } catch (error) {
-          postMessage({ workerId, taskId, error: error.message, type: 'error' });
-        }
-      };
-    `;
-
+  try {
+    if (type === 'task') {
+      let result;
+      if (mainTask.length >= 2) {
+        // mainTask expects progress callback
+        result = await mainTask(payload, progressCallback(workerId, taskId));
+      } else {
+        // mainTask expects only one argument
+        result = await mainTask(payload);
+      }
+      postMessage({ workerId, taskId, payload: result, type: 'response' });
+    }
+  } catch (error) {
+    postMessage({ workerId, taskId, error: error.message, type: 'error' });
+  }
+};
+`;
     if (!blobUrlCache) {
       const blob = new Blob([workerBody], { type: "application/javascript" });
       blobUrlCache = URL.createObjectURL(blob);
@@ -183,18 +195,11 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     const taskId = crypto.randomUUID();
 
     return new Promise<R>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pendingMessages.delete(taskId);
-        reject(new Error('Worker assignTask timeout'));
-      }, 30000); // 30 second timeout
-
       pendingMessages.set(taskId, {
         resolve: (value) => {
-          clearTimeout(timeout);
           resolve(value);
         },
         reject: (error) => {
-          clearTimeout(timeout);
           reject(error);
         }
       });
@@ -209,18 +214,11 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
 
     try {
       return await new Promise<R>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          pendingMessages.delete(taskId);
-          reject(new Error('Worker task timeout'));
-        }, 30000); // 30 second timeout
-
         pendingMessages.set(taskId, {
           resolve: (value) => {
-            clearTimeout(timeout);
             resolve(value);
           },
           reject: (error) => {
-            clearTimeout(timeout);
             reject(error);
           }
         });
