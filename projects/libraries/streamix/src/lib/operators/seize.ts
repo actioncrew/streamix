@@ -1,6 +1,11 @@
 import { createSubject, Subject } from "../subjects";
 import { Coroutine, CoroutineMessage } from "./coroutine";
 
+/**
+ * Interface for a worker that has been "seized" from the pool.
+ * Provides a persistent, bidirectional communication channel
+ * and a dispose method for releasing the worker back to the pool.
+ */
 export interface SeizedWorker {
   subject: Subject<CoroutineMessage>;
   dispose: () => void;
