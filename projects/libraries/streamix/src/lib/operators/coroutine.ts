@@ -16,7 +16,7 @@ export type CoroutineMessage = {
   messageId: string;
   payload?: any;
   error?: string;
-  type?: 'task' | 'broadcast' | 'response';
+  type?: 'task' | 'broadcast' | 'response' | 'progress';
 };
 
 /**
@@ -32,17 +32,17 @@ export type CoroutineSubject<T = any, R = any> = {
   /** Subscribe to messages from all workers */
   subscribeAll: (callback: (data: R, workerId: number) => void) => () => void;
   /** Get a Subject stream for worker messages */
-  asSubject: () => Subject<{ data: R; workerId: number }>;
+  asSubject: () => Subject<CoroutineMessage>;
 };
 
 /**
  * Extended Operator that manages a pool of Web Workers for concurrent task processing
  * with bidirectional Subject-based communication.
  */
-export type Coroutine<T = any, R = any> = Operator<T, R> & {
+export type Coroutine<T = any, R = T> = Operator<T, R> & {
   finalize: () => Promise<void>;
   assignTask: (workerId: number, data: T) => Promise<R>;
-  processTask: (data: any) => Promise<R>;
+  processTask: (data: T) => Promise<R>;
   getIdleWorker: () => Promise<{ worker: Worker; workerId: number }>;
   returnWorker: (worker: Worker) => void;
   subject: CoroutineSubject<T, R>;
@@ -60,12 +60,20 @@ const HELPER_SCRIPT = `var __defProp=Object.defineProperty,__getOwnPropDescs=Obj
 let workerIdentifierCounter = 0;
 
 /**
+ * Type for the main task function running inside the worker.
+ *
+ * @template T - Input task parameter type.
+ * @template R - Return type of the task.
+ */
+export type MainTask<T = any, R = any> = (data: T, progress?: (progressData: any) => void) => Promise<R> | R;
+
+/**
  * Coroutine operator to run tasks in a pool of Web Workers with Subject-based communication.
  * It manages a worker pool limited by hardware concurrency,
  * injects dependencies as functions, and provides bidirectional communication
  * through a Subject interface.
  */
-export const coroutine = <T = any, R = any>(main: Function, ...functions: Function[]): Coroutine<T, R> => {
+export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function[]): Coroutine<T, R> => {
   const maxWorkers = navigator.hardwareConcurrency || 4;
   const workerPool: { worker: Worker; workerId: number }[] = [];
   const waitingQueue: Array<(entry: { worker: Worker; workerId: number }) => void> = [];
@@ -77,7 +85,7 @@ export const coroutine = <T = any, R = any>(main: Function, ...functions: Functi
   let isFinalizing = false;
 
   // Subject for worker messages
-  const messageSubject = createSubject<{ data: R; workerId: number }>();
+  const messageSubject = createSubject<CoroutineMessage>();
   const allSubscribers = new Set<(data: R, workerId: number) => void>();
   const workerSubscribers = new Map<number, Set<(data: R) => void>>();
 
@@ -99,17 +107,21 @@ export const coroutine = <T = any, R = any>(main: Function, ...functions: Functi
       ${injectedDependencies};
       const mainTask = ${mainTaskBody};
 
+      const progressCallback = (progressData) => {
+        postMessage({ workerId, messageId, payload: progressData, type: 'progress' });
+      };
+
       // Handle different message types
       onmessage = async (event) => {
         const { workerId, messageId, payload, type = 'task' } = event.data;
 
         try {
           if (type === 'task') {
-            const result = await mainTask(payload);
+            const result = await mainTask(payload, progressCallback);
             postMessage({ workerId, messageId, payload: result, type: 'response' });
           } else if (type === 'broadcast') {
             // Handle broadcast messages - can send responses back
-            const result = await mainTask(payload);
+            const result = await mainTask(payload, progressCallback);
             postMessage({ workerId, messageId, payload: result, type: 'broadcast' });
           }
         } catch (error) {
@@ -128,12 +140,13 @@ export const coroutine = <T = any, R = any>(main: Function, ...functions: Functi
 
     // Set up message handling for this worker
     worker.addEventListener("message", (event: MessageEvent<CoroutineMessage>) => {
-      const { messageId, payload, error, workerId: msgWorkerId, type } = event.data;
+      const msg = event.data;
+      const { messageId, payload, error, workerId: msgWorkerId, type } = msg;
 
       if (type === 'broadcast') {
         // Handle broadcast responses
         allSubscribers.forEach(callback => callback(payload, msgWorkerId));
-        messageSubject.next({ data: payload, workerId: msgWorkerId });
+        messageSubject.next(msg);
 
         // Notify specific worker subscribers
         const specificSubscribers = workerSubscribers.get(msgWorkerId);
@@ -305,7 +318,7 @@ export const coroutine = <T = any, R = any>(main: Function, ...functions: Functi
       return () => allSubscribers.delete(callback);
     },
 
-    asSubject: (): Subject<{ data: R; workerId: number }> => {
+    asSubject: (): Subject<CoroutineMessage> => {
       return messageSubject;
     }
   };
