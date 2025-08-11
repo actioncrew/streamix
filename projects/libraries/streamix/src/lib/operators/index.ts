@@ -27,6 +27,7 @@ export * from './mergeMap';
 export * from './min';
 export * from './observeOn';
 export * from './partition';
+export * from './pipeline';
 export * from './recurse';
 export * from './reduce';
 export * from './sample';
