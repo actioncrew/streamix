@@ -9,7 +9,7 @@ import { Coroutine, CoroutineMessage } from "./coroutine";
  */
 export interface SeizedWorker<T = any, R = T> {
   workerId: number;
-  messages$: Stream<CoroutineMessage>;
+  output$: Stream<CoroutineMessage>;
   sendTask: (data: T) => Promise<R>,
   dispose: () => void;
 }
@@ -50,14 +50,14 @@ export function seize<T = any, R = T>(
     try {
       // Yield the seized worker interface
       yield {
-        messages$: subject,
+        output$: subject,
         workerId,
         sendTask: (data: T) => task.assignTask(workerId, data),
         dispose: () => {
           if (!disposed) {
             disposed = true;
             worker.removeEventListener('message', messageHandler);
-            task.returnWorker(worker);
+            task.returnWorker(workerId);
             subject.complete();
           }
         }
@@ -68,7 +68,7 @@ export function seize<T = any, R = T>(
     } finally {
       if (!disposed) {
         worker.removeEventListener('message', messageHandler);
-        task.returnWorker(worker);
+        task.returnWorker(workerId);
       }
     }
   });

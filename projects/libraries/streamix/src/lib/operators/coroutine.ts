@@ -27,7 +27,7 @@ export type Coroutine<T = any, R = T> = Operator<T, R> & {
   assignTask: (workerId: number, data: T) => Promise<R>;
   processTask: (data: T) => Promise<R>;
   getIdleWorker: () => Promise<{ worker: Worker; workerId: number }>;
-  returnWorker: (worker: Worker) => void;
+  returnWorker: (workerId: number) => void;
 };
 
 /**
@@ -154,13 +154,19 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     return new Promise((resolve) => waitingQueue.push(resolve));
   };
 
-  const returnWorker = (worker: Worker): void => {
-    const workerId = (worker as any).__id;
+  const returnWorker = (workerId: number): void => {
+    const worker = activeWorkers.get(workerId);
+    if (!worker) {
+      console.warn(`Worker with id ${workerId} not found.`);
+      return;
+    }
+
     if (isFinalizing) {
       activeWorkers.delete(workerId);
       worker.terminate();
       return;
     }
+
     if (waitingQueue.length > 0) {
       const resolve = waitingQueue.shift()!;
       resolve({ worker, workerId });
@@ -222,7 +228,7 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
         worker.postMessage({ workerId, taskId, payload: value, type: 'task' });
       });
     } finally {
-      returnWorker(worker);
+      returnWorker(workerId);
     }
   };
 
