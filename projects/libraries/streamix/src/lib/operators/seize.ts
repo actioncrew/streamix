@@ -9,7 +9,7 @@ import { Coroutine, CoroutineMessage } from "./coroutine";
  */
 export interface SeizedWorker<T = any, R = T> {
   workerId: number;
-  outbound$: Stream<CoroutineMessage>;
+  messages$: Stream<CoroutineMessage>;
   sendTask: (data: T) => Promise<R>,
   dispose: () => void;
 }
@@ -50,7 +50,7 @@ export function seize<T = any, R = T>(
     try {
       // Yield the seized worker interface
       yield {
-        outbound$: subject,
+        messages$: subject,
         workerId,
         sendTask: (data: T) => task.assignTask(workerId, data),
         dispose: () => {

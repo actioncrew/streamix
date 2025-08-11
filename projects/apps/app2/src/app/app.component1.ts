@@ -74,7 +74,7 @@ export class AppComponent implements OnInit {
     timerWorker$.subscribe((seizedWorker) => {
       this.seizedWorker = seizedWorker;
       // Listen for messages from the worker
-      this.seizedWorker.outbound$.subscribe((msg: CoroutineMessage) => {
+      this.seizedWorker.messages$.subscribe((msg: CoroutineMessage) => {
         if (msg.type === 'progress') {
           this.timerValue = msg.payload;
           console.log('Counting down...');

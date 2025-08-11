@@ -1,5 +1,4 @@
 import { createOperator, Operator } from "../abstractions";
-import { createSubject } from "../subjects";
 
 /**
  * Message structure exchanged between main thread and Web Workers in the Coroutine operator.
@@ -70,11 +69,6 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
   let blobUrlCache: string | null = null;
   let isFinalizing = false;
 
-  // Subject for worker messages
-  const messageSubject = createSubject<CoroutineMessage>();
-  const allSubscribers = new Set<(data: R, workerId: number) => void>();
-  const workerSubscribers = new Map<number, Set<(data: R) => void>>();
-
   const createWorker = async (): Promise<{ worker: Worker; workerId: number }> => {
     const helperScript = HELPER_SCRIPT;
 
@@ -106,10 +100,6 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
           if (type === 'task') {
             const result = await mainTask(payload, progressCallback(workerId, taskId));
             postMessage({ workerId, taskId, payload: result, type: 'response' });
-          } else if (type === 'broadcast') {
-            // Handle broadcast messages - can send responses back
-            const result = await mainTask(payload, progressCallback(workerId, taskId));
-            postMessage({ workerId, taskId, payload: result, type: 'broadcast' });
           }
         } catch (error) {
           postMessage({ workerId, taskId, error: error.message, type: 'error' });
@@ -127,31 +117,21 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     // Set up message handling for this worker
     worker.addEventListener("message", (event: MessageEvent<CoroutineMessage>) => {
       const msg = event.data;
-      const { taskId: taskId, payload, error, workerId: msgWorkerId, type } = msg;
+      const { taskId, payload, error, type } = msg;
 
-      if (type === 'broadcast') {
-        // Handle broadcast responses
-        allSubscribers.forEach(callback => callback(payload, msgWorkerId));
-        messageSubject.next(msg);
-
-        // Notify specific worker subscribers
-        const specificSubscribers = workerSubscribers.get(msgWorkerId);
-        if (specificSubscribers) {
-          specificSubscribers.forEach(callback => callback(payload));
-        }
-      }  else if (type === 'error') {
-        // handle error message explicitly
-        const pending = pendingMessages.get(taskId);
-        if (pending) {
-          pendingMessages.delete(taskId);
-          pending.reject(new Error(error ?? 'Unknown worker error'));
-        }
-      } else if (type === 'response') {
+      if (type === 'response') {
         // handle normal task response
         const pending = pendingMessages.get(taskId);
         if (pending) {
           pendingMessages.delete(taskId);
           pending.resolve(payload);
+        }
+      } else if (type === 'error') {
+        // handle error message explicitly
+        const pending = pendingMessages.get(taskId);
+        if (pending) {
+          pendingMessages.delete(taskId);
+          pending.reject(new Error(error ?? 'Unknown worker error'));
         }
       } else {
         // optionally handle unexpected or other types
@@ -265,8 +245,6 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     }
 
     waitingQueue.length = 0;
-    allSubscribers.clear();
-    workerSubscribers.clear();
 
     if (blobUrlCache) {
       URL.revokeObjectURL(blobUrlCache);
