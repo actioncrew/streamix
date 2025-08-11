@@ -1,5 +1,5 @@
 import { createOperator, Operator } from "../abstractions";
-import { createSubject, Subject } from "../subjects";
+import { createSubject } from "../subjects";
 
 /**
  * Message structure exchanged between main thread and Web Workers in the Coroutine operator.
@@ -20,22 +20,6 @@ export type CoroutineMessage = {
 };
 
 /**
- * Subject interface for bidirectional communication with workers
- */
-export type CoroutineSubject<T = any, R = any> = {
-  /** Send data to all workers */
-  broadcast: (data: T) => Promise<void>;
-  /** Send data to a specific worker */
-  send: (workerId: number, data: T) => Promise<R>;
-  /** Subscribe to messages from a specific worker */
-  subscribe: (workerId: number, callback: (data: R) => void) => () => void;
-  /** Subscribe to messages from all workers */
-  subscribeAll: (callback: (data: R, workerId: number) => void) => () => void;
-  /** Get a Subject stream for worker messages */
-  asSubject: () => Subject<CoroutineMessage>;
-};
-
-/**
  * Extended Operator that manages a pool of Web Workers for concurrent task processing
  * with bidirectional Subject-based communication.
  */
@@ -45,7 +29,6 @@ export type Coroutine<T = any, R = T> = Operator<T, R> & {
   processTask: (data: T) => Promise<R>;
   getIdleWorker: () => Promise<{ worker: Worker; workerId: number }>;
   returnWorker: (worker: Worker) => void;
-  subject: CoroutineSubject<T, R>;
 };
 
 /**
@@ -263,75 +246,6 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     }
   };
 
-  // Subject interface implementation
-  const subject: CoroutineSubject<T, R> = {
-    broadcast: async (data: T): Promise<void> => {
-      const promises: Promise<void>[] = [];
-
-      activeWorkers.forEach((worker, workerId) => {
-        const taskId = crypto.randomUUID();
-        promises.push(new Promise<void>((resolve) => {
-          worker.postMessage({ workerId, taskId, payload: data, type: 'broadcast' });
-          resolve();
-        }));
-      });
-
-      await Promise.all(promises);
-    },
-
-    send: async (targetWorkerId: number, data: T): Promise<R> => {
-      const worker = activeWorkers.get(targetWorkerId);
-      if (!worker) {
-        throw new Error(`Worker ${targetWorkerId} not found`);
-      }
-
-      const taskId = crypto.randomUUID();
-      return new Promise<R>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          pendingMessages.delete(taskId);
-          reject(new Error('Worker send timeout'));
-        }, 30000);
-
-        pendingMessages.set(taskId, {
-          resolve: (value) => {
-            clearTimeout(timeout);
-            resolve(value);
-          },
-          reject: (error) => {
-            clearTimeout(timeout);
-            reject(error);
-          }
-        });
-
-        worker.postMessage({ workerId: targetWorkerId, taskId, payload: data, type: 'task' });
-      });
-    },
-
-    subscribe: (workerId: number, callback: (data: R) => void): (() => void) => {
-      if (!workerSubscribers.has(workerId)) {
-        workerSubscribers.set(workerId, new Set());
-      }
-      const subscribers = workerSubscribers.get(workerId)!;
-      subscribers.add(callback);
-
-      return () => {
-        subscribers.delete(callback);
-        if (subscribers.size === 0) {
-          workerSubscribers.delete(workerId);
-        }
-      };
-    },
-
-    subscribeAll: (callback: (data: R, workerId: number) => void): (() => void) => {
-      allSubscribers.add(callback);
-      return () => allSubscribers.delete(callback);
-    },
-
-    asSubject: (): Subject<CoroutineMessage> => {
-      return messageSubject;
-    }
-  };
-
   const finalize = async () => {
     if (isFinalizing) return;
     isFinalizing = true;
@@ -387,6 +301,5 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     processTask,
     getIdleWorker,
     returnWorker,
-    subject
   } as Coroutine<T, R>;
 };
