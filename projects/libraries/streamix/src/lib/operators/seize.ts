@@ -28,8 +28,7 @@ export interface SeizedWorker<T = any, R = T> {
  * @returns A stream that yields a single `SeizedWorker` object.
  */
 export function seize<T = any, R = T>(
-  task: Coroutine<T, R>,
-  initialParams?: T
+  task: Coroutine<T, R>
 ): Stream<SeizedWorker> {
   return createStream("seize", async function* () {
     // Seize a worker from the pool
@@ -48,38 +47,7 @@ export function seize<T = any, R = T>(
     };
     worker.addEventListener('message', messageHandler);
 
-    // Setup subject subscription to send messages to worker
-    const subscription = subject.subscribe({
-      next: (msg) => {
-        if (!disposed) {
-          worker.postMessage({
-            ...msg,
-            workerId: msg.workerId ?? workerId, // Ensure workerId is set
-            messageId: msg.messageId ?? crypto.randomUUID(), // Ensure messageId
-            type: msg.type ?? 'message' // Ensure type
-          });
-        }
-      },
-      complete: () => {
-        if (!disposed) {
-          worker.removeEventListener('message', messageHandler);
-          task.returnWorker(worker);
-        }
-      }
-    });
-
     try {
-      // Process initial task if provided
-      if (initialParams !== undefined) {
-        const result = await task.assignTask(workerId, initialParams);
-        subject.next({
-          workerId,
-          messageId: crypto.randomUUID(),
-          type: 'response',
-          payload: result
-        });
-      }
-
       // Yield the seized worker interface
       yield {
         outbound$: subject,
@@ -88,7 +56,6 @@ export function seize<T = any, R = T>(
         dispose: () => {
           if (!disposed) {
             disposed = true;
-            subscription.unsubscribe();
             worker.removeEventListener('message', messageHandler);
             task.returnWorker(worker);
             subject.complete();
@@ -100,7 +67,6 @@ export function seize<T = any, R = T>(
       await new Promise<void>(() => {});
     } finally {
       if (!disposed) {
-        subscription.unsubscribe();
         worker.removeEventListener('message', messageHandler);
         task.returnWorker(worker);
       }

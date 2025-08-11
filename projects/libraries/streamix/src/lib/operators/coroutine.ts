@@ -6,17 +6,17 @@ import { createSubject, Subject } from "../subjects";
  *
  * @typedef {Object} CoroutineMessage
  * @property {number} workerId - Unique identifier of the worker instance sending or receiving the message.
- * @property {string} messageId - Unique identifier for the message to correlate requests and responses.
+ * @property {string} taskId - Unique identifier for the message to correlate requests and responses.
  * @property {*} [payload] - The actual data payload being sent or received.
  * @property {string} [error] - Error message string if the worker encountered an error processing the task.
  * @property {'task'|'broadcast'|'response'} [type] - Message type for routing
  */
 export type CoroutineMessage = {
   workerId: number;
-  messageId: string;
+  taskId: string;
   payload?: any;
   error?: string;
-  type?: 'task' | 'broadcast' | 'response' | 'progress';
+  type?: 'task' | 'broadcast' | 'response' | 'progress' | 'error';
 };
 
 /**
@@ -65,7 +65,10 @@ let workerIdentifierCounter = 0;
  * @template T - Input task parameter type.
  * @template R - Return type of the task.
  */
-export type MainTask<T = any, R = any> = (data: T, progress?: (progressData: any) => void) => Promise<R> | R;
+export type MainTask<T = any, R = any> = (
+  data: T,
+  progress: (progressData: any) => void
+) => Promise<R> | R;
 
 /**
  * Coroutine operator to run tasks in a pool of Web Workers with Subject-based communication.
@@ -108,25 +111,25 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
       ${injectedDependencies};
       const mainTask = ${mainTaskBody};
 
-      const progressCallback = (workerId, messageId) => (progressData) => {
-        postMessage({ workerId, messageId, payload: progressData, type: 'progress' });
+      const progressCallback = (workerId, taskId) => (progressData) => {
+        postMessage({ workerId, taskId, payload: progressData, type: 'progress' });
       };
 
       // Handle different message types
       onmessage = async (event) => {
-        const { workerId, messageId, payload, type = 'task' } = event.data;
+        const { workerId, taskId, payload, type = 'task' } = event.data;
 
         try {
           if (type === 'task') {
-            const result = await mainTask(payload, progressCallback(workerId, messageId));
-            postMessage({ workerId, messageId, payload: result, type: 'response' });
+            const result = await mainTask(payload, progressCallback(workerId, taskId));
+            postMessage({ workerId, taskId, payload: result, type: 'response' });
           } else if (type === 'broadcast') {
             // Handle broadcast messages - can send responses back
-            const result = await mainTask(payload, progressCallback(workerId, messageId));
-            postMessage({ workerId, messageId, payload: result, type: 'broadcast' });
+            const result = await mainTask(payload, progressCallback(workerId, taskId));
+            postMessage({ workerId, taskId, payload: result, type: 'broadcast' });
           }
         } catch (error) {
-          postMessage({ workerId, messageId, error: error.message, type: 'response' });
+          postMessage({ workerId, taskId, error: error.message, type: 'error' });
         }
       };
     `;
@@ -141,7 +144,7 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     // Set up message handling for this worker
     worker.addEventListener("message", (event: MessageEvent<CoroutineMessage>) => {
       const msg = event.data;
-      const { messageId, payload, error, workerId: msgWorkerId, type } = msg;
+      const { taskId: taskId, payload, error, workerId: msgWorkerId, type } = msg;
 
       if (type === 'broadcast') {
         // Handle broadcast responses
@@ -153,17 +156,23 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
         if (specificSubscribers) {
           specificSubscribers.forEach(callback => callback(payload));
         }
-      } else {
-        // Handle regular task responses
-        const pending = pendingMessages.get(messageId);
+      }  else if (type === 'error') {
+        // handle error message explicitly
+        const pending = pendingMessages.get(taskId);
         if (pending) {
-          pendingMessages.delete(messageId);
-          if (error) {
-            pending.reject(new Error(error));
-          } else {
-            pending.resolve(payload);
-          }
+          pendingMessages.delete(taskId);
+          pending.reject(new Error(error ?? 'Unknown worker error'));
         }
+      } else if (type === 'response') {
+        // handle normal task response
+        const pending = pendingMessages.get(taskId);
+        if (pending) {
+          pendingMessages.delete(taskId);
+          pending.resolve(payload);
+        }
+      } else {
+        // optionally handle unexpected or other types
+        console.warn('Unknown message type from worker:', msg);
       }
     });
 
@@ -202,15 +211,15 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
     if (!worker) {
       throw new Error(`Worker ${workerId} not found or is not active`);
     }
-    const messageId = crypto.randomUUID();
+    const taskId = crypto.randomUUID();
 
     return new Promise<R>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        pendingMessages.delete(messageId);
+        pendingMessages.delete(taskId);
         reject(new Error('Worker assignTask timeout'));
       }, 30000); // 30 second timeout
 
-      pendingMessages.set(messageId, {
+      pendingMessages.set(taskId, {
         resolve: (value) => {
           clearTimeout(timeout);
           resolve(value);
@@ -221,22 +230,22 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
         }
       });
 
-      worker.postMessage({ workerId, messageId, payload: data, type: 'task' });
+      worker.postMessage({ workerId, taskId, payload: data, type: 'task' });
     });
   };
 
   const processTask = async (value: T): Promise<R> => {
     const { worker, workerId } = await getIdleWorker();
-    const messageId = crypto.randomUUID();
+    const taskId = crypto.randomUUID();
 
     try {
       return await new Promise<R>((resolve, reject) => {
         const timeout = setTimeout(() => {
-          pendingMessages.delete(messageId);
+          pendingMessages.delete(taskId);
           reject(new Error('Worker task timeout'));
         }, 30000); // 30 second timeout
 
-        pendingMessages.set(messageId, {
+        pendingMessages.set(taskId, {
           resolve: (value) => {
             clearTimeout(timeout);
             resolve(value);
@@ -247,7 +256,7 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
           }
         });
 
-        worker.postMessage({ workerId, messageId, payload: value, type: 'task' });
+        worker.postMessage({ workerId, taskId, payload: value, type: 'task' });
       });
     } finally {
       returnWorker(worker);
@@ -260,9 +269,9 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
       const promises: Promise<void>[] = [];
 
       activeWorkers.forEach((worker, workerId) => {
-        const messageId = crypto.randomUUID();
+        const taskId = crypto.randomUUID();
         promises.push(new Promise<void>((resolve) => {
-          worker.postMessage({ workerId, messageId, payload: data, type: 'broadcast' });
+          worker.postMessage({ workerId, taskId, payload: data, type: 'broadcast' });
           resolve();
         }));
       });
@@ -276,14 +285,14 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
         throw new Error(`Worker ${targetWorkerId} not found`);
       }
 
-      const messageId = crypto.randomUUID();
+      const taskId = crypto.randomUUID();
       return new Promise<R>((resolve, reject) => {
         const timeout = setTimeout(() => {
-          pendingMessages.delete(messageId);
+          pendingMessages.delete(taskId);
           reject(new Error('Worker send timeout'));
         }, 30000);
 
-        pendingMessages.set(messageId, {
+        pendingMessages.set(taskId, {
           resolve: (value) => {
             clearTimeout(timeout);
             resolve(value);
@@ -294,7 +303,7 @@ export const coroutine = <T = any, R = T>(main: MainTask, ...functions: Function
           }
         });
 
-        worker.postMessage({ workerId: targetWorkerId, messageId, payload: data, type: 'task' });
+        worker.postMessage({ workerId: targetWorkerId, taskId, payload: data, type: 'task' });
       });
     },
 
