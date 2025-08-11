@@ -1,5 +1,7 @@
-// A collection of helper functions, designed to provide consistent behavior
-// across different JavaScript environments.
+/**
+ * A collection of helper functions, designed to provide consistent behavior
+ * across different JavaScript environments.
+ */
 
 // --------------------------- Property Definitions ---------------------------
 
