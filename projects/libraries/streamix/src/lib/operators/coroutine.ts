@@ -15,7 +15,7 @@ export type CoroutineMessage = {
   taskId: string;
   payload?: any;
   error?: string;
-  type?: 'task' | 'broadcast' | 'response' | 'progress' | 'error';
+  type?: 'task' | 'response' | 'progress' | 'error';
 };
 
 /**
@@ -145,6 +145,8 @@ onmessage = async (event) => {
           pendingMessages.delete(taskId);
           pending.reject(new Error(error ?? 'Unknown worker error'));
         }
+      } else if (type === 'progress') {
+        Function.prototype;
       } else {
         // optionally handle unexpected or other types
         console.warn('Unknown message type from worker:', msg);
