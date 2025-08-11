@@ -1,6 +1,22 @@
 import { createOperator, Operator } from "../abstractions";
 
 /**
+ * Message structure exchanged between main thread and Web Workers in the Coroutine operator.
+ *
+ * @typedef {Object} CoroutineMessage
+ * @property {number} workerId - Unique identifier of the worker instance sending or receiving the message.
+ * @property {string} messageId - Unique identifier for the message to correlate requests and responses.
+ * @property {*} [payload] - The actual data payload being sent or received.
+ * @property {string} [error] - Error message string if the worker encountered an error processing the task.
+ */
+export type CoroutineMessage = {
+  workerId: number;
+  messageId: string;
+  payload?: any;
+  error?: string;
+};
+
+/**
  * Extended Operator that manages a pool of Web Workers for concurrent task processing.
  *
  * - `finalize`: Cleans up resources and terminates workers.
@@ -11,14 +27,13 @@ import { createOperator, Operator } from "../abstractions";
 export type Coroutine<T = any, R = any> = Operator<T, R> & {
   finalize: () => Promise<void>;
   processTask: (data: any) => Promise<R>;
-  getIdleWorker: () => Promise<Worker>;
+  getIdleWorker: () => Promise<{ worker: Worker; workerId: number }>;
   returnWorker: (worker: Worker) => void;
 };
 
-let helperScriptCache: string | null = null;
-let fetchingHelperScript = false;
-let helperScriptPromise: Promise<string> | null = null; // Corrected type to string
-
+const HELPER_SCRIPT = `
+var __defProp=Object.defineProperty,__getOwnPropDescs=Object.getOwnPropertyDescriptors,__getOwnPropSymbols=Object.getOwnPropertySymbols,__hasOwnProp=Object.prototype.hasOwnProperty,__propIsEnum=Object.prototype.propertyIsEnumerable,__knownSymbol=(r,e)=>(e=Symbol[r])?e:Symbol.for("Symbol."+r),__defNormalProp=(r,e,o)=>e in r?__defProp(r,e,{enumerable:!0,configurable:!0,writable:!0,value:o}):r[e]=o,__spreadValues=(r,e)=>{for(var o in e||={})__hasOwnProp.call(e,o)&&__defNormalProp(r,o,e[o]);if(__getOwnPropSymbols)for(var o of __getOwnPropSymbols(e))__propIsEnum.call(e,o)&&__defNormalProp(r,o,e[o]);return r},__spreadProps=(r,e)=>__defProps(r,__getOwnPropDescs(e)),__async=(r,e,o)=>new Promise((n,t)=>{var a=r=>{try{p(o.next(r))}catch(e){t(e)}},l=r=>{try{p(o.throw(r))}catch(e){t(e)}},p=r=>r.done?n(r.value):Promise.resolve(r.value).then(a,l);p((o=o.apply(r,e)).next())}),__await=function(r,e){this[0]=r,this[1]=e},__asyncGenerator=(r,e,o)=>{var n=(r,e,t,a)=>{try{var l=o[r](e),p=(e=l.value)instanceof __await,s=l.done;Promise.resolve(p?e[0]:e).then(o=>p?n("return"===r?r:"next",e[1]?{done:o.done,value:o.value}:o,t,a):t({value:o,done:s})).catch(r=>n("throw",r,t,a))}catch(y){a(y)}},t=r=>a[r]=e=>new Promise((o,t)=>n(r,e,o,t)),a={};return o=o.apply(r,e),a[__knownSymbol("asyncIterator")]=()=>a,t("next"),t("throw"),t("return"),a},__forAwait=(r,e,o)=>(e=r[__knownSymbol("asyncIterator")])?e.call(r):(r=r[__knownSymbol("iterator")](),e={},(o=(o,n)=>(n=r[o])&&(e[o]=e=>new Promise((o,t,a)=>(a=(e=n.call(r,e)).done,Promise.resolve(e.value).then(r=>o({value:r,done:a}),t)))))("next"),o("return"),e);
+`;
 /**
  * Coroutine operator to run tasks in a pool of Web Workers.
  * It manages a worker pool limited by hardware concurrency,
@@ -30,210 +45,134 @@ let helperScriptPromise: Promise<string> | null = null; // Corrected type to str
  */
 export const coroutine = <T = any, R = any>(main: Function, ...functions: Function[]): Coroutine<T, R> => {
   const maxWorkers = navigator.hardwareConcurrency || 4;
-  const workerPool: Worker[] = [];
-  const waitingQueue: Array<(worker: Worker) => void> = [];
+  const workerPool: { worker: Worker; workerId: number }[] = [];
+  const waitingQueue: Array<(entry: { worker: Worker; workerId: number }) => void> = [];
   let createdWorkersCount = 0;
+  let workerCounter = 0;
 
   let blobUrlCache: string | null = null;
   let isFinalizing = false;
 
-  const createWorker = async (): Promise<Worker> => {
-    let helperScript = '';
+  const createWorker = async (): Promise<{ worker: Worker; workerId: number }> => {
+    // Use inline helper script directly
+    const helperScript = HELPER_SCRIPT;
 
     const injectedDependencies = functions
       .map((fn) => {
         let fnBody = fn.toString();
-        // Ensure named function expressions are properly represented
-        fnBody = fnBody.replace(/function[\s]*\(/, `function ${fn.name || ''}(`);
+        fnBody = fnBody.replace(/function[\s]*\(/, `function ${fn.name || ""}(`);
         return fnBody;
       })
-      .join(';\n');
+      .join(";\n");
 
-    const mainTaskBody = main
-      .toString()
-      .replace(/function[\s]*\(/, `function ${main.name || ''}(`);
-
-    const asyncPresent = mainTaskBody.includes('__async') || injectedDependencies.includes('__async');
-
-    if (asyncPresent) {
-      if (!helperScriptCache && !fetchingHelperScript) {
-        fetchingHelperScript = true;
-        helperScriptPromise = fetch(
-          'https://unpkg.com/@actioncrew/streamix@2.0.19/fesm2022/actioncrew-streamix-coroutine.mjs',
-        )
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`Failed to fetch helper script: ${response.statusText}`);
-            }
-            return response.text();
-          })
-          .then((script) => {
-            helperScriptCache = script;
-            return script;
-          })
-          .catch((error) => {
-            console.error('Error fetching helper script:', error);
-            throw error;
-          })
-          .finally(() => {
-            fetchingHelperScript = false;
-          });
-      }
-
-      if (helperScriptPromise) { // Ensure helperScriptPromise is not null before awaiting
-        helperScript = await helperScriptPromise;
-      } else if (helperScriptCache) {
-        helperScript = helperScriptCache;
-      }
-    }
+    const mainTaskBody = main.toString().replace(/function[\s]*\(/, `function ${main.name || ""}(`);
 
     const workerBody = `
       ${helperScript}
       ${injectedDependencies};
       const mainTask = ${mainTaskBody};
       onmessage = async (event) => {
+        const { workerId, messageId, payload } = event.data;
         try {
-          const result = await mainTask(event.data);
-          postMessage(result);
+          const result = await mainTask(payload);
+          postMessage({ workerId, messageId, payload: result });
         } catch (error) {
-          postMessage({ error: error.message });
+          postMessage({ workerId, messageId, error: error.message });
         }
       };
     `;
 
     if (!blobUrlCache) {
-      const blob = new Blob([workerBody], { type: 'application/javascript' });
+      const blob = new Blob([workerBody], { type: "application/javascript" });
       blobUrlCache = URL.createObjectURL(blob);
     }
 
-    return new Worker(blobUrlCache, { type: 'module' });
+    const workerId = ++workerCounter;
+    return { worker: new Worker(blobUrlCache, { type: "module" }), workerId };
   };
 
-  const getIdleWorker = async (): Promise<Worker> => {
-    if (workerPool.length > 0) {
-      return workerPool.shift()!;
-    }
-
+  const getIdleWorker = async (): Promise<{ worker: Worker; workerId: number }> => {
+    if (workerPool.length > 0) return workerPool.shift()!;
     if (createdWorkersCount < maxWorkers) {
       createdWorkersCount++;
       return await createWorker();
     }
-
-    return new Promise<Worker>((resolve) => {
-      waitingQueue.push(resolve);
-    });
+    return new Promise((resolve) => waitingQueue.push(resolve));
   };
 
   const returnWorker = (worker: Worker): void => {
-    if (isFinalizing) { // Don't return workers if finalizing
+    if (isFinalizing) {
       worker.terminate();
       return;
     }
     if (waitingQueue.length > 0) {
       const resolve = waitingQueue.shift()!;
-      resolve(worker);
+      resolve({ worker, workerId: (worker as any).__id });
     } else {
-      workerPool.push(worker);
+      workerPool.push({ worker, workerId: (worker as any).__id });
     }
   };
 
   const processTask = async (value: R): Promise<R> => {
-    const worker = await getIdleWorker();
+    const { worker, workerId } = await getIdleWorker();
+    (worker as any).__id = workerId;
+    const messageId = crypto.randomUUID();
+
     try {
       return await new Promise<R>((resolve, reject) => {
-        const messageHandler = (event: MessageEvent) => {
-          worker.removeEventListener('message', messageHandler); // Clean up listener
-          worker.removeEventListener('error', errorHandler);     // Clean up listener
-          if (event.data.error) {
-            reject(new Error(event.data.error)); // Wrap error string in Error object
-          } else {
-            resolve(event.data);
-          }
+        const messageHandler = (event: MessageEvent<CoroutineMessage>) => {
+          if (event.data.messageId !== messageId) return;
+          worker.removeEventListener("message", messageHandler);
+          worker.removeEventListener("error", errorHandler);
+          if (event.data.error) reject(new Error(event.data.error));
+          else resolve(event.data.payload);
         };
 
         const errorHandler = (error: ErrorEvent) => {
-          worker.removeEventListener('message', messageHandler); // Clean up listener
-          worker.removeEventListener('error', errorHandler);     // Clean up listener
-          reject(new Error(error.message)); // Wrap error string in Error object
+          worker.removeEventListener("message", messageHandler);
+          worker.removeEventListener("error", errorHandler);
+          reject(new Error(error.message));
         };
 
-        worker.addEventListener('message', messageHandler);
-        worker.addEventListener('error', errorHandler);
-
-        worker.postMessage(value);
+        worker.addEventListener("message", messageHandler);
+        worker.addEventListener("error", errorHandler);
+        worker.postMessage({ workerId, messageId, payload: value });
       });
     } finally {
-      returnWorker(worker); // Ensure worker is returned even on error
+      returnWorker(worker);
     }
   };
 
   const finalize = async () => {
     if (isFinalizing) return;
     isFinalizing = true;
-
-    // Terminate all workers in the pool and clear waiting queue
-    while(workerPool.length > 0) {
-        workerPool.pop()!.terminate();
-    }
-    while(waitingQueue.length > 0) {
-        // Resolve any pending requests with an error or by terminating the worker
-        // This is a more complex scenario depending on desired behavior.
-        // For simplicity, we'll just clear the queue as workers will be terminated.
-        waitingQueue.pop();
-    }
-
+    while (workerPool.length > 0) workerPool.pop()!.worker.terminate();
+    waitingQueue.length = 0;
     if (blobUrlCache) {
       URL.revokeObjectURL(blobUrlCache);
       blobUrlCache = null;
     }
-    helperScriptCache = null; // Clear helper script cache on finalize
-    helperScriptPromise = null;
   };
 
-  const operator = createOperator<T, R>("coroutine", (source) => {
-    return {
-      async next(): Promise<IteratorResult<R>> {
-        if (isFinalizing) {
-          // If already finalizing, complete immediately
-          return { done: true, value: undefined };
-        }
-
-        const { done: sourceDone, value } = await source.next();
-
-        if (sourceDone) {
-          await finalize(); // Finalize when source is done
-          return { done: true, value: undefined };
-        }
-
-        try {
-          const processedValue = await processTask(value as any);
-          return { done: false, value: processedValue };
-        } catch (error) {
-          // Propagate error and finalize
-          await finalize();
-          throw error;
-        }
-      },
-
-      async return(): Promise<IteratorResult<R>> {
-        await finalize(); // Finalize on early return
+  const operator = createOperator<T, R>("coroutine", (source) => ({
+    async next() {
+      if (isFinalizing) return { done: true, value: undefined };
+      const { done, value } = await source.next();
+      if (done) {
+        await finalize();
         return { done: true, value: undefined };
-      },
-
-      async throw(error?: any): Promise<IteratorResult<R>> {
-        await finalize(); // Finalize on error from upstream
-        throw error;
       }
-    };
-  });
+      return { done: false, value: await processTask(value as any) };
+    },
+    async return() {
+      await finalize();
+      return { done: true, value: undefined };
+    },
+    async throw(err) {
+      await finalize();
+      throw err;
+    }
+  }));
 
-  // Attach the additional methods to the operator object
-  // This is the key correction: extending the operator after its creation
-  return {
-    ...operator,
-    finalize,
-    processTask, // Expose processTask if it's meant to be called externally
-    getIdleWorker, // Expose getIdleWorker if it's meant to be called externally
-    returnWorker, // Expose returnWorker if it's meant to be called externally
-  } as Coroutine; // Assert the type
+  return { ...operator, finalize, processTask, getIdleWorker, returnWorker } as Coroutine;
 };

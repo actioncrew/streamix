@@ -1,5 +1,5 @@
-import { createStream, Stream } from '../abstractions';
-import { Coroutine } from '../operators';
+import { createStream, Stream } from "../abstractions";
+import { Coroutine, CoroutineMessage } from "../operators";
 
 /**
  * Creates a stream that runs a computation task on a worker from a Coroutine pool,
@@ -10,27 +10,30 @@ import { Coroutine } from '../operators';
  * responsive. It uses a `Coroutine` to manage a pool of web workers.
  */
 export function compute<T = any>(task: Coroutine, params: any): Stream<T> {
-  return createStream<T>('compute', async function* () {
-    const worker = await task.getIdleWorker();
+  return createStream<T>("compute", async function* () {
+    const { worker, workerId } = await task.getIdleWorker();
+    (worker as any).__id = workerId;
+    const messageId = crypto.randomUUID();
 
     try {
       const result = await new Promise<any>((resolve, reject) => {
-        // Setup message handler
-        worker.onmessage = (event: any) => {
-          if (event.data.error) {
-            reject(event.data.error);
-          } else {
-            resolve(event.data);
-          }
+        const messageHandler = (event: MessageEvent<CoroutineMessage>) => {
+          if (event.data.messageId !== messageId) return;
+          worker.removeEventListener("message", messageHandler);
+          worker.removeEventListener("error", errorHandler);
+          if (event.data.error) reject(new Error(event.data.error));
+          else resolve(event.data.payload);
         };
 
-        // Setup error handler
-        worker.onerror = (error: any) => {
-          reject(error);
+        const errorHandler = (error: ErrorEvent) => {
+          worker.removeEventListener("message", messageHandler);
+          worker.removeEventListener("error", errorHandler);
+          reject(new Error(error.message));
         };
 
-        // Start the computation
-        worker.postMessage(params);
+        worker.addEventListener("message", messageHandler);
+        worker.addEventListener("error", errorHandler);
+        worker.postMessage({ workerId, messageId, payload: params });
       });
 
       yield result;
