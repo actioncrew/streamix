@@ -2,10 +2,10 @@ import { createOperator } from "../abstractions";
 import { Coroutine } from "./coroutine";
 
 /**
- * Pipeline operator that chains multiple coroutine tasks sequentially.
+ * Compose operator that chains multiple coroutine tasks sequentially.
  * Each task processes the output of the previous task.
  */
-export const pipeline = <T = any, R = T>(...tasks: Coroutine<any, any>[]) => {
+export const compose = <T = any, R = T>(...tasks: Coroutine<any, any>[]) => {
   return createOperator<T, R>("pipeline", (source) => ({
     async next() {
       const { done, value } = await source.next();
