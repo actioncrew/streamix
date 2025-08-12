@@ -45,6 +45,7 @@ export * from './take';
 export * from './takeUntil';
 export * from './takeWhile';
 export * from './tap';
+export * from './throttle';
 export * from './throwError';
 export * from './toArray';
 export * from './unique';
