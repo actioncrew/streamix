@@ -20,18 +20,18 @@ export function compose<A, B, C, D>(
   c3: Coroutine<C, D>
 ): Operator<A, D>;
 
-export function compose<T = any, R = any>(...tasks: Coroutine<any, any>[]): Operator<T, R> {
+export function compose<T = any, R = T>(...tasks: Coroutine<any, any>[]): Operator<T, R> {
   return createOperator<T, R>("pipeline", (source) => ({
     async next() {
       const { done, value } = await source.next();
       if (done) return { done: true, value: undefined };
 
-      let result = value;
+      let result: any = value;
       for (const task of tasks) {
         result = await task.processTask(result);
       }
 
-      return { done: false, value: result as unknown as R };
+      return { done: false, value: result as R };
     },
     async return() {
       return { done: true, value: undefined };
