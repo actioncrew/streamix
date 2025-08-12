@@ -1,5 +1,4 @@
 import { createStream, Stream } from "../abstractions";
-import { createSubject } from "../subjects";
 import { Coroutine, CoroutineMessage } from "./coroutine";
 
 /**
@@ -9,8 +8,7 @@ import { Coroutine, CoroutineMessage } from "./coroutine";
  */
 export interface SeizedWorker<T = any, R = T> {
   workerId: number;
-  output$: Stream<CoroutineMessage>;
-  sendTask: (data: T) => Promise<R>,
+  sendTask: (data: T) => Promise<R>;
   dispose: () => void;
 }
 
@@ -24,41 +22,48 @@ export interface SeizedWorker<T = any, R = T> {
  * on the `SeizedWorker` object.
  *
  * @param task The coroutine instance managing the worker pool.
- * @param initialParams Optional initial task to send to the worker upon seizing it.
+ * @param onMessage A callback to handle messages from the seized worker.
+ * @param onError A callback to handle errors from the seized worker.
  * @returns A stream that yields a single `SeizedWorker` object.
  */
 export function seize<T = any, R = T>(
-  task: Coroutine<T, R>
+  task: Coroutine<T, R>,
+  onMessage: (message: CoroutineMessage) => void,
+  onError: (error: Error) => void
 ): Stream<SeizedWorker> {
   return createStream("seize", async function* () {
     // Seize a worker from the pool
     const { worker, workerId } = await task.getIdleWorker();
     let disposed = false;
 
-    // Create our communication subject
-    const subject = createSubject<CoroutineMessage>();
-
     // Setup worker message handler
     const messageHandler = (event: MessageEvent<CoroutineMessage>) => {
       const msg = event.data;
       if (msg.workerId === workerId) {
-        subject.next(msg);
+        // Pass the message to the provided callback
+        onMessage(msg);
       }
     };
     worker.addEventListener('message', messageHandler);
 
+    // Setup worker error handler
+    const errorHandler = (event: ErrorEvent) => {
+      // Pass the error to the provided callback
+      onError(event.error);
+    };
+    worker.addEventListener('error', errorHandler);
+
     try {
       // Yield the seized worker interface
       yield {
-        output$: subject,
         workerId,
         sendTask: (data: T) => task.assignTask(workerId, data),
         dispose: () => {
           if (!disposed) {
             disposed = true;
             worker.removeEventListener('message', messageHandler);
+            worker.removeEventListener('error', errorHandler);
             task.returnWorker(workerId);
-            subject.complete();
           }
         }
       };
@@ -68,6 +73,7 @@ export function seize<T = any, R = T>(
     } finally {
       if (!disposed) {
         worker.removeEventListener('message', messageHandler);
+        worker.removeEventListener('error', errorHandler);
         task.returnWorker(workerId);
       }
     }

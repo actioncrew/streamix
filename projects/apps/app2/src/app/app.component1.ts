@@ -1,10 +1,10 @@
-import { CoroutineMessage, createCoroutine, seize, SeizedWorker, tap } from '@actioncrew/streamix';
+import { CoroutineMessage, createCoroutine, seize, SeizedWorker } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 // --- Worker Function that runs the timer logic ---
 // This is a single, stateful function designed to run in a web worker.
 // Worker function for use in Coroutine
-import { WorkerUtils } from '@actioncrew/streamix'; // Assuming types are in a file named 'types'
+import { WorkerUtils } from '@actioncrew/streamix';
 
 /**
  * A main task function that runs a countdown timer inside a Web Worker.
@@ -55,31 +55,38 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     // The coroutine manages a pool of workers running our timer logic.
+    // This is the direct invocation of createCoroutine.
     const timerTask = createCoroutine(createTimerWorker);
 
     // We use the seize operator to get a single dedicated worker from the pool.
-    // The stream emits a single SeizedWorker object.
-    const timerWorker$ = seize(timerTask).pipe(
-      // The finalize operator ensures the worker and task are cleaned up
-      // when the stream is unsubscribed or completes.
-      tap(console.log)
-    );
-
-    // Subscribe to the stream to get the SeizedWorker instance.
-    // This is where we handle all communication with the worker.
-    timerWorker$.subscribe((seizedWorker) => {
-      this.seizedWorker = seizedWorker;
-      // Listen for messages from the worker
-      this.seizedWorker.output$.subscribe((msg: CoroutineMessage) => {
+    // We now pass callbacks directly to seize for handling messages and errors.
+    const timerWorker$ = seize(
+      timerTask,
+      // onMessage callback
+      (msg: CoroutineMessage) => {
         if (msg.type === 'progress') {
-          this.timerValue = msg.payload;
+          this.timerValue = msg.payload.tick;
           console.log('Counting down...');
         } else if (msg.type === 'response') {
           console.log('Completed');
           this.seizedWorker.dispose(); // Clean up the worker after it's done
+          this.timerStatus = 'Stopped';
         }
-      });
+      },
+      // onError callback
+      (error: Error) => {
+        console.error('Worker error:', error);
+        this.timerStatus = 'Error';
+        this.seizedWorker.dispose();
+      }
+    );
 
+    // Subscribe to the stream to get the SeizedWorker instance.
+    // This is where we get the control object to send tasks to the worker.
+    timerWorker$.subscribe((seizedWorker) => {
+      this.seizedWorker = seizedWorker;
+      this.timerStatus = 'Running';
+      console.log('Worker seized, starting timer...');
       // Start the timer for the first time
       this.seizedWorker.sendTask({ initialTime: 60, type: 'start' });
     });
@@ -87,9 +94,18 @@ export class AppComponent implements OnInit {
 
   // Method to reset the timer from the UI
   resetTimer() {
-    console.log('Resetting...');
-    // Send a message to the worker to reset the timer to 30 seconds
-    this.seizedWorker.sendTask({ type: 'reset', initialTime: 30 });
+    if (this.seizedWorker) {
+      console.log('Resetting...');
+      this.timerStatus = 'Resetting';
+      // Send a message to the worker to reset the timer to 30 seconds
+      this.seizedWorker.sendTask({ type: 'reset', initialTime: 30 });
+    }
   }
 
+  // Clean up on component destruction
+  ngOnDestroy(): void {
+    if (this.seizedWorker) {
+      this.seizedWorker.dispose();
+    }
+  }
 }
