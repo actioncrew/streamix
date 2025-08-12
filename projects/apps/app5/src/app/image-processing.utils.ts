@@ -1,5 +1,40 @@
 // utils/image-processing.utils.ts
 
+export interface FileTask {
+  file: File;
+  id: string;
+}
+
+export interface ProcessedResult {
+  id: string;
+  url: string;
+  originalSize: number;
+  finalSize: number;
+  saved: number;
+}
+
+export interface ResizeInput {
+  blob: ArrayBuffer;
+  width: number;
+  height: number;
+  taskId?: string;
+  originalSize?: number;
+}
+
+export interface ResizeOutput extends ResizeInput {
+  blob: ArrayBuffer;
+  size: number;
+}
+
+export interface CompressInput extends ResizeOutput {
+  quality: number;
+}
+
+export interface CompressOutput extends CompressInput {
+  finalBlob: ArrayBuffer;
+  compressedSize: number;
+}
+
 /**
  * Resizes an image using OffscreenCanvas, which can run in a Web Worker.
  * @param data The image blob and target dimensions.
@@ -7,9 +42,9 @@
  * @returns A promise that resolves with the resized image blob as an ArrayBuffer.
  */
 export async function resizeImage(
-  data: { blob: ArrayBuffer; width: number; height: number },
+  data: ResizeInput,
   utils: { reportProgress: (p: any) => void }
-): Promise<{ blob: ArrayBuffer; size: number }> {
+): Promise<ResizeOutput> {
   utils.reportProgress({ stage: 'resize', progress: 0 });
 
   const { blob, width, height } = data;
@@ -36,6 +71,7 @@ export async function resizeImage(
   utils.reportProgress({ stage: 'resize', progress: 1.0 });
 
   return {
+    ...data,
     blob: await outputBlob.arrayBuffer(),
     size: outputBlob.size,
   };
@@ -48,9 +84,9 @@ export async function resizeImage(
  * @returns A promise that resolves with the compressed image blob as an ArrayBuffer.
  */
 export async function compressImage(
-  data: { blob: ArrayBuffer; },
+  data: CompressInput,
   utils: { reportProgress: (p: any) => void }
-): Promise<{ finalBlob: ArrayBuffer; compressedSize: number }> {
+): Promise<CompressOutput> {
   utils.reportProgress({ stage: 'compress', progress: 0 });
 
   const { blob } = data;
@@ -75,6 +111,7 @@ export async function compressImage(
   utils.reportProgress({ stage: 'compress', progress: 1.0 });
 
   return {
+    ...data,
     finalBlob: await outputBlob.arrayBuffer(),
     compressedSize: outputBlob.size,
   };

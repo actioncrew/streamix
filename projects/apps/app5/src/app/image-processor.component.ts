@@ -2,7 +2,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy } from '@angular/core';
 import { FileSizePipe } from './file-size.pipe';
-import { ImagePipelineService, ProcessedResult } from './image-pipeline.service';
+import { ImagePipelineService } from './image-pipeline.service';
+import { ProcessedResult } from './image-processing.utils';
 
 @Component({
   selector: 'app-root',

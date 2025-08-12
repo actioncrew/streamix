@@ -14,75 +14,7 @@ import {
 } from '@actioncrew/streamix';
 import { Injectable, NgZone } from '@angular/core';
 
-import { compressImage, resizeImage } from './image-processing.utils';
-
-export interface FileTask {
-  file: File;
-  id: string;
-}
-
-export interface ProcessedResult {
-  id: string;
-  url: string;
-  originalSize: number;
-  finalSize: number;
-  saved: number;
-}
-
-interface ResizeInput {
-  blob: ArrayBuffer;
-  width: number;
-  height: number;
-  taskId?: string;
-  originalSize?: number;
-}
-
-interface ResizeOutput extends ResizeInput {
-  blob: ArrayBuffer;
-  size: number;
-}
-
-interface CompressInput extends ResizeOutput {
-  quality: number;
-}
-
-interface CompressOutput extends CompressInput {
-  finalBlob: ArrayBuffer;
-  compressedSize: number;
-}
-
-// Wrapper coroutine factory to merge input + output
-
-function createResizeCoroutine(
-  customMessageHandler: any
-): Coroutine<ResizeInput, ResizeOutput> {
-  const base = coroutine({ customMessageHandler })(resizeImage);
-  return {
-    ...base,
-    processTask: async (input: ResizeInput): Promise<ResizeOutput> => {
-      const output = await base.processTask(input);
-      return {
-        ...input,  // keep all input props (taskId, originalSize, etc)
-        ...output, // add blob and size from resizeImage output
-      };
-    }
-  } as Coroutine<ResizeInput, ResizeOutput>;
-}
-
-function createCompressCoroutine(
-  customMessageHandler: any
-): Coroutine<CompressInput, CompressOutput> { // note output type
-
-  const base = coroutine({ customMessageHandler })(compressImage);
-
-  return {
-    ...base,
-    processTask: async (input: CompressInput): Promise<CompressOutput> => {
-      const output = await base.processTask(input);
-      return { ...input, ...output };
-    }
-  } as any;
-}
+import { compressImage, CompressInput, CompressOutput, FileTask, ProcessedResult, resizeImage, ResizeInput, ResizeOutput } from './image-processing.utils';
 
 @Injectable({ providedIn: 'root' })
 export class ImagePipelineService {
@@ -125,8 +57,8 @@ export class ImagePipelineService {
       }
     };
 
-    this.resizeCoroutine = createResizeCoroutine(customMessageHandler);
-    this.compressCoroutine = createCompressCoroutine(customMessageHandler);
+    this.resizeCoroutine = coroutine({ customMessageHandler })(resizeImage);
+    this.compressCoroutine = coroutine({ customMessageHandler })(compressImage);
 
     this.previewWorkerStream = seize(
       this.resizeCoroutine,
