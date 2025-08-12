@@ -29,7 +29,6 @@ export type WorkerConfig = {
  * Configuration object for the Coroutine factory.
  */
 export type CoroutineConfig = {
-  maxWorkers?: number;
   workerConfig?: WorkerConfig;
   /** A custom message handler for all messages from the worker. */
   customMessageHandler?: (
@@ -134,18 +133,33 @@ onmessage = async (event) => {
  */
 const HELPER_SCRIPT = `var __defProp=Object.defineProperty,__getOwnPropDescs=Object.getOwnPropertyDescriptors,__getOwnPropSymbols=Object.getOwnPropertySymbols,__hasOwnProp=Object.prototype.hasOwnProperty,__propIsEnum=Object.prototype.propertyIsEnumerable,__knownSymbol=(r,e)=>(e=Symbol[r])?e:Symbol.for("Symbol."+r),__defNormalProp=(r,e,o)=>e in r?__defProp(r,e,{enumerable:!0,configurable:!0,writable:!0,value:o}):r[e]=o,__spreadValues=(r,e)=>{for(var o in e||={})__hasOwnProp.call(e,o)&&__defNormalProp(r,o,e[o]);if(__getOwnPropSymbols)for(var o of __getOwnPropSymbols(e))__propIsEnum.call(e,o)&&__defNormalProp(r,o,e[o]);return r},__spreadProps=(r,e)=>__defProps(r,__getOwnPropDescs(e)),__async=(r,e,o)=>new Promise((n,t)=>{var a=r=>{try{p(o.next(r))}catch(e){t(e)}},l=r=>{try{p(o.throw(r))}catch(e){t(e)}},p=r=>r.done?n(r.value):Promise.resolve(r.value).then(a,l);p((o=o.apply(r,e)).next())}),__await=function(r,e){this[0]=r,this[1]=e},__asyncGenerator=(r,e,o)=>{var n=(r,e,t,a)=>{try{var l=o[r](e),p=(e=l.value)instanceof __await,s=l.done;Promise.resolve(p?e[0]:e).then(o=>p?n("return"===r?r:"next",e[1]?{done:o.done,value:o.value}:o,t,a):t({value:o,done:s})).catch(r=>n("throw",r,t,a))}catch(y){a(y)}},t=r=>a[r]=e=>new Promise((o,t)=>n(r,e,o,t)),a={};return o=o.apply(r,e),a[__knownSymbol("asyncIterator")]=()=>a,t("next"),t("throw"),t("return"),a},__forAwait=(r,e,o)=>(e=r[__knownSymbol("asyncIterator")])?e.call(r):(r=r[__knownSymbol("iterator")](),e={},(o=(o,n)=>(n=r[o])&&(e[o]=e=>new Promise((o,t,a)=>(a=(e=n.call(r,e)).done,Promise.resolve(e.value).then(r=>o({value:r,done:a}),t)))))("next"),o("return"),e);`;
 
+/**
+ * Unique worker identifier counter
+ */
 let workerIdentifierCounter = 0;
 
-export function createCoroutine(config: CoroutineConfig): <T, R>(main: MainTask<T, R>, ...functions: Function[]) => Coroutine<T, R>;
-export function createCoroutine<T, R>(main: MainTask<T, R>, ...functions: Function[]): Coroutine<T, R>;
-export function createCoroutine<T, R>(
+/**
+ * Creates a coroutine operator for managing a pool of Web Workers.
+ *
+ * This function has two overloaded signatures:
+ * 1. `createCoroutine(config)`: Returns a factory function that takes a main task and helper functions.
+ * 2. `createCoroutine(mainTask, ...helpers)`: Directly creates a coroutine operator with a default configuration.
+ *
+ * @param config A configuration object for the worker pool (optional).
+ * @param main The main task function to run inside the workers.
+ * @param functions Any helper functions required by the main task.
+ * @returns A higher-order function or a Coroutine operator.
+ */
+export function coroutine(config: CoroutineConfig): <T, R>(main: MainTask<T, R>, ...functions: Function[]) => Coroutine<T, R>;
+export function coroutine<T, R>(main: MainTask<T, R>, ...functions: Function[]): Coroutine<T, R>;
+export function coroutine<T, R>(
   arg1: CoroutineConfig | MainTask<T, R>,
   ...rest: Function[]
 ): Coroutine<T, R> | ((main: MainTask<T, R>, ...functions: Function[]) => Coroutine<T, R>) {
 
   // This is the implementation function that does the heavy lifting
   const implementCoroutine = (config: CoroutineConfig, main: MainTask<T, R>, functions: Function[]): Coroutine<T, R> => {
-    const maxWorkers = config.maxWorkers || navigator.hardwareConcurrency || 4;
+    const maxWorkers = navigator.hardwareConcurrency || 4;
     const customMessageHandler = config.customMessageHandler;
 
     const workerPool: { worker: Worker; workerId: number }[] = [];

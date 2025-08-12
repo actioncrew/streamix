@@ -1,4 +1,4 @@
-import { compute, concatMap, createCoroutine, debounce, finalize, map, mergeMap, onResize, range, scan, startWith, Stream, tap } from '@actioncrew/streamix';
+import { compute, concatMap, coroutine, debounce, finalize, map, mergeMap, onResize, range, scan, startWith, Stream, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 // Main Mandelbrot computation function
@@ -119,7 +119,7 @@ export class AppComponent implements OnInit {
 
   drawFractal(): Stream {
     // Create ComputeOperator instance
-    const task = createCoroutine(computeMandelbrotInChunks, computeMandelbrot, computeColor);
+    const task = coroutine(computeMandelbrotInChunks, computeMandelbrot, computeColor);
     this.canvas = document.getElementById('mandelbrotCanvas')! as HTMLCanvasElement;
 
     return onResize(this.canvas).pipe(

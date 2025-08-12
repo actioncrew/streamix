@@ -1,4 +1,4 @@
-import { CoroutineMessage, createCoroutine, seize, SeizedWorker } from '@actioncrew/streamix';
+import { coroutine, CoroutineMessage, seize, SeizedWorker } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 // --- Worker Function that runs the timer logic ---
@@ -56,7 +56,7 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     // The coroutine manages a pool of workers running our timer logic.
     // This is the direct invocation of createCoroutine.
-    const timerTask = createCoroutine(createTimerWorker);
+    const timerTask = coroutine(createTimerWorker);
 
     // We use the seize operator to get a single dedicated worker from the pool.
     // We now pass callbacks directly to seize for handling messages and errors.
