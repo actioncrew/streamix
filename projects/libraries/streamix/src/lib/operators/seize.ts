@@ -9,7 +9,7 @@ import { Coroutine, CoroutineMessage } from "./coroutine";
 export interface SeizedWorker<T = any, R = T> {
   workerId: number;
   sendTask: (data: T) => Promise<R>;
-  dispose: () => void;
+  release: () => void;
 }
 
 /**
@@ -58,7 +58,7 @@ export function seize<T = any, R = T>(
       yield {
         workerId,
         sendTask: (data: T) => task.assignTask(workerId, data),
-        dispose: () => {
+        release: () => {
           if (!disposed) {
             disposed = true;
             worker.removeEventListener('message', messageHandler);

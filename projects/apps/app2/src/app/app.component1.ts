@@ -69,7 +69,7 @@ export class AppComponent implements OnInit {
           console.log('Counting down...');
         } else if (msg.type === 'response') {
           console.log('Completed');
-          this.seizedWorker.dispose(); // Clean up the worker after it's done
+          this.seizedWorker.release(); // Clean up the worker after it's done
           this.timerStatus = 'Stopped';
         }
       },
@@ -77,7 +77,7 @@ export class AppComponent implements OnInit {
       (error: Error) => {
         console.error('Worker error:', error);
         this.timerStatus = 'Error';
-        this.seizedWorker.dispose();
+        this.seizedWorker.release();
       }
     );
 
@@ -105,7 +105,7 @@ export class AppComponent implements OnInit {
   // Clean up on component destruction
   ngOnDestroy(): void {
     if (this.seizedWorker) {
-      this.seizedWorker.dispose();
+      this.seizedWorker.release();
     }
   }
 }
