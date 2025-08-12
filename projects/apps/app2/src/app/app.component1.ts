@@ -1,12 +1,18 @@
-import { coroutine, CoroutineMessage, seize, SeizedWorker, tap } from '@actioncrew/streamix';
+import { CoroutineMessage, createCoroutine, seize, SeizedWorker, tap } from '@actioncrew/streamix';
 import { Component, OnInit } from '@angular/core';
 
 // --- Worker Function that runs the timer logic ---
 // This is a single, stateful function designed to run in a web worker.
 // Worker function for use in Coroutine
+import { WorkerUtils } from '@actioncrew/streamix'; // Assuming types are in a file named 'types'
+
+/**
+ * A main task function that runs a countdown timer inside a Web Worker.
+ * It uses WorkerUtils to report progress to the main thread.
+ */
 async function createTimerWorker(
   data: { initialTime: number; type: 'start' | 'reset' },
-  progress: (data: any) => void
+  utils: WorkerUtils
 ): Promise<number> {
   // Validate input
   if (typeof data.initialTime !== 'number' || isNaN(data.initialTime) || data.initialTime < 0) {
@@ -16,13 +22,8 @@ async function createTimerWorker(
   // Initialize counter
   let counter = data.initialTime;
 
-  // Send initial counter value as broadcast
-  progress({
-    workerId: (self as any).__workerId,
-    taskId: crypto.randomUUID(),
-    payload: { tick: counter, timestamp: Date.now() },
-    type: 'progress'
-  });
+  // Send initial counter value
+  utils.reportProgress({ tick: counter, timestamp: Date.now() });
 
   // Return a promise that resolves when the timer completes
   return new Promise((resolve) => {
@@ -30,12 +31,7 @@ async function createTimerWorker(
       counter--;
 
       // Send periodic update
-      progress({
-        workerId: (self as any).__workerId,
-        taskId: crypto.randomUUID(),
-        payload: { tick: counter, timestamp: Date.now() },
-        type: 'progress'
-      });
+      utils.reportProgress({ tick: counter, timestamp: Date.now() });
 
       if (counter <= 0) {
         clearInterval(timer);
@@ -59,7 +55,7 @@ export class AppComponent implements OnInit {
 
   ngOnInit(): void {
     // The coroutine manages a pool of workers running our timer logic.
-    const timerTask = coroutine(createTimerWorker);
+    const timerTask = createCoroutine(createTimerWorker);
 
     // We use the seize operator to get a single dedicated worker from the pool.
     // The stream emits a single SeizedWorker object.
