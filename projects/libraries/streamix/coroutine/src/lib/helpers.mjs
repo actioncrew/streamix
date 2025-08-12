@@ -12,6 +12,7 @@ var __defProp = Object.defineProperty;
 
 /**
  * Defines multiple properties on an object. This is a shim for `Object.defineProperties`.
+ */
  var __defProps = Object.defineProperties;
 
 /**
