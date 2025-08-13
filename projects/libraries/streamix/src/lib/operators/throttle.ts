@@ -8,32 +8,37 @@ import { createOperator, Operator } from '../abstractions';
 export const throttle = <T = any>(duration: number): Operator<T, T> =>
   createOperator<T, T>('throttle', (source) => {
     let lastEmitTime = 0;
+    let sourceDone = false;
 
     return {
       async next(): Promise<IteratorResult<T>> {
+        if (sourceDone) {
+          return { done: true, value: undefined };
+        }
+
         while (true) {
           const result = await source.next();
+          
           if (result.done) {
+            sourceDone = true;
             return result;
           }
 
           const now = Date.now();
-          const timeSinceLastEmit = now - lastEmitTime;
-
-          if (timeSinceLastEmit >= duration) {
-            // Enough time has passed, emit this value
+          if (now - lastEmitTime >= duration) {
             lastEmitTime = now;
-            return { value: result.value, done: false };
-          } else {
-            // Still in throttle period, wait for the remaining time
-            const remainingTime = duration - timeSinceLastEmit;
-            await new Promise(resolve => setTimeout(resolve, remainingTime));
-            
-            // After waiting, emit this value and update timestamp
-            lastEmitTime = Date.now();
-            return { value: result.value, done: false };
+            return result;
           }
+          // Continue to next iteration, ignoring this value
         }
+      },
+      async return(value?: any) {
+        sourceDone = true;
+        return source.return?.(value) ?? { value, done: true };
+      },
+      async throw(error: any) {
+        sourceDone = true;
+        return source.throw?.(error) ?? Promise.reject(error);
       }
     };
   });
