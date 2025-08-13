@@ -27,7 +27,7 @@ export type CoroutineConfig = {
   customMessageHandler?: (
     event: MessageEvent<CoroutineMessage>,
     worker: Worker,
-    pendingMessages: Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>
+    pendingTasks: Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>
   ) => void;
 };
 
@@ -182,27 +182,26 @@ export function coroutine<T, R>(
         .replace('{MAIN_TASK}', mainTaskBody);
     };
 
-    // --- Corrected `defaultMessageHandler` to accept the worker and pendingMessages map
     const defaultMessageHandler = (
       event: MessageEvent<CoroutineMessage>,
       worker: Worker,
-      pendingMessages: Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>
+      pendingTasks: Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>
     ) => {
       const msg = event.data;
       const { taskId, payload, error, type, workerId } = msg;
 
-      const pending = pendingMessages.get(taskId);
+      const pending = pendingTasks.get(taskId);
 
       switch (type) {
         case 'response':
           if (pending) {
-            pendingMessages.delete(taskId);
+            pendingTasks.delete(taskId);
             pending.resolve(payload);
           }
           break;
         case 'error':
           if (pending) {
-            pendingMessages.delete(taskId);
+            pendingTasks.delete(taskId);
             pending.reject(new Error(error ?? 'Unknown worker error'));
           }
           break;
@@ -219,7 +218,6 @@ export function coroutine<T, R>(
           break;
       }
     };
-    // --- End corrected `defaultMessageHandler`
 
     const createWorker = async (): Promise<{ worker: Worker; workerId: number }> => {
       const workerId = ++workerIdentifierCounter;
