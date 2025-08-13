@@ -2,16 +2,21 @@ import { createOperator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
-/**
- * Emits the first value immediately, then ignores subsequent values
- * until the given duration has passed since the last emission.
- */
 export const throttle = <T = any>(duration: number) =>
   createOperator<T, T>('throttle', (source) => {
     const output = createSubject<T>();
 
-    let lastEmitTime = 0;
-    let sourceDone = false;
+    let lastEmit = 0;
+    let pending: T | undefined;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const flushPending = () => {
+      if (pending !== undefined) {
+        lastEmit = Date.now();
+        output.next(pending);
+        pending = undefined;
+      }
+    };
 
     (async () => {
       try {
@@ -19,21 +24,29 @@ export const throttle = <T = any>(duration: number) =>
           const { value, done } = await source.next();
           if (done) break;
 
-          const now = performance.now();
-          if (now - lastEmitTime >= duration) {
-            lastEmitTime = now;
+          const now = Date.now();
+          if (now - lastEmit >= duration) {
+            lastEmit = now;
             output.next(value);
+          } else {
+            pending = value;
+            if (!timer) {
+              timer = setTimeout(() => {
+                flushPending();
+                timer = null;
+              }, duration - (now - lastEmit));
+            }
           }
-          // else: ignore the value
         }
+
+        if (pending !== undefined) flushPending(); // final trailing emit
       } catch (err) {
         output.error(err);
       } finally {
-        sourceDone = true;
+        if (timer) clearTimeout(timer);
         output.complete();
       }
     })();
 
-    const iterable = eachValueFrom<T>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });
