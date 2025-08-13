@@ -2,27 +2,27 @@ import { createOperator, Operator } from "../abstractions";
 import { Coroutine } from "./coroutine";
 
 /**
- * Compose operator that chains multiple coroutine tasks sequentially.
+ * Cascade operator that chains multiple coroutine tasks sequentially.
  * Each task processes the output of the previous task.
  */
 
-export function compose<A, B>(c1: Coroutine<A, B>): Operator<A, B>;
+export function cascade<A, B>(c1: Coroutine<A, B>): Operator<A, B>;
 
-export function compose<A, B, C>(
+export function cascade<A, B, C>(
   c1: Coroutine<A, B>,
   c2: Coroutine<B, C>
 ): Operator<A, C>;
 
-export function compose<A, B, C, D>(
+export function cascade<A, B, C, D>(
   c1: Coroutine<A, B>,
   c2: Coroutine<B, C>,
   c3: Coroutine<C, D>
 ): Operator<A, D>;
 
-export function compose<T = any, R = any>(...tasks: Coroutine<any, any>[]): Operator<T, R>;
+export function cascade<T = any, R = any>(...tasks: Coroutine<any, any>[]): Operator<T, R>;
 
-export function compose<T = any, R = T>(...tasks: Coroutine<any, any>[]): Operator<T, R> {
-  return createOperator<T, R>("pipeline", (source) => ({
+export function cascade<T = any, R = T>(...tasks: Coroutine<any, any>[]): Operator<T, R> {
+  return createOperator<T, R>("cascade", (source) => ({
     async next() {
       const { done, value } = await source.next();
       if (done) return { done: true, value: undefined };
