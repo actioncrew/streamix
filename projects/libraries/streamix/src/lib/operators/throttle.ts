@@ -5,40 +5,42 @@ import { createOperator, Operator } from '../abstractions';
  * After the duration passes, the next value is emitted and the cycle repeats.
  * @param duration The time in milliseconds to throttle for.
  */
-export const throttle = <T = any>(duration: number): Operator<T, T> =>
+import { createOperator } from '../abstractions';
+import { eachValueFrom } from '../converters';
+import { createSubject } from '../streams';
+
+/**
+ * Emits the first value immediately, then ignores subsequent values
+ * until the given duration has passed since the last emission.
+ */
+export const throttle = <T = any>(duration: number) =>
   createOperator<T, T>('throttle', (source) => {
+    const output = createSubject<T>();
+
     let lastEmitTime = 0;
     let sourceDone = false;
 
-    return {
-      async next(): Promise<IteratorResult<T>> {
-        if (sourceDone) {
-          return { done: true, value: undefined };
-        }
-
-        while (true) {
-          const result = await source.next();
-          
-          if (result.done) {
-            sourceDone = true;
-            return result;
-          }
+    (async () => {
+      try {
+        for (;;) {
+          const { value, done } = await source.next();
+          if (done) break;
 
           const now = Date.now();
           if (now - lastEmitTime >= duration) {
             lastEmitTime = now;
-            return result;
+            output.next(value);
           }
-          // Continue to next iteration, ignoring this value
+          // else: ignore the value
         }
-      },
-      async return(value?: any) {
+      } catch (err) {
+        output.error(err);
+      } finally {
         sourceDone = true;
-        return source.return?.(value) ?? { value, done: true };
-      },
-      async throw(error: any) {
-        sourceDone = true;
-        return source.throw?.(error) ?? Promise.reject(error);
+        output.complete();
       }
-    };
+    })();
+
+    const iterable = eachValueFrom<T>(output);
+    return iterable[Symbol.asyncIterator]();
   });
