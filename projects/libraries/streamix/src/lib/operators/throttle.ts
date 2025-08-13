@@ -5,7 +5,6 @@ import { createSubject } from '../streams';
 /**
  * Emits the first value immediately, then ignores subsequent values
  * until the given duration has passed since the last emission.
- * @param duration The time in milliseconds to throttle for.
  */
 export const throttle = <T = any>(duration: number) =>
   createOperator<T, T>('throttle', (source) => {
@@ -16,11 +15,11 @@ export const throttle = <T = any>(duration: number) =>
 
     (async () => {
       try {
-        while (true) {
+        for (;;) {
           const { value, done } = await source.next();
           if (done) break;
 
-          const now = Date.now();
+          const now = performance.now();
           if (now - lastEmitTime >= duration) {
             lastEmitTime = now;
             output.next(value);
