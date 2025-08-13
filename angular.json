@@ -193,72 +193,6 @@
         }
       }
     },
-    "angular": {
-      "projectType": "library",
-      "root": "projects/libraries/angular",
-      "sourceRoot": "projects/libraries/angular/src",
-      "prefix": "lib",
-      "architect": {
-        "build": {
-          "builder": "@angular-devkit/build-angular:ng-packagr",
-          "options": {
-            "project": "projects/libraries/angular/ng-package.json"
-          },
-          "configurations": {
-            "production": {
-              "tsConfig": "projects/libraries/angular/tsconfig.lib.prod.json"
-            },
-            "development": {
-              "tsConfig": "projects/libraries/angular/tsconfig.lib.json"
-            }
-          },
-          "defaultConfiguration": "production"
-        },
-        "test": {
-          "builder": "@angular-devkit/build-angular:karma",
-          "options": {
-            "tsConfig": "projects/libraries/angular/tsconfig.spec.json",
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ]
-          }
-        }
-      }
-    },
-    "streamix": {
-      "projectType": "library",
-      "root": "projects/libraries/streamix",
-      "sourceRoot": "projects/libraries/streamix/src",
-      "prefix": "lib",
-      "architect": {
-        "build": {
-          "builder": "@angular-devkit/build-angular:ng-packagr",
-          "options": {
-            "project": "projects/libraries/streamix/ng-package.json"
-          },
-          "configurations": {
-            "production": {
-              "tsConfig": "projects/libraries/streamix/tsconfig.lib.prod.json"
-            },
-            "development": {
-              "tsConfig": "projects/libraries/streamix/tsconfig.lib.json"
-            }
-          },
-          "defaultConfiguration": "production"
-        },
-        "test": {
-          "builder": "@angular-devkit/build-angular:karma",
-          "options": {
-            "tsConfig": "projects/libraries/streamix/tsconfig.spec.json",
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ]
-          }
-        }
-      }
-    },
     "app3": {
       "projectType": "application",
       "schematics": {
@@ -540,6 +474,39 @@
               "projects/apps/app5/src/styles.scss"
             ],
             "scripts": []
+          }
+        }
+      }
+    },
+    "streamix": {
+      "projectType": "library",
+      "root": "projects/libraries/streamix",
+      "sourceRoot": "projects/libraries/streamix/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/libraries/streamix/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/libraries/streamix/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/libraries/streamix/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "tsConfig": "projects/libraries/streamix/tsconfig.spec.json",
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ]
           }
         }
       }
