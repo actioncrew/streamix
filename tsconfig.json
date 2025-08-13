@@ -34,9 +34,6 @@
       ],
       "@actioncrew/streamix/coroutine/async": [
         "./projects/libraries/streamix/coroutine/async/src/public-api.ts"
-      ],
-      "@streamix/angular": [
-        "./projects/libraries/angular/src/public-api.ts",
       ]
     }
   },
