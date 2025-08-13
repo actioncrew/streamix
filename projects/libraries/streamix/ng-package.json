@@ -6,6 +6,7 @@
   },
   "allowedNonPeerDependencies": ["@actioncrew/streamix"],
   "assets": [
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "COROUTINES.md"
   ]
 }

@@ -135,8 +135,8 @@ let workerIdentifierCounter = 0;
  * Creates a coroutine operator for managing a pool of Web Workers.
  *
  * This function has two overloaded signatures:
- * 1. `createCoroutine(config)`: Returns a factory function that takes a main task and helper functions.
- * 2. `createCoroutine(mainTask, ...helpers)`: Directly creates a coroutine operator with a default configuration.
+ * 1. `coroutine(config)`: Returns a factory function that takes a main task and helper functions.
+ * 2. `coroutine(mainTask, ...helpers)`: Directly creates a coroutine operator with a default configuration.
  *
  * @param config A configuration object for the worker pool (optional).
  * @param main The main task function to run inside the workers.

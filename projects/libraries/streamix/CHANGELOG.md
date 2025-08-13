@@ -1,8 +1,8 @@
 # Changelog
 
-## 2.0.19
+## 2.0.20
 
-Small fix in range stream
+Introduced detailed documentation for `Coroutines`, explaining how to offload heavy tasks to background threads while keeping apps responsive. Helper functions for asynchronous operations are now included directly in the main package
 
 ## 2.0.18
 
