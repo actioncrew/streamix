@@ -32,7 +32,6 @@ export * from './recurse';
 export * from './reduce';
 export * from './sample';
 export * from './scan';
-export * from './seize';
 export * from './select';
 export * from './shareReplay';
 export * from './skip';

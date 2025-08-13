@@ -79,7 +79,7 @@ const __pendingWorkerRequests = new Map();
 const __requestData = (workerId, taskId, payload) => {
     return new Promise(resolve => {
         __pendingWorkerRequests.set(taskId, resolve);
-        postMessage({ workerId, taskId, type: 'request_data', payload });
+        postMessage({ workerId, taskId, type: 'request', payload });
     });
 };
 
@@ -167,7 +167,7 @@ export function coroutine<T, R>(
     const generateWorkerScript = (config: CoroutineConfig): string => {
       const template = config.template || DEFAULT_WORKER_TEMPLATE;
       const globals = config.globals || '';
-      const helpers = (config.helpers || [HELPER_SCRIPT]).join('\n');
+      const helpers = ([HELPER_SCRIPT, ...(config.helpers || [])]).join('\n');
       const dependencies = functions
         .map((fn) => fn.toString().replace(/function[\s]*\(/, `function ${fn.name || ""}(`))
         .join(';\n');
@@ -200,6 +200,7 @@ export function coroutine<T, R>(
           }
           break;
         case 'error':
+          console.warn(`Error received from worker ${workerId} for task ${taskId}:`, error);
           if (pending) {
             pendingTasks.delete(taskId);
             pending.reject(new Error(error ?? 'Unknown worker error'));

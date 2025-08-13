@@ -24,6 +24,7 @@ export * from './onResize';
 export * from './race';
 export * from './range';
 export * from './retry';
+export * from './seize';
 export * from './timer';
 export * from './webSocket';
 export * from './zip';

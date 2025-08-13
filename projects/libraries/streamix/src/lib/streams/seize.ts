@@ -1,5 +1,5 @@
 import { createStream, Stream } from "../abstractions";
-import { Coroutine, CoroutineMessage } from "./coroutine";
+import { Coroutine, CoroutineMessage } from "../operators/coroutine";
 
 /**
  * Interface for a worker that has been "seized" from the pool.
