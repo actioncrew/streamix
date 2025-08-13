@@ -12,9 +12,9 @@ export type CoroutineMessage = {
 };
 
 /**
- * Configuration options for the worker script generation.
+ * Configuration object for the Coroutine factory.
  */
-export type WorkerConfig = {
+export type CoroutineConfig = {
   /** Custom worker script template. Use {HELPERS}, {DEPENDENCIES}, {MAIN_TASK} as placeholders */
   template?: string;
   /** Custom helper scripts to inject */
@@ -23,13 +23,6 @@ export type WorkerConfig = {
   initCode?: string;
   /** Additional imports or global variables */
   globals?: string;
-};
-
-/**
- * Configuration object for the Coroutine factory.
- */
-export type CoroutineConfig = {
-  workerConfig?: WorkerConfig;
   /** A custom message handler for all messages from the worker. */
   customMessageHandler?: (
     event: MessageEvent<CoroutineMessage>,
@@ -171,14 +164,14 @@ export function coroutine<T, R>(
     let blobUrlCache: string | null = null;
     let isFinalizing = false;
 
-    const generateWorkerScript = (workerConfig: WorkerConfig): string => {
-      const template = workerConfig.template || DEFAULT_WORKER_TEMPLATE;
-      const globals = workerConfig.globals || '';
-      const helpers = (workerConfig.helpers || [HELPER_SCRIPT]).join('\n');
+    const generateWorkerScript = (config: CoroutineConfig): string => {
+      const template = config.template || DEFAULT_WORKER_TEMPLATE;
+      const globals = config.globals || '';
+      const helpers = (config.helpers || [HELPER_SCRIPT]).join('\n');
       const dependencies = functions
         .map((fn) => fn.toString().replace(/function[\s]*\(/, `function ${fn.name || ""}(`))
         .join(';\n');
-      const initCode = workerConfig.initCode || '';
+      const initCode = config.initCode || '';
       const mainTaskBody = main.toString().replace(/function[\s]*\(/, `function ${main.name || ""}(`);
 
       return template
@@ -230,7 +223,7 @@ export function coroutine<T, R>(
 
     const createWorker = async (): Promise<{ worker: Worker; workerId: number }> => {
       const workerId = ++workerIdentifierCounter;
-      const workerBody = generateWorkerScript(config.workerConfig || {});
+      const workerBody = generateWorkerScript(config || {});
 
       if (!blobUrlCache) {
           const blob = new Blob([workerBody], { type: "application/javascript" });
