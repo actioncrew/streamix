@@ -1,16 +1,15 @@
 // services/image-pipeline.service.ts
 import {
-  compose,
+  cascade,
   Coroutine,
   coroutine,
   createSubject,
   filter,
   fromPromise,
   map,
-  seize,
   Stream,
   switchMap,
-  throttle,
+  tap,
 } from '@actioncrew/streamix';
 import { Injectable, NgZone } from '@angular/core';
 
@@ -25,7 +24,6 @@ export class ImagePipelineService {
   private progressStream = createSubject<{ id: string; progress: any }>();
 
   readonly resultStream: Stream<ProcessedResult>;
-  readonly previewWorkerStream: Stream<any>;
 
   constructor(private ngZone: NgZone) {
     const customMessageHandler = (
@@ -60,19 +58,8 @@ export class ImagePipelineService {
     this.resizeCoroutine = coroutine({ customMessageHandler })(resizeImage);
     this.compressCoroutine = coroutine({ customMessageHandler })(compressImage);
 
-    this.previewWorkerStream = seize(
-      this.resizeCoroutine,
-      (msg) => {
-        if (msg.type === 'progress') {
-          this.progressStream.next({ id: 'preview', progress: msg.payload });
-        }
-      },
-      (err) => console.error('Preview worker error:', err)
-    );
-
     this.resultStream = this.fileStream.pipe(
       filter((task) => task.file.type.startsWith('image/')),
-      throttle(1),
       switchMap((task) =>
         fromPromise(task.file.arrayBuffer()).pipe(
           map((arrayBuffer) => ({
@@ -85,7 +72,7 @@ export class ImagePipelineService {
           }))
         )
       ),
-      compose(this.resizeCoroutine, this.compressCoroutine),
+      cascade(this.resizeCoroutine, this.compressCoroutine),
       map((result) => {
         const finalBlob = new Blob([result.finalBlob], { type: 'image/jpeg' });
         const url = URL.createObjectURL(finalBlob);
@@ -97,12 +84,9 @@ export class ImagePipelineService {
           finalSize: result.compressedSize,
           saved: result.originalSize! - result.compressedSize,
         };
-      })
+      }),
+      tap((result) => this.ngZone.run(() => this.emitResult(result)))
     );
-
-    this.resultStream.subscribe((result) => {
-      this.ngZone.run(() => this.emitResult(result));
-    });
   }
 
   uploadFile(file: File) {
