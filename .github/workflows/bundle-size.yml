@@ -47,12 +47,17 @@ jobs:
           curl -s -o bundle-size.svg \
             "https://img.shields.io/badge/bundle-${BUNDLE_SIZE}KB-${COLOR}.svg"
 
-      - name:
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ACTIONS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Commit and push badge
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add bundle-size.svg
           git commit -m "Update bundle size badge [skip ci]" || echo "No changes"
-          git push https://x-access-token:${PAT_TOKEN}@github.com/actioncrew/streamix.git HEAD:badge
+          git push git@github.com:actioncrew/streamix.git HEAD:badge
