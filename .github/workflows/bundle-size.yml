@@ -22,7 +22,7 @@ jobs:
         run: npm ci
 
       - name: Build project
-        run: npm run build # adjust to your build script
+        run: npm run build streamix
 
       - name: Calculate bundle size
         id: size
