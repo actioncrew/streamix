@@ -51,6 +51,8 @@
     "jasmine": "^5.9.0",
     "ng-packagr": "^18.0.0",
     "ts-node": "^10.9.2",
+    "typedoc-github-theme": "^0.3.0",
+    "typedoc": "^0.28.10",
     "typescript": "~5.4.2"
   },
   "type": "module",
