@@ -22,6 +22,9 @@
   <a href="https://bundlephobia.com/package/@actioncrew/streamix">
     <img src="https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix" alt="Bundle Size">
   </a>
+  <a href="https://codecov.io/github/actioncrew/streamix" >
+    <img src="https://codecov.io/github/actioncrew/streamix/graph/badge.svg?token=ITHDU7JVOI" alt="Code Coverage"/>
+  </a>
 </p>
 
 ---
