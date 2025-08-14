@@ -28,7 +28,7 @@ jobs:
         id: size
         run: |
           # adjust the path to your main bundle
-          FILE="dist/main.js"
+          FILE="dist/streamix/fesm2022/actioncrew-streamix.mjs"
           SIZE=$(stat -c%s "$FILE")
           SIZE_KB=$((SIZE / 1024))
           echo "BUNDLE_SIZE=${SIZE_KB}" >> $GITHUB_ENV
