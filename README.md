@@ -1,5 +1,3 @@
-# Streamix
-
 <p align="center">
   <img src="https://github.com/actioncrew/streamix/blob/main/projects/libraries/streamix/LOGO.png?raw=true" alt="Streamix Logo" width="400">
 </p>
