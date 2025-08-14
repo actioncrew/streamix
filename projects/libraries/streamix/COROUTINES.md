@@ -46,12 +46,12 @@ npm install @actioncrew/streamix
 yarn add @actioncrew/streamix
 ```
 
-## Quick Start: Your First Coroutine
+## Your First Coroutine
 
 Let's say you want to process a large list of numbers without freezing your app:
 
 ```typescript
-import { coroutine } from 'streamix';
+import { coroutine } from '@actioncrew/streamix';
 
 // Create a background worker for heavy math
 const mathWorker = coroutine(function calculatePrimes(data: { max: number }) {
@@ -79,68 +79,137 @@ console.log(`Found ${result.count} prime numbers!`);
 
 Your app stays responsive while the heavy calculation runs in the background!
 
-## Real-World Examples
-
-### Photo Processing App
+## ❌ Common Mistakes to Avoid
 
 ```typescript
-// Process images without freezing the interface
-const imageProcessor = coroutine(function enhanceImage(imageData: ImageData) {
-  // Apply filters, resize, enhance contrast, etc.
-  const enhanced = applyFilters(imageData);
-  return enhanced;
+// ❌ WRONG: Function declaration (use function expression instead)
+function badTask(data) { return data.value * 2; }
+const badWorker1 = coroutine(badTask);
+
+// ❌ WRONG: Arrow function
+const badWorker2 = coroutine((data) => data.value * 2);
+
+// ❌ WRONG: References external variable
+const multiplier = 10;
+const badWorker3 = coroutine(function task(data) {
+  return data.value * multiplier; // References external 'multiplier'
 });
 
-// User can still interact with your app while images process
-fileInput.addEventListener('change', async (event) => {
-  for (const file of event.target.files) {
-    const result = await imageProcessor.processTask(file);
-    displayResult(result); // Show each image as it's ready
-  }
+// ❌ WRONG: Uses imported modules
+import { someUtility } from './utils';
+const badWorker4 = coroutine(function task(data) {
+  return someUtility(data); // Can't use imports inside worker
 });
 ```
 
-### Data Analysis Dashboard
+## ✅ Correct Patterns
 
 ```typescript
-// Crunch numbers in the background
-const dataAnalyzer = coroutine(function analyzeData(dataset: DataPoint[]) {
-  // Complex statistical calculations
-  const stats = {
-    average: dataset.reduce((sum, point) => sum + point.value, 0) / dataset.length,
-    trends: calculateTrends(dataset),
-    predictions: runMLModel(dataset)
-  };
-  
-  return stats;
-});
-
-// Dashboard stays interactive while analysis runs
-const analysisResults = await dataAnalyzer.processTask(bigDataset);
-updateCharts(analysisResults);
-```
-
-### Game Engine
-
-```typescript
-// Handle complex game logic without dropping frames
-const gameEngine = coroutine(function simulatePhysics(entities: GameObject[]) {
-  // Heavy physics calculations
-  for (const entity of entities) {
-    updatePosition(entity);
-    checkCollisions(entity);
-    applyForces(entity);
+// ✅ CORRECT: Function expression with TypeScript
+const complexWorker = coroutine(function complexCalculation(data: { input: number; factor: number }) {
+  // Helper functions go inside
+  function helperFunction(input: number): number {
+    return input * Math.PI;
   }
   
-  return entities;
+  function anotherHelper(factor: number): number {
+    return Math.sqrt(factor);
+  }
+  
+  return helperFunction(data.input) + anotherHelper(data.factor);
 });
 
-// Game loop stays smooth at 60fps
-setInterval(async () => {
-  const updatedEntities = await gameEngine.processTask(gameObjects);
-  render(updatedEntities);
-}, 16); // 60fps
+// ✅ CORRECT: Self-contained functions with async/await
+const selfContainedWorker = coroutine(
+  async function calculation(data: { input: number; factor: number }) {
+    const syncResult = helperFunction(data.input);
+    const asyncResult = await asyncHelper(data.factor);
+    
+    return {
+      result: syncResult + asyncResult,
+      timestamp: Date.now()
+    };
+  },
+  
+  // Internal helper functions with full TypeScript support
+  function helperFunction(input: number): number {
+    return input * Math.PI;
+  },
+  
+  async function asyncHelper(factor: number): Promise<number> {
+    // Simulate async operation
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return Math.sqrt(factor);
+  }
+);
+
+// ✅ PATTERN 3: Higher-order function with TypeScript configuration
+const coroutineFactory = coroutine({
+  initCode: `
+    // JavaScript code that runs in worker
+    const PI = Math.PI;
+    const E = Math.E;
+    
+    const CONSTANTS = { pi: PI, e: E };
+  `
+});
+
+interface MathConstants {
+  pi: number;
+  e: number;
+}
+
+// Any constants or functions you want TypeScript to recognize inside the coroutine
+// must be declared in your main project using declare
+declare const CONSTANTS: MathConstants;
+
+const mathWorker = coroutineFactory(function mathWithConstants(data: { value: number }) {
+  // Can use functions and constants from initCode
+  return data.value * CONSTANTS.pi + CONSTANTS.e;
+});
 ```
+
+## Three Ways to Use Coroutines
+
+Understanding when to use each approach:
+
+### 1. **Single Computation** - Use `processTask()`
+Best for one-off jobs.
+Runs the worker, processes the input, and returns the result, all in a single call:
+
+```typescript
+const result = await mathWorker.processTask(inputData);
+```
+
+### 2. **Stream Processing** - Use `compute()`  
+Ideal when you’re handling a series of inputs in a reactive stream:
+
+```typescript
+import { from } from '@actioncrew/streamix';
+
+from([data1, data2, data3])
+  .pipe(concatMap(data) => compute(mathWorker, data))
+  .subscribe(result => handleResult(result));
+```
+
+### 3. **Persistent Worker** - Use `seize()`
+Perfect for running multiple sequential tasks on the same worker instance without reinitializing it each time:
+
+```typescript
+import { seize } from '@actioncrew/streamix';
+
+const [seizedWorker] = await seize(mathWorker).query();
+try {
+  const result1 = await seizedWorker.sendTask(data1);
+  const result2 = await seizedWorker.sendTask(data2);
+  const result3 = await seizedWorker.sendTask(data3);
+} finally {
+  seizedWorker.release(); // Always release!
+}
+```
+
+These three approaches keep your UI responsive, each excelling in a different scenario — single tasks, continuous streams, or reusing a worker for multiple jobs.
+
 
 ## Advanced Features (When You Need Them)
 
@@ -148,7 +217,7 @@ setInterval(async () => {
 For specialized use cases, Streamix coroutines offer powerful configuration options:
 
 ```typescript
-import { coroutine, CoroutineConfig } from 'streamix';
+import { coroutine, CoroutineConfig } from '@actioncrew/streamix';
 
 // Create a custom configuration
 const config: CoroutineConfig = {
@@ -210,7 +279,7 @@ const processSequentialTasks = async () => {
 Chain multiple processing steps:
 
 ```typescript
-import { cascade } from 'streamix';
+import { cascade } from '@actioncrew/streamix';
 
 // Create specialized workers for each step
 const decoder = coroutine(function decode(rawData) { /* decode logic */ });
