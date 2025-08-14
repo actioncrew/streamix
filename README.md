@@ -19,8 +19,8 @@
   <a href="https://www.npmjs.com/package/@actioncrew%2Fstreamix">
     <img src="https://img.shields.io/npm/dm/@actioncrew%2Fstreamix.svg?style=flat-square" alt="NPM Downloads">
   </a>
-  <a href="https://bundlephobia.com/package/@actioncrew/streamix">
-    <img src="https://img.shields.io/bundlephobia/minzip/%40actioncrew%2Fstreamix" alt="Bundle Size">
+  <a href="https://github.com/actioncrew/streamix">
+    <img src="https://raw.githubusercontent.com/actioncrew/streamix/main/projects/libraries/streamix/bundle-size.svg" alt="Bundle Size">
   </a>
   <a href="https://codecov.io/github/actioncrew/streamix" >
     <img src="https://codecov.io/github/actioncrew/streamix/graph/badge.svg?token=ITHDU7JVOI" alt="Code Coverage"/>
@@ -31,7 +31,7 @@
 
 ## 🚀 Why Streamix?
 
-Streamix gives you all the power of reactive programming with **90% less complexity** than RxJS. At just **9 KB zipped**, it's perfect for modern applications that need performance without bloat.
+Streamix gives you all the power of reactive programming with **90% less complexity** than RxJS. At just **11 KB zipped**, it's perfect for modern applications that need performance without bloat.
 
 ### ✨ Key Benefits
 
