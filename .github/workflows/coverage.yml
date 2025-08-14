@@ -24,4 +24,5 @@ jobs:
         run: npm run jasmine:coverage
 
       - name: Upload coverage to Codecov
-        run: npx codecov
+        run: |
+          curl -s https://codecov.io/bash | bash -s -- -f coverage/lcov.info
