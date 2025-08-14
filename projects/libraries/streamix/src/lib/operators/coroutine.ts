@@ -1,7 +1,13 @@
 import { createOperator, Operator } from "../abstractions";
 
 /**
+ * @typedef {object} CoroutineMessage
  * Message structure exchanged between main thread and Web Workers in the Coroutine operator.
+ * @property {number} workerId - The unique ID of the worker.
+ * @property {string} taskId - The unique ID of the task.
+ * @property {string} type - The type of message (e.g., 'task', 'response', 'error').
+ * @property {any} [payload] - The optional message payload.
+ * @property {string} [error] - The optional error message.
  */
 export type CoroutineMessage = {
   workerId: number;
@@ -12,18 +18,19 @@ export type CoroutineMessage = {
 };
 
 /**
+ * @typedef {object} CoroutineConfig
  * Configuration object for the Coroutine factory.
+ * @property {string} [template] - Custom worker script template. Use {HELPERS}, {DEPENDENCIES}, {MAIN_TASK} as placeholders.
+ * @property {string[]} [helpers] - Custom helper scripts to inject.
+ * @property {string} [initCode] - Custom initialization code that runs when the worker starts.
+ * @property {string} [globals] - Additional imports or global variables.
+ * @property {function(MessageEvent<CoroutineMessage>, Worker, Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>): void} [customMessageHandler] - A custom message handler for all messages from the worker.
  */
 export type CoroutineConfig = {
-  /** Custom worker script template. Use {HELPERS}, {DEPENDENCIES}, {MAIN_TASK} as placeholders */
   template?: string;
-  /** Custom helper scripts to inject */
   helpers?: string[];
-  /** Custom initialization code that runs when worker starts */
   initCode?: string;
-  /** Additional imports or global variables */
   globals?: string;
-  /** A custom message handler for all messages from the worker. */
   customMessageHandler?: (
     event: MessageEvent<CoroutineMessage>,
     worker: Worker,
@@ -32,6 +39,15 @@ export type CoroutineConfig = {
 };
 
 /**
+ * @typedef {Operator<T, R> & {
+ * assignTask: (workerId: number, data: T) => Promise<R>;
+ * processTask: (data: T) => Promise<R>;
+ * getIdleWorker: () => Promise<{ worker: Worker; workerId: number }>;
+ * returnWorker: (workerId: number) => void;
+ * finalize: () => Promise<void>;
+ * }} Coroutine
+ * @template T
+ * @template R
  * Extended Operator that manages a pool of Web Workers for concurrent task processing.
  */
 export type Coroutine<T = any, R = T> = Operator<T, R> & {
@@ -43,12 +59,17 @@ export type Coroutine<T = any, R = T> = Operator<T, R> & {
 };
 
 /**
+ * @callback ProgressCallback
+ * @param {any} progressData - The data object containing progress information.
  * Callback function to report progress updates from a task.
  */
 export type ProgressCallback = (progressData: any) => void;
 
 /**
+ * @typedef {object} WorkerUtils
  * The utility functions passed to the worker's main task function.
+ * @property {(payload: any) => Promise<any>} requestData - A function to request data from the main thread.
+ * @property {(progressData: any) => void} reportProgress - A function to report progress updates to the main thread.
  */
 export type WorkerUtils = {
   requestData: (payload: any) => Promise<any>;
@@ -56,6 +77,9 @@ export type WorkerUtils = {
 };
 
 /**
+ * @typedef {(data: T) => Promise<R> | R | ((data: T, utils: WorkerUtils) => Promise<R> | R)} MainTask
+ * @template T
+ * @template R
  * Type for the main task function running inside the worker.
  */
 export type MainTask<T = any, R = any> =
@@ -63,7 +87,7 @@ export type MainTask<T = any, R = any> =
   | ((data: T, utils: WorkerUtils) => Promise<R> | R);
 
 /**
- * Default worker script template with placeholders
+ * Default worker script template with placeholders.
  */
 const DEFAULT_WORKER_TEMPLATE = `
 {GLOBALS}
@@ -77,14 +101,14 @@ const __pendingWorkerRequests = new Map();
 
 // A helper function for the worker to request data from the main thread
 const __requestData = (workerId, taskId, payload) => {
-    return new Promise(resolve => {
-        __pendingWorkerRequests.set(taskId, resolve);
-        postMessage({ workerId, taskId, type: 'request', payload });
-    });
+  return new Promise(resolve => {
+    __pendingWorkerRequests.set(taskId, resolve);
+    postMessage({ workerId, taskId, type: 'request', payload });
+  });
 };
 
 const __reportProgress = (workerId, taskId) => (progressData) => {
-    postMessage({ workerId, taskId, payload: progressData, type: 'progress' });
+  postMessage({ workerId, taskId, payload: progressData, type: 'progress' });
 };
 
 onmessage = async (event) => {
@@ -92,32 +116,32 @@ onmessage = async (event) => {
 
   // If this is a response to a data request from the worker
   if (type === 'data') {
-      const resolve = __pendingWorkerRequests.get(taskId);
-      if (resolve) {
-          __pendingWorkerRequests.delete(taskId);
-          resolve(payload);
-      }
-      return;
+    const resolve = __pendingWorkerRequests.get(taskId);
+    if (resolve) {
+      __pendingWorkerRequests.delete(taskId);
+      resolve(payload);
+    }
+    return;
   }
 
   // This is the initial task from the main thread
   if (type === 'task') {
-      try {
-          let result;
-          const utils = {
-              requestData: (requestPayload) => __requestData(workerId, taskId, requestPayload),
-              reportProgress: __reportProgress(workerId, taskId)
-          };
-          // Check if mainTask expects a utils object
-          if (__mainTask.length >= 2) {
-              result = await __mainTask(payload, utils);
-          } else {
-              result = await __mainTask(payload);
-          }
-          postMessage({ workerId, taskId, payload: result, type: 'response' });
-      } catch (error) {
-          postMessage({ workerId, taskId, error: error.message, type: 'error' });
+    try {
+      let result;
+      const utils = {
+        requestData: (requestPayload) => __requestData(workerId, taskId, requestPayload),
+        reportProgress: __reportProgress(workerId, taskId)
+      };
+      // Check if mainTask expects a utils object
+      if (__mainTask.length >= 2) {
+        result = await __mainTask(payload, utils);
+      } else {
+        result = await __mainTask(payload);
       }
+      postMessage({ workerId, taskId, payload: result, type: 'response' });
+    } catch (error) {
+      postMessage({ workerId, taskId, error: error.message, type: 'error' });
+    }
   }
 };`;
 
@@ -138,12 +162,21 @@ let workerIdentifierCounter = 0;
  * 1. `coroutine(config)`: Returns a factory function that takes a main task and helper functions.
  * 2. `coroutine(mainTask, ...helpers)`: Directly creates a coroutine operator with a default configuration.
  *
- * @param config A configuration object for the worker pool (optional).
- * @param main The main task function to run inside the workers.
- * @param functions Any helper functions required by the main task.
- * @returns A higher-order function or a Coroutine operator.
+ * @template T The type of the input data for the main task.
+ * @template R The type of the return value from the main task.
+ * @param {CoroutineConfig} config - The configuration object for the worker pool.
+ * @returns {<T, R>(main: MainTask<T, R>, ...functions: Function[]) => Coroutine<T, R>} A higher-order function for creating a Coroutine operator.
  */
 export function coroutine(config: CoroutineConfig): <T, R>(main: MainTask<T, R>, ...functions: Function[]) => Coroutine<T, R>;
+
+/**
+ * Creates a coroutine operator with a default configuration.
+ * @template T The type of the input data for the main task.
+ * @template R The type of the return value from the main task.
+ * @param {MainTask<T, R>} main - The main task function to run inside the workers.
+ * @param {Function[]} functions - Any helper functions required by the main task.
+ * @returns {Coroutine<T, R>} A Coroutine operator.
+ */
 export function coroutine<T, R>(main: MainTask<T, R>, ...functions: Function[]): Coroutine<T, R>;
 export function coroutine<T, R>(
   arg1: CoroutineConfig | MainTask<T, R>,
@@ -225,8 +258,8 @@ export function coroutine<T, R>(
       const workerBody = generateWorkerScript(config || {});
 
       if (!blobUrlCache) {
-          const blob = new Blob([workerBody], { type: "application/javascript" });
-          blobUrlCache = URL.createObjectURL(blob);
+        const blob = new Blob([workerBody], { type: "application/javascript" });
+        blobUrlCache = URL.createObjectURL(blob);
       }
 
       const worker = new Worker(blobUrlCache, { type: "module" });
@@ -356,5 +389,4 @@ export function coroutine<T, R>(
     const config = arg1 as CoroutineConfig;
     return (main: MainTask<T, R>, ...functions: Function[]) => implementCoroutine(config, main, functions);
   }
-  // --- End overloaded function implementation
 }

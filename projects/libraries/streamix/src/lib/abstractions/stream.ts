@@ -6,7 +6,7 @@ import { createSubscription, Subscription } from "./subscription";
 /**
  * Utility: Recursively compute output type after chaining operators
  */
-type ChainOperators<T, Ops extends Operator<any, any>[]> =
+export type ChainOperators<T, Ops extends Operator<any, any>[]> =
   Ops extends []
     ? T
     : Ops extends [infer First, ...infer Rest]
