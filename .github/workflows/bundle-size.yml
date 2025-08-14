@@ -44,7 +44,7 @@ jobs:
           if [ $BUNDLE_SIZE -gt 100 ] && [ $BUNDLE_SIZE -le 200 ]; then COLOR="yellow"; fi
 
           # Create badge using shields.io static badge API
-          curl -s -o bundle-size.svg \
+          curl -s -o projects/libraries/streamix/bundle-size.svg \
             "https://img.shields.io/badge/bundle-${BUNDLE_SIZE}KB-${COLOR}.svg"
 
       - name: Setup SSH
@@ -58,8 +58,8 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin badge
-          git reset --hard origin/badge
-          git add bundle-size.svg
+          git fetch origin main
+          git reset --hard origin/main
+          git add projects/libraries/streamix/bundle-size.svg
           git commit -m "Update bundle size badge [skip ci]" || echo "No changes"
-          git push git@github.com:actioncrew/streamix.git HEAD:badge
+          git push git@github.com:actioncrew/streamix.git HEAD:main
