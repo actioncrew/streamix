@@ -53,4 +53,4 @@ jobs:
           git config --global user.email "oleksii.shepel@outlook.com"
           git add bundle-size.svg
           git commit -m "Update bundle size badge [skip ci]" || echo "No changes"
-          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/actioncrew/streamix.git HEAD:main || echo "Push failed"
+          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/actioncrew/streamix.git HEAD:badge || echo "Push failed"
