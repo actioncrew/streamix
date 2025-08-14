@@ -1,0 +1,54 @@
+name: bundle size
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # optional manual trigger
+
+jobs:
+  bundle-size:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build # adjust to your build script
+
+      - name: Calculate bundle size
+        id: size
+        run: |
+          # adjust the path to your main bundle
+          FILE="dist/main.js"
+          SIZE=$(stat -c%s "$FILE")
+          SIZE_KB=$((SIZE / 1024))
+          echo "BUNDLE_SIZE=${SIZE_KB}" >> $GITHUB_ENV
+          echo "Bundle size: ${SIZE_KB} KB"
+
+      - name: Generate badge
+        run: |
+          # Set color based on size (example thresholds)
+          COLOR="brightgreen"
+          if [ $BUNDLE_SIZE -gt 200 ]; then COLOR="red"; fi
+          if [ $BUNDLE_SIZE -gt 100 ] && [ $BUNDLE_SIZE -le 200 ]; then COLOR="yellow"; fi
+
+          # Create badge using shields.io static badge API
+          curl -s -o bundle-size.svg \
+            "https://img.shields.io/badge/bundle-${BUNDLE_SIZE}KB-${COLOR}.svg"
+
+      - name: Commit badge
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add bundle-size.svg
+          git commit -m "Update bundle size badge [skip ci]" || echo "No changes"
+          git push origin HEAD:main || echo "Push failed (probably no changes)"
