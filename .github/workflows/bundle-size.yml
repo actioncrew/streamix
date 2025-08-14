@@ -49,6 +49,8 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin badge
+          git reset --hard origin/badge
           git add bundle-size.svg
           git commit -m "Update bundle size badge [skip ci]" || echo "No changes"
           git push origin HEAD:main || echo "Push failed (probably no changes)"
