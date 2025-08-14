@@ -25,4 +25,4 @@ jobs:
 
       - name: Upload coverage to Codecov
         run: |
-          curl -s https://codecov.io/bash | bash -s -- -f coverage/lcov.info
+          curl -s https://codecov.io/bash | bash -s -- -f coverage/lcov.info -r actioncrew/streamix
