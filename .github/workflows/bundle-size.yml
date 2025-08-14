@@ -24,11 +24,23 @@ jobs:
       - name: Build project
         run: npm run build streamix
 
+      - name: Run terser
+        run: npm run bundle
+
+      - name: Calculate gzipped bundle size
+        id: gzip
+        run: |
+          gzip -c dist/streamix/fesm2022/actioncrew-streamix.mjs > dist/streamix/fesm2022/actioncrew-streamix.mjs.gz
+          SIZE=$(stat -c%s dist/main.js.gz)
+          SIZE_KB=$((SIZE / 1024))
+          echo "BUNDLE_SIZE=${SIZE_KB}" >> $GITHUB_ENV
+          echo "Gzipped bundle size: ${SIZE_KB} KB"
+
       - name: Calculate bundle size
         id: size
         run: |
           # adjust the path to your main bundle
-          FILE="dist/streamix/fesm2022/actioncrew-streamix.mjs"
+          FILE="dist/streamix/fesm2022/actioncrew-streamix.mjs.gz"
           SIZE=$(stat -c%s "$FILE")
           SIZE_KB=$((SIZE / 1024))
           echo "BUNDLE_SIZE=${SIZE_KB}" >> $GITHUB_ENV
@@ -51,4 +63,4 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add bundle-size.svg
           git commit -m "Update bundle size badge [skip ci]" || echo "No changes"
-          git push origin HEAD:main || echo "Push failed (probably no changes)"
+          git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/actioncrew/streamix.git HEAD:main || echo "Push failed"
