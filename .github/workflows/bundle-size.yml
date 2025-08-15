@@ -2,7 +2,7 @@ name: Update bundle size badge
 
 on:
   push:
-    branches: [v3]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -78,8 +78,8 @@ jobs:
       - name: Commit and push badge
         run: |
           # Make sure we're on the right branch
-          git checkout v3
-          git pull origin v3
+          git checkout main
+          git pull origin main
 
           # Add the badge file
           git add projects/libraries/streamix/bundle-size.svg
@@ -92,6 +92,6 @@ jobs:
             git commit -m "Update bundle size badge [skip ci]"
             echo "🚀 Pushing to repository..."
             # Use HTTPS, not SSH - the checkout action already set up credentials
-            git push origin HEAD:v3
+            git push origin HEAD:main
             echo "✅ Badge updated successfully!"
           fi
