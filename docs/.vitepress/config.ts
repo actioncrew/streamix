@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'My Project',
-  description: 'Documentation for My Project',
+  base: '/streamix/',
+  title: 'Streamix',
+  description: 'Documentation for reactive library',
 
   // Clean URLs
   cleanUrls: true,
@@ -14,7 +15,7 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'API', link: '/api/' },
-      { text: 'GitHub', link: 'https://github.com/your-org/your-repo' }
+      { text: 'GitHub', link: 'https://github.com/actioncrew/streamix' }
     ],
 
     // Sidebar configuration
@@ -46,24 +47,18 @@ export default defineConfig({
 
     // Social links
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/your-org/your-repo' }
+      { icon: 'github', link: 'https://github.com/actioncrew/streamix' }
     ],
 
     // Footer
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2024-present Your Name'
+      copyright: 'Copyright © 2025 Oleksii Shepel'
     },
 
     // Search
     search: {
       provider: 'local'
-    },
-
-    // Edit link
-    editLink: {
-      pattern: 'https://github.com/your-org/your-repo/edit/main/docs/:path',
-      text: 'Edit this page on GitHub'
     },
 
     // Last updated
