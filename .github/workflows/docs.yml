@@ -53,15 +53,20 @@ jobs:
             -e 's|\(\]\)(\.\./README.md)|\1(./)|g' \
             -e 's|\(\]\)(\.\./\.\./README.md)|\1(../../)|g' {} +
 
-      # 6️⃣ Use README as the main landing page and add API link
+      # 6️⃣ Use README as the main landing page and add correct API link
       - name: Use README as index page
         run: |
           # Copy the project's main README to be the documentation site's home page
           cp README.md docs/index.md
-          # Add a section to the new index file that links to the API docs
+
+          # Find the name of the main API markdown file created by typedoc
+          # and get only the filename (e.g., 'modules.md')
+          api_filename=$(ls docs/api/*.md | head -1 | xargs basename)
+
+          # Add a section to the new index file that links to the dynamically found API docs file
           echo "" >> docs/index.md
           echo "## API Reference" >> docs/index.md
-          echo "You can find the detailed [API Reference here](./api/index.md)." >> docs/index.md
+          echo "You can find the detailed [API Reference here](./api/$api_filename)." >> docs/index.md
 
       # 7️⃣ Build VitePress site
       - name: Build documentation site
