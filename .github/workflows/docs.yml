@@ -73,16 +73,16 @@ jobs:
             -e 's|\(\]\)(\.\./README.md)|\1(./)|g' \
             -e 's|\(\]\)(\.\./\.\./README.md)|\1(../../)|g' {} +
 
-      # 8️⃣ Use README as the main landing page and add correct API link
+      # 8️⃣ Use README as index page
       - name: Use README as index page
         run: |
           # Copy the project's main README to be the documentation site's home page
           cp README.md docs/index.md
 
-          # Add a section to the new index file that links to the API docs with the correct file extension
+          # Add a section to the new index file that links to the API docs using the folder path
           echo "" >> docs/index.md
           echo "## API Reference" >> docs/index.md
-          echo "You can find the detailed [API Reference here](./api/index.md)." >> docs/index.md
+          echo "You can find the detailed [API Reference here](./api/)." >> docs/index.md
 
       # 9️⃣ Build VitePress site
       - name: Build documentation site
