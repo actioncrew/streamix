@@ -13,33 +13,35 @@ export default defineConfig({
     // Site navigation
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Guide', link: '/guide/getting-started' },
-      { text: 'API', link: '/api/' },
+      { text: 'Coroutines', link: '/COROUTINES' },
+      { text: 'Changelog', link: '/CHANGELOG' },
+      { text: 'API Reference', link: '/api/' },
       { text: 'GitHub', link: 'https://github.com/actioncrew/streamix' }
     ],
 
     // Sidebar configuration
     sidebar: {
-      '/guide/': [
-        {
-          text: 'Guide',
-          items: [
-            { text: 'Getting Started', link: '/guide/getting-started' },
-            { text: 'Installation', link: '/guide/installation' },
-            { text: 'Basic Usage', link: '/guide/basic-usage' },
-            { text: 'Advanced Usage', link: '/guide/advanced-usage' }
-          ]
-        }
-      ],
       '/api/': [
         {
           text: 'API Reference',
           items: [
             { text: 'Overview', link: '/api/' },
-            { text: 'Classes', link: '/api/classes/' },
-            { text: 'Interfaces', link: '/api/interfaces/' },
-            { text: 'Functions', link: '/api/functions/' },
-            { text: 'Types', link: '/api/types/' }
+            { text: 'Classes', link: '/api/classes.md' },
+            { text: 'Enumerations', link: '/api/enums.md' },
+            { text: 'Functions', link: '/api/functions.md' },
+            { text: 'Interfaces', link: '/api/interfaces.md' },
+            { text: 'Type Aliases', link: '/api/type-aliases.md' },
+            { text: 'Variables', link: '/api/variables.md' }
+          ]
+        }
+      ],
+      '/': [
+        {
+          text: 'Project Files',
+          items: [
+            { text: 'README', link: '/' },
+            { text: 'Coroutines', link: '/COROUTINES.md' },
+            { text: 'Changelog', link: '/CHANGELOG.md' }
           ]
         }
       ]

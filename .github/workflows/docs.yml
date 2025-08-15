@@ -37,7 +37,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 4️⃣ Generate Typedoc Markdown for API (keep README)
+      # 4️⃣ Copy additional markdown files
+      - name: Copy additional docs
+        run: |
+          # Create the docs directory if it doesn't exist
+          mkdir -p docs
+          # Copy files from the projects subdirectory to the docs directory
+          if [ -f projects/libraries/streamix/CHANGELOG.md ]; then cp projects/libraries/streamix/CHANGELOG.md docs/CHANGELOG.md; fi
+          if [ -f projects/libraries/streamix/COROUTINES.md ]; then cp projects/libraries/streamix/COROUTINES.md docs/COROUTINES.md; fi
+
+          # Copy files from the project root to the docs directory
+          if [ -f CONTRIBUTING.md ]; then cp CONTRIBUTING.md docs/CONTRIBUTING.md; fi
+          if [ -f CODE_OF_CONDUCT.md ]; then cp CODE_OF_CONDUCT.md docs/CODE_OF_CONDUCT.md; fi
+
+      # 5️⃣ Generate Typedoc Markdown for API
       - name: Generate API docs
         run: |
           npx typedoc \
@@ -46,45 +59,48 @@ jobs:
             --hideBreadcrumbs \
             --hidePageHeader
 
-      # 5️⃣ Replace internal README links in API docs
+      # 6️⃣ Guarantee a predictable API link
+      - name: Rename main API file
+        run: |
+          if [ -f docs/api/modules.md ]; then
+            mv docs/api/modules.md docs/api/index.md
+          fi
+
+      # 7️⃣ Replace internal README links in API docs
       - name: Fix README links
         run: |
           find docs/api -name '*.md' -exec sed -i \
             -e 's|\(\]\)(\.\./README.md)|\1(./)|g' \
             -e 's|\(\]\)(\.\./\.\./README.md)|\1(../../)|g' {} +
 
-      # 6️⃣ Use README as the main landing page and add correct API link
+      # 8️⃣ Use README as the main landing page and add correct API link
       - name: Use README as index page
         run: |
           # Copy the project's main README to be the documentation site's home page
           cp README.md docs/index.md
 
-          # Find the name of the main API markdown file created by typedoc
-          # and get only the filename (e.g., 'modules.md')
-          api_filename=$(ls docs/api/*.md | head -1 | xargs basename)
-
-          # Add a section to the new index file that links to the dynamically found API docs file
+          # Add a section to the new index file that links to the API docs
           echo "" >> docs/index.md
           echo "## API Reference" >> docs/index.md
-          echo "You can find the detailed [API Reference here](./api/$api_filename)." >> docs/index.md
+          echo "You can find the detailed [API Reference here](./api/index.md)." >> docs/index.md
 
-      # 7️⃣ Build VitePress site
+      # 9️⃣ Build VitePress site
       - name: Build documentation site
         run: npm run docs:build
 
-      # 8️⃣ Setup Pages
+      # 🔟 Setup Pages
       - name: Setup Pages
         uses: actions/configure-pages@v4
         if: github.ref == 'refs/heads/main'
 
-      # 9️⃣ Upload artifact
+      # 1️⃣1️⃣ Upload artifact
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
           path: docs/.vitepress/dist
 
-      # 🔟 Deploy to GitHub Pages
+      # 1️⃣2️⃣ Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
