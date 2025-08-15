@@ -34,17 +34,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate API documentation
+      - name: Generate API documentation (Markdown for VitePress)
         run: |
-          npx typedoc --out dist/api-html --theme default
+          npx typedoc \
+            --plugin typedoc-plugin-markdown \
+            --out docs/api \
+            --hideBreadcrumbs \
+            --hideInPageTOC \
+            --hidePageHeader
 
       - name: Build documentation site
         run: npm run docs:build
-
-      - name: Copy API HTML to dist
-        run: |
-          mkdir -p docs/.vitepress/dist/api-html
-          cp -r dist/api-html/* docs/.vitepress/dist/api-html/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
