@@ -79,7 +79,7 @@ jobs:
 
       # 9️⃣ Build VitePress site
       - name: Build documentation site
-        run: vitepress build docs --ignoreDeadLinks
+        run: npx vitepress build docs --ignoreDeadLinks
 
       # 🔟 Setup Pages
       - name: Setup Pages
