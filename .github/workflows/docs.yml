@@ -75,7 +75,7 @@ jobs:
           cp README.md docs/index.md
           echo "" >> docs/index.md
           echo "## API Reference" >> docs/index.md
-          echo "Check the detailed [API Reference here](./api/)." >> docs/index.md
+          echo "Check the detailed [API Reference here](./api/index.md)." >> docs/index.md
 
       # 9️⃣ Build VitePress site
       - name: Build documentation site
