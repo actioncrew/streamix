@@ -53,14 +53,15 @@ jobs:
             -e 's|\(\]\)(\.\./README.md)|\1(./)|g' \
             -e 's|\(\]\)(\.\./\.\./README.md)|\1(../../)|g' {} +
 
-      # 6️⃣ Ensure root index.md exists and has correct links
-      - name: Ensure index.md
+      # 6️⃣ Use README as the main landing page and add API link
+      - name: Use README as index page
         run: |
-          if [ ! -f docs/index.md ]; then
-            echo "# Streamix Documentation" > docs/index.md
-            echo "Welcome to the Streamix documentation site." >> docs/index.md
-            echo "- [API Reference](./api/README.md)" >> docs/index.md
-          fi
+          # Copy the project's main README to be the documentation site's home page
+          cp README.md docs/index.md
+          # Add a section to the new index file that links to the API docs
+          echo "" >> docs/index.md
+          echo "## API Reference" >> docs/index.md
+          echo "You can find the detailed [API Reference here](./api/index.md)." >> docs/index.md
 
       # 7️⃣ Build VitePress site
       - name: Build documentation site
