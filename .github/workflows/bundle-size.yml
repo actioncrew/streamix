@@ -1,65 +1,97 @@
-name: bundle size
+name: Update bundle size badge
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch: # optional manual trigger
+    branches: [v3]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # Required to push commits
+  actions: read    # Required for workflow access
 
 jobs:
-  bundle-size:
+  badge:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      # 1️⃣ Checkout full repo with token for pushing
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history needed for non-main branch
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true  # Keep credentials for later push
 
+      # 2️⃣ Setup Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      # 3️⃣ Build library (so dist files exist)
+      - name: Build library
+        run: npm ci && npm run build streamix
 
-      - name: Build project
-        run: npm run build streamix
-
-      - name: Run terser
-        run: npm run bundle
-
+      # 4️⃣ Calculate gzipped bundle size
       - name: Calculate gzipped bundle size
         id: gzip
         run: |
+          if [ ! -f "dist/streamix/fesm2022/actioncrew-streamix.mjs" ]; then
+            echo "❌ Bundle file not found!"
+            ls -la dist/streamix/fesm2022/ || echo "Directory doesn't exist"
+            exit 1
+          fi
+
           gzip -c dist/streamix/fesm2022/actioncrew-streamix.mjs > dist/streamix/fesm2022/actioncrew-streamix.mjs.gz
           SIZE=$(stat -c%s dist/streamix/fesm2022/actioncrew-streamix.mjs.gz)
           SIZE_KB=$((SIZE / 1024))
           echo "BUNDLE_SIZE=${SIZE_KB}" >> $GITHUB_ENV
-          echo "Gzipped bundle size: ${SIZE_KB} KB"
+          echo "✅ Gzipped bundle size: ${SIZE_KB} KB"
 
+      # 5️⃣ Generate badge
       - name: Generate badge
         run: |
-          # Set color based on size (example thresholds)
+          mkdir -p projects/libraries/streamix
           COLOR="brightgreen"
           if [ $BUNDLE_SIZE -gt 200 ]; then COLOR="red"; fi
           if [ $BUNDLE_SIZE -gt 100 ] && [ $BUNDLE_SIZE -le 200 ]; then COLOR="yellow"; fi
 
-          # Create badge using shields.io static badge API
+          echo "🎯 Creating badge with ${BUNDLE_SIZE}KB and color ${COLOR}"
           curl -s -o projects/libraries/streamix/bundle-size.svg \
             "https://img.shields.io/badge/bundle-${BUNDLE_SIZE}KB-${COLOR}.svg"
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.ACTIONS_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          # Verify badge was created
+          if [ -f "projects/libraries/streamix/bundle-size.svg" ]; then
+            echo "✅ Badge created successfully"
+          else
+            echo "❌ Badge creation failed"
+            exit 1
+          fi
 
+      # 6️⃣ Configure git user
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # 7️⃣ Commit and push badge
       - name: Commit and push badge
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git reset --hard origin/main
+          # Make sure we're on the right branch
+          git checkout v3
+          git pull origin v3
+
+          # Add the badge file
           git add projects/libraries/streamix/bundle-size.svg
-          git commit -m "Update bundle size badge [skip ci]" || echo "No changes"
-          git push git@github.com:actioncrew/streamix.git HEAD:main
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to commit"
+          else
+            echo "📝 Committing badge update..."
+            git commit -m "Update bundle size badge [skip ci]"
+            echo "🚀 Pushing to repository..."
+            # Use HTTPS, not SSH - the checkout action already set up credentials
+            git push origin HEAD:v3
+            echo "✅ Badge updated successfully!"
+          fi
