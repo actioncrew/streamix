@@ -49,7 +49,9 @@ jobs:
       # 5️⃣ Replace internal README links in API docs
       - name: Fix README links
         run: |
-          find docs/api -name '*.md' -exec sed -i 's|\(\]\)(\.\./README.md)|\1(./)|g' {} +
+          find docs/api -name '*.md' -exec sed -i \
+            -e 's|\(\]\)(\.\./README.md)|\1(./)|g' \
+            -e 's|\(\]\)(\.\./\.\./README.md)|\1(../../)|g' {} +
 
       # 6️⃣ Ensure root index.md exists
       - name: Ensure index.md
