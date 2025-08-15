@@ -40,13 +40,9 @@ jobs:
       # 4️⃣ Copy additional markdown files
       - name: Copy additional docs
         run: |
-          # Create the docs directory if it doesn't exist
           mkdir -p docs
-          # Copy files from the projects subdirectory to the docs directory
           if [ -f projects/libraries/streamix/CHANGELOG.md ]; then cp projects/libraries/streamix/CHANGELOG.md docs/CHANGELOG.md; fi
           if [ -f projects/libraries/streamix/COROUTINES.md ]; then cp projects/libraries/streamix/COROUTINES.md docs/COROUTINES.md; fi
-
-          # Copy files from the project root to the docs directory
           if [ -f CONTRIBUTING.md ]; then cp CONTRIBUTING.md docs/CONTRIBUTING.md; fi
           if [ -f CODE_OF_CONDUCT.md ]; then cp CODE_OF_CONDUCT.md docs/CODE_OF_CONDUCT.md; fi
 
@@ -59,11 +55,11 @@ jobs:
             --hideBreadcrumbs \
             --hidePageHeader
 
-      # 6️⃣ Guarantee a predictable API link
-      - name: Rename main API file
+      # 6️⃣ Rename main API README.md to index.md
+      - name: Rename API README to index
         run: |
-          if [ -f docs/api/modules.md ]; then
-            mv docs/api/modules.md docs/api/index.md
+          if [ -f docs/api/README.md ]; then
+            mv docs/api/README.md docs/api/index.md
           fi
 
       # 7️⃣ Replace internal README links in API docs
@@ -73,16 +69,13 @@ jobs:
             -e 's|\(\]\)(\.\./README.md)|\1(./)|g' \
             -e 's|\(\]\)(\.\./\.\./README.md)|\1(../../)|g' {} +
 
-      # 8️⃣ Use README as index page
-      - name: Use README as index page
+      # 8️⃣ Use main README as homepage and link to API folder
+      - name: Create site index.md
         run: |
-          # Copy the project's main README to be the documentation site's home page
           cp README.md docs/index.md
-
-          # Add a section to the new index file that links to the API docs using the folder path
           echo "" >> docs/index.md
           echo "## API Reference" >> docs/index.md
-          echo "You can find the detailed [API Reference here](./api/)." >> docs/index.md
+          echo "Check the detailed [API Reference here](./api/)." >> docs/index.md
 
       # 9️⃣ Build VitePress site
       - name: Build documentation site
@@ -93,7 +86,7 @@ jobs:
         uses: actions/configure-pages@v4
         if: github.ref == 'refs/heads/main'
 
-      # 1️⃣1️⃣ Upload artifact
+      # 1️⃣1️⃣ Upload Pages artifact
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
@@ -105,4 +98,3 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         if: github.ref == 'refs/heads/main'
-
