@@ -79,7 +79,7 @@ jobs:
           # Copy the project's main README to be the documentation site's home page
           cp README.md docs/index.md
 
-          # Add a section to the new index file that links to the API docs
+          # Add a section to the new index file that links to the API docs with the correct file extension
           echo "" >> docs/index.md
           echo "## API Reference" >> docs/index.md
           echo "You can find the detailed [API Reference here](./api/index.md)." >> docs/index.md
