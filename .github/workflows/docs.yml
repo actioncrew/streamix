@@ -20,33 +20,64 @@ jobs:
       id-token: write
 
     steps:
+      # 1️⃣ Checkout repo
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # 2️⃣ Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
+      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: npm ci
 
+      # 4️⃣ Generate Typedoc Markdown for API (keep README)
+      - name: Generate API docs
+        run: |
+          npx typedoc \
+            --plugin typedoc-plugin-markdown \
+            --out docs/api \
+            --hideBreadcrumbs \
+            --hidePageHeader
+
+      # 5️⃣ Replace internal README links in API docs
+      - name: Fix README links
+        run: |
+          find docs/api -name '*.md' -exec sed -i 's|\(\]\)(\.\./README.md)|\1(./)|g' {} +
+
+      # 6️⃣ Ensure root index.md exists
+      - name: Ensure index.md
+        run: |
+          if [ ! -f docs/index.md ]; then
+            echo "# Streamix Documentation" > docs/index.md
+            echo "Welcome to the Streamix documentation site." >> docs/index.md
+            echo "- [Guide](./guide/getting-started)" >> docs/index.md
+            echo "- [API](./api/)" >> docs/index.md
+          fi
+
+      # 7️⃣ Build VitePress site
       - name: Build documentation site
         run: npm run docs:build
 
+      # 8️⃣ Setup Pages
       - name: Setup Pages
         uses: actions/configure-pages@v4
         if: github.ref == 'refs/heads/main'
 
+      # 9️⃣ Upload artifact
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
           path: docs/.vitepress/dist
 
+      # 🔟 Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
