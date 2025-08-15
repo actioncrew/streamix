@@ -34,15 +34,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate API documentation (Markdown for VitePress)
-        run: |
-          npx typedoc \
-            --plugin typedoc-plugin-markdown \
-            --out docs/api \
-            --hideBreadcrumbs \
-            --hideInPageTOC \
-            --hidePageHeader
-
       - name: Build documentation site
         run: npm run docs:build
 
