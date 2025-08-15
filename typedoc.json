@@ -8,7 +8,7 @@
   "excludePrivate": true,
   "excludeProtected": true,
   "excludeInternal": true,
-  "entryPointStrategy": "packages",
+  "entryPointStrategy": "resolve",
   "readme": "none",
   "gitRevision": "main",
   "sort": ["source-order"],
