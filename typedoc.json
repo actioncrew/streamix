@@ -1,7 +1,0 @@
-{
-  "entryPoints": ["projects/libraries/streamix/src/public-api.ts"],
-  "out": "docs",
-  "exclude": ["**/*.test.ts", "**/node_modules/**"],
-  "tsconfig": "tsconfig.json",
-  "includeVersion": true
-}
