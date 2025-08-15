@@ -32,7 +32,6 @@ jobs:
 
       - name: Generate API documentation
         run: |
-          npx typedoc --out docs/api
           npx typedoc --out dist/api-html --theme default
 
       - name: Build documentation site
