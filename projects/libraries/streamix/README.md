@@ -312,7 +312,7 @@ This means:
 
 ## 📖 Documentation & Resources
 
-- **📝 [API Documentation](https://github.com/actioncrew/streamix)** 
+- **📝 [API Documentation](https://actioncrew/github.io/streamix)** 
 - **📰 [Blog: Exploring Streamix](https://medium.com/p/00d5467f0c01)**
 - **🔄 [Streamix 2.0 Updates](https://medium.com/p/a1eb9e7ce1d7)**
 - **🎯 [Reactive Programming Guide](https://medium.com/p/0bfc206ad41c)**
