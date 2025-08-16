@@ -52,6 +52,6 @@ export default defineConfig({
     '@angular-eslint/directive-class-suffix': 'warn',
     '@angular-eslint/no-empty-lifecycle-method': 'warn'
   },
-  ignores: ['**/dist/**', '**/node_modules/**'],
+  ignores: ['**/dist/**', '**/docs/**', '**/node_modules/**'],
   files: ['**/*.ts', '**/*.tsx']
 });
