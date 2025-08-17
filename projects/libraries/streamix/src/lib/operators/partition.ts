@@ -14,7 +14,7 @@ import { GroupItem } from "./groupBy";
  *
  * @template T The type of the values in the source stream.
  * @param predicate A function that takes a value and its index and returns a boolean or
- * Promise<boolean>. `true` for one group, `false` for the other.
+ * `Promise<boolean>`. `true` for one group, `false` for the other.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method,
  * emitting objects of type `GroupItem<T, "true" | "false">`.
  */
