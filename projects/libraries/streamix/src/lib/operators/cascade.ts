@@ -31,25 +31,7 @@ export interface CoroutineLike<T = any, R = T> extends Operator<T, R> {
   finalize: () => Promise<void>;
 }
 
-/**
- * Chains multiple coroutine tasks sequentially, creating a single `CoroutineLike` operator.
- *
- * Each coroutine in the sequence processes the output of the previous coroutine,
- * forming a data processing pipeline. This function is useful for composing
- * complex asynchronous operations from simpler, reusable building blocks.
- *
- * The final output type of the cascade is the output type of the last coroutine in the chain.
- *
- * @template A The input type of the first coroutine.
- * @template B The output type of the first coroutine (and input of the second).
- * @template C The output type of the second coroutine (and input of the third).
- * @template D The output type of the third coroutine.
- * @param c1 The first coroutine in the sequence.
- * @param c2 The second coroutine.
- * @param c3 The third coroutine.
- * @param tasks An array of coroutines to chain.
- * @returns A `CoroutineLike` operator representing the entire cascaded pipeline.
- */
+
 export function cascade<A, B>(c1: Coroutine<A, B>): CoroutineLike<A, B>;
 
 export function cascade<A, B, C>(
@@ -63,8 +45,23 @@ export function cascade<A, B, C, D>(
   c3: Coroutine<C, D>
 ): CoroutineLike<A, D>;
 
+
 export function cascade<T = any, R = any>(...tasks: Coroutine<any, any>[]): CoroutineLike<T, R>;
 
+/**
+ * Chains multiple coroutine tasks sequentially, creating a single `CoroutineLike` operator.
+ *
+ * Each coroutine in the sequence processes the output of the previous coroutine,
+ * forming a data processing pipeline. This function is useful for composing
+ * complex asynchronous operations from simpler, reusable building blocks.
+ *
+ * The final output type of the cascade is the output type of the last coroutine in the chain.
+ *
+ * @template T The input type of the first coroutine.
+ * @template R The output type of the last coroutine.
+ * @param {Coroutine<any, any>[]} tasks An array of coroutines to chain.
+ * @returns {CoroutineLike<T, R>} A `CoroutineLike` operator representing the entire cascaded pipeline.
+ */
 export function cascade<T = any, R = any>(
   ...tasks: Coroutine<any, any>[]
 ): CoroutineLike<T, R> {

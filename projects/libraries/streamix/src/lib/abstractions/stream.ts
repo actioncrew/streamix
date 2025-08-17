@@ -48,7 +48,7 @@ export type Stream<T = any> = {
    * Subscribing starts the stream's execution. Multiple subscriptions will
    * multicast the same values to all listeners.
    *
-   * @param callbackOrReceiver An optional function or `Receiver` object to handle
+   * @param callback An optional function or `Receiver` object to handle
    * values, errors, and completion of the stream.
    * @returns A `Subscription` object which can be used to unsubscribe and
    * stop listening to the stream.
