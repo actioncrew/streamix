@@ -11,7 +11,7 @@ export interface ForkOption<T = any, R = any> {
    * The predicate function to test each source value.
    * @param value The value from the source stream.
    * @param index The zero-based index of the value.
-   * @returns A boolean or Promise<boolean> indicating if this option matches the value.
+   * @returns A boolean or `Promise<boolean>` indicating if this option matches the value.
    */
   on: (value: T, index: number) => CallbackReturnType<boolean>;
   /**
