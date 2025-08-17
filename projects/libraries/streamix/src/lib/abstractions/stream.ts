@@ -31,12 +31,13 @@ export type Stream<T = any> = {
    * transformation in order.
    * @example
    * ```typescript
-   * const numberStream = createStream('numbers', () => async function*() {
-   * yield 1; yield 2; yield 3;
+   * const numberStream = createStream('numbers', async function*() {
+   *   yield 1; yield 2; yield 3;
    * });
+   *
    * const doubledStream = numberStream.pipe(
-   * map(value => value * 2),
-   * filter(value => value > 3)
+   *   map(value => value * 2),
+   *   filter(value => value > 3)
    * );
    * ```
    */
