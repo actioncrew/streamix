@@ -55,21 +55,25 @@ jobs:
             --hideBreadcrumbs \
             --hidePageHeader
 
-      # 6️⃣ Rename main API README.md to index.md
+      # 6️⃣ Add examples to markdown files using a Node.js script
+      - name: Add examples to docs
+        run: node ./add-examples.js
+
+      # 7️⃣ Rename main API README.md to index.md
       - name: Rename API README to index
         run: |
           if [ -f docs/api/README.md ]; then
             mv docs/api/README.md docs/api/index.md
           fi
 
-      # 7️⃣ Replace internal README links in API docs
+      # 8️⃣ Replace internal README links in API docs
       - name: Fix README links
         run: |
           find docs/api -name '*.md' -exec sed -i \
             -e 's|\(\]\)(\.\./README.md)|\1(./)|g' \
             -e 's|\(\]\)(\.\./\.\./README.md)|\1(../../)|g' {} +
 
-      # 8️⃣ Use main README as homepage and link to API folder
+      # 9️⃣ Use main README as homepage and link to API folder
       - name: Create site index.md
         run: |
           cp README.md docs/index.md
@@ -77,23 +81,23 @@ jobs:
           echo "## API Reference" >> docs/index.md
           echo "Check the detailed [API Reference here](./api/)." >> docs/index.md
 
-      # 9️⃣ Build VitePress site
+      # 🔟 Build VitePress site
       - name: Build documentation site
         run: npx vitepress build docs --ignoreDeadLinks
 
-      # 🔟 Setup Pages
+      # 1️⃣1️⃣ Setup Pages
       - name: Setup Pages
         uses: actions/configure-pages@v4
         if: github.ref == 'refs/heads/main'
 
-      # 1️⃣1️⃣ Upload Pages artifact
+      # 1️⃣2️⃣ Upload Pages artifact
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
           path: docs/.vitepress/dist
 
-      # 1️⃣2️⃣ Deploy to GitHub Pages
+      # 1️⃣3️⃣ Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

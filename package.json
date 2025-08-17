@@ -11,7 +11,7 @@
     "minify": "node terser.mjs",
     "bundle": "dts-bundle-generator --config ./bundle.config.cjs && npm run minify",
     "clean": "eslint --config eslint.config.js --fix",
-    "docs:generate": "typedoc --plugin typedoc-plugin-markdown --out docs/api --hideBreadcrumbs --hidePageHeader",
+    "docs:generate": "typedoc --plugin typedoc-plugin-markdown --out docs/api --hideBreadcrumbs --hidePageHeader && node ./add-examples.js",
     "docs:dev": "npm run docs:generate && vitepress dev docs",
     "docs:build": "npm run docs:generate && vitepress build docs"
   },
