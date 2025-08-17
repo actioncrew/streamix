@@ -1,7 +1,15 @@
 import { createOperator } from "../abstractions";
 
 /**
- * Prepends the stream with an initial value emitted before the source values.
+ * Creates a stream operator that prepends a specified value to the beginning of the stream.
+ *
+ * The operator first emits the `initialValue` immediately upon being iterated.
+ * After this initial emission, it begins to pull and emit values from the
+ * source stream as they become available.
+ *
+ * @template T The type of the values in the stream.
+ * @param initialValue The value to be emitted as the first item in the stream.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const startWith = <T = any>(initialValue: T) =>
   createOperator<T, T>("startWith", (source) => {

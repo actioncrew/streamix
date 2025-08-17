@@ -3,10 +3,20 @@ import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 /**
- * Emits the latest value from the source stream at most once per specified duration.
- * Ignores intermediate values within the duration window and emits only the last one.
+ * Creates a stream operator that emits the latest value from the source stream
+ * at most once per specified duration.
  *
- * Useful to limit the rate of emitted values (throttling with trailing edge).
+ * This operator is a form of trailing-edge throttle. It ignores values that arrive
+ * while a timer is active. When a new value arrives and the timer is not active,
+ * it starts a new timer. Upon the timer's expiration, it emits the most recent
+ * buffered value and resets its state, ready for the next duration window.
+ *
+ * This is useful for limiting the rate of event handling, for example, to process
+ * a user's resizing of a window only after they have stopped.
+ *
+ * @template T The type of the values in the stream.
+ * @param duration The time in milliseconds to wait before emitting the latest value.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const audit = <T = any>(duration: number) => {
   return createOperator<T, T>('audit', (source) => {

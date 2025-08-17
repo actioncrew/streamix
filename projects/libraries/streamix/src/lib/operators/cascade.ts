@@ -5,15 +5,50 @@ import { Coroutine } from "./coroutine";
  * A coroutine-like operator that can process tasks asynchronously in the background.
  * Extends the base Operator interface to provide task processing capabilities
  * with proper resource cleanup.
+ *
+ * This interface combines the properties of a stream `Operator` with the
+ * functionality of a standalone coroutine, allowing it to be used for
+ * both stream transformations and direct, one-off data processing.
+ *
+ * @template T The type of the input value.
+ * @template R The type of the output value.
  */
 export interface CoroutineLike<T = any, R = T> extends Operator<T, R> {
+  /**
+   * Processes a single piece of data asynchronously.
+   * This method allows the coroutine's logic to be called directly, outside of a stream pipeline.
+   *
+   * @param data The input data to be processed.
+   * @returns A Promise that resolves with the processed output.
+   */
   processTask: (data: T) => Promise<R>;
+  /**
+   * Performs any necessary cleanup and finalization logic.
+   * This method is called to release resources held by the coroutine.
+   *
+   * @returns A Promise that resolves when finalization is complete.
+   */
   finalize: () => Promise<void>;
 }
 
 /**
- * Cascade operator that chains multiple coroutine tasks sequentially.
- * Each task processes the output of the previous task.
+ * Chains multiple coroutine tasks sequentially, creating a single `CoroutineLike` operator.
+ *
+ * Each coroutine in the sequence processes the output of the previous coroutine,
+ * forming a data processing pipeline. This function is useful for composing
+ * complex asynchronous operations from simpler, reusable building blocks.
+ *
+ * The final output type of the cascade is the output type of the last coroutine in the chain.
+ *
+ * @template A The input type of the first coroutine.
+ * @template B The output type of the first coroutine (and input of the second).
+ * @template C The output type of the second coroutine (and input of the third).
+ * @template D The output type of the third coroutine.
+ * @param c1 The first coroutine in the sequence.
+ * @param c2 The second coroutine.
+ * @param c3 The third coroutine.
+ * @param tasks An array of coroutines to chain.
+ * @returns A `CoroutineLike` operator representing the entire cascaded pipeline.
  */
 export function cascade<A, B>(c1: Coroutine<A, B>): CoroutineLike<A, B>;
 

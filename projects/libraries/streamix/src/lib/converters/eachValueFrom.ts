@@ -3,8 +3,24 @@ import { Stream } from "../abstractions";
 /**
  * Converts a `Stream` into an async generator, yielding each emitted value.
  *
- * Values are yielded as they arrive. The generator ends on stream completion,
- * or throws on error. Buffered values are drained before waiting for new ones.
+ * This function creates a bridge between the push-based nature of a stream and
+ * the pull-based nature of an async generator. It subscribes to the stream and
+ * buffers incoming values in a queue. When the generator is iterated over
+ * (e.g., in a `for await...of` loop), it first yields any buffered values
+ * before asynchronously waiting for the next value to be pushed.
+ *
+ * The generator handles all stream events:
+ * - Each yielded value corresponds to a `next` event.
+ * - The generator terminates when the stream `complete`s.
+ * - It throws an error if the stream emits an `error` event.
+ *
+ * It correctly handles situations where the stream completes or errors out
+ * before any values are yielded, and ensures the subscription is
+ * always cleaned up.
+ *
+ * @template T The type of the values emitted by the stream.
+ * @param stream The source stream to convert.
+ * @returns An async generator that yields the values from the stream.
  */
 export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator<T> {
   let resolveNext: ((value: T | undefined) => void) | null = null;

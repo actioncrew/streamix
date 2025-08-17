@@ -51,10 +51,41 @@ export type CoroutineConfig = {
  * Extended Operator that manages a pool of Web Workers for concurrent task processing.
  */
 export type Coroutine<T = any, R = T> = Operator<T, R> & {
+  /**
+   * Assigns a task to a specific worker in the pool.
+   *
+   * @param workerId The ID of the worker to which the task will be assigned.
+   * @param data The input data for the task.
+   * @returns A Promise that resolves with the result of the task.
+   */
   assignTask: (workerId: number, data: T) => Promise<R>;
+  /**
+   * Processes a task by assigning it to the next available worker in the pool.
+   * This is the primary method for offloading work.
+   *
+   * @param data The input data for the task.
+   * @returns A Promise that resolves with the result of the task.
+   */
   processTask: (data: T) => Promise<R>;
+  /**
+   * Retrieves a worker from the pool that is ready to accept a new task.
+   * If no workers are available, a new one may be created, up to a maximum limit.
+   *
+   * @returns A Promise that resolves with an object containing the worker and its ID.
+   */
   getIdleWorker: () => Promise<{ worker: Worker; workerId: number }>;
+  /**
+   * Returns a worker to the pool, making it available for subsequent tasks.
+   *
+   * @param workerId The ID of the worker to return.
+   */
   returnWorker: (workerId: number) => void;
+  /**
+   * Terminates all active workers and cleans up all related resources,
+   * including the object URL for the worker script.
+   *
+   * @returns A Promise that resolves when all cleanup is complete.
+   */
   finalize: () => Promise<void>;
 };
 
@@ -161,6 +192,11 @@ let workerIdentifierCounter = 0;
  * This function has two overloaded signatures:
  * 1. `coroutine(config)`: Returns a factory function that takes a main task and helper functions.
  * 2. `coroutine(mainTask, ...helpers)`: Directly creates a coroutine operator with a default configuration.
+ *
+ * This operator is a powerful tool for offloading computationally intensive tasks from the main
+ * thread, allowing for concurrent processing of stream data without blocking the UI. It manages a pool
+ * of workers, dynamically scaling up to `navigator.hardwareConcurrency` and reusing workers
+ * to minimize overhead.
  *
  * @template T The type of the input data for the main task.
  * @template R The type of the return value from the main task.

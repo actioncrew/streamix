@@ -1,8 +1,16 @@
 import { createOperator } from "../abstractions";
 
 /**
- * Buffers a fixed number of values from the source stream and emits them as arrays.
- * Emits when the buffer reaches the specified size or when the source completes.
+ * Creates a stream operator that buffers a fixed number of values and emits them as arrays.
+ *
+ * This operator collects values from the source stream until the buffer reaches the
+ * specified `bufferSize`. Once the buffer is full, it is emitted as an array, and a new
+ * buffer is started. If the source stream completes before the buffer is full, the
+ * operator will emit any remaining values and then complete.
+ *
+ * @template T The type of the values in the stream.
+ * @param bufferSize The maximum number of values to collect in each buffer. Defaults to `Infinity`.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
   createOperator<T, T[]>("bufferCount", (source) => {

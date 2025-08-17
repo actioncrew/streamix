@@ -3,9 +3,17 @@ import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 /**
- * Emits the most recent value from the source stream only after
- * a specified duration has passed without another new value.
- * Resets the timer on each new value, debouncing the output.
+ * Creates a stream operator that emits the most recent value from the source stream
+ * only after a specified duration has passed without another new value.
+ *
+ * This operator is a classic debounce function applied to a stream. It's useful for
+ * reducing the rate of events that occur in rapid succession, such as user input
+ * or window resizing. Each time a new value arrives, a timer is reset. The value is
+ * emitted only if the timer completes without being reset.
+ *
+ * @template T The type of the values in the source and output streams.
+ * @param duration The time in milliseconds to wait for inactivity before emitting a value.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function debounce<T = any>(duration: number) {
   return createOperator<T, T>("debounce", (source) => {
