@@ -2,32 +2,62 @@ import { CallbackReturnType, StrictReceiver } from "../abstractions";
 
 /**
  * Represents a subscription to a stream-like source.
- * Tracks lifecycle, latest value, and supports active listening.
+ *
+ * A subscription is an object returned from a stream's `subscribe` method. It is the
+ * primary means for a consumer to manage their connection to the stream, allowing them
+ * to listen for values and unsubscribe when they are no longer needed.
+ *
+ * @template T The type of the values emitted by the subscribed stream.
  */
 export type Subscription<T = any> = {
-  (): Promise<T | undefined>;
+  /**
+   * A boolean flag indicating whether the subscription has been terminated.
+   * A value of `true` means the subscription is no longer active and cannot
+   * receive new values.
+   */
   readonly unsubscribed: boolean;
-  readonly hasValue: boolean;
-  readonly value: T | undefined;
+  /**
+   * Terminates the subscription and any associated listening process.
+   *
+   * Calling this method triggers any cleanup logic defined for the subscription.
+   * It is idempotent, meaning calling it multiple times will not cause errors.
+   *
+   * @returns A `CallbackReturnType` which can be a `Promise<void>` if the cleanup
+   * is asynchronous.
+   */
   unsubscribe(): CallbackReturnType;
+  /**
+   * Binds the subscription to an asynchronous data source and a receiver.
+   *
+   * This method starts the flow of data. It pulls values from the `iterator` and
+   * pushes them to the `receiver`, handling all lifecycle events. It will throw
+   * an error if called on an already unsubscribed subscription.
+   *
+   * @param iterator A function that returns an `AsyncIterator` as the data source.
+   * @param receiver The `StrictReceiver` to which stream events (next, error, complete)
+   * will be delivered.
+   * @returns A `Promise` that resolves when the listening process is complete.
+   */
   listen(iterator: () => AsyncIterator<T>, receiver: StrictReceiver<T>): Promise<void>;
 };
 
 /**
  * Creates a new subscription with optional cleanup logic.
- * Captures the latest value and manages cancellation state.
+ *
+ * This factory function initializes a `Subscription` object that manages its
+ * own state. It provides a robust mechanism for a stream consumer to stop
+ * listening for values and to perform custom teardown tasks.
+ *
+ * @template T The type of the values that the subscription will handle.
+ * @param onUnsubscribe An optional callback function to be executed when the `unsubscribe`
+ * method is called. This is useful for custom resource cleanup.
+ * @returns A new `Subscription` instance.
  */
 export function createSubscription<T = any>(
   onUnsubscribe?: () => CallbackReturnType
 ): Subscription<T> {
-  let _latestValue: T | undefined;
   let _unsubscribing = false;
   let _unsubscribed = false;
-  let _hasValue = false;
-
-  const subscription = async (): Promise<T | undefined> => {
-    return _latestValue;
-  };
 
   const unsubscribe = async (): Promise<void> => {
     if (!_unsubscribing) {
@@ -51,10 +81,7 @@ export function createSubscription<T = any>(
       while (!_unsubscribed) {
         const result = await iter.next();
         if (result.done || _unsubscribed) break;
-
-        _latestValue = result.value;
-        _hasValue = true;
-        await receiver.next(_latestValue);
+        await receiver.next(result.value);
       }
     } catch (err: unknown) {
       if (!_unsubscribed) {
@@ -65,17 +92,11 @@ export function createSubscription<T = any>(
     }
   };
 
-  return Object.assign(subscription, {
+  return {
     get unsubscribed() {
       return _unsubscribed;
     },
-    get hasValue() {
-      return _hasValue;
-    },
-    get value() {
-      return _latestValue;
-    },
     unsubscribe,
     listen,
-  });
+  };
 }
