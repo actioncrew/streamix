@@ -14,6 +14,13 @@ import { Subject } from "./subject";
 
 /**
  * A type alias for a ReplaySubject, which is a type of Subject.
+ *
+ * A ReplaySubject stores a specified number of the latest values it has emitted
+ * and "replays" them to any new subscribers. This allows late subscribers to
+ * receive past values they may have missed.
+ *
+ * @template T The type of the values emitted by the subject.
+ * @extends {Subject<T>}
  */
 export type ReplaySubject<T = any> = Subject<T>;
 
@@ -23,6 +30,13 @@ export type ReplaySubject<T = any> = Subject<T>;
  * A ReplaySubject is a variant of a Subject that stores a specified number of
  * the latest values it has emitted and "replays" them to any new subscribers.
  * This allows late subscribers to receive past values they may have missed.
+ *
+ * This subject does not provide synchronous access to its value, and will
+ * throw an error if the `snappy` getter is used.
+ *
+ * @template T The type of the values the subject will emit.
+ * @param {number} [capacity=Infinity] The maximum number of past values to buffer and replay to new subscribers. Use `Infinity` for an unbounded buffer.
+ * @returns {ReplaySubject<T>} A new ReplaySubject instance.
  */
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
   const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;

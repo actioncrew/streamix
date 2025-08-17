@@ -9,6 +9,11 @@ import { loop } from './loop';
  * reactive context. It's similar to a standard `for` loop but produces
  * values as a stream. It's built upon the `loop` operator for its
  * underlying logic.
+ *
+ * @param {number} start - The first number to emit in the sequence.
+ * @param {number} count - The total number of values to emit. Must be a non-negative number.
+ * @param {number} [step=1] - The amount to increment or decrement the value in each step.
+ * @returns {Stream<number>} A stream that emits a sequence of numbers.
  */
 export function range(start: number, count: number, step: number = 1): Stream<number> {
   const end = start + count * step;

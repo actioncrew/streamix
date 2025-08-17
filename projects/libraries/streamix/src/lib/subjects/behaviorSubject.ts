@@ -16,8 +16,19 @@ import { Subject } from "./subject";
  * A BehaviorSubject is a special type of Subject that maintains
  * a current value and emits that value immediately to new subscribers.
  * It allows synchronous retrieval of the latest emitted value via `.snappy`.
+ *
+ * It is "stateful" in that it remembers the last value it emitted.
+ *
+ * @template T The type of the values held and emitted by the subject.
+ * @extends {Subject<T>}
  */
 export type BehaviorSubject<T = any> = Subject<T> & {
+  /**
+   * Provides synchronous access to the most recently pushed value.
+   * This value is the last value passed to the `next()` method, or the initial value if none have been emitted.
+   *
+   * @type {T}
+   */
   get snappy(): T;
 };
 
@@ -27,6 +38,10 @@ export type BehaviorSubject<T = any> = Subject<T> & {
  *
  * The subject queues emitted values and delivers them to subscribers asynchronously,
  * supporting safe concurrent access and orderly processing.
+ *
+ * @template T The type of the values the subject will hold.
+ * @param {T} initialValue The value that the subject will hold upon creation.
+ * @returns {BehaviorSubject<T>} A new BehaviorSubject instance.
  */
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
   const buffer = createSingleValueBuffer<T>(initialValue);

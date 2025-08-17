@@ -8,7 +8,11 @@ import { eachValueFrom } from "../converters";
  * This operator is useful for scenarios where you need to react to changes
  * in multiple independent data sources simultaneously. The output stream
  * will not emit a value until all source streams have emitted at least one
- * value.
+ * value. The output stream completes when all source streams have completed.
+ *
+ * @template {unknown[]} T A tuple type representing the combined values from the streams.
+ * @param {{ [K in keyof T]: Stream<T[K]> }} streams An array of streams to combine.
+ * @returns {Stream<T>} A new stream that emits a tuple of the latest values from all source streams.
  */
 export function combineLatest<T extends unknown[] = any[]>(
   streams: { [K in keyof T]: Stream<T[K]> }

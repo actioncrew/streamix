@@ -6,7 +6,13 @@ import { createStream, Stream } from '../abstractions';
  * This function provides a reactive way to handle JSONP requests, which are
  * often used to bypass the same-origin policy for loading data from a different
  * domain. It dynamically creates a `<script>` tag, handles the response via a
- * global callback, and then cleans up after itself.
+ * global callback, and then cleans up after itself. The stream emits a single
+ * value and then completes.
+ *
+ * @template T The type of the JSONP data to be emitted.
+ * @param {string} url The URL to make the JSONP request to.
+ * @param {string} [callbackParam='callback'] The name of the query parameter for the callback function.
+ * @returns {Stream<T>} A new stream that emits the JSONP data and then completes.
  */
 export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<T> {
   return createStream<T>('jsonp', async function* () {

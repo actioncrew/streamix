@@ -8,6 +8,12 @@ import { Coroutine } from "../operators";
  * This operator is designed for offloading CPU-intensive tasks to a background
  * thread, preventing the main thread from being blocked and keeping the UI
  * responsive. It uses a `Coroutine` to manage a pool of web workers.
+ * The stream will emit a single value and then complete.
+ *
+ * @template T The type of the result from the computation.
+ * @param {Coroutine} task The coroutine instance managing the worker pool.
+ * @param {any} params The data to send to the worker for computation.
+ * @returns {Stream<T>} A new stream that emits the result of the computation.
  */
 export function compute<T = any>(task: Coroutine, params: any): Stream<T> {
   return createStream<T>("compute", async function* () {

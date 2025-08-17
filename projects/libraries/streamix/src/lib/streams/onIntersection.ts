@@ -6,7 +6,12 @@ import { createStream, Stream } from '../abstractions';
  *
  * This operator is a wrapper around the `IntersectionObserver` API,
  * making it easy to create reactive streams for "lazy loading" or
- * triggering events when an element becomes visible.
+ * triggering events when an element becomes visible. The stream will
+ * emit a value each time the intersection status changes.
+ *
+ * @param {Element} element The DOM element to observe for intersection changes.
+ * @param {IntersectionObserverInit} [options] Optional configuration for the observer, such as root, root margin, and threshold.
+ * @returns {Stream<boolean>} A stream that emits `true` if the element is intersecting the viewport, and `false` otherwise.
  */
 export function onIntersection(
   element: Element,

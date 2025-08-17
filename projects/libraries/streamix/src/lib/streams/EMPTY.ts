@@ -8,6 +8,17 @@ import { CallbackReturnType, createReceiver, createStream, Receiver, Stream, Sub
  * It completes immediately upon subscription, allowing a sequence of
  * other streams to proceed without delay.
  *
+ * @template T The type of the stream's values (will never be emitted).
+ * @returns {Stream<T>} An empty stream.
+ */
+/**
+ * A singleton instance of an empty stream.
+ *
+ * This constant provides a reusable, empty stream that immediately completes
+ * upon subscription without emitting any values. It is useful in stream
+ * compositions as a placeholder or to represent a sequence with no elements.
+ *
+ * @type {Stream<any>}
  */
 export const empty = <T = any>(): Stream<T> => {
   const stream = createStream<T>('EMPTY', async function* (this: Stream<T>): AsyncGenerator<T> {

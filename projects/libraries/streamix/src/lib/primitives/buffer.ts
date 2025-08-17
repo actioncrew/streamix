@@ -4,22 +4,71 @@ import { createSemaphore } from "./semaphore";
 /**
  * A concurrent async buffer allowing multiple readers to consume values independently.
  * Each reader sees only new values written after attachment.
+ * @template T The type of the values in the buffer.
  */
 export type CyclicBuffer<T = any> = {
+  /**
+   * Writes a new value to the buffer.
+   * For single-value buffers, this operation may wait for existing readers to consume the previous value before writing.
+   * @param {T} value The value to write.
+   * @returns {Promise<void>} A promise that resolves when the write is complete.
+   */
   write(value: T): Promise<void>;
+  /**
+   * Writes an error to the buffer, causing all subsequent reads to throw the error.
+   * @param {Error} err The error to write.
+   * @returns {Promise<void>} A promise that resolves when the error is recorded.
+   */
   error(err: Error): Promise<void>;
+  /**
+   * Reads the next available value for a specific reader.
+   * This operation will wait if no new value is available.
+   * @param {number} readerId The ID of the reader.
+   * @returns {Promise<IteratorResult<T, void>>} A promise that resolves with the next value or signals completion.
+   */
   read(readerId: number): Promise<IteratorResult<T, void>>;
+  /**
+   * Peeks at the next available value for a specific reader without consuming it.
+   * This is a non-blocking check.
+   * @param {number} readerId The ID of the reader.
+   * @returns {Promise<IteratorResult<T, void>>} A promise that resolves with the next value, an `undefined` value if none is available, or signals completion.
+   */
   peek(readerId: number): Promise<IteratorResult<T, void>>;
+  /**
+   * Completes the buffer, signaling that no more values will be written.
+   * All active readers will receive a completion signal after consuming any remaining buffered values.
+   * @returns {Promise<void>} A promise that resolves when the completion signal is sent.
+   */
   complete(): Promise<void>;
+  /**
+   * Attaches a new reader to the buffer, starting from the current state.
+   * @returns {Promise<number>} A promise that resolves with a unique ID for the new reader.
+   */
   attachReader(): Promise<number>;
+  /**
+   * Detaches a reader from the buffer, cleaning up any associated resources.
+   * @param {number} readerId The ID of the reader to detach.
+   * @returns {Promise<void>} A promise that resolves when the reader is detached.
+   */
   detachReader(readerId: number): Promise<void>;
+  /**
+   * Checks if a specific reader has reached the end of the buffer.
+   * @param {number} readerId The ID of the reader.
+   * @returns {boolean} `true` if the reader has completed, `false` otherwise.
+   */
   completed(readerId: number): boolean;
 };
 
 /**
  * A simplified buffer variant that stores a single value and delivers it to all readers.
+ * @template T The type of the value.
+ * @extends {CyclicBuffer<T>}
  */
 export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
+  /**
+   * The current value stored in the buffer.
+   * @type {T | undefined}
+   */
   get value(): T | undefined;
 };
 
@@ -27,6 +76,10 @@ export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
  * Creates a single-value buffer (effectively a buffer with capacity 1).
  * This buffer ensures that a new value can only be written once all currently active readers have consumed the previous value.
  * It provides backpressure by waiting for readers to process the current value before allowing a new one.
+ *
+ * @template T The type of the value in the buffer.
+ * @param {T | undefined} [initialValue=undefined] An optional initial value for the buffer.
+ * @returns {SingleValueBuffer<T>} An object representing the single-value buffer.
  */
 export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
   let value: T | undefined = initialValue;
@@ -204,15 +257,24 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
 /**
  * A buffer that replays a fixed number of the most recent values to new readers.
  *
- * Extends {@link CyclicBuffer} with an additional `buffer` getter
- * to access the internal list of buffered values.
+ * @template T The type of the values in the buffer.
+ * @extends {CyclicBuffer<T>}
  */
 export type ReplayBuffer<T = any> = CyclicBuffer<T> & {
   get buffer(): T[];
 };
 
 /**
- * Simple notifier for readers to await new data.
+ * Creates a simple asynchronous notifier for coordinating producers and consumers.
+ *
+ * This utility allows asynchronous code to "wait" for a signal from another part of the
+ * application. It is useful for building custom buffers or streams where readers need to
+ * pause until new data is available.
+ *
+ * @returns {{ wait: () => Promise<void>, signal: () => void, signalAll: () => void }} An object with methods to manage the notification state.
+ * @property {() => Promise<void>} wait Returns a promise that resolves when a signal is received.
+ * @property {() => void} signal Signals the next single waiting promise, unblocking one waiter.
+ * @property {() => void} signalAll Signals all waiting promises at once, unblocking all waiters.
  */
 export function createNotifier() {
   let waitingResolvers: (() => void)[] = [];
@@ -230,6 +292,10 @@ export function createNotifier() {
  *
  * If `capacity` is `Infinity`, it acts as an unbounded replay buffer, storing all values.
  * Otherwise, it's a fixed-size circular buffer.
+ *
+ * @template T The type of the values in the buffer.
+ * @param {number} capacity The maximum number of past values to buffer. Use `Infinity` for an unbounded buffer.
+ * @returns {ReplayBuffer<T>} An object representing the replay buffer.
  */
 export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
   const isInfinite = !isFinite(capacity);

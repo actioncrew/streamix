@@ -6,7 +6,11 @@ import { createStream, Stream } from '../abstractions';
  *
  * This is a reactive wrapper around the `window.matchMedia` API,
  * allowing you to easily react to changes in screen size, orientation,
- * or other media features.
+ * or other media features. The stream emits the initial match status upon
+ * subscription and then emits a new value for every subsequent change.
+ *
+ * @param {string} mediaQueryString The CSS media query string to match (e.g., "(min-width: 600px)").
+ * @returns {Stream<boolean>} A stream that emits `true` if the media query matches, and `false` otherwise.
  */
 export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
   return createStream<boolean>('onMediaQuery', async function* () {

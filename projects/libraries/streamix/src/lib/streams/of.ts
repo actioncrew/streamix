@@ -7,6 +7,10 @@ import { createStream, Stream } from '../abstractions';
  * single value as a stream. It immediately yields the provided `value`
  * and then signals completion, which is a common pattern for creating a
  * "hot" stream from a predefined value.
+ *
+ * @template T The type of the value to be emitted.
+ * @param {T} value The single value to emit.
+ * @returns {Stream<T>} A new stream that emits the value and then completes.
  */
 export function of<T = any>(value: T): Stream<T> {
   return createStream<T>('of', async function* () {

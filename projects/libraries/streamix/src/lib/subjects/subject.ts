@@ -14,12 +14,40 @@ import { createQueue, createSingleValueBuffer } from "../primitives";
 /**
  * A `Subject` is a special type of `Stream` that can be manually pushed new values.
  * It acts as both a source of values and a consumer, multicasting to multiple subscribers.
+ * Unlike a standard stream which is "cold" and begins from scratch for each subscriber,
+ * a Subject is "hot" and broadcasts the same values to all of its subscribers.
+ * @template T The type of the values held and emitted by the subject.
+ * @extends {Stream<T>}
  */
 export type Subject<T = any> = Stream<T> & {
+  /**
+   * Pushes the next value to all active subscribers.
+   * @param {T} value The value to emit.
+   * @returns {void}
+   */
   next(value: T): void;
+  /**
+   * Signals that the subject has completed and will emit no more values.
+   * This completion signal is sent to all subscribers.
+   * @returns {void}
+   */
   complete(): void;
+  /**
+   * Signals that the subject has terminated with an error.
+   * The error is sent to all subscribers, and the subject is marked as completed.
+   * @param {any} err The error to emit.
+   * @returns {void}
+   */
   error(err: any): void;
+  /**
+   * Checks if the subject has been completed.
+   * @returns {boolean} `true` if the subject has completed, `false` otherwise.
+   */
   completed(): boolean;
+  /**
+   * Provides synchronous access to the most recently pushed value.
+   * @type {T | undefined}
+   */
   get snappy(): T | undefined;
 };
 
@@ -27,10 +55,11 @@ export type Subject<T = any> = Stream<T> & {
  * Creates a new Subject instance.
  *
  * A Subject can be used to manually control a stream, emitting values
- * to all active subscribers.
+ * to all active subscribers. It is a fundamental building block for
+ * reactive patterns like event bus systems or shared state management.
  *
  * @template T The type of the values that the subject will emit.
- * @returns A new Subject instance.
+ * @returns {Subject<T>} A new Subject instance.
  */
 export function createSubject<T = any>(): Subject<T> {
   const buffer = createSingleValueBuffer<T>();

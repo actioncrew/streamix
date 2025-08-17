@@ -5,10 +5,14 @@ import { eachValueFrom } from '../converters';
  * Combines multiple streams by emitting an array of values,
  * only when all streams have emitted at least one value.
  *
- * After emitting, waits for the next batch of values from all streams.
+ * After emitting, it waits for the next value from all streams.
  *
- * Completes when any stream completes.
- * Errors propagate immediately.
+ * The stream completes when any of the input streams complete.
+ * Errors from any stream propagate immediately.
+ *
+ * @template {readonly unknown[]} T - A tuple type representing the combined values from the streams.
+ * @param { { [K in keyof T]: Stream<T[K]> } } streams - An array of streams to combine.
+ * @returns {Stream<T>} A new stream that emits an array of values.
  */
 export function zip<T extends readonly unknown[] = any[]>(
   streams: { [K in keyof T]: Stream<T[K]> }

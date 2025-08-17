@@ -7,6 +7,12 @@ import { createStream, Stream } from '../abstractions';
  * This stream provides a reactive way to handle changes in a device's
  * orientation, which is useful for adapting UI layouts, games, or
  * other interactive experiences.
+ *
+ * It emits the initial orientation immediately upon subscription and then
+ * emits a new value each time the orientation changes. If the Screen Orientation
+ * API is not supported by the environment, the stream will warn and complete immediately.
+ *
+ * @returns {Stream<"portrait" | "landscape">} A stream that emits a string indicating the screen's orientation.
  */
 export function onOrientation(): Stream<"portrait" | "landscape"> {
   return createStream<"portrait" | "landscape">('onOrientation', async function* () {

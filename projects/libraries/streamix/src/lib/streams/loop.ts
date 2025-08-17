@@ -8,6 +8,12 @@ import { createStream, Stream } from '../abstractions';
  * condition is no longer met. It starts with an `initialValue` and, for each
  * iteration, it yields the current value and then uses `iterateFn` to
  * calculate the next value in the sequence.
+ *
+ * @template T The type of the values in the stream.
+ * @param {T} initialValue The starting value for the loop.
+ * @param {(value: T) => boolean} condition A function that returns `true` to continue the loop and `false` to stop.
+ * @param {(value: T) => T} iterateFn A function that returns the next value in the sequence.
+ * @returns {Stream<T>} A stream that emits the generated sequence of values.
  */
 export function loop<T = any>(
   initialValue: T,

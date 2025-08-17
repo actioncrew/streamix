@@ -3,7 +3,15 @@ import { eachValueFrom } from '../converters';
 
 /**
  * Creates a stream that chooses between two streams based on a condition.
- * The condition is evaluated lazily when the stream starts.
+ *
+ * The condition is evaluated lazily when the stream is subscribed to. This allows
+ * for dynamic stream selection based on runtime state.
+ *
+ * @template T The type of the values in the streams.
+ * @param {() => boolean} condition A function that returns a boolean to determine which stream to use. It is called when the iif stream is subscribed to.
+ * @param {Stream<T>} trueStream The stream to subscribe to if the condition is `true`.
+ * @param {Stream<T>} falseStream The stream to subscribe to if the condition is `false`.
+ * @returns {Stream<T>} A new stream that emits values from either `trueStream` or `falseStream` based on the condition.
  */
 export function iif<T = any>(
   condition: () => boolean,

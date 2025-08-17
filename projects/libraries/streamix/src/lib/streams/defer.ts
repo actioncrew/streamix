@@ -9,6 +9,10 @@ import { eachValueFrom } from '../converters';
  * a consumer subscribes to the stream, making it a good choice for
  * creating "cold" streams. Each new subscription will trigger a new
  * call to the `factory` and create a fresh stream instance.
+ *
+ * @template T The type of the values in the inner stream.
+ * @param {() => Stream<T>} factory A function that returns the stream to be subscribed to.
+ * @returns {Stream<T>} A new stream that defers subscription to the inner stream.
  */
 export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
   async function* generator() {
