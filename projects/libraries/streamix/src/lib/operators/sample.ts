@@ -3,8 +3,22 @@ import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 /**
- * Emits the most recent value from the source stream at a fixed periodic interval.
- * If no new value arrives between intervals, the last emitted value is re-emitted.
+ * Creates a stream operator that emits the most recent value from the source stream
+ * at a fixed periodic interval.
+ *
+ * This operator controls the rate of emissions. It maintains a buffer for the latest
+ * value received from the source stream. It then uses an internal timer to periodically
+ * emit that latest value to the output stream at a rate defined by the `period`.
+ * If the source stream is faster than the `period`, multiple values will be skipped.
+ * If the source is slower, the same value will be re-emitted.
+ *
+ * This is useful for:
+ * - Sampling live data streams (e.g., sensor readings) for display on a UI.
+ * - Limiting the frequency of expensive operations triggered by a fast event source.
+ *
+ * @template T The type of the values in the source and output streams.
+ * @param period The time in milliseconds between each emission.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const sample = <T = any>(period: number) =>
   createOperator<T, T>('sample', (source) => {

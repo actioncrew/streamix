@@ -3,8 +3,18 @@ import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 /**
- * Delays each emitted value from the source stream by the specified milliseconds.
- * Values are emitted in the original order but after the delay.
+ * Creates a stream operator that delays the emission of each value from the source stream.
+ *
+ * This operator introduces a delay of `ms` milliseconds before each value received from the
+ * source is re-emitted. The values maintain their original order but are emitted
+ * with a time gap between them.
+ *
+ * This is useful for simulating latency or for controlling the rate of events in a predictable
+ * manner, such as for animations or staggered data loading.
+ *
+ * @template T The type of the values in the source and output streams.
+ * @param ms The time in milliseconds to delay each value.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function delay<T = any>(ms: number) {
   return createOperator<T, T>('delay', (source) => {

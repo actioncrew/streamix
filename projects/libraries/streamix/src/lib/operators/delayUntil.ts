@@ -2,9 +2,20 @@ import { createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
 /**
- * Delays emission of values from the source stream until the notifier stream emits at least once.
- * Buffers source values until notifier emits, then flushes buffer and forwards subsequent values immediately.
- * If notifier completes without emitting, buffered values are eventually flushed.
+ * Creates a stream operator that delays the emission of values from the source stream
+ * until a separate `notifier` stream emits at least one value.
+ *
+ * This operator acts as a gate. It buffers all values from the source stream
+ * until the `notifier` stream emits its first value. Once the notifier emits,
+ * the operator immediately flushes all buffered values and then passes through
+ * all subsequent values from the source without delay.
+ *
+ * If the `notifier` stream completes without ever emitting a value, this operator
+ * will eventually flush all buffered values and then pass through subsequent values.
+ *
+ * @template T The type of the values in the source and output streams.
+ * @param notifier The stream that acts as a gatekeeper.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const delayUntil = <T = any>(notifier: Stream<any>) =>
   createOperator<T, T>("delayUntil", (source) => {

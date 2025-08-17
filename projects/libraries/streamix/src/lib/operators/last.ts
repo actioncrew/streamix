@@ -2,8 +2,20 @@ import { createOperator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
 
 /**
- * Emits only the last value from the source stream that matches the predicate (if provided).
- * Throws an error if no such value is found before the source completes.
+ * Creates a stream operator that emits only the last value from the source stream
+ * that matches an optional predicate.
+ *
+ * This operator must consume the entire source stream to find the last matching
+ * value. It caches the last value that satisfies the `predicate` (or the last
+ * value of the stream if no predicate is provided) and emits it only when the
+ * source stream completes.
+ *
+ * @template T The type of the values in the source stream.
+ * @param predicate An optional function to test each value. It receives the value
+ * and should return `true` to indicate a match.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @throws {Error} Throws an error with the message "No elements in sequence" if no
+ * matching value is found before the source stream completes.
  */
 export const last = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
   createOperator<T, T>('last', (source) => {

@@ -3,10 +3,22 @@ import { eachValueFrom } from '../converters';
 import { createSubject } from "../streams";
 
 /**
- * Maps each value from the source into a new inner stream and flattens the
- * most recent inner stream, cancelling previous ones.
- * Emits values from the latest projected stream only.
- * Completes when the source completes and the current inner stream completes.
+ * Creates a stream operator that maps each value from the source stream to a new inner
+ * stream and then "switches" to emitting from the latest inner stream, canceling the
+ * previous one.
+ *
+ * This operator is useful for scenarios where you need to perform a side effect or
+ * an asynchronous operation for each value from the source, but you only care about
+ * the results from the most recent operation. When a new value arrives, any ongoing
+ * operation from the previous value is immediately canceled.
+ *
+ * This behavior is ideal for type-ahead search, where you only want the results from
+ * the latest query, or for handling user events where new events invalidate old ones.
+ *
+ * @template T The type of the values in the source stream.
+ * @template R The type of the values in the inner and output streams.
+ * @param project A function that takes a value from the source and returns a new stream.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function switchMap<T = any, R = any>(project: (value: T, index: number) => Stream<R>) {
   return createOperator<T, R>("switchMap", (source) => {

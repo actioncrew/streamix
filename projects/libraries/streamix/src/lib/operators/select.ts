@@ -3,7 +3,21 @@ import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 /**
- * Emits only the values at the specified indexes from the source stream.
+ * Creates a stream operator that emits only the values at the specified indices from a source stream.
+ *
+ * This operator takes an `indexIterator` (which can be a synchronous or asynchronous iterator
+ * of numbers) and uses it to determine which values from the source stream should be emitted.
+ * It effectively acts as a filter, but one that operates on the position of the elements
+ * rather than their content.
+ *
+ * The operator consumes the source stream and internally buffers its values. At the same time,
+ * it pulls indices from the provided iterator. When the current element's index matches an index
+ * from the iterator, the element is emitted. This allows for flexible and dynamic data sampling.
+ *
+ * @template T The type of the values in the source and output streams.
+ * @param indexIterator An iterator or async iterator that provides the zero-based indices
+ * of the elements to be emitted.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const select = <T = any>(
   indexIterator: Iterator<number> | AsyncIterator<number>

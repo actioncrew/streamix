@@ -11,11 +11,22 @@ import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
 
 /**
- * Combines the source stream with the latest values from the provided streams.
- * Emits a tuple containing the latest value from the source followed by the latest values from all other streams,
- * only after all streams have emitted at least once.
+ * Creates a stream operator that combines the source stream with the latest values
+ * from other provided streams.
  *
- * The output completes or errors if the source or any provided stream completes/errors.
+ * This operator is useful for merging a "trigger" stream with "state" streams.
+ * It waits for a value from the source stream and, when one arrives, it emits a
+ * tuple containing that source value along with the most recently emitted value
+ * from each of the other streams.
+ *
+ * The operator is "gated" and will not emit any values until all provided streams
+ * have emitted at least one value.
+ *
+ * @template T The type of the values in the source stream.
+ * @template R The type of the values in the other streams.
+ * @param streams An array of streams to combine with the source stream.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * The output stream emits tuples of `[T, ...R]`.
  */
 export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(...streams: { [K in keyof R]: Stream<R[K]> }) {
   return createOperator<T, [T, ...R]>("withLatestFrom", (source) => {

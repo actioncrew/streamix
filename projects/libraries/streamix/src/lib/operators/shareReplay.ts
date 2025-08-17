@@ -3,7 +3,21 @@ import { eachValueFrom } from '../converters';
 import { createReplaySubject, ReplaySubject } from '../streams';
 
 /**
- * Shares the source stream and replays the last `bufferSize` values to new subscribers.
+ * Creates a stream operator that shares a single subscription to the source stream
+ * and replays a specified number of past values to new subscribers.
+ *
+ * This operator multicasts the source stream, ensuring that multiple downstream
+ * consumers can receive values from a single source connection. It uses an internal
+ * `ReplaySubject` to cache the most recent values. When a new consumer subscribes,
+ * it immediately receives these cached values before receiving new ones.
+ *
+ * This is useful for:
+ * - Preventing redundant execution of a source stream (e.g., a network request).
+ * - Providing a "state history" to late subscribers.
+ *
+ * @template T The type of the values in the stream.
+ * @param bufferSize The number of last values to replay to new subscribers. Defaults to `Infinity`.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function shareReplay<T = any>(bufferSize: number = Infinity) {
   let isConnected = false;
