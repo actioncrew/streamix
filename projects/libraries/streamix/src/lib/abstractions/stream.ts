@@ -3,19 +3,6 @@ import { Operator, OperatorChain } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
-/**
- * Utility: Recursively compute output type after chaining operators
- */
-export type ChainOperators<T, Ops extends Operator<any, any>[]> =
-  Ops extends []
-    ? T
-    : Ops extends [infer First, ...infer Rest]
-      ? First extends Operator<any, infer U>
-        ? Rest extends Operator<any, any>[]
-          ? ChainOperators<U, Rest>
-          : U
-        : never
-      : never;
 
 /**
  * Represents a reactive stream that supports subscriptions and operator chaining.
@@ -147,9 +134,9 @@ export function createStream<T>(
   let self: Stream<T>;
 
   // Create pipe function that uses self
-  const pipe: OperatorChain<T> = ((...operators: Operator<any, any>[]) => {
+  const pipe = ((...operators: Operator<any, any>[]) => {
     return pipeStream(self, ...operators);
-  });
+  }) as OperatorChain<T>;
 
   // Now define self, closing over pipe
   self = {
@@ -170,8 +157,8 @@ export function createStream<T>(
 export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
   ...operators: [...Ops]
-): Stream<ChainOperators<TIn, Ops>> {
-  const createTransformedIterator = (): AsyncIterator<ChainOperators<TIn, Ops>> => {
+): Stream<any> {
+  const createTransformedIterator = (): AsyncIterator<any> => {
     const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
     return operators.reduce<AsyncIterator<any>>(
       (iter, op) => op.apply(iter),
@@ -179,12 +166,12 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
     );
   };
 
-  const pipedStream: Stream<ChainOperators<TIn, Ops>> = {
+  const pipedStream: Stream<any> = {
     name: "piped",
     type: "stream",
     pipe: ((...nextOps: Operator<any, any>[]) => {
       return pipeStream(pipedStream, ...nextOps);
-    }),
+    }) as OperatorChain<any>,
 
     subscribe(cb) {
       const receiver = createReceiver(cb);

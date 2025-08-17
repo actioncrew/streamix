@@ -1,18 +1,42 @@
 import { Stream } from "./stream";
 
 /**
- * Defines a stream operator that transforms an async iterator of type T into another of type R.
- * Operators are composable units used to manipulate or filter stream values.
+ * A stream operator that transforms a value from an input stream to an output stream.
+ *
+ * Operators are the fundamental building blocks for composing stream transformations.
+ * They are functions that take one stream and return another, allowing for a chain of operations.
+ *
+ * @template T The type of the value being consumed by the operator.
+ * @template R The type of the value being produced by the operator.
  */
 export type Operator<T = any, R = T> = {
+  /**
+   * An optional name for the operator, useful for debugging.
+   */
   name?: string;
+  /**
+   * A type discriminator to identify this object as an operator.
+   */
   type: 'operator';
+  /**
+   * The core function that defines the operator's transformation logic. It takes an
+   * asynchronous iterator of type `T` and returns a new asynchronous iterator of type `R`.
+   * @param source The source async iterator to apply the transformation to.
+   */
   apply: (source: AsyncIterator<T>) => AsyncIterator<R>;
 };
 
 /**
- * Creates a reusable stream operator with a given name and transformation logic.
- * The operator can be applied to any compatible async iterator to produce transformed output.
+ * Creates a reusable stream operator.
+ *
+ * This factory function simplifies the creation of operators by bundling a name and a
+ * transformation function into a single `Operator` object.
+ *
+ * @template T The type of the value the operator will consume.
+ * @template R The type of the value the operator will produce.
+ * @param name The name of the operator, for identification and debugging.
+ * @param transformFn The transformation function that defines the operator's logic.
+ * @returns A new `Operator` object with the specified name and transformation function.
  */
 export function createOperator<T = any, R = T>(
   name: string,
@@ -25,6 +49,17 @@ export function createOperator<T = any, R = T>(
   };
 }
 
+/**
+ * A type representing a chain of stream operators.
+ *
+ * This type uses function overloading to provide strong type safety for a sequence
+ * of operators. Each overload correctly infers the final stream's type by tracking the
+ * output of one operator as the input of the next.
+ *
+ * @template T The initial type of the stream.
+ * @internal This interface is primarily for internal type-checking and should not be
+ * used directly by consumers.
+ */
 export interface OperatorChain<T> {
   // Base case (0 operators)
   (): Stream<T>;
