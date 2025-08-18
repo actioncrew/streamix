@@ -90,7 +90,7 @@ export function createStream<T>(
 ): Stream<T> {
   const activeSubscriptions = new Set<{
     receiver: Receiver<T>;
-    subscription: Subscription<T>;
+    subscription: Subscription;
   }>();
   let isRunning = false;
   let abortController = new AbortController();
@@ -99,7 +99,7 @@ export function createStream<T>(
     callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>
   ): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const subscription = createSubscription<T>(() => {
+    const subscription = createSubscription(() => {
       for (const sub of activeSubscriptions) {
         if (sub.subscription === subscription) {
           activeSubscriptions.delete(sub);

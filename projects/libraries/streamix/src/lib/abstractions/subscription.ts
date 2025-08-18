@@ -38,9 +38,9 @@ export type Subscription = {
  * method is called. This is useful for custom resource cleanup.
  * @returns A new `Subscription` instance.
  */
-export function createSubscription<T = any>(
+export function createSubscription(
   onUnsubscribe?: () => CallbackReturnType
-): Subscription<T> {
+): Subscription {
   let _unsubscribing = false;
   let _unsubscribed = false;
 
