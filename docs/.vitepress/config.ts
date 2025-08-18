@@ -40,6 +40,7 @@ export default defineConfig({
           text: 'Project Files',
           items: [
             { text: 'README', link: '/' },
+            { text: 'Generators', link: '/GENERATORS.md' },
             { text: 'Coroutines', link: '/COROUTINES.md' },
             { text: 'Changelog', link: '/CHANGELOG.md' }
           ]
