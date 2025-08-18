@@ -1,6 +1,6 @@
 # 🎭 From RxJS Maximalist to Generator Fan
 
-I used to solve everything with RxJS — then I learned async generators. Generators are linear, debuggable, and (with [Streamix](actioncrew.github.io/streamix)) still reactive. Fewer marble diagrams, better sleep. And when the app only needs one snapshot, you can **downgrade** your pipeline to a single `await stream.query()` — pragmatic, simple, and safe. 🚀
+I used to solve everything with RxJS — then I learned async generators. Generators are linear, debuggable, and (with [Streamix](https://actioncrew.github.io/streamix)) still reactive. Fewer marble diagrams, better sleep. And when the app only needs one snapshot, you can **downgrade** your pipeline to a single `await stream.query()` — pragmatic, simple, and safe. 🚀
 
 ---
 
