@@ -23,6 +23,9 @@
   <a href="https://codecov.io/github/actioncrew/streamix" >
     <img src="https://codecov.io/github/actioncrew/streamix/graph/badge.svg?token=ITHDU7JVOI" alt="Code Coverage"/>
   </a>
+  <a href="https://www.npmjs.com/package/@actioncrew/streamix">
+    <img src="https://img.shields.io/badge/AI-Powered-blue" alt="AI-Powered">
+  </a>
 </p>
 
 ---

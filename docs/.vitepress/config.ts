@@ -13,7 +13,6 @@ export default defineConfig({
     // Site navigation
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Coroutines', link: '/COROUTINES' },
       { text: 'Changelog', link: '/CHANGELOG' },
       { text: 'API Reference', link: '/api/' },
       { text: 'GitHub', link: 'https://github.com/actioncrew/streamix' }
