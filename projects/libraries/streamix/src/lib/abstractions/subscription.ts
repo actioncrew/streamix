@@ -6,10 +6,8 @@ import { CallbackReturnType } from "../abstractions";
  * A subscription is an object returned from a stream's `subscribe` method. It is the
  * primary means for a consumer to manage their connection to the stream, allowing them
  * to listen for values and unsubscribe when they are no longer needed.
- *
- * @template T The type of the values emitted by the subscribed stream.
  */
-export type Subscription<T = any> = {
+export type Subscription = {
   /**
    * A boolean flag indicating whether the subscription has been terminated.
    * A value of `true` means the subscription is no longer active and cannot
