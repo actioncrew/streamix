@@ -64,15 +64,15 @@ export type Subject<T = any> = Stream<T> & {
 export function createSubject<T = any>(): Subject<T> {
   const buffer = createSingleValueBuffer<T>();
   const queue = createQueue();
-  let latestValue: T | undefined = undefined;
+  let latestValue: T | null = null;
   let isCompleted = false;
   let hasError = false;
 
   const next = (value: T) => {
-    latestValue = value;
+    latestValue = value === undefined ? null : value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write(value);
+      await buffer.write(latestValue as T);
     });
   };
 
@@ -139,7 +139,7 @@ export function createSubject<T = any>(): Subject<T> {
     type: "subject",
     name: "subject",
     get snappy() {
-      return latestValue;
+      return latestValue!;
     },
     pipe(...steps: Operator<any, any>[]): Stream<any> {
       return pipeStream(this, ...steps);
