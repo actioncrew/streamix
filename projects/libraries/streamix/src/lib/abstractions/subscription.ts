@@ -1,4 +1,4 @@
-import { CallbackReturnType, StrictReceiver } from "../abstractions";
+import { CallbackReturnType } from "../abstractions";
 
 /**
  * Represents a subscription to a stream-like source.
@@ -26,19 +26,6 @@ export type Subscription<T = any> = {
    * is asynchronous.
    */
   unsubscribe(): CallbackReturnType;
-  /**
-   * Binds the subscription to an asynchronous data source and a receiver.
-   *
-   * This method starts the flow of data. It pulls values from the `iterator` and
-   * pushes them to the `receiver`, handling all lifecycle events. It will throw
-   * an error if called on an already unsubscribed subscription.
-   *
-   * @param iterator A function that returns an `AsyncIterator` as the data source.
-   * @param receiver The `StrictReceiver` to which stream events (next, error, complete)
-   * will be delivered.
-   * @returns A `Promise` that resolves when the listening process is complete.
-   */
-  listen(iterator: () => AsyncIterator<T>, receiver: StrictReceiver<T>): Promise<void>;
 };
 
 /**
@@ -71,32 +58,10 @@ export function createSubscription<T = any>(
     }
   };
 
-  const listen = async (iterator: () => AsyncIterator<T>, receiver: StrictReceiver<T>): Promise<void> => {
-    if (_unsubscribed) {
-      throw new Error("Cannot listen on an unsubscribed subscription.");
-    }
-
-    try {
-      const iter = iterator();
-      while (!_unsubscribed) {
-        const result = await iter.next();
-        if (result.done || _unsubscribed) break;
-        await receiver.next(result.value);
-      }
-    } catch (err: unknown) {
-      if (!_unsubscribed) {
-        await receiver.error(err instanceof Error ? err : new Error(String(err)));
-      }
-    } finally {
-      await receiver.complete();
-    }
-  };
-
   return {
     get unsubscribed() {
       return _unsubscribed;
     },
-    unsubscribe,
-    listen,
+    unsubscribe
   };
 }
