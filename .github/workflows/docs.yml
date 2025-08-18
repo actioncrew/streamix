@@ -41,9 +41,7 @@ jobs:
       - name: Copy additional docs
         run: |
           mkdir -p docs
-          if [ -f projects/libraries/streamix/CHANGELOG.md ]; then cp projects/libraries/streamix/CHANGELOG.md docs/CHANGELOG.md; fi
-          if [ -f docs/articles/COROUTINES.md ]; then cp docs/articles/COROUTINES.md docs/COROUTINES.md; fi
-          if [ -f docs/articles/GENERATORS.md ]; then cp docs/articles/GENERATORS.md docs/GENERATORS.md; fi
+          cp docs/articles/*.md docs/ || true
 
       # 5️⃣ Generate Typedoc Markdown for API
       - name: Generate API docs

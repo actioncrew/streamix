@@ -37,11 +37,12 @@ export default defineConfig({
       ],
       '/': [
         {
-          text: 'Project Files',
+          text: 'Articles',
           items: [
             { text: 'README', link: '/' },
             { text: 'Generators', link: '/GENERATORS.md' },
             { text: 'Coroutines', link: '/COROUTINES.md' },
+            { text: 'Subjects', link: '/SUBJECTS.md' },
             { text: 'Changelog', link: '/CHANGELOG.md' }
           ]
         }
