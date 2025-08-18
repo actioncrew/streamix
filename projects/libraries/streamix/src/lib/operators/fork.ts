@@ -1,45 +1,60 @@
 import { CallbackReturnType, createOperator, Stream } from "../abstractions";
-import { eachValueFrom } from '../converters';
+import { eachValueFrom, fromAny } from '../converters';
 
 /**
  * Represents a conditional branch for the `fork` operator.
- * @template T The type of the source stream values.
- * @template R The type of the output stream values.
+ *
+ * Each `ForkOption` defines:
+ * 1. A predicate function `on` to test source values.
+ * 2. A handler function `handler` that produces a stream (or value/array/promise) when the predicate matches.
+ *
+ * @template T The type of values in the source stream.
+ * @template R The type of values emitted by the handler and output stream.
  */
 export interface ForkOption<T = any, R = any> {
   /**
-   * The predicate function to test each source value.
+   * Predicate function to determine if this option should handle a value.
+   *
    * @param value The value from the source stream.
-   * @param index The zero-based index of the value.
-   * @returns A boolean or `Promise<boolean>` indicating if this option matches the value.
+   * @param index The zero-based index of the value in the source stream.
+   * @returns A boolean or a Promise<boolean> indicating whether this option matches.
    */
   on: (value: T, index: number) => CallbackReturnType<boolean>;
+
   /**
-   * The handler function that returns a stream to process matching values.
-   * @param value The value that matched the predicate.
-   * @returns A Stream of values to be emitted.
+   * Handler function called for values that match the predicate.
+   *
+   * Can return:
+   * - a {@link Stream<R>}
+   * - a {@link CallbackReturnType<R>} (value or promise)
+   * - an array of `R`
+   *
+   * @param value The source value that matched the predicate.
+   * @returns A stream, value, promise, or array to be flattened and emitted.
    */
-  handler: (value: T) => Stream<R>;
+  handler: (value: T) => Stream<R> | CallbackReturnType<R> | Array<R>;
 }
 
 /**
- * Creates a stream operator that routes each value from the source stream
- * through a specific handler based on matching predicates.
+ * Creates a stream operator that routes each source value through a specific handler
+ * based on matching predicates defined in the provided `ForkOption`s.
  *
- * The operator is configured with an array of `ForkOption` objects. For each
- * value from the source, it iterates through these options and executes the
- * `handler` for the first `on` predicate that returns `true`. The output of
- * the handler (a new stream) is then flattened sequentially.
+ * For each value from the source stream:
+ * 1. Iterates over the `options` array.
+ * 2. Executes the `on` predicate for each option until one returns `true`.
+ * 3. Calls the corresponding `handler` for the first matching option.
+ * 4. Flattens the result (stream, value, promise, or array) sequentially into the output stream.
  *
- * This operator is useful for creating complex, conditional pipelines where
- * the processing logic depends on the nature of each individual data item.
+ * If no predicate matches a value, an error is thrown.
  *
- * @template T The type of the values in the source stream.
- * @template R The type of the values in the output stream.
- * @param options An array of `ForkOption` objects, each containing a predicate
- * and a corresponding handler.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
- * @throws {Error} Throws an error if a source value does not match any of the provided predicates.
+ * This operator allows conditional branching in streams based on the content of each item.
+ *
+ * @template T The type of values in the source stream.
+ * @template R The type of values emitted by the output stream.
+ * @param options Array of {@link ForkOption} objects defining predicates and handlers.
+ * @returns An {@link Operator} instance suitable for use in a stream's `pipe` method.
+ *
+ * @throws {Error} If a source value does not match any predicate.
  */
 export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
   createOperator<T, R>('fork', (source) => {
@@ -69,7 +84,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
               throw new Error(`No handler found for value: ${outerResult.value}`);
             }
 
-            innerIterator = eachValueFrom(matched.handler(outerResult.value));
+            innerIterator = eachValueFrom(fromAny(matched.handler(outerResult.value)));
           }
 
           // Pull next inner value

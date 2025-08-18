@@ -1,26 +1,30 @@
-import { createOperator, Stream, Subscription } from "../abstractions";
-import { eachValueFrom } from '../converters';
+import { CallbackReturnType, createOperator, Stream, Subscription } from "../abstractions";
+import { eachValueFrom, fromAny } from '../converters';
 import { createSubject } from "../streams";
 
 /**
- * Creates a stream operator that maps each value from the source stream to a new inner
- * stream and then "switches" to emitting from the latest inner stream, canceling the
- * previous one.
+ * Creates a stream operator that maps each value from the source stream to a new inner stream
+ * and "switches" to emitting values from the most recent inner stream, canceling the previous one.
  *
- * This operator is useful for scenarios where you need to perform a side effect or
- * an asynchronous operation for each value from the source, but you only care about
- * the results from the most recent operation. When a new value arrives, any ongoing
- * operation from the previous value is immediately canceled.
+ * For each value from the source:
+ * 1. The `project` function is called with the value and its index.
+ * 2. The returned value is normalized into a stream using {@link fromAny}.
+ * 3. The operator subscribes to the new inner stream and immediately cancels any previous active inner stream.
+ * 4. Only values from the latest inner stream are emitted.
  *
- * This behavior is ideal for type-ahead search, where you only want the results from
- * the latest query, or for handling user events where new events invalidate old ones.
+ * This operator is useful for scenarios such as:
+ * - Type-ahead search where only the latest query results are relevant.
+ * - Handling user events where new events invalidate previous operations.
  *
- * @template T The type of the values in the source stream.
- * @template R The type of the values in the inner and output streams.
- * @param project A function that takes a value from the source and returns a new stream.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @template T The type of values in the source stream.
+ * @template R The type of values emitted by the inner and output streams.
+ * @param project A function that maps a source value and its index to either:
+ *   - a {@link Stream<R>},
+ *   - a {@link CallbackReturnType<R>} (value or promise),
+ *   - or an array of `R`.
+ * @returns An {@link Operator} instance suitable for use in a stream's `pipe` method.
  */
-export function switchMap<T = any, R = any>(project: (value: T, index: number) => Stream<R>) {
+export function switchMap<T = any, R = any>(project: (value: T, index: number) =>  Stream<R> | CallbackReturnType<R> | Array<R>) {
   return createOperator<T, R>("switchMap", (source) => {
     const output = createSubject<R>();
 
@@ -68,7 +72,7 @@ export function switchMap<T = any, R = any>(project: (value: T, index: number) =
           if (done) break;
 
           const streamId = ++currentInnerStreamId;
-          const innerStream = project(value, index++);
+          const innerStream = fromAny(project(value, index++));
           subscribeToInner(innerStream, streamId);
         }
         inputCompleted = true;

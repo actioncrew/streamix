@@ -1,24 +1,31 @@
-import { createOperator, Stream } from '../abstractions';
-import { eachValueFrom } from '../converters';
+import { CallbackReturnType, createOperator, Stream } from '../abstractions';
+import { eachValueFrom, fromAny } from '../converters';
 import { createSubject } from '../streams';
 
 /**
- * Creates a stream operator that maps each value from the source stream to an inner stream
- * and then merges all inner streams into a single output stream.
+ * Creates a stream operator that maps each value from the source stream to an "inner" stream
+ * and merges all inner streams concurrently into a single output stream.
  *
- * This operator processes the inner streams concurrently. For each value from the source,
- * it calls the `project` function to create a new "inner" stream. It then subscribes
- * to this inner stream and immediately begins consuming values from it, without waiting
- * for other inner streams to complete. The output stream contains all values from all
- * inner streams, interleaved in the order they are produced.
+ * For each value from the source stream:
+ * 1. The `project` function is called with the value and its index.
+ * 2. The returned value is normalized into a stream using {@link fromAny}.
+ * 3. The inner stream is consumed concurrently with all other active inner streams.
+ * 4. Emitted values from all inner streams are interleaved into the output stream
+ *    in the order they are produced, without waiting for other inner streams to complete.
  *
- * @template T The type of the values in the source stream.
- * @template R The type of the values in the inner and output streams.
- * @param project A function that takes a value from the source stream and returns a new stream.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * This operator is useful for performing parallel asynchronous operations while
+ * preserving all emitted values in a merged output.
+ *
+ * @template T The type of values in the source stream.
+ * @template R The type of values emitted by the inner and output streams.
+ * @param project A function that maps a source value and its index to either:
+ *   - a {@link Stream<R>},
+ *   - a {@link CallbackReturnType<R>} (value or promise),
+ *   - or an array of `R`.
+ * @returns An {@link Operator} instance that can be used in a stream's `pipe` method.
  */
 export function mergeMap<T = any, R = any>(
-  project: (value: T, index: number) => Stream<R>,
+  project: (value: T, index: number) =>  Stream<R> | CallbackReturnType<R> | Array<R>,
 ) {
   return createOperator<T, R>('mergeMap', (source) => {
     const output = createSubject<R>();
@@ -55,7 +62,7 @@ export function mergeMap<T = any, R = any>(
           if (done) break;
           if (errorOccurred) break;
 
-          const inner = project(value, index++);
+          const inner = fromAny(project(value, index++));
           activeInner++;
           processInner(inner); // concurrent, do not await
         }
