@@ -58,10 +58,10 @@ let maps = allFiles.filter(path => path.match(/\.map$/));
 await deleteFiles(maps);
 
 let js = allFiles.filter(path => path.match(/\.[mc]?js$/));
-await minifyFiles(js);
+// await minifyFiles(js);
 
 let definitions = allFiles.filter(path => !path.includes('@actioncrew') && path.match(/\.d\.ts$/));
-await deleteFiles(definitions);
+// await deleteFiles(definitions);
 
 fs.rmSync('./dist/streamix/esm2022', {recursive: true, force: true});
 fs.rmSync('./dist/streamix/lib', {recursive: true, force: true});

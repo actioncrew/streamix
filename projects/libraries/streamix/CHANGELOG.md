@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.21
+
+Small fixes, added `forAny` converter, eachValueFrom correctly propagates void values.
+Updated documentation
+
 ## 2.0.20
 
 Introduced detailed documentation for `Coroutines`, explaining how to offload heavy tasks to background threads while keeping apps responsive. Helper functions for asynchronous operations are now included directly in the main package
