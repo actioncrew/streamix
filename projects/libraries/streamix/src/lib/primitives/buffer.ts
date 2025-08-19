@@ -98,6 +98,20 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
   const lock = createLock();
 
   const notifyReaders = () => {
+   if (hasValue && version > 0) {
+      let allConsumed = true;
+      readers.forEach(reader => {
+        if (reader.lastSeenVersion < version) {
+          allConsumed = false;
+        }
+      });
+
+      if (allConsumed) {
+        hasValue = false;
+        value = undefined;
+      }
+    }
+
     const toNotify = [...waitingReaders];
     waitingReaders.length = 0;
     toNotify.forEach(resolve => resolve());
