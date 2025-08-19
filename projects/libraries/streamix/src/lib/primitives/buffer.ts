@@ -81,11 +81,12 @@ export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
  * @param {T | undefined} [initialValue=undefined] An optional initial value for the buffer.
  * @returns {SingleValueBuffer<T>} An object representing the single-value buffer.
  */
-export function createSingleValueBuffer<T = any>(initialValue: T | undefined = undefined): SingleValueBuffer<T> {
+export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueBuffer<T> {
   let value: T | undefined = initialValue;
   let error: Error | undefined = undefined;
   let isCompleted = false;
-  let version = initialValue !== undefined ? 1 : 0;
+  let hasValue = arguments.length > 0; // Check if initialValue was actually provided
+  let version = hasValue ? 1 : 0;
 
   const readers = new Map<number, {
     lastSeenVersion: number;
@@ -109,6 +110,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       if (error) throw new Error("Cannot write after error");
 
       value = item;
+      hasValue = true; // Now we definitely have a value (even if it's undefined for void)
       error = undefined;
       version++;
       notifyReaders();
@@ -123,6 +125,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       if (isCompleted) throw new Error("Cannot write error to completed buffer");
 
       error = err;
+      hasValue = false; // Error state means no valid value
       value = undefined;
       version++;
       notifyReaders();
@@ -136,12 +139,14 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
     try {
       const readerId = nextReaderId++;
       readers.set(readerId, {
-        lastSeenVersion: initialValue !== undefined ? 0 : version,
+        // If we have an initial value, start from version 0 so reader gets it
+        // If no initial value, start from current version to skip waiting
+        lastSeenVersion: hasValue ? 0 : version,
         isActive: true
       });
 
       // If there's a current value or error, wake up potential readers
-      if (value !== undefined || error !== undefined) {
+      if (hasValue || error !== undefined) {
         notifyReaders();
       }
 
@@ -175,13 +180,18 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
           return { done: true } as IteratorReturnResult<void>;
         }
 
-        if (reader.lastSeenVersion < version) {
+        // Only return a value if we have one AND the reader hasn't seen this version
+        if (hasValue && reader.lastSeenVersion < version) {
           if (error) {
             throw error;
           }
 
           result = { value: value as T, done: false };
           reader.lastSeenVersion = version;
+        } else if (error && reader.lastSeenVersion < version) {
+          // Handle error case
+          reader.lastSeenVersion = version;
+          throw error;
         } else if (isCompleted) {
           return { done: true } as IteratorReturnResult<void>;
         }
@@ -208,7 +218,8 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
         return { done: true } as IteratorReturnResult<void>;
       }
 
-      if (reader.lastSeenVersion < version) {
+      // Only peek if we have a value and reader hasn't seen this version
+      if (hasValue && reader.lastSeenVersion < version) {
         if (error) {
           throw error;
         }
@@ -220,7 +231,8 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
         return { done: true } as IteratorReturnResult<void>;
       }
 
-      return { value: undefined as any, done: false }; // No new value yet
+      // No new value available to peek
+      return { done: true } as IteratorReturnResult<void>;
     } finally {
       release();
     }
@@ -249,7 +261,7 @@ export function createSingleValueBuffer<T = any>(initialValue: T | undefined = u
       return !reader || !reader.isActive || (isCompleted && reader.lastSeenVersion >= version);
     },
     get value() {
-      return value;
+      return hasValue ? value : undefined;
     }
   };
 }
@@ -437,15 +449,24 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
     try {
       const st = readers.get(id);
 
-      if (totalWritten === 0 || st!.offset >= totalWritten) {
+      // Check if reader is detached
+      if (!st) {
         return { value: undefined as any, done: true };
       }
-      const readPos = st!.offset;
+
+      // Check if no data available to peek
+      if (totalWritten === 0 || st.offset >= totalWritten) {
+        return { value: undefined as any, done: true };
+      }
+
+      const readPos = st.offset;
       const idx = isInfinite ? readPos : readPos % capacity;
       const item = buffer[idx];
+
       if (isErrorItem(item)) {
         return Promise.reject(item) as any;
       }
+
       return { value: item as T, done: false };
     } finally {
       release();
