@@ -2,6 +2,7 @@ import { Stream } from "../abstractions";
 
 /**
  * Converts a `Stream` into an async generator, yielding each emitted value.
+ * Distinguishes between undefined values and stream completion.
  *
  * This function creates a bridge between the push-based nature of a stream and
  * the pull-based nature of an async generator. It subscribes to the stream and
@@ -10,7 +11,7 @@ import { Stream } from "../abstractions";
  * before asynchronously waiting for the next value to be pushed.
  *
  * The generator handles all stream events:
- * - Each yielded value corresponds to a `next` event.
+ * - Each yielded value corresponds to a `next` event, including undefined values.
  * - The generator terminates when the stream `complete`s.
  * - It throws an error if the stream emits an `error` event.
  *
@@ -23,7 +24,7 @@ import { Stream } from "../abstractions";
  * @returns An async generator that yields the values from the stream.
  */
 export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator<T> {
-  let resolveNext: ((value: T | undefined) => void) | null = null;
+  let resolveNext: ((value: { value: T | undefined, done: boolean }) => void) | null = null;
   let rejectNext: ((error: any) => void) | null = null;
   let completed = false;
   let error: any = null;
@@ -32,11 +33,11 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
   const subscription = stream.subscribe({
     next(value: T) {
       if (resolveNext) {
-        // Immediately fulfill waiting promise
+        // Immediately fulfill waiting promise with the actual value
         const r = resolveNext;
         resolveNext = null;
         rejectNext = null;
-        r(value);
+        r({ value, done: false });
       } else {
         queue.push(value);
       }
@@ -54,11 +55,11 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
     complete() {
       completed = true;
       if (resolveNext) {
-        // resolve with undefined to signal completion
+        // resolve with done: true to signal completion (not undefined value)
         const r = resolveNext;
         resolveNext = null;
         rejectNext = null;
-        r(undefined);
+        r({ value: undefined, done: true });
       }
       subscription.unsubscribe();
     }
@@ -76,16 +77,17 @@ export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator
       } else {
         // Wait for next value or completion/error
         try {
-          const nextValue = await new Promise<T | undefined>((resolve, reject) => {
+          const result = await new Promise<{ value: T | undefined, done: boolean }>((resolve, reject) => {
             resolveNext = resolve;
             rejectNext = reject;
           });
 
-          if (nextValue === undefined) {
+          if (result.done) {
             // Stream completed
             break;
           } else {
-            yield nextValue;
+            // Yield the value, even if it's undefined
+            yield result.value as T;
           }
         } catch (err) {
           error = err;

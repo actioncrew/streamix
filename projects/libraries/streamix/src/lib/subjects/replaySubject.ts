@@ -46,9 +46,6 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   let latestValue: T | undefined = undefined;
 
   const next = function (value: T) {
-    if (arguments.length === 0 || value === undefined) {
-      value = null as T;
-    }
     latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;

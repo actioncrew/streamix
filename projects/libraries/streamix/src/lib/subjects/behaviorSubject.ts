@@ -51,9 +51,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
   let hasError = false;
 
   const next = function (value: T) {
-    if (arguments.length === 0 || value === undefined) {
-      value = null as T;
-    }
     latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
