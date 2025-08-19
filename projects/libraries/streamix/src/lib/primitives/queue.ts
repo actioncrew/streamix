@@ -16,18 +16,15 @@ export function createQueue() {
   const enqueue = (operation: () => Promise<any>): Promise<any> => {
     pendingCount++;
 
+    // Create the chained promise that will execute the operation
     const result = last
       .then(() => operation())
       .finally(() => {
         pendingCount--;
-
-        // Reset the call stack when queue is empty
-        if (pendingCount === 0) {
-          last = Promise.resolve();
-        }
       });
 
-    // Chain the next operation but handle errors to prevent queue lock
+    // Chain the next operation (with error handling to prevent queue lock)
+    // This maintains the sequential order regardless of operation success/failure
     last = result.catch(() => {});
 
     return result;

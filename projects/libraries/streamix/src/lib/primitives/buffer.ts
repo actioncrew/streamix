@@ -138,10 +138,21 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
     const releaseLock = await lock();
     try {
       const readerId = nextReaderId++;
+
+      // Set lastSeenVersion based on whether we want the reader to get current value
+      let initialLastSeenVersion: number;
+
+      if (hasValue || error !== undefined) {
+        // There's a current value or error - reader should get it
+        // Set to version - 1 so reader will see the current version as "new"
+        initialLastSeenVersion = version - 1;
+      } else {
+        // No current value - reader should wait for next write
+        initialLastSeenVersion = version;
+      }
+
       readers.set(readerId, {
-        // If we have an initial value, start from version 0 so reader gets it
-        // If no initial value, start from current version to skip waiting
-        lastSeenVersion: hasValue ? 0 : version,
+        lastSeenVersion: initialLastSeenVersion,
         isActive: true
       });
 
