@@ -47,7 +47,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   const next = (value: T) => {
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write(value === undefined ? null as T : value);
+      await buffer.write(value);
     });
   };
 

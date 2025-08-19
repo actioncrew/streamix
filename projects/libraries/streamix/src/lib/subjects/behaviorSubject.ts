@@ -46,15 +46,15 @@ export type BehaviorSubject<T = any> = Subject<T> & {
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
   const buffer = createSingleValueBuffer<T>(initialValue);
   const queue = createQueue();
-  let latestValue: T | null = initialValue;
+  let latestValue = initialValue;
   let isCompleted = false;
   let hasError = false;
 
   const next = (value: T) => {
-    latestValue = value === undefined ? null : value;;
+    latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write(latestValue as T);
+      await buffer.write(value);
     });
   };
 
@@ -121,7 +121,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     type: "subject",
     name: "behaviorSubject",
     get snappy() {
-      return latestValue!;
+      return latestValue;
     },
     pipe<O extends readonly [Operator<any, any>, ...Operator<any, any>[]]>(...operators: O): Stream<any> {
       return pipeStream(this, ...operators);

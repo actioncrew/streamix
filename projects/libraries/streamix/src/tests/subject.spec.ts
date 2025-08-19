@@ -234,4 +234,99 @@ describe('Subject', () => {
 
     subject.complete();
   });
+
+  it('should handle void subjects (signals without data)', (done) => {
+    const subject = createSubject<void>();
+
+    let nextCallCount = 0;
+    let completedCallCount = 0;
+
+    const subscription = subject.subscribe({
+      next: (value) => {
+        expect(value).toBeUndefined();
+        nextCallCount++;
+      },
+      complete: () => {
+        completedCallCount++;
+        expect(nextCallCount).toBe(3);
+        expect(completedCallCount).toBe(1);
+        subscription.unsubscribe();
+        done();
+      }
+    });
+
+    // For void subjects, we call next() without arguments or with undefined
+    subject.next();
+    subject.next(undefined);
+    subject.next();
+
+    subject.complete();
+  });
+
+  it('should handle void subjects with multiple subscribers', (done) => {
+    const subject = createSubject<void>();
+
+    let subscriber1Calls = 0;
+    let subscriber2Calls = 0;
+    let completionCount = 0;
+
+    const subscription1 = subject.subscribe({
+      next: () => subscriber1Calls++,
+      complete: () => {
+        completionCount++;
+        if (completionCount === 2) {
+          expect(subscriber1Calls).toBe(2);
+          expect(subscriber2Calls).toBe(2);
+          subscription1.unsubscribe();
+          subscription2.unsubscribe();
+          done();
+        }
+      }
+    });
+
+    const subscription2 = subject.subscribe({
+      next: () => subscriber2Calls++,
+      complete: () => {
+        completionCount++;
+        if (completionCount === 2) {
+          expect(subscriber1Calls).toBe(2);
+          expect(subscriber2Calls).toBe(2);
+          subscription1.unsubscribe();
+          subscription2.unsubscribe();
+          done();
+        }
+      }
+    });
+
+    // Signal twice
+    subject.next();
+    subject.next();
+    subject.complete();
+  });
+
+  it('should handle void subject unsubscription correctly', (done) => {
+    const subject = createSubject<void>();
+
+    let subscriber1Calls = 0;
+    let subscriber2Calls = 0;
+
+    const subscription1 = subject.subscribe({
+      next: () => subscriber1Calls++
+    });
+
+    const subscription2 = subject.subscribe({
+      next: () => subscriber2Calls++,
+      complete: () => {
+        expect(subscriber1Calls).toBe(1); // Only received first signal
+        expect(subscriber2Calls).toBe(2); // Received both signals
+        subscription2.unsubscribe();
+        done();
+      }
+    });
+
+    subject.next(); // Both subscribers get this
+    subscription1.unsubscribe(); // Unsubscribe first subscriber
+    subject.next(); // Only subscriber2 gets this
+    subject.complete();
+  });
 });
