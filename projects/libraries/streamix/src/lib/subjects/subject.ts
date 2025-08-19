@@ -68,7 +68,10 @@ export function createSubject<T = any>(): Subject<T> {
   let isCompleted = false;
   let hasError = false;
 
-  const next = (value: T) => {
+  const next = function (value: T) {
+    if (arguments.length === 0 || value === undefined) {
+      value = null as T;
+    }
     latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;

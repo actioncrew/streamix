@@ -43,8 +43,13 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   const queue = createQueue();
   let isCompleted = false;
   let hasError = false;
+  let latestValue: T | undefined = undefined;
 
-  const next = (value: T) => {
+  const next = function (value: T) {
+    if (arguments.length === 0 || value === undefined) {
+      value = null as T;
+    }
+    latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
       await buffer.write(value);
@@ -124,8 +129,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     async query(): Promise<T> {
       return await firstValueFrom(this);
     },
-    get snappy(): undefined {
-      throw new Error("Replay subject does not support snappy.");
+    get snappy(): T | undefined {
+      return latestValue;
     },
     next,
     complete,

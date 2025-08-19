@@ -243,7 +243,7 @@ describe('Subject', () => {
 
     const subscription = subject.subscribe({
       next: (value) => {
-        expect(value).toBeUndefined();
+        expect(value).toBeNull();
         nextCallCount++;
       },
       complete: () => {
