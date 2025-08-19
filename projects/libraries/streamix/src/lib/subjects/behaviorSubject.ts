@@ -9,7 +9,7 @@ import {
   Subscription
 } from "../abstractions";
 import { firstValueFrom } from "../converters";
-import { createQueue, createSingleValueBuffer } from "../primitives";
+import { createBehaviorSubjectBuffer, createQueue } from "../primitives";
 import { Subject } from "./subject";
 
 /**
@@ -44,7 +44,7 @@ export type BehaviorSubject<T = any> = Subject<T> & {
  * @returns {BehaviorSubject<T>} A new BehaviorSubject instance.
  */
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
-  const buffer = createSingleValueBuffer<T>(initialValue);
+  const buffer = createBehaviorSubjectBuffer<T>(initialValue);
   const queue = createQueue();
   let latestValue = initialValue;
   let isCompleted = false;

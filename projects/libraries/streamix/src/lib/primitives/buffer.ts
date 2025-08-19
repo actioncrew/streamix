@@ -64,7 +64,7 @@ export type CyclicBuffer<T = any> = {
  * @template T The type of the value.
  * @extends {CyclicBuffer<T>}
  */
-export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
+export type SubjectBuffer<T = any> = CyclicBuffer<T> & {
   /**
    * The current value stored in the buffer.
    * @type {T | undefined}
@@ -79,14 +79,14 @@ export type SingleValueBuffer<T = any> = CyclicBuffer<T> & {
  *
  * @template T The type of the value in the buffer.
  * @param {T | undefined} [initialValue=undefined] An optional initial value for the buffer.
- * @returns {SingleValueBuffer<T>} An object representing the single-value buffer.
+ * @returns {SubjectBuffer<T>} An object representing the single-value buffer.
  */
-export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueBuffer<T> {
-  let value: T | undefined = initialValue;
+export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
   let error: Error | undefined = undefined;
   let isCompleted = false;
-  let hasValue = arguments.length > 0; // Check if initialValue was actually provided
-  let version = hasValue ? 1 : 0;
+  let hasValue = false;
+  let value: T | undefined = undefined;
+  let version = 0;
 
   const readers = new Map<number, {
     lastSeenVersion: number;
@@ -98,20 +98,6 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
   const lock = createLock();
 
   const notifyReaders = () => {
-   if (hasValue && version > 0) {
-      let allConsumed = true;
-      readers.forEach(reader => {
-        if (reader.lastSeenVersion < version) {
-          allConsumed = false;
-        }
-      });
-
-      if (allConsumed) {
-        hasValue = false;
-        value = undefined;
-      }
-    }
-
     const toNotify = [...waitingReaders];
     waitingReaders.length = 0;
     toNotify.forEach(resolve => resolve());
@@ -124,7 +110,7 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
       if (error) throw new Error("Cannot write after error");
 
       value = item;
-      hasValue = true; // Now we definitely have a value (even if it's undefined for void)
+      hasValue = true;
       error = undefined;
       version++;
       notifyReaders();
@@ -139,7 +125,7 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
       if (isCompleted) throw new Error("Cannot write error to completed buffer");
 
       error = err;
-      hasValue = false; // Error state means no valid value
+      hasValue = true;
       value = undefined;
       version++;
       notifyReaders();
@@ -153,27 +139,11 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
     try {
       const readerId = nextReaderId++;
 
-      // Set lastSeenVersion based on whether we want the reader to get current value
-      let initialLastSeenVersion: number;
-
-      if (hasValue || error !== undefined) {
-        // There's a current value or error - reader should get it
-        // Set to version - 1 so reader will see the current version as "new"
-        initialLastSeenVersion = version - 1;
-      } else {
-        // No current value - reader should wait for next write
-        initialLastSeenVersion = version;
-      }
-
+      // Subject semantics: start from current version (miss any existing value)
       readers.set(readerId, {
-        lastSeenVersion: initialLastSeenVersion,
+        lastSeenVersion: version,
         isActive: true
       });
-
-      // If there's a current value or error, wake up potential readers
-      if (hasValue || error !== undefined) {
-        notifyReaders();
-      }
 
       return readerId;
     } finally {
@@ -184,11 +154,7 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
   const detachReader = async (readerId: number): Promise<void> => {
     const releaseLock = await lock();
     try {
-      const reader = readers.get(readerId);
-      if (reader) {
-        reader.isActive = false;
-        readers.delete(readerId);
-      }
+      readers.delete(readerId);
     } finally {
       releaseLock();
     }
@@ -205,18 +171,14 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
           return { done: true } as IteratorReturnResult<void>;
         }
 
-        // Only return a value if we have one AND the reader hasn't seen this version
         if (hasValue && reader.lastSeenVersion < version) {
           if (error) {
+            reader.lastSeenVersion = version;
             throw error;
           }
 
           result = { value: value as T, done: false };
           reader.lastSeenVersion = version;
-        } else if (error && reader.lastSeenVersion < version) {
-          // Handle error case
-          reader.lastSeenVersion = version;
-          throw error;
         } else if (isCompleted) {
           return { done: true } as IteratorReturnResult<void>;
         }
@@ -228,7 +190,6 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
         return result;
       }
 
-      // Wait for a new value, error, or completion
       await new Promise<void>(resolve => {
         waitingReaders.push(resolve);
       });
@@ -243,12 +204,8 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
         return { done: true } as IteratorReturnResult<void>;
       }
 
-      // Only peek if we have a value and reader hasn't seen this version
       if (hasValue && reader.lastSeenVersion < version) {
-        if (error) {
-          throw error;
-        }
-
+        if (error) throw error;
         return { value: value as T, done: false };
       }
 
@@ -256,8 +213,7 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
         return { done: true } as IteratorReturnResult<void>;
       }
 
-      // No new value available to peek
-      return { done: true } as IteratorReturnResult<void>;
+      return { value: undefined as T, done: false };
     } finally {
       release();
     }
@@ -284,9 +240,92 @@ export function createSingleValueBuffer<T = any>(initialValue?: T): SingleValueB
     completed: (readerId: number) => {
       const reader = readers.get(readerId);
       return !reader || !reader.isActive || (isCompleted && reader.lastSeenVersion >= version);
+    }
+  };
+}
+
+/**
+ * Creates a BehaviorSubject-like buffer.
+ *
+ * This implementation wraps an underlying SubjectBuffer to provide the specific behavior
+ * of a BehaviorSubject: it holds a current value and emits that value immediately
+ * to any new reader upon attachment.
+ *
+ * @template T The type of the value the buffer will hold.
+ * @param {T} [initialValue] The optional initial value to hold upon creation.
+ * @returns {SubjectBuffer<T>} A new SingleValueBuffer instance.
+ */
+export function createBehaviorSubjectBuffer<T = any>(initialValue?: T): SubjectBuffer<T> {
+  const subject = createSubjectBuffer<T>();
+  let currentValue: T | undefined = initialValue;
+  let hasCurrentValue = arguments.length > 0;
+
+  // Track original readers to manage BehaviorSubject semantics
+  const behaviorReaders = new Map<number, boolean>(); // readerId -> hasReceivedInitialValue
+
+  return {
+    async write(value: T): Promise<void> {
+      currentValue = value;
+      hasCurrentValue = true;
+      await subject.write(value);
     },
-    get value() {
-      return hasValue ? value : undefined;
+
+    async error(err: Error): Promise<void> {
+      await subject.error(err);
+    },
+
+    async attachReader(): Promise<number> {
+      const readerId = await subject.attachReader();
+
+      // BehaviorSubject semantics: if we have a current value,
+      // we need to make sure this reader gets it
+      if (hasCurrentValue) {
+        behaviorReaders.set(readerId, false); // hasn't received initial value yet
+      } else {
+        behaviorReaders.set(readerId, true); // no initial value to receive
+      }
+
+      return readerId;
+    },
+
+    async detachReader(readerId: number): Promise<void> {
+      behaviorReaders.delete(readerId);
+      await subject.detachReader(readerId);
+    },
+
+    async read(readerId: number): Promise<IteratorResult<T, void>> {
+      // Check if this reader needs to receive the initial/current value first
+      const needsInitialValue = behaviorReaders.get(readerId) === false;
+
+      if (needsInitialValue && hasCurrentValue) {
+        // Mark that this reader has now received the initial value
+        behaviorReaders.set(readerId, true);
+        return { value: currentValue as T, done: false };
+      }
+
+      // Otherwise, delegate to the underlying subject
+      return await subject.read(readerId);
+    },
+
+    async peek(readerId: number): Promise<IteratorResult<T, void>> {
+      // For BehaviorSubject, peek should return current value if available
+      if (hasCurrentValue && behaviorReaders.has(readerId)) {
+        return { value: currentValue as T, done: false };
+      }
+
+      return await subject.peek(readerId);
+    },
+
+    async complete(): Promise<void> {
+      await subject.complete();
+    },
+
+    completed(readerId: number): boolean {
+      return subject.completed(readerId);
+    },
+
+    get value(): T | undefined {
+      return hasCurrentValue ? currentValue : undefined;
     }
   };
 }
@@ -489,7 +528,7 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
       const item = buffer[idx];
 
       if (isErrorItem(item)) {
-        return Promise.reject(item) as any;
+        throw item.__error;
       }
 
       return { value: item as T, done: false };

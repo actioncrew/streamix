@@ -9,7 +9,7 @@ import {
   Subscription
 } from "../abstractions";
 import { firstValueFrom } from "../converters";
-import { createQueue, createSingleValueBuffer } from "../primitives";
+import { createQueue, createSubjectBuffer } from "../primitives";
 
 /**
  * A `Subject` is a special type of `Stream` that can be manually pushed new values.
@@ -62,7 +62,7 @@ export type Subject<T = any> = Stream<T> & {
  * @returns {Subject<T>} A new Subject instance.
  */
 export function createSubject<T = any>(): Subject<T> {
-  const buffer = createSingleValueBuffer<T>();
+  const buffer = createSubjectBuffer<T>();
   const queue = createQueue();
   let latestValue: T | undefined = undefined;
   let isCompleted = false;
