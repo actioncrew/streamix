@@ -112,7 +112,7 @@ Wire it to a subject that keeps the latest snapshot:
 
 ```typescript
 const dashboardSubject = createSubject();
-dashboardSubject.pipe(buildUserDashboard(userId$));
+dashboardSubject.pipe(fromGenerator<Stream<T>, any>(buildUserDashboard)(userId$));
 ```
 
 Now callers who want a single snapshot can just do:
