@@ -61,7 +61,7 @@ export type Operator<T = any, R = T> = {
  * const doubled$ = numbers$.pipe(double);
  * ```
  */
-export function fromGenerator<T, R>(
+export function fromGenerator<T = any, R = T>(
   name: string,
   gen: (source: AsyncIterator<T>) => AsyncGenerator<R>
 ): Operator<T, R> {
