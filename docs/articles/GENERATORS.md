@@ -63,10 +63,6 @@ async function* fetchUserData(userId) {
 
 I still loved operators, so Streamix was the perfect fit — Rx-style operators applied to generator streams:
 
-```bash
-npm install @actioncrew/streamix
-```
-
 ```typescript
 import { Stream, debounceTime, distinctUntilChanged, eachValueFrom } from '@actioncrew/streamix';
 
