@@ -112,14 +112,14 @@ Wire it to a subject that keeps the latest snapshot:
 
 ```typescript
 const dashboardSubject = createSubject();
-dashboardSubject.pipe(fromGenerator<Stream<T>, any>(buildUserDashboard)(userId$));
+dashboardSubject.pipe(buildUserDashboard(userId$)); // Actually we need converter here
 ```
 
 Now callers who want a single snapshot can just do:
 
 ```typescript
 async function onOpenDashboard() {
-  const snapshot = await dashboardSubject.query(); // downgrade to one value
+  const snapshot = await dashboardSubject.query(); // Downgrade to one value
   render(snapshot);
 }
 ```
