@@ -27,48 +27,6 @@ export type Operator<T = any, R = T> = {
 };
 
 /**
- * Creates a stream operator from an async generator function.
- *
- * This helper allows you to define complex transformation logic using
- * `async function*` syntax, while automatically wrapping it into a
- * standardized {@link Operator} object.
- *
- * @template T The type of values consumed from the input stream.
- * @template R The type of values produced by the generator and emitted
- *             to the output stream.
- *
- * @param name A descriptive name for the operator, useful for debugging
- *             and tooling.
- * @param gen  An async generator function that defines the transformation
- *             logic. It receives an `AsyncIterator<T>` from the upstream
- *             stream and should yield values of type `R`.
- *
- * @returns A new {@link Operator} object with the provided name and generator logic.
- *
- * @example
- * ```ts
- * // Define an operator that doubles each number
- * const double = fromGenerator<number, number>(
- *   "double",
- *   async function* (source) {
- *     for await (const value of source) {
- *       yield value * 2;
- *     }
- *   }
- * );
- *
- * // Apply it in a pipeline
- * const doubled$ = numbers$.pipe(double);
- * ```
- */
-export function fromGenerator<T = any, R = T>(
-  name: string,
-  gen: (source: AsyncIterator<T>) => AsyncGenerator<R>
-): Operator<T, R> {
-  return { name, type: 'operator', apply: gen };
-}
-
-/**
  * Creates a reusable stream operator.
  *
  * This factory function simplifies the creation of operators by bundling a name and a
