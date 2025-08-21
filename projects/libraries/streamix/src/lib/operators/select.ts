@@ -54,9 +54,10 @@ export const select = <T = any>(
           if (result.done) break;
           subject.next(result.value);
         }
-        subject.complete();
       } catch (err) {
         subject.error(err);
+      } finally {
+        subject.complete();
       }
     })();
 
