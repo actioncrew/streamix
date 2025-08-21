@@ -1,4 +1,4 @@
-import { createOperator, StreamResult } from "../abstractions";
+import { createOperator } from "../abstractions";
 import { CallbackReturnType } from "./../abstractions/receiver";
 
 /**
@@ -21,10 +21,10 @@ export const last = <T = any>(predicate?: (value: T) => CallbackReturnType<boole
   createOperator<T, T>("last", (source) => {
     let finished = false;
     let emitted = false;
-    let lastValue: T | undefined;
+    let lastValue: T;
     let hasMatch = false;
 
-    async function next(): Promise<StreamResult<T>> {
+    async function next(): Promise<IteratorResult<T>> {
       if (finished) {
         if (!emitted && hasMatch) {
           emitted = true;
@@ -47,7 +47,7 @@ export const last = <T = any>(predicate?: (value: T) => CallbackReturnType<boole
         finished = true;
 
         if (hasMatch) {
-          emitted = false; // allow emitting lastValue on next() call
+          emitted = false;
           return next();
         } else {
           throw new Error("No elements in sequence");
