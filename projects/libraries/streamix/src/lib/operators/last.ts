@@ -1,5 +1,5 @@
-import { createOperator } from "../abstractions";
-import { CallbackReturnType } from './../abstractions/receiver';
+import { createOperator, StreamResult } from "../abstractions";
+import { CallbackReturnType } from "./../abstractions/receiver";
 
 /**
  * Creates a stream operator that emits only the last value from the source stream
@@ -18,31 +18,37 @@ import { CallbackReturnType } from './../abstractions/receiver';
  * matching value is found before the source stream completes.
  */
 export const last = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator<T, T>('last', (source) => {
+  createOperator<T, T>("last", (source) => {
     let finished = false;
+    let emitted = false;
     let lastValue: T | undefined;
     let hasMatch = false;
 
-    async function next(): Promise<IteratorResult<T>> {
+    async function next(): Promise<StreamResult<T>> {
       if (finished) {
-        return { value: lastValue, done: true }; // Return the cached value
+        if (!emitted && hasMatch) {
+          emitted = true;
+          return { value: lastValue, done: false };
+        }
+        return { value: undefined as any, done: true };
       }
 
       try {
         let result = await source.next();
         while (!result.done) {
           const value = result.value;
-          if (!predicate || await predicate(value)) {
+          if (!predicate || (await predicate(value))) {
             lastValue = value;
             hasMatch = true;
           }
-          result = await source.next(); // Keep iterating
+          result = await source.next();
         }
 
-        finished = true; // Source is done
+        finished = true;
 
         if (hasMatch) {
-          return { value: lastValue!, done: false };
+          emitted = false; // allow emitting lastValue on next() call
+          return next();
         } else {
           throw new Error("No elements in sequence");
         }
