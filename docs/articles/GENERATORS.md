@@ -63,10 +63,6 @@ async function* fetchUserData(userId) {
 
 I still loved operators, so Streamix was the perfect fit — Rx-style operators applied to generator streams:
 
-```bash
-npm install @actioncrew/streamix
-```
-
 ```typescript
 import { Stream, debounceTime, distinctUntilChanged, eachValueFrom } from '@actioncrew/streamix';
 
@@ -116,14 +112,14 @@ Wire it to a subject that keeps the latest snapshot:
 
 ```typescript
 const dashboardSubject = createSubject();
-dashboardSubject.pipe(buildUserDashboard(userId$));
+dashboardSubject.pipe(buildUserDashboard(userId$)); // Actually we need converter here
 ```
 
 Now callers who want a single snapshot can just do:
 
 ```typescript
 async function onOpenDashboard() {
-  const snapshot = await dashboardSubject.query(); // downgrade to one value
+  const snapshot = await dashboardSubject.query(); // Downgrade to one value
   render(snapshot);
 }
 ```
