@@ -345,7 +345,7 @@ async function processMarkdownFiles(options) {
         testGlob: ["projects/libraries/streamix/src/tests/*.spec.ts"],
         markdownGlob: ["docs/api/**/*.md"],
         examplesTitle: "Examples",
-        maxExamples: 2,
+        maxExamples: 1,
         formatCode: true,
     });
 })();
