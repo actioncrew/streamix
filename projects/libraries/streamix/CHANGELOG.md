@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.22
+
+Retained .map files to improve developer experience.
+
 ## 2.0.21
 
 Small fixes, added `forAny` converter, eachValueFrom correctly propagates void values. Updated documentation
