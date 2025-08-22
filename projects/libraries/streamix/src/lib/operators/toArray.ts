@@ -20,17 +20,19 @@ export const toArray = <T = any>() =>
 
     return {
       async next(): Promise<IteratorResult<T[]>> {
-        if (emitted) return { done: true, value: undefined };
-
-        collected = [];
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
-          collected.push(value);
-        }
+          if (emitted) return { done: true, value: undefined };
 
-        emitted = true;
-        return { done: false, value: collected };
+          collected = [];
+          while (true) {
+            const { value, done } = await source.next();
+            if (done) break;
+            collected.push(value);
+          }
+
+          emitted = true;
+          return { done: false, value: collected };
+        }
       }
     };
   });
