@@ -21,9 +21,8 @@ export const take = <T = any>(count: number) =>
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        if (done) return { done: true, value: undefined };
-
         while (true) {
+          if (done) return { done: true, value: undefined };
           if (emitted >= count) {
             done = true;
             return { done: true, value: undefined };
