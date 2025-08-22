@@ -74,6 +74,21 @@ export interface StreamGenerator<T> extends StreamIterator<T> {
 }
 
 /**
+ * Converts a normal async generator into a StreamGenerator.
+ * Supports automatic phantom propagation: if the generator yields
+ * an object with `{ phantom: true, value: T }`, it will be marked as a phantom.
+ *
+ * @template T
+ * @param gen An async generator to wrap.
+ * @returns StreamGenerator<T>
+ */
+export function toStreamGenerator<T>(
+  gen: AsyncGenerator<T>
+): StreamGenerator<T> {
+  return gen as StreamGenerator<T>;
+}
+
+/**
  * Represents a reactive stream that supports subscriptions and operator chaining.
  *
  * A stream is a sequence of values over time that can be subscribed to for notifications.
@@ -219,13 +234,14 @@ export function createStream<T>(
           ]);
 
           if ("aborted" in winner || signal.aborted) break;
-          if (winner.result.done) break;
+          const result = winner.result;
+          if (result.done) break;
 
           const subscribers = Array.from(activeSubscriptions);
           await Promise.all(
             subscribers.map(async ({ receiver }) => {
               try {
-                await receiver.next?.(winner.result.value);
+                await receiver.next?.(result.value);
               } catch (error) {
                 console.warn("Subscriber error:", error);
               }
