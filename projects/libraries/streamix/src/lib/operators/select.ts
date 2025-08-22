@@ -1,6 +1,4 @@
-import { createOperator, StreamGenerator } from "../abstractions";
-import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createOperator, StreamGenerator, StreamResult } from "../abstractions";
 
 function toStreamGenerator<T>(gen: AsyncGenerator<T>): StreamGenerator<T> {
   const iterator = gen as unknown as StreamGenerator<T>;
@@ -35,9 +33,7 @@ export const select = <T = any>(
       if (typeof (iter as any)[Symbol.asyncIterator] === "function") {
         return iter as AsyncIterableIterator<number>;
       }
-
       const syncIter = iter as Iterator<number>;
-
       return {
         async next() {
           return syncIter.next();
@@ -50,46 +46,36 @@ export const select = <T = any>(
 
     const asyncIndexIterator = toAsyncIterator(indexIterator);
 
-    const subject = createSubject<T>();
+    let currentIndex = 0;
+    let nextTargetIndexPromise = asyncIndexIterator.next();
 
-    // Feed source into subject
-    (async () => {
-      try {
-        while (true) {
-          const result = await source.next();
-          if (result.done) break;
-          if (result.phantom) continue;
+    async function* generator() {
+      while (true) {
+        const result: StreamResult<T> = await source.next();
+        if (result.done) break;
 
-          subject.next(result.value);
+        if (result.phantom) {
+          // propagate phantom immediately
+          yield { value: undefined, phantom: true } as any;
+          currentIndex++;
+          continue;
         }
-      } catch (err) {
-        subject.error(err);
-      } finally {
-        subject.complete();
-      }
-    })();
 
-    // Yield only the values at the selected indexes
-    async function* selectByIndex() {
-      let currentIndex = 0;
-      let { value: nextTargetIndex, done: indexDone } = await asyncIndexIterator.next();
+        const nextTargetIndex = (await nextTargetIndexPromise).value;
+        const indexDone = (await nextTargetIndexPromise).done;
 
-      if (indexDone) return;
+        if (indexDone) return;
 
-      for await (const value of eachValueFrom<T>(subject)) {
         if (currentIndex === nextTargetIndex) {
-          yield value;
+          yield result.value;
 
-          const next = await asyncIndexIterator.next();
-          nextTargetIndex = next.value;
-          indexDone = next.done;
-
-          if (indexDone) return;
+          // fetch next target index
+          nextTargetIndexPromise = asyncIndexIterator.next();
         }
 
         currentIndex++;
       }
     }
 
-    return toStreamGenerator(selectByIndex())[Symbol.asyncIterator]();
+    return toStreamGenerator(generator())[Symbol.asyncIterator]();
   });

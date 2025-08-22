@@ -27,23 +27,26 @@ export const last = <T = any>(
     let hasMatch = false;
 
     async function next(): Promise<StreamResult<T>> {
-      // If we’ve already consumed and emitted, we’re done.
+      // Already emitted the last value
       if (finished && consumed) {
         return { value: undefined, done: true };
       }
 
-      // If finished but not yet emitted the last value, emit it now.
+      // Emit the cached last value
       if (finished && !consumed) {
         consumed = true;
         return { value: lastValue, done: false };
       }
 
-      // Otherwise, drain the source completely.
       try {
         while (true) {
           const result = await source.next();
           if (result.done) break;
-          if (result.phantom) continue;
+
+          // Propagate upstream phantom immediately
+          if (result.phantom) {
+            return { value: result.value, done: false, phantom: true };
+          }
 
           const value = result.value;
           if (!predicate || (await predicate(value))) {
@@ -58,7 +61,6 @@ export const last = <T = any>(
           throw new Error("No elements in sequence");
         }
 
-        // Immediately return the last value, but mark it as not yet consumed.
         consumed = true;
         return { value: lastValue, done: false };
       } catch (err) {
@@ -69,4 +71,3 @@ export const last = <T = any>(
 
     return { next };
   });
-

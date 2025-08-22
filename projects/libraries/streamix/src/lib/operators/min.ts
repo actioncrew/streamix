@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that emits the minimum value from the source stream.
@@ -19,38 +20,54 @@ export const min = <T = any>(
   createOperator<T, T>('min', (source) => {
     let minValue: T | undefined;
     let hasMin = false;
+    const phantomQueue: T[] = [];
 
-    // Await entire source and compute min eagerly
+    // Eagerly process the source
     const ready = (async () => {
       while (true) {
         const result = await source.next();
         if (result.done) break;
-        if (result.phantom) continue;
+
+        const value = result.value;
 
         if (!hasMin) {
-          minValue = result.value;
+          minValue = value;
           hasMin = true;
         } else if (comparator) {
-          if (await comparator(result.value, minValue!) < 0) {
-            minValue = result.value;
+          if (await comparator(value, minValue!) < 0) {
+            phantomQueue.push(minValue!); // previous min becomes phantom
+            minValue = value;
+          } else {
+            phantomQueue.push(value); // non-min is phantom
           }
-        } else if (result.value < minValue!) {
-          minValue = result.value;
+        } else if (value < minValue!) {
+          phantomQueue.push(minValue!); // previous min becomes phantom
+          minValue = value;
+        } else {
+          phantomQueue.push(value); // non-min is phantom
         }
       }
     })();
 
-    let emitted = false;
+    let emittedMin = false;
 
     return {
-      async next() {
+      async next(): Promise<StreamResult<T>> {
         await ready;
 
-        if (!emitted && hasMin) {
-          emitted = true;
+        // Emit queued phantoms first
+        if (phantomQueue.length > 0) {
+          const value = phantomQueue.shift()!;
+          return { value, done: false, phantom: true };
+        }
+
+        // Emit the real min once
+        if (!emittedMin && hasMin) {
+          emittedMin = true;
           return { value: minValue!, done: false };
         }
 
+        // Completed
         return { value: undefined, done: true };
       },
     };

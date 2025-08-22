@@ -15,7 +15,9 @@ import { StreamResult } from './../abstractions/stream';
  * and `false` means to stop skipping and begin emitting.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const skipWhile = <T = any>(predicate: (value: T) => CallbackReturnType<boolean>) =>
+export const skipWhile = <T = any>(
+  predicate: (value: T) => CallbackReturnType<boolean>
+) =>
   createOperator<T, T>('skipWhile', (source) => {
     let skipping = true;
 
@@ -24,20 +26,21 @@ export const skipWhile = <T = any>(predicate: (value: T) => CallbackReturnType<b
         while (true) {
           const result = await source.next();
 
-          if (result.done) {
-            return { value: undefined, done: true };
-          }
+          if (result.done) return { value: undefined, done: true };
 
-          if (result.phantom) continue;
+          if (result.phantom) {
+            // Forward phantom downstream
+            return { value: result.value, done: false, phantom: true };
+          }
 
           if (skipping) {
             if (!await predicate(result.value)) {
               skipping = false;
-              return { value: result.value, done: false };
+              return { done: false, value: result.value };
             }
-            // If still skipping, continue looping
+            // Still skipping, ignore this value
           } else {
-            return { value: result.value, done: false };
+            return { done: false, value: result.value };
           }
         }
       }

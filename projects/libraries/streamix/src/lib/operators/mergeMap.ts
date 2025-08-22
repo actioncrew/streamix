@@ -1,6 +1,6 @@
 import { CallbackReturnType, createOperator, Stream } from '../abstractions';
 import { eachValueFrom, fromAny } from '../converters';
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 
 /**
  * Creates a stream operator that maps each value from the source stream to an "inner" stream
@@ -25,22 +25,24 @@ import { createSubject } from '../streams';
  * @returns An {@link Operator} instance that can be used in a stream's `pipe` method.
  */
 export function mergeMap<T = any, R = any>(
-  project: (value: T, index: number) =>  Stream<R> | CallbackReturnType<R> | Array<R>,
+  project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>,
 ) {
   return createOperator<T, R>('mergeMap', (source) => {
-    const output = createSubject<R>();
+    const output: Subject<R> = createSubject<R>();
 
     let index = 0;
     let activeInner = 0;
     let outerCompleted = false;
     let errorOccurred = false;
 
-    // Process each inner stream concurrently
-    const processInner = async (innerStream: Stream<R>) => {
+    // Process each inner stream concurrently.
+    const processInner = async (innerStream: Stream<R>, outerValue: T) => {
+      let innerStreamHadEmissions = false;
       try {
         for await (const val of eachValueFrom(innerStream)) {
           if (errorOccurred) break;
           output.next(val);
+          innerStreamHadEmissions = true;
         }
       } catch (err) {
         if (!errorOccurred) {
@@ -49,6 +51,10 @@ export function mergeMap<T = any, R = any>(
         }
       } finally {
         activeInner--;
+        // If the inner stream had no emissions, signal a phantom.
+        if (!innerStreamHadEmissions && !errorOccurred) {
+          output.phantom(outerValue as never);
+        }
         if (outerCompleted && activeInner === 0 && !errorOccurred) {
           output.complete();
         }
@@ -60,11 +66,12 @@ export function mergeMap<T = any, R = any>(
         while (true) {
           const result = await source.next();
           if (result.done) break;
+          if (result.phantom) continue;
           if (errorOccurred) break;
 
           const inner = fromAny(project(result.value, index++));
           activeInner++;
-          processInner(inner); // concurrent, do not await
+          processInner(inner, result.value); // Pass outerValue
         }
 
         outerCompleted = true;

@@ -20,26 +20,31 @@ import { createSubject } from '../streams';
  * @param period The time in milliseconds between each emission.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
+
 export const sample = <T = any>(period: number) =>
   createOperator<T, T>('sample', (source) => {
     const output = createSubject<T>();
 
     let lastValue: T | undefined;
     let intervalId: any;
+    let skipped = false;
 
-    // Starts a timer that periodically emits the last seen value
+    // Timer periodically emits last value, or phantom if skipped
     const startSampling = () => {
       intervalId = setInterval(() => {
         if (lastValue !== undefined) {
-          output.next(lastValue);
+          if (skipped) {
+            output.phantom(lastValue); // phantom for skipped value
+          } else {
+            output.next(lastValue);
+          }
+          skipped = true; // assume next interval will skip if no new value
         }
       }, period);
     };
 
     const stopSampling = () => {
-      if (intervalId != null) {
-        clearInterval(intervalId);
-      }
+      if (intervalId != null) clearInterval(intervalId);
     };
 
     (async () => {
@@ -49,12 +54,14 @@ export const sample = <T = any>(period: number) =>
         while (true) {
           const result = await source.next();
           if (result.done) break;
+
           if (result.phantom) continue;
 
           lastValue = result.value;
+          skipped = false; // new value received, reset phantom flag
         }
 
-        // Emit the final value after source completes
+        // Emit final value after source completes
         if (lastValue !== undefined) {
           output.next(lastValue);
         }

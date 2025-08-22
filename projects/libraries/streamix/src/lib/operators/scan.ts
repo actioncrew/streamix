@@ -17,6 +17,7 @@ import { StreamResult } from './../abstractions/stream';
  * @param seed The initial value for the accumulator.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
+
 export const scan = <T = any, R = any>(
   accumulator: (acc: R, value: T, index: number) => CallbackReturnType<R>,
   seed: R
@@ -40,7 +41,10 @@ export const scan = <T = any, R = any>(
             return { done: true, value: undefined };
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) {
+            return { done: false, value: acc, phantom: true }; // propagate phantom
+          }
+
           acc = await accumulator(acc, result.value, index++);
           return { done: false, value: acc };
         }

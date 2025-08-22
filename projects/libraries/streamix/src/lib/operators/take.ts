@@ -25,22 +25,26 @@ export const take = <T = any>(count: number) =>
         while (true) {
           if (done) return { done: true, value: undefined };
 
-          if (emitted >= count) {
-            done = true;
-            return { done: true, value: undefined };
-          }
-
           const result = await source.next();
 
           if (result.done) {
             done = true;
-            return result;
+            return { done: true, value: undefined };
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) {
+            // Propagate phantom downstream
+            return { value: result.value, done: false, phantom: true };
+          }
 
           emitted++;
-          return result; // normal value
+
+          if (emitted > count) {
+            done = true;
+            return { done: true, value: undefined };
+          }
+
+          return { done: false, value: result.value };
         }
       },
     };

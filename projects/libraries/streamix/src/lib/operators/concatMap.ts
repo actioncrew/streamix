@@ -22,37 +22,51 @@ import { StreamResult } from './../abstractions/stream';
  *   - or an array of `R`.
  * @returns An {@link Operator} instance that can be used in a stream's `pipe` method.
  */
-export const concatMap = <T = any, R = any>(
+export const concatMap = <T = any, R = T>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) =>
   createOperator<T, R>("concatMap", (source) => {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
+    let outerResult: StreamResult<T> | null = null;
+    let innerHadEmissions = false;
 
-    // Async iterator object that sequentially flattens projected inner async iterables
     return {
       async next(): Promise<StreamResult<R>> {
         while (true) {
-          // If no active inner iterator, get next outer value and create one
+          // If no active inner iterator, pull the next outer value
           if (!innerIterator) {
-            const result = await source.next();
-            if (result.done) {
-              return { done: true, value: undefined };
-            }
-            if (result.phantom) continue;
+            outerResult = await source.next();
 
-            innerIterator = eachValueFrom<R>(fromAny(project(result.value, outerIndex++)));
+            if (outerResult.done) return { done: true, value: undefined };
+            if (outerResult.phantom) return { done: false, value: outerResult.value as any, phantom: true };
+
+            // Initialize inner stream
+            innerHadEmissions = false;
+            innerIterator = eachValueFrom<R>(
+              fromAny(project(outerResult.value, outerIndex++))
+            );
           }
 
-          // Pull from the active inner iterator
+          // Pull next value from inner stream
           const innerResult = await innerIterator.next();
+
           if (innerResult.done) {
-            innerIterator = null; // Finished this inner stream, go back to outer
-            continue; // loop again to fetch next outer value
+            innerIterator = null;
+
+            // If inner stream emitted nothing, produce a phantom
+            if (!innerHadEmissions && outerResult !== null) {
+              return { done: false, value: outerResult.value as any, phantom: true };
+            }
+
+            // Otherwise continue to next outer value
+            continue;
           }
-          // Return next inner value
+
+          // Mark that inner stream produced a value
+          innerHadEmissions = true;
           return { done: false, value: innerResult.value };
         }
-      }
+      },
     };
   });

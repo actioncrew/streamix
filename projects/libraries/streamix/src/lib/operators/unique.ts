@@ -38,7 +38,9 @@ export const unique = <T = any, K = any>(
             seen.add(key);
             return { done: false, value: result.value };
           }
-          // skip duplicate
+
+          // duplicate → still emit as phantom
+          return { done: false, value: result.value, phantom: true };
         }
       }
     };

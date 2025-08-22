@@ -76,7 +76,7 @@ export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(..
           if (result.phantom) continue;
 
           if (hasValue.every(Boolean)) {
-            output.next([winner.result.value, ...latestValues] as [T, ...R]);
+            output.next([result.value, ...latestValues] as [T, ...R]);
           }
         }
       } catch (err) {

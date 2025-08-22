@@ -24,7 +24,7 @@ export const some = <T = any>(
 ) =>
   createOperator<T, boolean>('some', (source) => {
     let evaluated = false;
-    let found: boolean = false;
+    let found = false;
     let index = 0;
 
     return {
@@ -36,16 +36,19 @@ export const some = <T = any>(
         try {
           while (true) {
             const result = await source.next();
+
             if (result.done) break;
-            if (result.phantom) continue;
+
+            if (result.phantom) {
+              // Pass phantom downstream
+              return { value: false, done: false, phantom: true };
+            }
 
             if (await predicate(result.value, index++)) {
               found = true;
-              break; // Predicate matched, no need to continue
+              break; // Predicate matched
             }
           }
-        } catch (err) {
-          throw err;
         } finally {
           evaluated = true;
         }

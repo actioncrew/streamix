@@ -17,23 +17,47 @@ import { StreamResult } from './../abstractions/stream';
 export const toArray = <T = any>() =>
   createOperator<T, T[]>("toArray", (source) => {
     const collected: T[] = [];
+    let completed = false;
     let emitted = false;
+    const phantomQueue: T[] = [];
 
     return {
       async next(): Promise<StreamResult<T[]>> {
         while (true) {
-          if (emitted) return { done: true, value: undefined };
+          // If everything is done and no more phantoms -> complete
+          if (completed && emitted && phantomQueue.length === 0) {
+            return { done: true, value: undefined };
+          }
+
+          // First drain phantom queue
+          if (phantomQueue.length > 0) {
+            const phantomValue = phantomQueue.shift()!;
+            return { done: false, value: phantomValue as any, phantom: true };
+          }
+
+          // Otherwise consume from source
           const result = await source.next();
 
           if (result.done) {
-            emitted = true;
-            return { done: false, value: collected };
+            completed = true;
+            if (!emitted) {
+              emitted = true;
+              // emit final array (may be empty)
+              return { done: false, value: collected };
+            }
+            // after array emission we loop back to phantomQueue
+            continue;
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) {
+            // forward phantom immediately
+            return result as StreamResult<T[]>;
+          }
 
+          // collect real value
           collected.push(result.value);
+          phantomQueue.push(result.value);
         }
-      }
+      },
     };
   });

@@ -43,9 +43,11 @@ export const distinctUntilKeyChanged = <T extends object = any>(
 
           if (isDistinct) {
             lastValue = current;
-            return { value: current, done: false };
+            return { value: current, done: false, phantom: false };
+          } else {
+            // If the value's key is a consecutive duplicate, return a phantom.
+            return { value: current, done: false, phantom: true };
           }
-          // else skip this value and continue looping
         }
       }
     };

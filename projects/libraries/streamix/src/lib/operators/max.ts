@@ -1,5 +1,6 @@
 import { createOperator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that emits the maximum value from the source stream.
@@ -17,41 +18,57 @@ import { CallbackReturnType } from './../abstractions/receiver';
 export const max = <T = any>(
   comparator?: (a: T, b: T) => CallbackReturnType<number>
 ) =>
-  createOperator<T, T>('max', (source) => {
+  createOperator<T, T>("max", (source) => {
     let maxValue: T | undefined;
     let hasMax = false;
+    const phantomQueue: T[] = []; // store intermediate phantoms
 
-    // Process the source eagerly
+    // Process source eagerly
     const ready = (async () => {
       while (true) {
         const result = await source.next();
         if (result.done) break;
-        if (result.phantom) continue;
+
+        const value = result.value;
 
         if (!hasMax) {
-          maxValue = result.value;
+          maxValue = value;
           hasMax = true;
         } else if (comparator) {
-          if (await comparator(result.value, maxValue!) > 0) {
-            maxValue = result.value;
+          if (await comparator(value, maxValue!) > 0) {
+            phantomQueue.push(maxValue!); // previous max becomes phantom
+            maxValue = value;
+          } else {
+            phantomQueue.push(value); // non-max is phantom
           }
-        } else if (result.value > maxValue!) {
-          maxValue = result.value;
+        } else if (value > maxValue!) {
+          phantomQueue.push(maxValue!); // previous max becomes phantom
+          maxValue = value;
+        } else {
+          phantomQueue.push(value); // non-max is phantom
         }
       }
     })();
 
-    let emitted = false;
+    let emittedMax = false;
 
     return {
-      async next() {
+      async next(): Promise<StreamResult<T>> {
         await ready;
 
-        if (!emitted && hasMax) {
-          emitted = true;
+        // Emit queued phantoms first
+        if (phantomQueue.length > 0) {
+          const value = phantomQueue.shift()!;
+          return { value, done: false, phantom: true };
+        }
+
+        // Emit real max once
+        if (!emittedMax && hasMax) {
+          emittedMax = true;
           return { value: maxValue!, done: false };
         }
 
+        // Completed
         return { value: undefined, done: true };
       },
     };

@@ -18,9 +18,14 @@ export const ignoreElements = <T>() =>
       while (true) {
         const result = await source.next();
         if (result.done) {
+          // If the source is done, we are also done.
           return { done: true, value: undefined };
         }
         if (result.phantom) continue;
+
+        // For every non-phantom value received, we return a phantom.
+        // The value is not passed along, but the event is still signaled.
+        return { done: false, value: result.value as never, phantom: true };
       }
     }
   }));

@@ -20,15 +20,16 @@ export const skip = <T = any>(count: number) =>
       async next(): Promise<StreamResult<T>> {
         while (true) {
           const result = await source.next();
-          if (result.done) {
-            return { done: true, value: undefined };
-          }
+          if (result.done) return { done: true, value: undefined };
 
-          if (result.phantom) continue;
+          if (result.phantom) {
+            // immediately propagate phantom
+            return { value: result.value, phantom: true, done: false };
+          }
 
           if (counter > 0) {
             counter--;
-            continue; // Skip this value
+            continue; // skip this value
           }
 
           return { done: false, value: result.value };

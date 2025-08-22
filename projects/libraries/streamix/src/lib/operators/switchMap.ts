@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream, Subscription } from "../abstractions";
+import { CallbackReturnType, createOperator, Stream, StreamResult, Subscription } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject } from "../streams";
 
@@ -24,7 +24,9 @@ import { createSubject } from "../streams";
  *   - or an array of `R`.
  * @returns An {@link Operator} instance suitable for use in a stream's `pipe` method.
  */
-export function switchMap<T = any, R = any>(project: (value: T, index: number) =>  Stream<R> | CallbackReturnType<R> | Array<R>) {
+export function switchMap<T = any, R = any>(
+  project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
+) {
   return createOperator<T, R>("switchMap", (source) => {
     const output = createSubject<R>();
 
@@ -32,6 +34,8 @@ export function switchMap<T = any, R = any>(project: (value: T, index: number) =
     let inputCompleted = false;
     let currentInnerStreamId = 0;
     let index = 0;
+    let innerHadEmissions = false;
+    let pendingPhantom: StreamResult<T> | null = null;
 
     const checkComplete = () => {
       if (inputCompleted && !currentSubscription) {
@@ -40,21 +44,28 @@ export function switchMap<T = any, R = any>(project: (value: T, index: number) =
     };
 
     const subscribeToInner = (innerStream: Stream<R>, streamId: number) => {
+      // Cancel previous inner stream
       if (currentSubscription) {
+        if (!innerHadEmissions && pendingPhantom) {
+          output.phantom(pendingPhantom);
+        }
+
         currentSubscription.unsubscribe();
         currentSubscription = null;
       }
 
+      innerHadEmissions = false;
+      pendingPhantom = null;
+
       currentSubscription = innerStream.subscribe({
         next: (value) => {
           if (streamId === currentInnerStreamId) {
+            innerHadEmissions = true;
             output.next(value);
           }
         },
         error: (err) => {
-          if (streamId === currentInnerStreamId) {
-            output.error(err);
-          }
+          if (streamId === currentInnerStreamId) output.error(err);
         },
         complete: () => {
           if (streamId === currentInnerStreamId) {
@@ -70,12 +81,17 @@ export function switchMap<T = any, R = any>(project: (value: T, index: number) =
         while (true) {
           const result = await source.next();
           if (result.done) break;
+
           if (result.phantom) continue;
+
+          // Track outer value in case inner stream emits nothing
+          pendingPhantom = result;
 
           const streamId = ++currentInnerStreamId;
           const innerStream = fromAny(project(result.value, index++));
           subscribeToInner(innerStream, streamId);
         }
+
         inputCompleted = true;
         checkComplete();
       } catch (err) {

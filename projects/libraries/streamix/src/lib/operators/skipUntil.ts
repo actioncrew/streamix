@@ -26,7 +26,7 @@ export function skipUntil<T = any>(notifier: Stream) {
     let canEmit = false;
 
     // Subscribe to notifier as an async iterator
-     let notifierSubscription = notifier.subscribe({
+    let notifierSubscription = notifier.subscribe({
       next: () => {
         canEmit = true;
         notifierSubscription.unsubscribe();
@@ -46,8 +46,23 @@ export function skipUntil<T = any>(notifier: Stream) {
       try {
         while (true) {
           const result = await source.next();
-          if (result.done) break;
-          if (canEmit) output.next(result.value);
+          if (result.done) {
+            output.complete();
+            break;
+          }
+
+          // If the source stream has phantom values, we pass them through.
+          if (result.phantom) {
+            output.phantom(result.value);
+            continue;
+          }
+
+          if (canEmit) {
+            output.next(result.value);
+          } else {
+            // If we are still skipping, emit a phantom value.
+            output.phantom(result.value);
+          }
         }
       } catch (err) {
         if (!output.completed()) output.error(err);

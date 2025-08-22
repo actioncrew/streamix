@@ -328,10 +328,11 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
             ]);
 
             if ("aborted" in winner || signal.aborted) break;
-            if (winner.result.done) break;
-            if (winner.result.phantom) continue;
+            const result = winner.result;
+            if (result.done) break;
+            if (result.phantom) continue;
 
-            await receiver.next?.(winner.result.value);
+            await receiver.next?.(result.value);
           }
         } catch (err: any) {
           if (!signal.aborted) {

@@ -51,7 +51,6 @@ export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<bool
         }
       }
 
-      // Should not reach here
       return { value: undefined, done: true };
     }
 

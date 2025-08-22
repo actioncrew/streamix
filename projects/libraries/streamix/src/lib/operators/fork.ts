@@ -61,6 +61,8 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
   createOperator<T, R>('fork', (source) => {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
+    let outerValue: T | undefined;
+    let innerStreamHadEmissions = false;
 
     return {
       async next(): Promise<StreamResult<R>> {
@@ -75,29 +77,42 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             if (result.phantom) continue;
 
             let matched: typeof options[number] | undefined;
+            outerValue = result.value;
+            innerStreamHadEmissions = false;
 
             for (const option of options) {
-              if (await option.on(result.value, outerIndex++)) {
+              if (await option.on(outerValue, outerIndex++)) {
                 matched = option;
                 break;
               }
             }
 
             if (!matched) {
-              throw new Error(`No handler found for value: ${result.value}`);
+              throw new Error(`No handler found for value: ${outerValue}`);
             }
 
-            innerIterator = eachValueFrom(fromAny(matched.handler(result.value)));
+            innerIterator = eachValueFrom(fromAny(matched.handler(outerValue)));
           }
 
           // Pull next inner value
           const innerResult = await innerIterator.next();
           if (innerResult.done) {
             innerIterator = null;
-            continue; // Try next outer value
+            // Now we can use the flag to determine if we should emit a phantom
+            // or just continue. A phantom is only needed if the inner stream had
+            // no emissions.
+            if (!innerStreamHadEmissions) {
+              // We return a phantom of the original outer value.
+              return { done: false, value: outerValue as any, phantom: true };
+            }
+            // If the inner stream had emissions, we just continue the loop
+            // to process the next outer value.
+            continue;
           }
 
-          return { done: false, value: innerResult.value };
+          // A value was emitted, so we know the inner stream is not empty.
+          innerStreamHadEmissions = true;
+          return { done: false, value: innerResult.value, phantom: false };
         }
       }
     };

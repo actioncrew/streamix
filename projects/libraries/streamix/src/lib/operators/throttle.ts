@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -15,16 +15,13 @@ import { createSubject } from '../streams';
  * @returns {Operator<T, T>} An operator function that applies throttling to the source async iterable.
  */
 export const throttle = <T = any>(duration: number) =>
-  createOperator<T, T>('throttle', (source) => {
+  createOperator<T, T>("throttle", (source) => {
     const output = createSubject<T>();
 
     let lastEmit = 0;
     let pending: T | undefined;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
-    /**
-     * Emits the stored pending value, if any, and resets the pending state.
-     */
     const flushPending = () => {
       if (pending !== undefined) {
         lastEmit = Date.now();
@@ -36,22 +33,21 @@ export const throttle = <T = any>(duration: number) =>
     (async () => {
       try {
         for (;;) {
-          const result = await source.next();
+          const result: StreamResult<T> = await source.next();
           if (result.done) break;
           if (result.phantom) continue;
 
           const now = Date.now();
-
           if (now - lastEmit >= duration) {
-            // Enough time has passed — emit immediately (leading)
             lastEmit = now;
             output.next(result.value);
           } else {
-            // Within throttle window — store latest pending value
+            output.phantom(result.value);
+
+            // store as candidate for trailing emit
             pending = result.value;
 
             if (!timer) {
-              // Schedule trailing emit after remaining cooldown
               timer = setTimeout(() => {
                 flushPending();
                 timer = null;
@@ -60,7 +56,7 @@ export const throttle = <T = any>(duration: number) =>
           }
         }
 
-        // Source completed — emit any pending value trailing
+        // source ended → flush last pending
         if (pending !== undefined) flushPending();
       } catch (err) {
         output.error(err);
@@ -72,4 +68,3 @@ export const throttle = <T = any>(duration: number) =>
 
     return eachValueFrom(output)[Symbol.asyncIterator]();
   });
-

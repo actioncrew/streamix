@@ -16,12 +16,19 @@ import { StreamResult } from './../abstractions/stream';
 export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
   createOperator<T, T[]>("bufferCount", (source) => {
     let completed = false;
+    let phantomQueue: T[] = [];
 
     return {
       async next(): Promise<StreamResult<T[]>> {
         while (true) {
-          if (completed) {
+          if (completed && phantomQueue.length === 0) {
             return { done: true, value: undefined };
+          }
+
+          // First emit any queued phantom values
+          if (phantomQueue.length > 0) {
+            const phantomValue = phantomQueue.shift()!;
+            return { done: false, value: phantomValue as any, phantom: true };
           }
 
           const buffer: T[] = [];
@@ -31,7 +38,6 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
 
             if (result.done) {
               completed = true;
-              // Emit any remaining buffered items before completing
               return buffer.length > 0
                 ? { done: false, value: buffer }
                 : { done: true, value: undefined };
@@ -40,9 +46,12 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
             if (result.phantom) continue;
 
             buffer.push(result.value);
+
+            // Queue this value as phantom for later emission
+            phantomQueue.push(result.value);
           }
 
-          // Buffer full, emit it
+          // Buffer full, emit it normally
           return { done: false, value: buffer };
         }
       }

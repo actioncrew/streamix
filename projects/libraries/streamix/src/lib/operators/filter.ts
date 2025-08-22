@@ -44,7 +44,11 @@ export const filter = <T = any>(
 
           if (shouldInclude) {
             index++; // Increment index only if included
-            return { value, done: false };
+            // If the value passes the filter, return it as a normal StreamResult.
+            return { value, done: false, phantom: false };
+          } else {
+            // If the value is filtered out, return a phantom StreamResult to signal the dropped value.
+            return { value, done: false, phantom: true };
           }
         }
       }

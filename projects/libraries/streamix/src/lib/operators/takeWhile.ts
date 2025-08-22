@@ -23,27 +23,28 @@ export const takeWhile = <T = any>(
   predicate: (value: T) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, T>("takeWhile", (source) => {
-    let done = false;
+    let active = true; // controls real values
 
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          if (done) return { done: true, value: undefined };
           const result = await source.next();
 
-          if (result.done) {
-            done = true;
-            return result;
-          }
-
+          if (result.done) return result;
           if (result.phantom) continue;
 
-          if (!(await predicate(result.value))) {
-            done = true;
-            return { done: true, value: undefined };
+          if (!active) {
+            return { ...result, phantom: true };
           }
 
-          return result; // ✅ only emit if predicate passes
+          const pass = await predicate(result.value);
+          if (!pass) {
+            active = false;
+            // turn this failed one into phantom too
+            return { ...result, phantom: true };
+          }
+
+          return result;
         }
       },
     };

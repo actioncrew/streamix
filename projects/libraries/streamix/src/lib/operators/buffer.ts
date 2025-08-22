@@ -67,6 +67,7 @@ export function buffer<T = any>(period: number) {
           if (result.phantom) continue;
 
           buffer.push(result.value);
+          output.phantom(result.value);
         }
       } catch (err) {
         cleanup();

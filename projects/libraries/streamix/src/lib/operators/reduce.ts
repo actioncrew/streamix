@@ -23,29 +23,43 @@ export const reduce = <T = any, A = any>(
   seed: A
 ) =>
   createOperator<T, A>("reduce", (source) => {
-    let completed = false;
+    let phantomQueue: A[] = [];
+    let finalValue: A = seed;
+    let doneProcessing = false;
+
+    // Eagerly process the source
+    const ready = (async () => {
+      while (true) {
+        const result = await source.next();
+        if (result.done) break;
+
+        if (result.phantom) continue;
+
+        finalValue = await accumulator(finalValue, result.value);
+        phantomQueue.push(finalValue); // emit phantom for intermediate accumulation
+      }
+      doneProcessing = true;
+    })();
+
+    let emittedFinal = false;
 
     return {
       async next(): Promise<StreamResult<A>> {
-        while (true) {
-          if (completed) {
-            return { done: true, value: undefined };
-          }
+        await ready;
 
-          let acc = seed;
-
-          // Consume the entire source stream
-          while (true) {
-            const result = await source.next();
-            if (result.done) break;
-            if (result.phantom) continue;
-
-            acc = await accumulator(acc, result.value);
-          }
-
-          completed = true;
-          return { done: false, value: acc };
+        // Emit queued phantom values first
+        if (phantomQueue.length > 0) {
+          const value = phantomQueue.shift()!;
+          return { value, done: false, phantom: true };
         }
+
+        // Emit final accumulated value once
+        if (!emittedFinal && doneProcessing) {
+          emittedFinal = true;
+          return { value: finalValue, done: false };
+        }
+
+        return { value: undefined, done: true };
       },
     };
   });

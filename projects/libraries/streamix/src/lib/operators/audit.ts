@@ -44,6 +44,10 @@ export const audit = <T = any>(duration: number) => {
           if (result.done) break;
           if (result.phantom) continue;
 
+          if (timerActive && lastValue !== undefined) {
+            output.phantom(lastValue);
+          }
+
           lastValue = result.value;
 
           if (!timerActive) {
