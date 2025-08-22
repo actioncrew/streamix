@@ -41,6 +41,8 @@ export const finalize = <T = any>(callback: () => CallbackReturnType) =>
               return { done: true, value: undefined };
             }
 
+            if (result.phantom) continue;
+
             return result;
           } catch (err) {
             if (!finalized) {

@@ -35,6 +35,8 @@ export const startWith = <T = any>(initialValue: T) =>
             return { done: true, value: undefined };
           }
 
+          if (result.phantom) continue;
+
           return result;
         }
       }

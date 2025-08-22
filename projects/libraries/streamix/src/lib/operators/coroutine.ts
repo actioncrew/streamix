@@ -393,15 +393,17 @@ export function coroutine<T, R>(
               return { done: true, value: undefined };
             }
 
-            const { done, value } = await source.next();
-            if (done) {
+            const result = await source.next();
+            if (result.done) {
               completed = true;
               await finalize();
               return { done: true, value: undefined };
             }
 
-            const result = await processTask(value as any);
-            return { done: false, value: result };
+            if (result.phantom) continue;
+
+            const taskResult = await processTask(result.value as any);
+            return { done: false, value: taskResult };
           }
         },
         async return() {

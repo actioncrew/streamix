@@ -18,8 +18,9 @@ export const ignoreElements = <T>() =>
       while (true) {
         const result = await source.next();
         if (result.done) {
-          return { done: true, value: undefined as never };
+          return { done: true, value: undefined };
         }
+        if (result.phantom) continue;
       }
     }
   }));

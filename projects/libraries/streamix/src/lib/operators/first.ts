@@ -41,6 +41,8 @@ export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<bool
           throw new Error("No elements in sequence");
         }
 
+        if (result.phantom) continue;
+
         const value = result.value;
         if (!predicate || await predicate(value)) {
           found = true;

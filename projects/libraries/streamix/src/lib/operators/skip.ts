@@ -19,17 +19,19 @@ export const skip = <T = any>(count: number) =>
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const { done, value } = await source.next();
-          if (done) {
+          const result = await source.next();
+          if (result.done) {
             return { done: true, value: undefined };
           }
+
+          if (result.phantom) continue;
 
           if (counter > 0) {
             counter--;
             continue; // Skip this value
           }
 
-          return { done: false, value };
+          return { done: false, value: result.value };
         }
       },
     };

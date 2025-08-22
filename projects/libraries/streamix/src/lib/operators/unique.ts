@@ -28,14 +28,15 @@ export const unique = <T = any, K = any>(
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) return { done: true, value: undefined };
+          const result = await source.next();
+          if (result.done) return { done: true, value: undefined };
+          if (result.phantom) continue;
 
-          const key = keySelector ? await keySelector(value) : value;
+          const key = keySelector ? await keySelector(result.value) : result.value;
 
           if (!seen.has(key)) {
             seen.add(key);
-            return { done: false, value };
+            return { done: false, value: result.value };
           }
           // skip duplicate
         }

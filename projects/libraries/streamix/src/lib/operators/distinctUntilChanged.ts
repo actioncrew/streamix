@@ -25,13 +25,14 @@ export const distinctUntilChanged = <T = any>(
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) return { value: undefined, done: true };
+          const result = await source.next();
+          if (result.done) return { value: undefined, done: true };
+          if (result.phantom) continue;
 
-          if (!hasLast || !(comparator ? await comparator(lastValue!, value) : lastValue === value)) {
-            lastValue = value;
+          if (!hasLast || !(comparator ? await comparator(lastValue!, result.value) : lastValue === result.value)) {
+            lastValue = result.value;
             hasLast = true;
-            return { value, done: false };
+            return { value: result.value, done: false };
           }
         }
       },

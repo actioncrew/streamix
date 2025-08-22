@@ -75,18 +75,20 @@ export function cascade<T = any, R = any>(
             return { done: true, value: undefined };
           }
 
-          const { done, value } = await source.next();
-          if (done) {
+          const result = await source.next();
+          if (result.done) {
             completed = true;
             return { done: true, value: undefined };
           }
 
-          let result: any = value;
+          if (result.phantom) continue;
+
+          let taskResult: any = result.value;
           for (const task of tasks) {
-            result = await task.processTask(result);
+            taskResult = await task.processTask(taskResult);
           }
 
-          return { done: false, value: result as R };
+          return { done: false, value: taskResult as R };
         }
       },
       async return() {

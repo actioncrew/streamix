@@ -36,6 +36,8 @@ export const takeWhile = <T = any>(
             return result;
           }
 
+          if (result.phantom) continue;
+
           if (!(await predicate(result.value))) {
             done = true;
             return { done: true, value: undefined };

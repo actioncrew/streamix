@@ -35,11 +35,13 @@ export const concatMap = <T = any, R = any>(
         while (true) {
           // If no active inner iterator, get next outer value and create one
           if (!innerIterator) {
-            const outerResult = await source.next();
-            if (outerResult.done) {
+            const result = await source.next();
+            if (result.done) {
               return { done: true, value: undefined };
             }
-            innerIterator = eachValueFrom<R>(fromAny(project(outerResult.value, outerIndex++)));
+            if (result.phantom) continue;
+
+            innerIterator = eachValueFrom<R>(fromAny(project(result.value, outerIndex++)));
           }
 
           // Pull from the active inner iterator

@@ -23,18 +23,19 @@ export const min = <T = any>(
     // Await entire source and compute min eagerly
     const ready = (async () => {
       while (true) {
-        const { value, done: sourceDone } = await source.next();
-        if (sourceDone) break;
+        const result = await source.next();
+        if (result.done) break;
+        if (result.phantom) continue;
 
         if (!hasMin) {
-          minValue = value;
+          minValue = result.value;
           hasMin = true;
         } else if (comparator) {
-          if (await comparator(value, minValue!) < 0) {
-            minValue = value;
+          if (await comparator(result.value, minValue!) < 0) {
+            minValue = result.value;
           }
-        } else if (value < minValue!) {
-          minValue = value;
+        } else if (result.value < minValue!) {
+          minValue = result.value;
         }
       }
     })();

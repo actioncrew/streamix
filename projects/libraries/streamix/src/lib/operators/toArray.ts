@@ -30,6 +30,8 @@ export const toArray = <T = any>() =>
             return { done: false, value: collected };
           }
 
+          if (result.phantom) continue;
+
           collected.push(result.value);
         }
       }

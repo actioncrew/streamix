@@ -22,20 +22,22 @@ export const skipWhile = <T = any>(predicate: (value: T) => CallbackReturnType<b
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const { value, done } = await source.next();
+          const result = await source.next();
 
-          if (done) {
+          if (result.done) {
             return { value: undefined, done: true };
           }
 
+          if (result.phantom) continue;
+
           if (skipping) {
-            if (!await predicate(value)) {
+            if (!await predicate(result.value)) {
               skipping = false;
-              return { value, done: false };
+              return { value: result.value, done: false };
             }
             // If still skipping, continue looping
           } else {
-            return { value, done: false };
+            return { value: result.value, done: false };
           }
         }
       }

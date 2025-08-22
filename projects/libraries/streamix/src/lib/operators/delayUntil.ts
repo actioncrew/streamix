@@ -55,6 +55,8 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
 
           const result = await source.next();
           if (result.done) return result;
+          if (result.phantom) continue;
+
           buffer.push(result.value);
 
           if (notifierDone) {

@@ -41,6 +41,9 @@ export const catchError = <T = any>(
               completed = true; // Source completed without error
               return { value: undefined, done: true };
             }
+
+            if (result.phantom) continue;
+
             return result; // Emit value from source
           } catch (error) {
             // An error occurred from the source

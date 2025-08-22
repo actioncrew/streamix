@@ -29,6 +29,7 @@ export const distinctUntilKeyChanged = <T extends object = any>(
         while (true) {
           const result = await source.next();
           if (result.done) return result;
+          if (result.phantom) continue;
 
           const current = result.value;
 

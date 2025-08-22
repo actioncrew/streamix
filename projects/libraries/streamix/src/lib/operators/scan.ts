@@ -33,13 +33,15 @@ export const scan = <T = any, R = any>(
             return { done: true, value: undefined };
           }
 
-          const { done, value } = await source.next();
-          if (done) {
+          const result = await source.next();
+
+          if (result.done) {
             completed = true;
             return { done: true, value: undefined };
           }
 
-          acc = await accumulator(acc, value, index++);
+          if (result.phantom) continue;
+          acc = await accumulator(acc, result.value, index++);
           return { done: false, value: acc };
         }
       },

@@ -62,9 +62,11 @@ export function buffer<T = any>(period: number) {
     (async () => {
       try {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
-          buffer.push(value);
+          const result = await source.next();
+          if (result.done) break;
+          if (result.phantom) continue;
+
+          buffer.push(result.value);
         }
       } catch (err) {
         cleanup();

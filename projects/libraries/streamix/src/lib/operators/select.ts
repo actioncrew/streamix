@@ -58,6 +58,8 @@ export const select = <T = any>(
         while (true) {
           const result = await source.next();
           if (result.done) break;
+          if (result.phantom) continue;
+
           subject.next(result.value);
         }
       } catch (err) {

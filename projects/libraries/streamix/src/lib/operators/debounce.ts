@@ -42,6 +42,7 @@ export function debounce<T = any>(duration: number) {
         while (true) {
           const result = await source.next();
           if (result.done) break;
+          if (result.phantom) continue;
 
           latestValue = result.value;
 

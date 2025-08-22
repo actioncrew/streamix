@@ -29,17 +29,19 @@ export const slidingPair = <T = any>() =>
             return { value: undefined as any, done: true };
           }
 
-          const { value, done } = await source.next();
+          const result = await source.next();
 
-          if (done) {
+          if (result.done) {
             completed = true;
             return { value: undefined as any, done: true };
           }
 
-          const result: [T | undefined, T] = [first ? undefined : prev, value];
-          prev = value;
+          if (result.phantom) continue;
+
+          const value: [T | undefined, T] = [first ? undefined : prev, result.value];
+          prev = result.value;
           first = false;
-          return { value: result, done: false };
+          return { value: value, done: false };
         }
       }
     };

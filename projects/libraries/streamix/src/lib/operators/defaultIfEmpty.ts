@@ -27,6 +27,8 @@ export const defaultIfEmpty = <T = any>(defaultValue: T) =>
 
           const result = await source.next();
 
+          if (!result.done && result.phantom) continue;
+
           if (!result.done) {
             emitted = true;
             return result;

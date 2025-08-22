@@ -27,9 +27,9 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
           const buffer: T[] = [];
 
           while (buffer.length < bufferSize) {
-            const { done: sourceDone, value } = await source.next();
+            const result = await source.next();
 
-            if (sourceDone) {
+            if (result.done) {
               completed = true;
               // Emit any remaining buffered items before completing
               return buffer.length > 0
@@ -37,7 +37,9 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
                 : { done: true, value: undefined };
             }
 
-            buffer.push(value);
+            if (result.phantom) continue;
+
+            buffer.push(result.value);
           }
 
           // Buffer full, emit it

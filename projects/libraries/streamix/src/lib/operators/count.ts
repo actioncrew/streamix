@@ -21,8 +21,9 @@ export const count = <T = any>() =>
         if (counted) return { done: true, value: undefined };
 
         while (true) {
-          const { done } = await source.next();
-          if (done) break;
+          const result = await source.next();
+          if (result.done) break;
+          if (result.phantom) continue;
           total++;
         }
 

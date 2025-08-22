@@ -43,9 +43,11 @@ export function takeUntil<T = any>(notifier: Stream) {
     setTimeout(async () => {
       try {
         while (!shouldStop) {
-          const { value, done } = await source.next();
-          if (done || shouldStop) break;
-          output.next(value);
+          const result = await source.next();
+          if (result.done || shouldStop) break;
+          if (result.phantom) continue;
+
+          output.next(result.value);
         }
       } catch (err) {
         if (!output.completed()) output.error(err);

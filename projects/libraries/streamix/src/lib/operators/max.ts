@@ -24,18 +24,19 @@ export const max = <T = any>(
     // Process the source eagerly
     const ready = (async () => {
       while (true) {
-        const { value, done: sourceDone } = await source.next();
-        if (sourceDone) break;
+        const result = await source.next();
+        if (result.done) break;
+        if (result.phantom) continue;
 
         if (!hasMax) {
-          maxValue = value;
+          maxValue = result.value;
           hasMax = true;
         } else if (comparator) {
-          if (await comparator(value, maxValue!) > 0) {
-            maxValue = value;
+          if (await comparator(result.value, maxValue!) > 0) {
+            maxValue = result.value;
           }
-        } else if (value > maxValue!) {
-          maxValue = value;
+        } else if (result.value > maxValue!) {
+          maxValue = result.value;
         }
       }
     })();

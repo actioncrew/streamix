@@ -24,6 +24,7 @@ export const take = <T = any>(count: number) =>
       async next(): Promise<StreamResult<T>> {
         while (true) {
           if (done) return { done: true, value: undefined };
+
           if (emitted >= count) {
             done = true;
             return { done: true, value: undefined };
@@ -35,6 +36,8 @@ export const take = <T = any>(count: number) =>
             done = true;
             return result;
           }
+
+          if (result.phantom) continue;
 
           emitted++;
           return result; // normal value

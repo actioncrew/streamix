@@ -29,6 +29,7 @@ export const filter = <T = any>(
         while (true) {
           const result = await source.next();
           if (result.done) return result;
+          if (result.phantom) continue;
 
           const value = result.value;
           let shouldInclude = false;

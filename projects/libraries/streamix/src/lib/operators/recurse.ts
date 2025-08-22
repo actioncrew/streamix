@@ -72,6 +72,8 @@ export const recurse = <T = any>(
               sourceDone = true;
               break;
             }
+            if (result.phantom) continue;
+
             queue.push({ value: result.value, depth: 0 });
           }
 

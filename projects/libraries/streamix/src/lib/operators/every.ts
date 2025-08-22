@@ -31,14 +31,16 @@ export const every = <T = any>(
         if (emitted) return { done: true, value: undefined };
 
         while (true) {
-          const { value, done } = await source.next();
+          const result = await source.next();
 
-          if (done) {
+          if (result.done) {
             emitted = true;
             return { done: false, value: true };
           }
 
-          if (!await predicate(value, index++)) {
+          if (result.phantom) continue;
+
+          if (!await predicate(result.value, index++)) {
             emitted = true;
             return { done: false, value: false };
           }

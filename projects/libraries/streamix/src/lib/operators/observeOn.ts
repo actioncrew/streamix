@@ -56,9 +56,11 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
     (async () => {
       try {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
-          schedule(() => output.next(value));
+          const result = await source.next();
+          if (result.done) break;
+          if (result.phantom) continue;
+
+          schedule(() => output.next(result.value));
         }
       } catch (err) {
         output.error(err);

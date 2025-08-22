@@ -67,25 +67,27 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
         while (true) {
           // If no active inner iterator, get next outer value
           if (!innerIterator) {
-            const outerResult = await source.next();
-            if (outerResult.done) {
+            const result = await source.next();
+            if (result.done) {
               return { done: true, value: undefined };
             }
+
+            if (result.phantom) continue;
 
             let matched: typeof options[number] | undefined;
 
             for (const option of options) {
-              if (await option.on(outerResult.value, outerIndex++)) {
+              if (await option.on(result.value, outerIndex++)) {
                 matched = option;
                 break;
               }
             }
 
             if (!matched) {
-              throw new Error(`No handler found for value: ${outerResult.value}`);
+              throw new Error(`No handler found for value: ${result.value}`);
             }
 
-            innerIterator = eachValueFrom(fromAny(matched.handler(outerResult.value)));
+            innerIterator = eachValueFrom(fromAny(matched.handler(result.value)));
           }
 
           // Pull next inner value

@@ -37,6 +37,8 @@ export const map = <T = any, R = any>(
             return { value: undefined as any, done: true };
           }
 
+          if (result.phantom) continue;
+
           const transformedValue = await transform(result.value, index++);
           return { value: transformedValue, done: false };
         }

@@ -39,6 +39,8 @@ export const partition = <T = any>(
             return { value: undefined, done: true };
           }
 
+          if (result.phantom) continue;
+
           const key = await predicate(result.value, index++) ? "true" : "false";
           return { value: { key, value: result.value }, done: false };
         }

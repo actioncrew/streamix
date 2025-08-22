@@ -37,9 +37,9 @@ export const reduce = <T = any, A = any>(
           // Consume the entire source stream
           while (true) {
             const result = await source.next();
-            if (result.done) {
-              break;
-            }
+            if (result.done) break;
+            if (result.phantom) continue;
+
             acc = await accumulator(acc, result.value);
           }
 

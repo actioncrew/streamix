@@ -29,7 +29,7 @@ export const last = <T = any>(
     async function next(): Promise<StreamResult<T>> {
       // If we’ve already consumed and emitted, we’re done.
       if (finished && consumed) {
-        return { value: undefined as any, done: true };
+        return { value: undefined, done: true };
       }
 
       // If finished but not yet emitted the last value, emit it now.
@@ -43,6 +43,7 @@ export const last = <T = any>(
         while (true) {
           const result = await source.next();
           if (result.done) break;
+          if (result.phantom) continue;
 
           const value = result.value;
           if (!predicate || (await predicate(value))) {

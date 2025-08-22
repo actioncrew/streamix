@@ -70,7 +70,10 @@ export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(..
           ]);
 
           if ('aborted' in winner || signal.aborted) break;
-          if (winner.result.done) break;
+          const result = winner.result;
+
+          if (result.done) break;
+          if (result.phantom) continue;
 
           if (hasValue.every(Boolean)) {
             output.next([winner.result.value, ...latestValues] as [T, ...R]);

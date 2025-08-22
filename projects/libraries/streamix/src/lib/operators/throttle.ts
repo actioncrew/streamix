@@ -36,18 +36,19 @@ export const throttle = <T = any>(duration: number) =>
     (async () => {
       try {
         for (;;) {
-          const { value, done } = await source.next();
-          if (done) break;
+          const result = await source.next();
+          if (result.done) break;
+          if (result.phantom) continue;
 
           const now = Date.now();
 
           if (now - lastEmit >= duration) {
             // Enough time has passed — emit immediately (leading)
             lastEmit = now;
-            output.next(value);
+            output.next(result.value);
           } else {
             // Within throttle window — store latest pending value
-            pending = value;
+            pending = result.value;
 
             if (!timer) {
               // Schedule trailing emit after remaining cooldown
@@ -71,4 +72,4 @@ export const throttle = <T = any>(duration: number) =>
 
     return eachValueFrom(output)[Symbol.asyncIterator]();
   });
-  
+

@@ -25,6 +25,7 @@ export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType) =>
           const result = await source.next();
 
           if (result.done) return result;
+          if (result.phantom) continue;
 
           await tapFunction(result.value); // side-effect
           return result;

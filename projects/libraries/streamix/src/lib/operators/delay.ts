@@ -25,6 +25,7 @@ export function delay<T = any>(ms: number) {
         while (true) {
           const result = await source.next();
           if (result.done) break;
+          if (result.phantom) continue;
 
           await new Promise((resolve) => setTimeout(resolve, ms)); // Delay before forwarding
           output.next(result.value);

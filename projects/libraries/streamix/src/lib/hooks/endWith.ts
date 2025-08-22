@@ -26,11 +26,15 @@ export const endWith = <T = any>(finalValue: T) =>
 
           if (!sourceDone) {
             const result = await source.next();
+            if (!result.done && result.phantom) continue;
+
             if (!result.done) {
               return result;
             }
+
             sourceDone = true;
           }
+
 
           if (!finalEmitted) {
             finalEmitted = true;

@@ -48,6 +48,8 @@ export const groupBy = <T = any, K = any>(
             return { value: undefined as any, done: true };
           }
 
+          if (result.phantom) continue;
+
           const key = await keySelector(result.value);
           return { value: { key, value: result.value }, done: false };
         }

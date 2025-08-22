@@ -329,6 +329,7 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 
             if ("aborted" in winner || signal.aborted) break;
             if (winner.result.done) break;
+            if (winner.result.phantom) continue;
 
             await receiver.next?.(winner.result.value);
           }
