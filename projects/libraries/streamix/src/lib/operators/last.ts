@@ -21,53 +21,44 @@ export const last = <T = any>(
   predicate?: (value: T) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, T>("last", (source) => {
-    let finished = false;
-    let consumed = false;
-    let lastValue: T;
+    let lastValue: T | undefined = undefined;
     let hasMatch = false;
+    let finished = false;
 
-    async function next(): Promise<StreamResult<T>> {
-      // Already emitted the last value
-      if (finished && consumed) {
-        return { value: undefined, done: true };
-      }
-
-      // Emit the cached last value
-      if (finished && !consumed) {
-        consumed = true;
-        return { value: lastValue, done: false };
-      }
-
-      try {
+    return {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
-          const result = await source.next();
-          if (result.done) break;
+          if (finished) return { done: true, value: undefined };
 
-          // Propagate upstream phantom immediately
-          if (result.phantom) {
-            return { value: result.value, done: false, phantom: true };
+          const result = await source.next();
+
+          if (result.done) {
+            finished = true;
+            if (!hasMatch) throw new Error("No elements in sequence");
+            return { done: false, value: lastValue! }; // emit final value normally
           }
+
+          if (result.phantom) continue;
 
           const value = result.value;
-          if (!predicate || (await predicate(value))) {
-            lastValue = value;
-            hasMatch = true;
+          const matches = !predicate || (await predicate(value));
+
+          if (matches) {
+            if (hasMatch) {
+              // Previous last value becomes phantom
+              const phantom = lastValue!;
+              lastValue = value;
+              return { done: false, value: phantom, phantom: true };
+            } else {
+              lastValue = value;
+              hasMatch = true;
+              continue; // first match, wait for next to decide phantom
+            }
+          } else {
+            // Non-matching values are phantoms
+            return { done: false, value, phantom: true };
           }
         }
-
-        finished = true;
-
-        if (!hasMatch) {
-          throw new Error("No elements in sequence");
-        }
-
-        consumed = true;
-        return { value: lastValue, done: false };
-      } catch (err) {
-        finished = true;
-        throw err;
       }
-    }
-
-    return { next };
+    };
   });
