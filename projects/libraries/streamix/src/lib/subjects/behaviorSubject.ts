@@ -44,7 +44,7 @@ export type BehaviorSubject<T = any> = Subject<T> & {
  * @returns {BehaviorSubject<T>} A new BehaviorSubject instance.
  */
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
-  const buffer = createBehaviorSubjectBuffer<T>(initialValue);
+  const buffer = createBehaviorSubjectBuffer<{value: T, phantom?: boolean }>({ value: initialValue });
   const queue = createQueue();
   let latestValue = initialValue;
   let isCompleted = false;
@@ -54,7 +54,14 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write(value);
+      await buffer.write({ value });
+    });
+  };
+
+  const phantom = function (value: T) {
+    queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
+      await buffer.write({ value, phantom: true });
     });
   };
 
@@ -96,8 +103,9 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       readerId = id;
       try {
         while (true) {
-          const result = await buffer.read(readerId);
-          if (result.done) break;
+          const { value: result, done } = await buffer.read(readerId);
+          if (done) break;
+          if (result.phantom) continue;
           await receiver.next(result.value);
         }
       } catch (err: any) {
@@ -131,6 +139,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       return await firstValueFrom(this);
     },
     next,
+    phantom,
     complete,
     completed: () => isCompleted,
     error,

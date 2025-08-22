@@ -39,7 +39,7 @@ export type ReplaySubject<T = any> = Subject<T>;
  * @returns {ReplaySubject<T>} A new ReplaySubject instance.
  */
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
-  const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
+  const buffer = createReplayBuffer<{ value: T, phantom?: boolean }>(capacity) as ReplayBuffer;
   const queue = createQueue();
   let isCompleted = false;
   let hasError = false;
@@ -49,7 +49,14 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write(value);
+      await buffer.write({ value });
+    });
+  };
+
+  const phantom = function (value: T) {
+    queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
+      await buffer.write({ value, phantom: true });
     });
   };
 
@@ -92,8 +99,9 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       readerId = id;
       try {
         while (true) {
-          const result = await buffer.read(readerId);
-          if (result.done) break;
+          const { value: result, done } = await buffer.read(readerId);
+          if (done) break;
+          if (result.phantom) continue;
           latestValue = result.value;
           await receiver.next(latestValue!);
         }
@@ -130,6 +138,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       return latestValue;
     },
     next,
+    phantom,
     complete,
     completed: () => isCompleted,
     error,

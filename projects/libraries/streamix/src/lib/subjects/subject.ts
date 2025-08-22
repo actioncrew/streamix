@@ -26,6 +26,19 @@ export type Subject<T = any> = Stream<T> & {
    * @returns {void}
    */
   next(value: T): void;
+
+  /**
+   * Pushes a **phantom value** to all subscribers.
+   *
+   * Phantom values indicate that a value was skipped or replaced,
+   * but are still emitted downstream to preserve stream consistency.
+   * Phantom values **do not update** the `snappy` (latest) value of the subject.
+   *
+   * @param {T} value - The value to emit as a phantom.
+   * @returns {void}
+   */
+  phantom(value: any): void;
+
   /**
    * Signals that the subject has completed and will emit no more values.
    * This completion signal is sent to all subscribers.
@@ -62,7 +75,7 @@ export type Subject<T = any> = Stream<T> & {
  * @returns {Subject<T>} A new Subject instance.
  */
 export function createSubject<T = any>(): Subject<T> {
-  const buffer = createSubjectBuffer<T>();
+  const buffer = createSubjectBuffer<{ value: T, phantom?: boolean }>();
   const queue = createQueue();
   let latestValue: T | undefined = undefined;
   let isCompleted = false;
@@ -72,7 +85,14 @@ export function createSubject<T = any>(): Subject<T> {
     latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write(value);
+      await buffer.write({ value });
+    });
+  };
+
+  const phantom = function (value: T) {
+    queue.enqueue(async () => {
+      if (isCompleted || hasError) return;
+      await buffer.write({ value, phantom: true });
     });
   };
 
@@ -114,8 +134,9 @@ export function createSubject<T = any>(): Subject<T> {
       readerId = id;
       try {
         while (true) {
-          const result = await buffer.read(readerId);
-          if (result.done) break;
+          const { value: result, done } = await buffer.read(readerId);
+          if (done) break;
+          if (result.phantom) continue;
           await receiver.next(result.value);
         }
       } catch (err: any) {
@@ -149,6 +170,7 @@ export function createSubject<T = any>(): Subject<T> {
       return await firstValueFrom(this);
     },
     next,
+    phantom,
     complete,
     completed: () => isCompleted,
     error,
