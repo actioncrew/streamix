@@ -22,14 +22,11 @@ export const skip = <T = any>(count: number) =>
           const result = await source.next();
           if (result.done) return { done: true, value: undefined };
 
-          if (result.phantom) {
-            // immediately propagate phantom
-            return { value: result.value, phantom: true, done: false };
-          }
+          if (result.phantom) continue;
 
           if (counter > 0) {
             counter--;
-            continue; // skip this value
+            return { value: result.value, phantom: true, done: false };
           }
 
           return { done: false, value: result.value };
