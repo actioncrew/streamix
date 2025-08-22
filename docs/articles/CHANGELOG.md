@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.23
+
+BREAKING: Fixed AsyncIterator protocol compliance across all stream operators: All operators now follow the standard pattern: while (true) → check completion → process → return
+
 ## 2.0.22
 
 Retained .map files to improve developer experience.
