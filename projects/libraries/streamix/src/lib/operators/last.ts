@@ -17,41 +17,49 @@ import { CallbackReturnType } from "./../abstractions/receiver";
  * @throws {Error} Throws an error with the message "No elements in sequence" if no
  * matching value is found before the source stream completes.
  */
-export const last = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
+export const last = <T = any>(
+  predicate?: (value: T) => CallbackReturnType<boolean>
+) =>
   createOperator<T, T>("last", (source) => {
     let finished = false;
-    let emitted = false;
+    let consumed = false;
     let lastValue: T;
     let hasMatch = false;
 
     async function next(): Promise<IteratorResult<T>> {
-      if (finished) {
-        if (!emitted && hasMatch) {
-          emitted = true;
-          return { value: lastValue, done: false };
-        }
+      // If we’ve already consumed and emitted, we’re done.
+      if (finished && consumed) {
         return { value: undefined as any, done: true };
       }
 
+      // If finished but not yet emitted the last value, emit it now.
+      if (finished && !consumed) {
+        consumed = true;
+        return { value: lastValue, done: false };
+      }
+
+      // Otherwise, drain the source completely.
       try {
-        let result = await source.next();
-        while (!result.done) {
+        while (true) {
+          const result = await source.next();
+          if (result.done) break;
+
           const value = result.value;
           if (!predicate || (await predicate(value))) {
             lastValue = value;
             hasMatch = true;
           }
-          result = await source.next();
         }
 
         finished = true;
 
-        if (hasMatch) {
-          emitted = false;
-          return next();
-        } else {
+        if (!hasMatch) {
           throw new Error("No elements in sequence");
         }
+
+        // Immediately return the last value, but mark it as not yet consumed.
+        consumed = true;
+        return { value: lastValue, done: false };
       } catch (err) {
         finished = true;
         throw err;
@@ -60,3 +68,4 @@ export const last = <T = any>(predicate?: (value: T) => CallbackReturnType<boole
 
     return { next };
   });
+  
