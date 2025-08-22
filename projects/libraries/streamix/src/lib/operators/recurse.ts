@@ -1,5 +1,6 @@
 import { CallbackReturnType, createOperator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Options to configure the recursive traversal behavior.
@@ -62,7 +63,7 @@ export const recurse = <T = any>(
     };
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           // Refill queue from source if it's empty
           while (queue.length === 0 && !sourceDone) {

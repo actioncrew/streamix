@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that emits only the first element from the source stream
@@ -25,7 +25,7 @@ export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<bool
     let firstValue: T | undefined;
     let sourceDone = false;
 
-    async function next(): Promise<IteratorResult<T>> {
+    async function next(): Promise<StreamResult<T>> {
       if (found) {
         return { value: undefined, done: true };
       }

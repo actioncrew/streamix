@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 import { GroupItem } from "./groupBy";
 
 /**
@@ -26,7 +27,7 @@ export const partition = <T = any>(
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<GroupItem<T, "true" | "false">>> {
+      async next(): Promise<StreamResult<GroupItem<T, "true" | "false">>> {
         while (true) {
           if (completed) {
             return { value: undefined, done: true };

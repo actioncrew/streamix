@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that tests if all values from the source stream satisfy a predicate.
@@ -26,7 +27,7 @@ export const every = <T = any>(
     let emitted = false;
 
     return {
-      async next(): Promise<IteratorResult<boolean>> {
+      async next(): Promise<StreamResult<boolean>> {
         if (emitted) return { done: true, value: undefined };
 
         while (true) {

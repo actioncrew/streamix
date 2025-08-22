@@ -1,5 +1,6 @@
 import { createOperator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that emits only distinct values from the source stream.
@@ -25,7 +26,7 @@ export const unique = <T = any, K = any>(
     const seen = new Set<K | T>();
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           const { value, done } = await source.next();
           if (done) return { done: true, value: undefined };

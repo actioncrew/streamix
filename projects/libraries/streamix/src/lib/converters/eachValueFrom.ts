@@ -1,4 +1,4 @@
-import { Stream } from "../abstractions";
+import { Stream, StreamGenerator } from "../abstractions";
 
 /**
  * Converts a `Stream` into an async generator, yielding each emitted value.
@@ -23,79 +23,78 @@ import { Stream } from "../abstractions";
  * @param stream The source stream to convert.
  * @returns An async generator that yields the values from the stream.
  */
-export async function* eachValueFrom<T = any>(stream: Stream<T>): AsyncGenerator<T> {
-  let resolveNext: ((value: { value: T | undefined, done: boolean }) => void) | null = null;
-  let rejectNext: ((error: any) => void) | null = null;
-  let completed = false;
-  let error: any = null;
-  const queue: T[] = [];
+export function eachValueFrom<T = any>(stream: Stream<T>): StreamGenerator<T> {
+  async function* generator(): AsyncGenerator<T> {
+    let resolveNext: ((value: { value: T | undefined; done: boolean }) => void) | null = null;
+    let rejectNext: ((error: any) => void) | null = null;
+    let completed = false;
+    let error: any = null;
+    const queue: T[] = [];
 
-  const subscription = stream.subscribe({
-    next(value: T) {
-      if (resolveNext) {
-        // Immediately fulfill waiting promise with the actual value
-        const r = resolveNext;
-        resolveNext = null;
-        rejectNext = null;
-        r({ value, done: false });
-      } else {
-        queue.push(value);
-      }
-    },
-    error(err: any) {
-      error = err;
-      if (rejectNext) {
-        const r = rejectNext;
-        resolveNext = null;
-        rejectNext = null;
-        r(err);
-      }
-      subscription.unsubscribe();
-    },
-    complete() {
-      completed = true;
-      if (resolveNext) {
-        // resolve with done: true to signal completion (not undefined value)
-        const r = resolveNext;
-        resolveNext = null;
-        rejectNext = null;
-        r({ value: undefined, done: true });
-      }
-      subscription.unsubscribe();
-    }
-  });
+    const subscription = stream.subscribe({
+      next(value: T) {
+        if (resolveNext) {
+          const r = resolveNext;
+          resolveNext = null;
+          rejectNext = null;
+          r({ value, done: false });
+        } else {
+          queue.push(value);
+        }
+      },
+      error(err: any) {
+        error = err;
+        if (rejectNext) {
+          const r = rejectNext;
+          resolveNext = null;
+          rejectNext = null;
+          r(err);
+        }
+        subscription.unsubscribe();
+      },
+      complete() {
+        completed = true;
+        if (resolveNext) {
+          const r = resolveNext;
+          resolveNext = null;
+          rejectNext = null;
+          r({ value: undefined, done: true });
+        }
+        subscription.unsubscribe();
+      },
+    });
 
-  try {
-    while (true) {
-      if (error) throw error;
+    try {
+      while (true) {
+        if (error) throw error;
 
-      if (queue.length > 0) {
-        yield queue.shift()!;
-      } else if (completed) {
-        // No more values expected and none buffered
-        break;
-      } else {
-        // Wait for next value or completion/error
-        try {
-          const result = await new Promise<{ value: T | undefined, done: boolean }>((resolve, reject) => {
-            resolveNext = resolve;
-            rejectNext = reject;
-          });
+        if (queue.length > 0) {
+          yield queue.shift()!;
+        } else if (completed) {
+          break;
+        } else {
+          try {
+            const result = await new Promise<{ value: T | undefined; done: boolean }>((resolve, reject) => {
+              resolveNext = resolve;
+              rejectNext = reject;
+            });
 
-          if (result.done) {
-            // Stream completed
-            break;
-          } else {
-            // Yield the value, even if it's undefined
-            yield result.value as T;
+            if (result.done) {
+              break;
+            } else {
+              yield result.value as T;
+            }
+          } catch (err) {
+            error = err;
+            throw error;
           }
-        } catch (err) {
-          error = err;
-          throw error;
         }
       }
+    } finally {
+      subscription.unsubscribe();
     }
-  } finally {
-    subscription.unsubscribe();
   }
+
+  // Cast the native AsyncGenerator to StreamGenerator
+  return generator() as unknown as StreamGenerator<T>;
 }

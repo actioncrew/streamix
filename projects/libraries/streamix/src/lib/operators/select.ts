@@ -1,6 +1,12 @@
-import { createOperator } from "../abstractions";
+import { createOperator, StreamGenerator } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject } from "../streams";
+
+function toStreamGenerator<T>(gen: AsyncGenerator<T>): StreamGenerator<T> {
+  const iterator = gen as unknown as StreamGenerator<T>;
+  iterator[Symbol.asyncIterator] = () => iterator;
+  return iterator;
+}
 
 /**
  * Creates a stream operator that emits only the values at the specified indices from a source stream.
@@ -83,5 +89,5 @@ export const select = <T = any>(
       }
     }
 
-    return selectByIndex();
+    return toStreamGenerator(selectByIndex())[Symbol.asyncIterator]();
   });

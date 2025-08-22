@@ -1,5 +1,6 @@
 import { CallbackReturnType, createOperator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Represents a conditional branch for the `fork` operator.
@@ -62,7 +63,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
     let innerIterator: AsyncIterator<R> | null = null;
 
     return {
-      async next(): Promise<IteratorResult<R>> {
+      async next(): Promise<StreamResult<R>> {
         while (true) {
           // If no active inner iterator, get next outer value
           if (!innerIterator) {

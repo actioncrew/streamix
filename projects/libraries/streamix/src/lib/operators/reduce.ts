@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that accumulates all values from the source stream
@@ -25,7 +26,7 @@ export const reduce = <T = any, A = any>(
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<A>> {
+      async next(): Promise<StreamResult<A>> {
         while (true) {
           if (completed) {
             return { done: true, value: undefined };

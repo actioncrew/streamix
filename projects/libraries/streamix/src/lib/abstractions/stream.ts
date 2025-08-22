@@ -7,7 +7,7 @@ import { createSubscription, Subscription } from "./subscription";
  * Represents a single emission from a Streamix stream.
  *
  * This can be either:
- * 1. A normal iterator result (`IteratorResult<T>`) with `value` and `done` properties.
+ * 1. A normal iterator result (`StreamResult<T>`) with `value` and `done` properties.
  * 2. A "phantom" emission, where `phantom: true` indicates that the value
  *    was suppressed by an operator or the stream ended prematurely.
  *

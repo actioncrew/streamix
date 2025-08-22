@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { createOperator, StreamResult } from "../abstractions";
 import { CallbackReturnType } from "./../abstractions/receiver";
 
 /**
@@ -26,7 +26,7 @@ export const last = <T = any>(
     let lastValue: T;
     let hasMatch = false;
 
-    async function next(): Promise<IteratorResult<T>> {
+    async function next(): Promise<StreamResult<T>> {
       // If we’ve already consumed and emitted, we’re done.
       if (finished && consumed) {
         return { value: undefined as any, done: true };
@@ -68,4 +68,4 @@ export const last = <T = any>(
 
     return { next };
   });
-  
+

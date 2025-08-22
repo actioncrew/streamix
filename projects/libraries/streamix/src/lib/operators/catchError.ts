@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that catches errors from the source stream and handles them.
@@ -27,7 +28,7 @@ export const catchError = <T = any>(
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           // If an error was already caught and handled, or we're completed, this operator is done
           if (errorCaughtAndHandled || completed) {

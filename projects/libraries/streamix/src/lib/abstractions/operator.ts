@@ -1,4 +1,4 @@
-import { Stream } from "./stream";
+import { Stream, StreamIterator } from "./stream";
 
 /**
  * A stream operator that transforms a value from an input stream to an output stream.
@@ -23,7 +23,7 @@ export type Operator<T = any, R = T> = {
    * asynchronous iterator of type `T` and returns a new asynchronous iterator of type `R`.
    * @param source The source async iterator to apply the transformation to.
    */
-  apply: (source: AsyncIterator<T>) => AsyncIterator<R>;
+  apply: (source: StreamIterator<T>) => StreamIterator<R>;
 };
 
 /**
@@ -40,7 +40,7 @@ export type Operator<T = any, R = T> = {
  */
 export function createOperator<T = any, R = T>(
   name: string,
-  transformFn: (source: AsyncIterator<T>) => AsyncIterator<R>
+  transformFn: (source: StreamIterator<T>) => StreamIterator<R>
 ): Operator<T, R> {
   return {
     name,

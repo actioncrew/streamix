@@ -1,4 +1,5 @@
 import { createOperator } from '../abstractions';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that immediately throws an error with the provided message.
@@ -19,7 +20,7 @@ export const throwError = <T = any>(message: string) =>
     let done = false;
 
     return {
-      async next(): Promise<IteratorResult<never>> {
+      async next(): Promise<StreamResult<never>> {
         if (done) return { done: true as const, value: undefined as never };
 
         done = true;

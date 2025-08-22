@@ -1,4 +1,5 @@
 import { createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that collects all emitted values from the source stream
@@ -15,11 +16,11 @@ import { createOperator } from "../abstractions";
  */
 export const toArray = <T = any>() =>
   createOperator<T, T[]>("toArray", (source) => {
-    const collected: T[] = [];   // ✅ lives across all next() calls
-    let emitted = false;         // ✅ ensures we only emit once
+    const collected: T[] = [];
+    let emitted = false;
 
     return {
-      async next(): Promise<IteratorResult<T[]>> {
+      async next(): Promise<StreamResult<T[]>> {
         while (true) {
           if (emitted) return { done: true, value: undefined };
           const result = await source.next();

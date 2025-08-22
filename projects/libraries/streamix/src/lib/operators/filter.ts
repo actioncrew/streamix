@@ -1,5 +1,6 @@
 import { createOperator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that filters values emitted by the source stream.
@@ -24,7 +25,7 @@ export const filter = <T = any>(
     let index = 0;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           const result = await source.next();
           if (result.done) return result;

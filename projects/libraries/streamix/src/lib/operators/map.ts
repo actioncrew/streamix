@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that applies a transformation function to each value
@@ -24,7 +25,7 @@ export const map = <T = any, R = any>(
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<R>> {
+      async next(): Promise<StreamResult<R>> {
         while (true) {
           if (completed) {
             return { value: undefined as any, done: true };

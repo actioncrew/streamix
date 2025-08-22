@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Represents a grouped item with its original value and the associated key.
@@ -35,7 +36,7 @@ export const groupBy = <T = any, K = any>(
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<GroupItem<T, K>>> {
+      async next(): Promise<StreamResult<GroupItem<T, K>>> {
         while (true) {
           if (completed) {
             return { value: undefined as any, done: true };

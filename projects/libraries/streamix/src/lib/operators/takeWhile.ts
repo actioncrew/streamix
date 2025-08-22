@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that emits values from the source stream as long as
@@ -25,7 +26,7 @@ export const takeWhile = <T = any>(
     let done = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           if (done) return { done: true, value: undefined };
           const result = await source.next();

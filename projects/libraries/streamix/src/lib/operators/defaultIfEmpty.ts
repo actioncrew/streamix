@@ -1,4 +1,5 @@
 import { createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that emits a default value if the source stream is empty.
@@ -18,7 +19,7 @@ export const defaultIfEmpty = <T = any>(defaultValue: T) =>
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           if (completed) {
             return { done: true, value: undefined };

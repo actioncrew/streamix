@@ -1,5 +1,6 @@
 import { CallbackReturnType, createOperator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from "../converters";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that maps each value from the source stream to a new
@@ -30,7 +31,7 @@ export const concatMap = <T = any, R = any>(
 
     // Async iterator object that sequentially flattens projected inner async iterables
     return {
-      async next(): Promise<IteratorResult<R>> {
+      async next(): Promise<StreamResult<R>> {
         while (true) {
           // If no active inner iterator, get next outer value and create one
           if (!innerIterator) {

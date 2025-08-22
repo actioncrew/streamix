@@ -1,4 +1,5 @@
 import { createOperator } from '../abstractions';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that skips the first specified number of values from the source stream.
@@ -16,7 +17,7 @@ export const skip = <T = any>(count: number) =>
     let counter = count;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           const { done, value } = await source.next();
           if (done) {

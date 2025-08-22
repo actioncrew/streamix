@@ -1,4 +1,5 @@
 import { createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that emits only the first `count` values from the source stream
@@ -20,7 +21,7 @@ export const take = <T = any>(count: number) =>
     let done = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           if (done) return { done: true, value: undefined };
           if (emitted >= count) {

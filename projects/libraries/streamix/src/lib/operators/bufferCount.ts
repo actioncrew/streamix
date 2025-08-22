@@ -1,4 +1,5 @@
 import { createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that buffers a fixed number of values and emits them as arrays.
@@ -17,7 +18,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<T[]>> {
+      async next(): Promise<StreamResult<T[]>> {
         while (true) {
           if (completed) {
             return { done: true, value: undefined };

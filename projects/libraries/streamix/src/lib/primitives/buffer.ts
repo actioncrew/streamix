@@ -24,16 +24,16 @@ export type CyclicBuffer<T = any> = {
    * Reads the next available value for a specific reader.
    * This operation will wait if no new value is available.
    * @param {number} readerId The ID of the reader.
-   * @returns {Promise<IteratorResult<T, void>>} A promise that resolves with the next value or signals completion.
+   * @returns {Promise<StreamResult<T>>} A promise that resolves with the next value or signals completion.
    */
-  read(readerId: number): Promise<IteratorResult<T, void>>;
+  read(readerId: number): Promise<StreamResult<T>>;
   /**
    * Peeks at the next available value for a specific reader without consuming it.
    * This is a non-blocking check.
    * @param {number} readerId The ID of the reader.
-   * @returns {Promise<IteratorResult<T, void>>} A promise that resolves with the next value, an `undefined` value if none is available, or signals completion.
+   * @returns {Promise<StreamResult<T>>} A promise that resolves with the next value, an `undefined` value if none is available, or signals completion.
    */
-  peek(readerId: number): Promise<IteratorResult<T, void>>;
+  peek(readerId: number): Promise<StreamResult<T>>;
   /**
    * Completes the buffer, signaling that no more values will be written.
    * All active readers will receive a completion signal after consuming any remaining buffered values.
@@ -160,10 +160,10 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
     }
   };
 
-  const read = async (readerId: number): Promise<IteratorResult<T, void>> => {
+  const read = async (readerId: number): Promise<StreamResult<T>> => {
     while (true) {
       const releaseLock = await lock();
-      let result: IteratorResult<T, void> | null = null;
+      let result: StreamResult<T> | null = null;
 
       try {
         const reader = readers.get(readerId);
@@ -196,7 +196,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
     }
   };
 
-  const peek = async (readerId: number): Promise<IteratorResult<T, void>> => {
+  const peek = async (readerId: number): Promise<StreamResult<T>> => {
     const release = await lock();
     try {
       const reader = readers.get(readerId);
@@ -293,7 +293,7 @@ export function createBehaviorSubjectBuffer<T = any>(initialValue?: T): SubjectB
       await subject.detachReader(readerId);
     },
 
-    async read(readerId: number): Promise<IteratorResult<T, void>> {
+    async read(readerId: number): Promise<StreamResult<T>> {
       // Check if this reader needs to receive the initial/current value first
       const needsInitialValue = behaviorReaders.get(readerId) === false;
 
@@ -307,7 +307,7 @@ export function createBehaviorSubjectBuffer<T = any>(initialValue?: T): SubjectB
       return await subject.read(readerId);
     },
 
-    async peek(readerId: number): Promise<IteratorResult<T, void>> {
+    async peek(readerId: number): Promise<StreamResult<T>> {
       // For BehaviorSubject, peek should return current value if available
       if (hasCurrentValue && behaviorReaders.has(readerId)) {
         return { value: currentValue as T, done: false };
@@ -475,7 +475,7 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
   }
 
   // Read next value for reader
-  async function read(id: number): Promise<IteratorResult<T, void>> {
+  async function read(id: number): Promise<StreamResult<T>> {
     while (true) {
       const release = await lock();
       const st = readers.get(id);
@@ -508,7 +508,7 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
   }
 
   // Peek latest
-  const peek = async function(id: number): Promise<IteratorResult<T>> {
+  const peek = async function(id: number): Promise<StreamResult<T>> {
     const release = await lock();
     try {
       const st = readers.get(id);

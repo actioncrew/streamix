@@ -1,4 +1,5 @@
 import { createOperator, Operator } from '../abstractions';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that filters out consecutive values from the source
@@ -24,7 +25,7 @@ export const distinctUntilKeyChanged = <T extends object = any>(
     let isFirst = true;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           const result = await source.next();
           if (result.done) return result;

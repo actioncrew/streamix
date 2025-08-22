@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from '../abstractions';
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that emits values from the source stream only if
@@ -22,7 +23,7 @@ export const distinctUntilChanged = <T = any>(
     let hasLast = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           const { value, done } = await source.next();
           if (done) return { value: undefined, done: true };

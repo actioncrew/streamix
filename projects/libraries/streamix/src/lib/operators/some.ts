@@ -1,4 +1,5 @@
 import { CallbackReturnType, createOperator } from "../abstractions";
+import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that tests if at least one value from the source stream satisfies a predicate.
@@ -27,7 +28,7 @@ export const some = <T = any>(
     let index = 0;
 
     return {
-      async next(): Promise<IteratorResult<boolean>> {
+      async next(): Promise<StreamResult<boolean>> {
         if (evaluated) {
           return { value: undefined, done: true };
         }

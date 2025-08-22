@@ -17,7 +17,7 @@ export const startWith = <T = any>(initialValue: T) =>
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      async next(): Promise<StreamResult<T>> {
         while (true) {
           if (completed) {
             return { done: true, value: undefined };
