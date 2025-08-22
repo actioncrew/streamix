@@ -34,7 +34,7 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
           canEmit = true;
           break;
         }
-      } catch (_) {
+      } catch {
         // ignore errors, just unblock
       } finally {
         notifierDone = true;
