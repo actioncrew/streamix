@@ -63,13 +63,9 @@ export function takeUntil<T = any>(notifier: Stream) {
         while (!shouldStop) {
           const result = await source.next();
           if (result.done || shouldStop) break;
+          if (result.phantom) continue;
 
-          if (result.phantom) {
-            // Forward phantom downstream
-            output.next({ value: result.value, phantom: true } as any);
-          } else {
-            output.next(result.value);
-          }
+          output.next(result.value);
         }
       } catch (err) {
         if (!output.completed()) output.error(err);
