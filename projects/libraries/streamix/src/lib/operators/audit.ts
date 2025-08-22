@@ -40,11 +40,10 @@ export const audit = <T = any>(duration: number) => {
     (async () => {
       try {
         while (true) {
-          const result = await source.next();
-          if (result.done) break;
-          if (result.phantom) continue;
+          const { value, done } = await source.next();
+          if (done) break;
 
-          lastValue = result.value;
+          lastValue = value;
 
           if (!timerActive) {
             startTimer();

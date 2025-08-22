@@ -27,20 +27,17 @@ export const unique = <T = any, K = any>(
     return {
       async next(): Promise<IteratorResult<T>> {
         while (true) {
-          const result = await source.next();
-          if (result.done) break;
-          if (result.phantom) continue;
+          const { value, done } = await source.next();
+          if (done) return { done: true, value: undefined };
 
-          const key = keySelector ? await keySelector(result.value) : result.value;
+          const key = keySelector ? await keySelector(value) : value;
 
           if (!seen.has(key)) {
             seen.add(key);
-            return { done: false, value: result.value };
+            return { done: false, value };
           }
           // skip duplicate
         }
-
-        return { done: true, value: undefined };
       }
     };
   });

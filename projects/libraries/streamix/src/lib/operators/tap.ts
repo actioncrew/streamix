@@ -19,16 +19,15 @@ import { CallbackReturnType } from './../abstractions/receiver';
 export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType) =>
   createOperator<T, T>('tap', (source) => {
     return {
-      async next(): Promise<StreamResult<T>> {
-        while (true) {
+      async next(): Promise<IteratorResult<T>> {
+        while(true) {
           const result = await source.next();
 
-        if (result.done) {
-          return { done: true, value: undefined };
-        }
+          if (result.done) return result;
 
-        await tapFunction(result.value); // side-effect
-        return { done: false, value: result.value };
+          await tapFunction(result.value); // side-effect
+          return result;
+        }
       }
     };
   });

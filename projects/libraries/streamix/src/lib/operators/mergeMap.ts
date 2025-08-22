@@ -58,12 +58,11 @@ export function mergeMap<T = any, R = any>(
     (async () => {
       try {
         while (true) {
-          const result = await source.next();
-          if (result.done) break;
-          if (result.phantom) continue;
+          const { value, done } = await source.next();
+          if (done) break;
           if (errorOccurred) break;
 
-          const inner = fromAny(project(result.value, index++));
+          const inner = fromAny(project(value, index++));
           activeInner++;
           processInner(inner); // concurrent, do not await
         }

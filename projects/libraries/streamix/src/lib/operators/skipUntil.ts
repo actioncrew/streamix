@@ -45,10 +45,9 @@ export function skipUntil<T = any>(notifier: Stream) {
     setTimeout(async () => {
       try {
         while (true) {
-          const result = await source.next();
-          if (result.done) break;
-          if (result.phantom) continue;
-          if (canEmit) output.next(result.value);
+          const { value, done } = await source.next();
+          if (done) break;
+          if (canEmit) output.next(value);
         }
       } catch (err) {
         if (!output.completed()) output.error(err);

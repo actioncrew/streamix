@@ -25,7 +25,7 @@ export const takeWhile = <T = any>(
     let done = false;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      async next(): Promise<IteratorResult<T>> {
         while (true) {
           if (done) return { done: true, value: undefined };
           const result = await source.next();
@@ -33,11 +33,6 @@ export const takeWhile = <T = any>(
           if (result.done) {
             done = true;
             return result;
-          }
-
-          if (result.phantom) {
-            // Skip phantoms, keep looping
-            continue;
           }
 
           if (!(await predicate(result.value))) {

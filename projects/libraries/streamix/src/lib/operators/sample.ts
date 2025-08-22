@@ -47,10 +47,9 @@ export const sample = <T = any>(period: number) =>
         startSampling();
 
         while (true) {
-          const result = await source.next();
-          if (result.done) break;
-          if (result.phantom) continue;
-          lastValue = result.value;
+          const { value, done } = await source.next();
+          if (done) break;
+          lastValue = value;
         }
 
         // Emit the final value after source completes

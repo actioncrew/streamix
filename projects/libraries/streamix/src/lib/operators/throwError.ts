@@ -19,8 +19,8 @@ export const throwError = <T = any>(message: string) =>
     let done = false;
 
     return {
-      async next(): Promise<StreamResult<never>> {
-        if (done) return { done: true, value: undefined };
+      async next(): Promise<IteratorResult<never>> {
+        if (done) return { done: true as const, value: undefined as never };
 
         done = true;
         throw new Error(message);
