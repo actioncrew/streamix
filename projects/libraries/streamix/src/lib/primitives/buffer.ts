@@ -168,7 +168,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
       try {
         const reader = readers.get(readerId);
         if (!reader || !reader.isActive) {
-          return { done: true } as IteratorReturnResult<void>;
+          return { done: true } as IteratorResult<T>;
         }
 
         if (hasValue && reader.lastSeenVersion < version) {
@@ -180,7 +180,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
           result = { value: value as T, done: false };
           reader.lastSeenVersion = version;
         } else if (isCompleted) {
-          return { done: true } as IteratorReturnResult<void>;
+          return { done: true } as IteratorResult<T>;
         }
       } finally {
         releaseLock();
@@ -201,7 +201,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
     try {
       const reader = readers.get(readerId);
       if (!reader || !reader.isActive) {
-        return { done: true } as IteratorReturnResult<void>;
+        return { done: true } as IteratorResult<T>;
       }
 
       if (hasValue && reader.lastSeenVersion < version) {
@@ -210,7 +210,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
       }
 
       if (isCompleted) {
-        return { done: true } as IteratorReturnResult<void>;
+        return { done: true } as IteratorResult<T>;
       }
 
       return { value: undefined as T, done: false };
