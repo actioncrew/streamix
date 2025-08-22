@@ -15,23 +15,21 @@ import { createOperator } from "../abstractions";
  */
 export const toArray = <T = any>() =>
   createOperator<T, T[]>("toArray", (source) => {
-    let collected: T[] | null = null;
-    let emitted = false;
+    const collected: T[] = [];   // ✅ lives across all next() calls
+    let emitted = false;         // ✅ ensures we only emit once
 
     return {
       async next(): Promise<IteratorResult<T[]>> {
         while (true) {
           if (emitted) return { done: true, value: undefined };
+          const result = await source.next();
 
-          collected = [];
-          while (true) {
-            const { value, done } = await source.next();
-            if (done) break;
-            collected.push(value);
+          if (result.done) {
+            emitted = true;
+            return { done: false, value: collected };
           }
 
-          emitted = true;
-          return { done: false, value: collected };
+          collected.push(result.value);
         }
       }
     };
