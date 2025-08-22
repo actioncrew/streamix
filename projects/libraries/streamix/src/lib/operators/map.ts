@@ -21,14 +21,24 @@ export const map = <T = any, R = any>(
 ) =>
   createOperator<T, R>('map', (source) => {
     let index = 0;
+    let completed = false;
+
     return {
       async next(): Promise<IteratorResult<R>> {
-        const result = await source.next();
-        if (result.done) return result;
-        return {
-          value: await transform(result.value, index++),
-          done: false,
-        };
+        while (true) {
+          if (completed) {
+            return { value: undefined as any, done: true };
+          }
+
+          const result = await source.next();
+          if (result.done) {
+            completed = true;
+            return { value: undefined as any, done: true };
+          }
+
+          const transformedValue = await transform(result.value, index++);
+          return { value: transformedValue, done: false };
+        }
       },
     };
   });

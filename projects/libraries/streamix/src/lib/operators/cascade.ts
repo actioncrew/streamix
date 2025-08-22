@@ -65,25 +65,40 @@ export function cascade<T = any, R = any>(...tasks: Coroutine<any, any>[]): Coro
 export function cascade<T = any, R = any>(
   ...tasks: Coroutine<any, any>[]
 ): CoroutineLike<T, R> {
-  const operator = createOperator<T, R>("cascade", (source) => ({
-    async next() {
-      const { done, value } = await source.next();
-      if (done) return { done: true, value: undefined };
+  const operator = createOperator<T, R>("cascade", (source) => {
+    let completed = false;
 
-      let result: any = value;
-      for (const task of tasks) {
-        result = await task.processTask(result);
+    return {
+      async next() {
+        while (true) {
+          if (completed) {
+            return { done: true, value: undefined };
+          }
+
+          const { done, value } = await source.next();
+          if (done) {
+            completed = true;
+            return { done: true, value: undefined };
+          }
+
+          let result: any = value;
+          for (const task of tasks) {
+            result = await task.processTask(result);
+          }
+
+          return { done: false, value: result as R };
+        }
+      },
+      async return() {
+        completed = true;
+        return { done: true, value: undefined };
+      },
+      async throw(err) {
+        completed = true;
+        throw err;
       }
-
-      return { done: false, value: result as R };
-    },
-    async return() {
-      return { done: true, value: undefined };
-    },
-    async throw(err) {
-      throw err;
-    }
-  })) as Operator<T, R>;
+    };
+  }) as Operator<T, R>;
 
   const coroutineLike: CoroutineLike<T, R> = Object.assign(operator, {
     async processTask(data: T) {

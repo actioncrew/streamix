@@ -14,21 +14,31 @@ export const endWith = <T = any>(finalValue: T) =>
   createOperator<T, T>("endWith", (source) => {
     let sourceDone = false;
     let finalEmitted = false;
+    let completed = false;
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        if (!sourceDone) {
-          const result = await source.next();
-          if (!result.done) return result;
-          sourceDone = true;
-        }
+        while (true) {
+          if (completed) {
+            return { done: true, value: undefined };
+          }
 
-        if (!finalEmitted) {
-          finalEmitted = true;
-          return { done: false, value: finalValue };
-        }
+          if (!sourceDone) {
+            const result = await source.next();
+            if (!result.done) {
+              return result;
+            }
+            sourceDone = true;
+          }
 
-        return { done: true, value: undefined };
+          if (!finalEmitted) {
+            finalEmitted = true;
+            return { done: false, value: finalValue };
+          }
+
+          completed = true;
+          return { done: true, value: undefined };
+        }
       }
     };
   });

@@ -23,15 +23,24 @@ export const scan = <T = any, R = any>(
   createOperator<T, R>("scan", (source) => {
     let acc = seed;
     let index = 0;
+    let completed = false;
 
     return {
       async next(): Promise<IteratorResult<R>> {
-        const { done, value } = await source.next();
-        if (done) {
-          return { done: true, value: undefined };
+        while (true) {
+          if (completed) {
+            return { done: true, value: undefined };
+          }
+
+          const { done, value } = await source.next();
+          if (done) {
+            completed = true;
+            return { done: true, value: undefined };
+          }
+
+          acc = await accumulator(acc, value, index++);
+          return { done: false, value: acc };
         }
-        acc = await accumulator(acc, value, index++);
-        return { done: false, value: acc };
       },
     };
   });

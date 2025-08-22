@@ -383,25 +383,39 @@ export function coroutine<T, R>(
       }
     };
 
-    const operator = createOperator<T, R>("coroutine", (source) => ({
-      async next() {
-        if (isFinalizing) return { done: true, value: undefined };
-        const { done, value } = await source.next();
-        if (done) {
+    const operator = createOperator<T, R>("coroutine", (source) => {
+      let completed = false;
+
+      return {
+        async next() {
+          while (true) {
+            if (completed || isFinalizing) {
+              return { done: true, value: undefined };
+            }
+
+            const { done, value } = await source.next();
+            if (done) {
+              completed = true;
+              await finalize();
+              return { done: true, value: undefined };
+            }
+
+            const result = await processTask(value as any);
+            return { done: false, value: result };
+          }
+        },
+        async return() {
+          completed = true;
           await finalize();
           return { done: true, value: undefined };
+        },
+        async throw(err) {
+          completed = true;
+          await finalize();
+          throw err;
         }
-        return { done: false, value: await processTask(value as any) };
-      },
-      async return() {
-        await finalize();
-        return { done: true, value: undefined };
-      },
-      async throw(err) {
-        await finalize();
-        throw err;
-      }
-    }));
+      };
+    });
 
     return {
       ...operator,

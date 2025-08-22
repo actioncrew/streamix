@@ -15,27 +15,33 @@ import { createOperator } from "../abstractions";
 export const defaultIfEmpty = <T = any>(defaultValue: T) =>
   createOperator<T, T>("defaultIfEmpty", (source) => {
     let emitted = false;
-    let done = false;
+    let completed = false;
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        if (done) return { done: true, value: undefined };
+        while (true) {
+          if (completed) {
+            return { done: true, value: undefined };
+          }
 
-        const result = await source.next();
+          const result = await source.next();
 
-        if (!result.done) {
-          emitted = true;
-          return result;
+          if (!result.done) {
+            emitted = true;
+            return result;
+          }
+
+          // Source completed
+          if (!emitted) {
+            // Source was empty, emit default value
+            completed = true;
+            return { done: false, value: defaultValue };
+          }
+
+          // Source had values, just complete
+          completed = true;
+          return { done: true, value: undefined };
         }
-
-        if (!emitted) {
-          emitted = true;
-          done = true;
-          return { done: false, value: defaultValue };
-        }
-
-        done = true;
-        return { done: true, value: undefined };
       }
     };
   });

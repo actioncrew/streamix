@@ -14,15 +14,28 @@ import { createOperator } from "../abstractions";
 export const startWith = <T = any>(initialValue: T) =>
   createOperator<T, T>("startWith", (source) => {
     let emittedInitial = false;
+    let completed = false;
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        if (!emittedInitial) {
-          emittedInitial = true;
-          return { done: false, value: initialValue };
-        }
+        while (true) {
+          if (completed) {
+            return { done: true, value: undefined };
+          }
 
-        return source.next();
+          if (!emittedInitial) {
+            emittedInitial = true;
+            return { done: false, value: initialValue };
+          }
+
+          const result = await source.next();
+          if (result.done) {
+            completed = true;
+            return { done: true, value: undefined };
+          }
+
+          return result;
+        }
       }
     };
   });

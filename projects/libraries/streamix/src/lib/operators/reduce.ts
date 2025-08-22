@@ -22,29 +22,29 @@ export const reduce = <T = any, A = any>(
   seed: A
 ) =>
   createOperator<T, A>("reduce", (source) => {
-    let done = false;
+    let completed = false;
 
     return {
       async next(): Promise<IteratorResult<A>> {
-        if (done) return { done: true, value: undefined };
+        while (true) {
+          if (completed) {
+            return { done: true, value: undefined };
+          }
 
-        let acc = seed;
+          let acc = seed;
 
-        for await (const result of {
-          async *[Symbol.asyncIterator]() {
-            while (true) {
-              const { done, value } = await source.next();
-              if (done) break;
-              acc = await accumulator(acc, value as T);
+          // Consume the entire source stream
+          while (true) {
+            const result = await source.next();
+            if (result.done) {
+              break;
             }
-            yield acc;
-          },
-        }) {
-          done = true;
-          return { done: false, value: result };
-        }
+            acc = await accumulator(acc, result.value);
+          }
 
-        return { done: true, value: undefined };
+          completed = true;
+          return { done: false, value: acc };
+        }
       },
     };
   });

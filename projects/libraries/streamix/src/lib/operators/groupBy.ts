@@ -31,12 +31,25 @@ export type GroupItem<T = any, K = any> = {
 export const groupBy = <T = any, K = any>(
   keySelector: (value: T) => CallbackReturnType<K>
 ) =>
-  createOperator<T, GroupItem<T, K>>("groupBy", (source) => ({
-    async next(): Promise<IteratorResult<GroupItem<T, K>>> {
-      const result = await source.next();
-      if (result.done) return result;
+  createOperator<T, GroupItem<T, K>>("groupBy", (source) => {
+    let completed = false;
 
-      const key = await keySelector(result.value);
-      return { value: { key, value: result.value }, done: false };
-    }
-  }));
+    return {
+      async next(): Promise<IteratorResult<GroupItem<T, K>>> {
+        while (true) {
+          if (completed) {
+            return { value: undefined as any, done: true };
+          }
+
+          const result = await source.next();
+          if (result.done) {
+            completed = true;
+            return { value: undefined as any, done: true };
+          }
+
+          const key = await keySelector(result.value);
+          return { value: { key, value: result.value }, done: false };
+        }
+      }
+    };
+  });

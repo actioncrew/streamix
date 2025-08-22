@@ -16,24 +16,39 @@ import { CallbackReturnType, createOperator } from "../abstractions";
 export const finalize = <T = any>(callback: () => CallbackReturnType) =>
   createOperator<T, T>("finalize", (source) => {
     let finalized = false;
+    let completed = false;
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        try {
-          const result = await source.next();
-
-          if (result.done && !finalized) {
-            finalized = true;
-            await callback?.();
+        while (true) {
+          if (completed) {
+            return { done: true, value: undefined };
           }
 
-          return result;
-        } catch (err) {
-          if (!finalized) {
-            finalized = true;
-            await callback?.();
+          try {
+            const result = await source.next();
+
+            if (result.done && !finalized) {
+              finalized = true;
+              completed = true;
+              await callback?.();
+              return { done: true, value: undefined };
+            }
+
+            if (result.done) {
+              completed = true;
+              return { done: true, value: undefined };
+            }
+
+            return result;
+          } catch (err) {
+            if (!finalized) {
+              finalized = true;
+              completed = true;
+              await callback?.();
+            }
+            throw err;
           }
-          throw err;
         }
       }
     };
