@@ -18,27 +18,30 @@ import { CallbackReturnType, createOperator } from "../abstractions";
  * and `false` means to stop and complete. It can be synchronous or asynchronous.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const takeWhile = <T = any>(predicate: (value: T) => CallbackReturnType<boolean>) =>
+export const takeWhile = <T = any>(
+  predicate: (value: T) => CallbackReturnType<boolean>
+) =>
   createOperator<T, T>("takeWhile", (source) => {
     let done = false;
 
     return {
       async next(): Promise<IteratorResult<T>> {
-        if (done) return { done: true, value: undefined };
+        while (true) {
+          if (done) return { done: true, value: undefined };
+          const result = await source.next();
 
-        const result = await source.next();
+          if (result.done) {
+            done = true;
+            return result;
+          }
 
-        if (result.done) {
-          done = true;
-          return result;
+          if (!(await predicate(result.value))) {
+            done = true;
+            return { done: true, value: undefined };
+          }
+
+          return result; // ✅ only emit if predicate passes
         }
-
-        if (!await predicate(result.value)) {
-          done = true;
-          return { done: true, value: undefined };
-        }
-
-        return result;
-      }
+      },
     };
   });
