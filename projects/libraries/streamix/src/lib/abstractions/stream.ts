@@ -4,6 +4,76 @@ import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
 /**
+ * Represents a single emission from a Streamix stream.
+ *
+ * This can be either:
+ * 1. A normal iterator result (`IteratorResult<T>`) with `value` and `done` properties.
+ * 2. A "phantom" emission, where `phantom: true` indicates that the value
+ *    was suppressed by an operator or the stream ended prematurely.
+ *
+ * @template T - The type of the values emitted by the stream.
+ */
+export type StreamResult<T> = {
+  value: T;
+  done: boolean;
+  phantom?: boolean;
+} | {
+  value: undefined;
+  done: true;
+};
+
+/**
+ * A specialized asynchronous iterator for streams that yields {@link StreamResult} objects.
+ *
+ * This interface extends the standard `AsyncIterator` contract by returning
+ * {@link StreamResult} instead of plain `IteratorResult`. This allows the stream
+ * to communicate both actual values and *phantom emissions* (values that were
+ * produced but filtered out or suppressed by pipeline operators).
+ *
+ * @template T The type of the values produced by this iterator.
+ */
+export interface StreamIterator<T> {
+  /**
+   * Retrieves the next result from the stream.
+   *
+   * @param value An optional value to send into the iterator.
+   * @returns A promise resolving to the next {@link StreamResult}.
+   */
+  next(value?: any): Promise<StreamResult<T>>;
+
+  /**
+   * Signals that the consumer is done with the stream and
+   * allows cleanup logic in the iterator.
+   *
+   * @param value An optional value to return from the stream.
+   * @returns A promise resolving to the final {@link StreamResult}.
+   */
+  return?(value?: any): Promise<StreamResult<T>>;
+
+  /**
+   * Propagates an error into the iterator, allowing it to handle
+   * or propagate the exception downstream.
+   *
+   * @param e An optional error to throw inside the iterator.
+   * @returns A promise resolving to the next {@link StreamResult}.
+   */
+  throw?(e?: any): Promise<StreamResult<T>>;
+}
+
+/**
+ * A specialized async generator used in Streamix.
+ *
+ * Unlike the native `AsyncGenerator`, this yields {@link StreamResult}
+ * values, which may include phantom emissions in addition to normal
+ * `IteratorResult` values.
+ *
+ * @template T The type of values emitted by the generator.
+ */
+export interface StreamGenerator<T> extends StreamIterator<T> {
+  [Symbol.asyncIterator](): StreamGenerator<T>;
+}
+
+/**
  * Represents a reactive stream that supports subscriptions and operator chaining.
  *
  * A stream is a sequence of values over time that can be subscribed to for notifications.

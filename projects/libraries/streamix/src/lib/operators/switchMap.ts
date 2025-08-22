@@ -68,11 +68,12 @@ export function switchMap<T = any, R = any>(project: (value: T, index: number) =
     (async () => {
       try {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
+          const result = await source.next();
+          if (result.done) break;
+          if (result.phantom) continue;
 
           const streamId = ++currentInnerStreamId;
-          const innerStream = fromAny(project(value, index++));
+          const innerStream = fromAny(project(result.value, index++));
           subscribeToInner(innerStream, streamId);
         }
         inputCompleted = true;

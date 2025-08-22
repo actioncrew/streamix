@@ -22,34 +22,34 @@ export const some = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, boolean>('some', (source) => {
-    let evaluated = false;
-    let result: boolean = false;
+    let completed = false;
     let index = 0;
 
     return {
-      async next(): Promise<IteratorResult<boolean>> {
-        if (evaluated) {
+      async next(): Promise<StreamResult<boolean>> {
+        if (completed) {
           return { value: undefined, done: true };
         }
 
-        try {
-          while (true) {
-            const itemResult = await source.next();
-            if (itemResult.done) {
-              break; // Source completed
-            }
-            if (await predicate(itemResult.value, index++)) {
-              result = true;
-              break; // Predicate matched, no need to continue
-            }
-          }
-        } catch (err) {
-          throw err;
-        } finally {
-          evaluated = true;
-        }
+        while (true) {
+          const result = await source.next();
 
-        return { value: result, done: false };
+          if (result.done) {
+            // Source completed without finding a match
+            completed = true;
+            return { value: false, done: true };
+          }
+
+          if (result.phantom) {
+            continue;
+          }
+
+          if (await predicate(result.value, index++)) {
+            // Predicate matched - emit true and complete
+            completed = true;
+            return { value: true, done: true };
+          }
+        }
       }
     };
   });
