@@ -293,9 +293,9 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
   ...operators: [...Ops]
 ): Stream<any> {
-  const createTransformedIterator = (): AsyncIterator<any> => {
-    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
-    return operators.reduce<AsyncIterator<any>>(
+  const createTransformedIterator = (): StreamIterator<any> => {
+    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
+    return operators.reduce<StreamIterator<any>>(
       (iter, op) => op.apply(iter),
       baseIterator
     );

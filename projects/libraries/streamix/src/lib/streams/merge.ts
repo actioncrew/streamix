@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, Stream, StreamResult } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
