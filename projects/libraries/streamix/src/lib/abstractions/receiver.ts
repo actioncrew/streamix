@@ -28,6 +28,19 @@ export type Receiver<T = any> = {
    */
   next?: (value: T) => CallbackReturnType;
   /**
+   * A callback function that is invoked when a value is emitted as a *phantom*.
+   *
+   * A *phantom* value is a value that was produced by a stream or operator
+   * but is considered suppressed, filtered, or skipped for normal consumption.
+   * This allows receivers to be notified of these intermediate or discarded values
+   * without treating them as actual emissions.
+   *
+   * @template T The type of the phantom value.
+   * @param value The value emitted as a phantom by the stream.
+   * @returns A value of type {@link CallbackReturnType}, typically ignored.
+   */
+  phantom?: (value: any) => CallbackReturnType;
+  /**
    * A function called if the stream encounters an error.
    * @param err The error that occurred.
    */
@@ -94,6 +107,18 @@ export function createReceiver<T = any>(
       if (!_completed) {
         try {
           await receiver.next?.call(receiver, value);
+        } catch (err) {
+          await wrappedReceiver.error(err instanceof Error ? err : new Error(String(err)));
+        }
+      }
+    },
+    /**
+     * @inheritdoc
+     */
+    phantom: async (value: any) => {
+      if (!_completed) {
+        try {
+          await receiver.phantom?.call(receiver, value);
         } catch (err) {
           await wrappedReceiver.error(err instanceof Error ? err : new Error(String(err)));
         }

@@ -152,6 +152,37 @@ export type Stream<T = any> = {
 };
 
 /**
+ * Wraps a StreamIterator to intercept phantoms immediately
+ */
+export function createStreamInterceptor<T>(
+  source: StreamIterator<T>,
+  phantomHandler?: (value: T) => CallbackReturnType
+): StreamIterator<T> {
+  return {
+    async next(value?: any): Promise<StreamResult<T>> {
+      const result = await source.next(value);
+
+      // Intercept phantom immediately when it's emitted
+      if (!result.done && result.phantom && phantomHandler) {
+        await phantomHandler(result.value);
+        // Continue to next value instead of returning phantom
+        return this.next(value);
+      }
+
+      return result;
+    },
+
+    async return(value?: any): Promise<StreamResult<T>> {
+      return source.return?.(value) ?? { done: true, value: undefined };
+    },
+
+    async throw(e?: any): Promise<StreamResult<T>> {
+      return source.throw?.(e) ?? { done: true, value: undefined };
+    }
+  };
+}
+
+/**
  * Creates a multicast stream from an async generator function.
  *
  * A **multicast stream** (also known as a hot stream) starts executing its work
@@ -309,12 +340,15 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
   ...operators: [...Ops]
 ): Stream<any> {
-  const createTransformedIterator = (): StreamIterator<any> => {
+  const createTransformedIterator = (phantomHandler?: (value: any) => CallbackReturnType): StreamIterator<any> => {
     const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
-    return operators.reduce<StreamIterator<any>>(
-      (iter, op) => op.apply(iter),
-      baseIterator
-    );
+
+    // Apply each operator and wrap with phantom interceptor
+    return operators.reduce<StreamIterator<any>>((iter, op) => {
+      const transformed = op.apply(iter);
+      // Intercept phantoms after each operator
+      return createStreamInterceptor(transformed, phantomHandler);
+    }, baseIterator);
   };
 
   const pipedStream: Stream<any> = {
@@ -326,7 +360,7 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 
     subscribe(cb) {
       const receiver = createReceiver(cb);
-      const transformedIterator = createTransformedIterator();
+      const transformedIterator = createTransformedIterator(receiver.phantom.bind(receiver));
       const abortController = new AbortController();
       const { signal } = abortController;
 
