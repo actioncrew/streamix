@@ -32,10 +32,7 @@ export const take = <T = any>(count: number) =>
             return { done: true, value: undefined };
           }
 
-          if (result.phantom) {
-            // Propagate phantom downstream
-            return { value: result.value, done: false, phantom: true };
-          }
+          if (result.phantom) continue;
 
           emitted++;
 

@@ -52,10 +52,7 @@ export function skipUntil<T = any>(notifier: Stream) {
           }
 
           // If the source stream has phantom values, we pass them through.
-          if (result.phantom) {
-            output.phantom(result.value);
-            continue;
-          }
+          if (result.phantom) continue;
 
           if (canEmit) {
             output.next(result.value);

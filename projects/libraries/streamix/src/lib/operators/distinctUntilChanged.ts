@@ -35,9 +35,7 @@ export const distinctUntilChanged = <T = any>(
             return { value: undefined, done: true };
           }
           // Phantom values from the source are ignored, as their purpose is fulfilled.
-          if (result.phantom) {
-            continue;
-          }
+          if (result.phantom) continue;
 
           // Check if the value is different from the last one.
           const isDistinct = !hasLast || !(comparator ? comparator(lastValue!, result.value) : lastValue === result.value);

@@ -41,9 +41,7 @@ export const scan = <T = any, R = any>(
             return { done: true, value: undefined };
           }
 
-          if (result.phantom) {
-            return { done: false, value: acc, phantom: true }; // propagate phantom
-          }
+          if (result.phantom) continue;
 
           acc = await accumulator(acc, result.value, index++);
           return { done: false, value: acc };

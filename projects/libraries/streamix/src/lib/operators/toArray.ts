@@ -49,10 +49,7 @@ export const toArray = <T = any>() =>
             continue;
           }
 
-          if (result.phantom) {
-            // forward phantom immediately
-            return result as StreamResult<T[]>;
-          }
+          if (result.phantom) continue;
 
           // collect real value
           collected.push(result.value);

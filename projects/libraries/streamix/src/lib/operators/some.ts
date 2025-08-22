@@ -39,10 +39,7 @@ export const some = <T = any>(
 
             if (result.done) break;
 
-            if (result.phantom) {
-              // Pass phantom downstream
-              return { value: false, done: false, phantom: true };
-            }
+            if (result.phantom) continue;
 
             if (await predicate(result.value, index++)) {
               found = true;

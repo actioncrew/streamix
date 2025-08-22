@@ -28,10 +28,7 @@ export const skipWhile = <T = any>(
 
           if (result.done) return { value: undefined, done: true };
 
-          if (result.phantom) {
-            // Forward phantom downstream
-            return { value: result.value, done: false, phantom: true };
-          }
+          if (result.phantom) continue;
 
           if (skipping) {
             if (!await predicate(result.value)) {
