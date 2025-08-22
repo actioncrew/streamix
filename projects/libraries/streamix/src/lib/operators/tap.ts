@@ -20,14 +20,14 @@ export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType) =>
   createOperator<T, T>('tap', (source) => {
     return {
       async next(): Promise<IteratorResult<T>> {
-        const result = await source.next();
+        while(true) {
+          const result = await source.next();
 
-        if (result.done) {
-          return { done: true, value: undefined };
+          if (result.done) return result;
+
+          await tapFunction(result.value); // side-effect
+          return result;
         }
-
-        await tapFunction(result.value); // side-effect
-        return { done: false, value: result.value };
       }
     };
   });
