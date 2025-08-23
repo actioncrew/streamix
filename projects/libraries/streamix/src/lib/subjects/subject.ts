@@ -3,7 +3,6 @@ import {
   createReceiver,
   createSubscription,
   Operator,
-  PipeContext,
   pipeStream,
   Receiver,
   Stream,
@@ -27,19 +26,6 @@ export type Subject<T = any> = Stream<T> & {
    * @returns {void}
    */
   next(value: T): void;
-
-  /**
-   * Pushes a **phantom value** to all subscribers.
-   *
-   * Phantom values indicate that a value was skipped or replaced,
-   * but are still emitted downstream to preserve stream consistency.
-   * Phantom values **do not update** the `snappy` (latest) value of the subject.
-   *
-   * @param {T} value - The value to emit as a phantom.
-   * @returns {void}
-   */
-  phantom(value: any): void;
-
   /**
    * Signals that the subject has completed and will emit no more values.
    * This completion signal is sent to all subscribers.
@@ -90,13 +76,6 @@ export function createSubject<T = any>(): Subject<T> {
     });
   };
 
-  const phantom = function (value: T) {
-    queue.enqueue(async () => {
-      if (isCompleted || hasError) return;
-      await buffer.write({ value, phantom: true });
-    });
-  };
-
   const complete = () => {
     queue.enqueue(async () => {
       if (isCompleted) return;
@@ -117,10 +96,7 @@ export function createSubject<T = any>(): Subject<T> {
 
   const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const context: PipeContext = {
-      operatorStack: [],
-      phantomHandler: receiver.phantom.bind(receiver),
-    };
+
     let unsubscribing = false;
     let readerId: number | null = null;
 
@@ -141,7 +117,7 @@ export function createSubject<T = any>(): Subject<T> {
         while (true) {
           const { value: result, done } = await buffer.read(readerId);
           if (done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
+
           await receiver.next(result.value);
         }
       } catch (err: any) {
@@ -175,7 +151,6 @@ export function createSubject<T = any>(): Subject<T> {
       return await firstValueFrom(this);
     },
     next,
-    phantom,
     complete,
     completed: () => isCompleted,
     error,

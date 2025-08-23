@@ -3,7 +3,6 @@ import {
   createReceiver,
   createSubscription,
   Operator,
-  PipeContext,
   pipeStream,
   Receiver,
   Stream,
@@ -40,7 +39,7 @@ export type ReplaySubject<T = any> = Subject<T>;
  * @returns {ReplaySubject<T>} A new ReplaySubject instance.
  */
 export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
-  const buffer = createReplayBuffer<{ value: T, phantom?: boolean }>(capacity) as ReplayBuffer;
+  const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
   const queue = createQueue();
   let isCompleted = false;
   let hasError = false;
@@ -50,14 +49,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write({ value });
-    });
-  };
-
-  const phantom = function (value: T) {
-    queue.enqueue(async () => {
-      if (isCompleted || hasError) return;
-      await buffer.write({ value, phantom: true });
+      await buffer.write(value);
     });
   };
 
@@ -81,10 +73,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
 
   const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const context: PipeContext = {
-      operatorStack: [],
-      phantomHandler: receiver.phantom.bind(receiver),
-    };
+
     let unsubscribing = false;
     let readerId: number | null = null;
     let latestValue: T | undefined;
@@ -104,10 +93,10 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       readerId = id;
       try {
         while (true) {
-          const { value: result, done } = await buffer.read(readerId);
+          const { value, done } = await buffer.read(readerId);
           if (done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
-          latestValue = result.value;
+
+          latestValue = value;
           await receiver.next(latestValue!);
         }
       } catch (err: any) {
@@ -143,7 +132,6 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       return latestValue;
     },
     next,
-    phantom,
     complete,
     completed: () => isCompleted,
     error,

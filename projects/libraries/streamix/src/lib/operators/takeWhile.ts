@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator, NEXT } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -33,7 +33,8 @@ export const takeWhile = <T = any>(
           if (result.done) return result;
 
           if (!active) {
-            return { ...result, phantom: true };
+            context.phantomHandler(result.value);
+            continue;
           }
 
           const pass = await predicate(result.value);
@@ -41,7 +42,10 @@ export const takeWhile = <T = any>(
             active = false;
             // turn this failed one into phantom too
             context.phantomHandler(result.value);
+            continue;
           }
+
+          return NEXT(result.value);
         }
       },
     };

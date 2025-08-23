@@ -3,7 +3,6 @@ import {
   createReceiver,
   createSubscription,
   Operator,
-  PipeContext,
   pipeStream,
   Receiver,
   Stream,
@@ -45,7 +44,7 @@ export type BehaviorSubject<T = any> = Subject<T> & {
  * @returns {BehaviorSubject<T>} A new BehaviorSubject instance.
  */
 export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
-  const buffer = createBehaviorSubjectBuffer<{value: T, phantom?: boolean }>({ value: initialValue });
+  const buffer = createBehaviorSubjectBuffer<T>(initialValue);
   const queue = createQueue();
   let latestValue = initialValue;
   let isCompleted = false;
@@ -55,14 +54,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     latestValue = value;
     queue.enqueue(async () => {
       if (isCompleted || hasError) return;
-      await buffer.write({ value });
-    });
-  };
-
-  const phantom = function (value: T) {
-    queue.enqueue(async () => {
-      if (isCompleted || hasError) return;
-      await buffer.write({ value, phantom: true });
+      await buffer.write(value);
     });
   };
 
@@ -86,10 +78,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
 
   const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const context: PipeContext = {
-      operatorStack: [],
-      phantomHandler: receiver.phantom.bind(receiver),
-    };
+
     let unsubscribing = false;
     let readerId: number | null = null;
 
@@ -108,10 +97,10 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       readerId = id;
       try {
         while (true) {
-          const { value: result, done } = await buffer.read(readerId);
+          const { value, done } = await buffer.read(readerId);
           if (done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
-          await receiver.next(result.value);
+
+          await receiver.next(value);
         }
       } catch (err: any) {
         await receiver.error(err);
@@ -144,7 +133,6 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       return await firstValueFrom(this);
     },
     next,
-    phantom,
     complete,
     completed: () => isCompleted,
     error,
