@@ -27,7 +27,7 @@ import { createSubject } from "../streams";
 export function switchMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) {
-  return createOperator<T, R>("switchMap", (source) => {
+  return createOperator<T, R>("switchMap", (source, context) => {
     const output = createSubject<R>();
 
     let currentSubscription: Subscription | null = null;
@@ -82,7 +82,7 @@ export function switchMap<T = any, R = any>(
           const result = await source.next();
           if (result.done) break;
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           // Track outer value in case inner stream emits nothing
           pendingPhantom = result;

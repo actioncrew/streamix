@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, StreamResult } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, NEXT, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that emits only the first element from the source stream
@@ -20,14 +20,14 @@ import { CallbackReturnType, createOperator, StreamResult } from "../abstraction
  * value is found before the source stream completes.
  */
 export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator<T, T>('first', (source) => {
+  createOperator<T, T>('first', (source, context) => {
     let found = false;
     let firstValue: T | undefined;
     let sourceDone = false;
 
     async function next(): Promise<StreamResult<T>> {
       if (found) {
-        return { value: undefined, done: true };
+        return COMPLETE;
       }
 
       if (sourceDone) {
@@ -41,17 +41,17 @@ export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<bool
           throw new Error("No elements in sequence");
         }
 
-        if (result.phantom) continue;
+        if (result.phantom) { context.phantomHandler(result.value); continue; }
 
         const value = result.value;
         if (!predicate || await predicate(value)) {
           found = true;
           firstValue = value;
-          return { value: firstValue!, done: false };
+          return NEXT(firstValue!);
         }
       }
 
-      return { value: undefined, done: true };
+      return COMPLETE;
     }
 
     return { next };

@@ -1,4 +1,5 @@
-import { createOperator } from "../abstractions";
+import { COMPLETE, createOperator } from "../abstractions";
+import { NEXT } from './../abstractions/operator';
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -12,7 +13,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const endWith = <T = any>(finalValue: T) =>
-  createOperator<T, T>("endWith", (source) => {
+  createOperator<T, T>("endWith", (source, context) => {
     let sourceDone = false;
     let finalEmitted = false;
     let completed = false;
@@ -21,12 +22,12 @@ export const endWith = <T = any>(finalValue: T) =>
       async next(): Promise<StreamResult<T>> {
         while (true) {
           if (completed) {
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
           if (!sourceDone) {
             const result = await source.next();
-            if (!result.done && result.phantom) continue;
+            if (!result.done && result.phantom) { context.phantomHandler(result.value); continue; }
 
             if (!result.done) {
               return result;
@@ -38,11 +39,11 @@ export const endWith = <T = any>(finalValue: T) =>
 
           if (!finalEmitted) {
             finalEmitted = true;
-            return { done: false, value: finalValue };
+            return NEXT(finalValue);
           }
 
           completed = true;
-          return { done: true, value: undefined };
+          return COMPLETE;
         }
       }
     };

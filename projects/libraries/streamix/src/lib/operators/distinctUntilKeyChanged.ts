@@ -1,4 +1,4 @@
-import { createOperator, Operator } from '../abstractions';
+import { createOperator, NEXT, Operator } from '../abstractions';
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -20,7 +20,7 @@ export const distinctUntilKeyChanged = <T extends object = any>(
   key: keyof T,
   comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean | Promise<boolean>
 ): Operator<T, T> =>
-  createOperator<T, T>('distinctUntilKeyChanged', (source) => {
+  createOperator<T, T>('distinctUntilKeyChanged', (source, context) => {
     let lastValue: T | undefined;
     let isFirst = true;
 
@@ -29,7 +29,7 @@ export const distinctUntilKeyChanged = <T extends object = any>(
         while (true) {
           const result = await source.next();
           if (result.done) return result;
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const current = result.value;
 
@@ -43,10 +43,11 @@ export const distinctUntilKeyChanged = <T extends object = any>(
 
           if (isDistinct) {
             lastValue = current;
-            return { value: current, done: false, phantom: false };
+            return NEXT(current);
           } else {
             // If the value's key is a consecutive duplicate, return a phantom.
-            return { value: current, done: false, phantom: true };
+            context.phantomHandler(current);
+            continue;
           }
         }
       }

@@ -1,5 +1,4 @@
-import { createOperator } from "../abstractions";
-import { StreamResult } from './../abstractions/stream';
+import { COMPLETE, NEXT, PHANTOM, StreamResult, createOperator } from "../abstractions";
 
 /**
  * Creates a stream operator that buffers a fixed number of values and emits them as arrays.
@@ -14,7 +13,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
-  createOperator<T, T[]>("bufferCount", (source) => {
+  createOperator<T, T[]>("bufferCount", (source, context) => {
     let completed = false;
     let phantomQueue: T[] = [];
 
@@ -22,13 +21,13 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
       async next(): Promise<StreamResult<T[]>> {
         while (true) {
           if (completed && phantomQueue.length === 0) {
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
           // First emit any queued phantom values
           if (phantomQueue.length > 0) {
             const phantomValue = phantomQueue.shift()!;
-            return { done: false, value: phantomValue as any, phantom: true };
+            return PHANTOM(phantomValue) as any;
           }
 
           const buffer: T[] = [];
@@ -39,11 +38,11 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
             if (result.done) {
               completed = true;
               return buffer.length > 0
-                ? { done: false, value: buffer }
-                : { done: true, value: undefined };
+                ? NEXT(buffer)
+                : COMPLETE;
             }
 
-            if (result.phantom) continue;
+            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             buffer.push(result.value);
 
@@ -52,7 +51,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
           }
 
           // Buffer full, emit it normally
-          return { done: false, value: buffer };
+          return NEXT(buffer);
         }
       }
     };

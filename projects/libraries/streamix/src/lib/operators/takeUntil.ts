@@ -38,7 +38,7 @@ import { createSubject } from '../streams';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function takeUntil<T = any>(notifier: Stream) {
-  return createOperator<T, T>('takeUntil', (source) => {
+  return createOperator<T, T>('takeUntil', (source, context) => {
     const output = createSubject<T>();
     let shouldStop = false;
 
@@ -63,7 +63,7 @@ export function takeUntil<T = any>(notifier: Stream) {
         while (!shouldStop) {
           const result = await source.next();
           if (result.done || shouldStop) break;
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           output.next(result.value);
         }

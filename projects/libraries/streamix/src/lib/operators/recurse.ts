@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, NEXT, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 import { StreamResult } from './../abstractions/stream';
 
@@ -43,7 +43,7 @@ export const recurse = <T = any>(
   project: (value: T) => Stream<T>,
   options: RecurseOptions = {}
 ) =>
-  createOperator<T, T>('recurse', (source) => {
+  createOperator<T, T>('recurse', (source, context) => {
     type QueueItem = { value: T; depth: number };
     const queue: QueueItem[] = [];
     let sourceDone = false;
@@ -72,7 +72,7 @@ export const recurse = <T = any>(
               sourceDone = true;
               break;
             }
-            if (result.phantom) continue;
+            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             queue.push({ value: result.value, depth: 0 });
           }
@@ -82,12 +82,12 @@ export const recurse = <T = any>(
             const item =
               options.traversal === 'breadth' ? queue.shift()! : queue.pop()!;
             await enqueueChildren(item.value, item.depth);
-            return { value: item.value, done: false };
+            return NEXT(item.value);
           }
 
           // If queue is empty and source is done, we're done
           if (sourceDone && queue.length === 0) {
-            return { value: undefined, done: true };
+            return COMPLETE;
           }
 
           // Yield control briefly (avoid busy waiting)

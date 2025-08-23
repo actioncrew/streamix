@@ -22,7 +22,7 @@ import { StreamResult } from './../abstractions/stream';
 export const takeWhile = <T = any>(
   predicate: (value: T) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, T>("takeWhile", (source) => {
+  createOperator<T, T>("takeWhile", (source, context) => {
     let active = true; // controls real values
 
     return {
@@ -31,7 +31,7 @@ export const takeWhile = <T = any>(
           const result = await source.next();
 
           if (result.done) return result;
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           if (!active) {
             return { ...result, phantom: true };

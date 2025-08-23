@@ -1,5 +1,5 @@
 import { eachValueFrom, firstValueFrom } from "../converters";
-import { Operator, OperatorChain } from "./operator";
+import { Operator, OperatorChain, patchOperator, PipeContext } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
@@ -340,27 +340,27 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
   ...operators: [...Ops]
 ): Stream<any> {
-  const createTransformedIterator = (phantomHandler?: (value: any) => CallbackReturnType): StreamIterator<any> => {
-    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
-
-    // Apply each operator and wrap with phantom interceptor
-    return operators.reduce<StreamIterator<any>>((iter, op) => {
-      const transformed = op.apply(iter);
-      // Intercept phantoms after each operator
-      return createStreamInterceptor(transformed, phantomHandler);
-    }, baseIterator);
-  };
-
   const pipedStream: Stream<any> = {
     name: "piped",
     type: "stream",
     pipe: ((...nextOps: Operator<any, any>[]) => {
-      return pipeStream(pipedStream, ...nextOps);
+      return pipeStream(source, ...operators, ...nextOps);
     }) as OperatorChain<any>,
 
     subscribe(cb) {
       const receiver = createReceiver(cb);
-      const transformedIterator = createTransformedIterator(receiver.phantom.bind(receiver));
+      const context: PipeContext = {
+        operatorStack: [],
+        phantomHandler: receiver.phantom.bind(receiver),
+      };
+
+      let currentIterator: StreamIterator<any> = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
+
+      for (const op of operators) {
+        const patchedOp = patchOperator(op);
+        currentIterator = patchedOp.apply(currentIterator, context);
+      }
+
       const abortController = new AbortController();
       const { signal } = abortController;
 
@@ -374,14 +374,14 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
           while (true) {
             const winner = await Promise.race([
               abortPromise.then(() => ({ aborted: true } as const)),
-              transformedIterator.next().then(result => ({ result }))
+              currentIterator.next().then(result => ({ result }))
             ]);
 
             if ("aborted" in winner || signal.aborted) break;
             const result = winner.result;
             if (result.done) break;
-            if (result.phantom) continue;
 
+            // No phantom check is needed here, as the patched operator handles it
             await receiver.next?.(result.value);
           }
         } catch (err: any) {
@@ -395,16 +395,14 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 
       return createSubscription(async () => {
         abortController.abort();
-        if (transformedIterator.return) {
-          await transformedIterator.return().catch(() => {});
+        if (currentIterator.return) {
+          await currentIterator.return().catch(() => {});
         }
       });
     },
-
     async query() {
       return await firstValueFrom(pipedStream);
     }
   };
-
   return pipedStream;
 }

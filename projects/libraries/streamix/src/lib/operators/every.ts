@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, NEXT } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -22,27 +22,27 @@ import { StreamResult } from './../abstractions/stream';
 export const every = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, boolean>("every", (source) => {
+  createOperator<T, boolean>("every", (source, context) => {
     let index = 0;
     let emitted = false;
 
     return {
       async next(): Promise<StreamResult<boolean>> {
-        if (emitted) return { done: true, value: undefined };
+        if (emitted) return COMPLETE;
 
         while (true) {
           const result = await source.next();
 
           if (result.done) {
             emitted = true;
-            return { done: false, value: true };
+            return NEXT(true);
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           if (!await predicate(result.value, index++)) {
             emitted = true;
-            return { done: false, value: false };
+            return NEXT(false);
           }
         }
       },

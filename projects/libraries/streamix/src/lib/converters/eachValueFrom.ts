@@ -1,4 +1,4 @@
-import { Stream, StreamGenerator } from "../abstractions";
+import { COMPLETE, NEXT, Stream, StreamGenerator } from "../abstractions";
 
 /**
  * Converts a `Stream` into an async generator, yielding each emitted value.
@@ -25,7 +25,7 @@ import { Stream, StreamGenerator } from "../abstractions";
  */
 export function eachValueFrom<T = any>(stream: Stream<T>): StreamGenerator<T> {
   async function* generator(): AsyncGenerator<T> {
-    let resolveNext: ((value: { value: T | undefined; done: boolean }) => void) | null = null;
+    let resolveNext: ((value: IteratorResult<T>) => void) | null = null;
     let rejectNext: ((error: any) => void) | null = null;
     let completed = false;
     let error: any = null;
@@ -37,7 +37,7 @@ export function eachValueFrom<T = any>(stream: Stream<T>): StreamGenerator<T> {
           const r = resolveNext;
           resolveNext = null;
           rejectNext = null;
-          r({ value, done: false });
+          r(NEXT(value));
         } else {
           queue.push(value);
         }
@@ -58,7 +58,7 @@ export function eachValueFrom<T = any>(stream: Stream<T>): StreamGenerator<T> {
           const r = resolveNext;
           resolveNext = null;
           rejectNext = null;
-          r({ value: undefined, done: true });
+          r(COMPLETE);
         }
         subscription.unsubscribe();
       },
@@ -74,7 +74,7 @@ export function eachValueFrom<T = any>(stream: Stream<T>): StreamGenerator<T> {
           break;
         } else {
           try {
-            const result = await new Promise<{ value: T | undefined; done: boolean }>((resolve, reject) => {
+            const result = await new Promise<IteratorResult<T>>((resolve, reject) => {
               resolveNext = resolve;
               rejectNext = reject;
             });

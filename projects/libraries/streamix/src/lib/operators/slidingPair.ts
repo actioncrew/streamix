@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { COMPLETE, createOperator, NEXT } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -17,7 +17,7 @@ import { StreamResult } from './../abstractions/stream';
  * emitting tuples of `[T | undefined, T]`.
  */
 export const slidingPair = <T = any>() =>
-  createOperator<T, [T | undefined, T]>('slidingPair', (source) => {
+  createOperator<T, [T | undefined, T]>('slidingPair', (source, context) => {
     let prev: T | undefined = undefined;
     let first = true;
     let completed = false;
@@ -26,22 +26,22 @@ export const slidingPair = <T = any>() =>
       async next(): Promise<StreamResult<[T | undefined, T]>> {
         while (true) {
           if (completed) {
-            return { value: undefined as any, done: true };
+            return COMPLETE;
           }
 
           const result = await source.next();
 
           if (result.done) {
             completed = true;
-            return { value: undefined as any, done: true };
+            return COMPLETE;
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const value: [T | undefined, T] = [first ? undefined : prev, result.value];
           prev = result.value;
           first = false;
-          return { value: value, done: false };
+          return NEXT(value);
         }
       }
     };

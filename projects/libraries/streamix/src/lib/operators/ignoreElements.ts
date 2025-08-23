@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { COMPLETE, createOperator } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -13,19 +13,18 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const ignoreElements = <T>() =>
-  createOperator<T, never>("ignoreElements", (source) => ({
+  createOperator<T, never>("ignoreElements", (source, context) => ({
     async next(): Promise<StreamResult<never>> {
       while (true) {
         const result = await source.next();
         if (result.done) {
           // If the source is done, we are also done.
-          return { done: true, value: undefined };
+          return COMPLETE;
         }
-        if (result.phantom) continue;
 
-        // For every non-phantom value received, we return a phantom.
+        // For every value received, we return a phantom.
         // The value is not passed along, but the event is still signaled.
-        return { done: false, value: result.value as never, phantom: true };
+        context.phantomHandler(result.value);
       }
     }
   }));

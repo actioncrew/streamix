@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from '../abstractions';
+import { CallbackReturnType, COMPLETE, createOperator } from '../abstractions';
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -23,7 +23,7 @@ import { StreamResult } from './../abstractions/stream';
 export const catchError = <T = any>(
   handler: (error: any) => CallbackReturnType = () => {} // Handler still returns void
 ) =>
-  createOperator<T, T>('catchError', (source) => {
+  createOperator<T, T>('catchError', (source, context) => {
     let errorCaughtAndHandled = false;
     let completed = false;
 
@@ -32,17 +32,17 @@ export const catchError = <T = any>(
         while (true) {
           // If an error was already caught and handled, or we're completed, this operator is done
           if (errorCaughtAndHandled || completed) {
-            return { value: undefined, done: true };
+            return COMPLETE;
           }
 
           try {
             const result = await source.next();
             if (result.done) {
               completed = true; // Source completed without error
-              return { value: undefined, done: true };
+              return COMPLETE;
             }
 
-            if (result.phantom) continue;
+            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             return result; // Emit value from source
           } catch (error) {
@@ -52,7 +52,7 @@ export const catchError = <T = any>(
               errorCaughtAndHandled = true; // Mark as handled
               completed = true;
               // After handling, this operator completes
-              return { value: undefined, done: true };
+              return COMPLETE;
             } else {
               // If subsequent errors occur (shouldn't happen with a proper upstream), re-throw
               throw error;

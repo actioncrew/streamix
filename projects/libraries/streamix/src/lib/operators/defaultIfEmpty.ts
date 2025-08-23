@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { COMPLETE, createOperator, NEXT } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -14,7 +14,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const defaultIfEmpty = <T = any>(defaultValue: T) =>
-  createOperator<T, T>("defaultIfEmpty", (source) => {
+  createOperator<T, T>("defaultIfEmpty", (source, context) => {
     let emitted = false;
     let completed = false;
 
@@ -22,12 +22,12 @@ export const defaultIfEmpty = <T = any>(defaultValue: T) =>
       async next(): Promise<StreamResult<T>> {
         while (true) {
           if (completed) {
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
           const result = await source.next();
 
-          if (!result.done && result.phantom) continue;
+          if (!result.done && result.phantom) { context.phantomHandler(result.value); continue };
 
           if (!result.done) {
             emitted = true;
@@ -38,12 +38,12 @@ export const defaultIfEmpty = <T = any>(defaultValue: T) =>
           if (!emitted) {
             // Source was empty, emit default value
             completed = true;
-            return { done: false, value: defaultValue };
+            return NEXT(defaultValue);
           }
 
           // Source had values, just complete
           completed = true;
-          return { done: true, value: undefined };
+          return COMPLETE;
         }
       }
     };

@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, NEXT } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -22,7 +22,7 @@ export const scan = <T = any, R = any>(
   accumulator: (acc: R, value: T, index: number) => CallbackReturnType<R>,
   seed: R
 ) =>
-  createOperator<T, R>("scan", (source) => {
+  createOperator<T, R>("scan", (source, context) => {
     let acc = seed;
     let index = 0;
     let completed = false;
@@ -31,20 +31,20 @@ export const scan = <T = any, R = any>(
       async next(): Promise<StreamResult<R>> {
         while (true) {
           if (completed) {
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
           const result = await source.next();
 
           if (result.done) {
             completed = true;
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           acc = await accumulator(acc, result.value, index++);
-          return { done: false, value: acc };
+          return NEXT(acc);
         }
       },
     };

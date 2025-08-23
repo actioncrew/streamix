@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from '../abstractions';
+import { CallbackReturnType, COMPLETE, createOperator, NEXT } from '../abstractions';
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -20,7 +20,7 @@ import { StreamResult } from './../abstractions/stream';
 export const map = <T = any, R = any>(
   transform: (value: T, index: number) => CallbackReturnType<R>
 ) =>
-  createOperator<T, R>('map', (source) => {
+  createOperator<T, R>('map', (source, context) => {
     let index = 0;
     let completed = false;
 
@@ -28,19 +28,19 @@ export const map = <T = any, R = any>(
       async next(): Promise<StreamResult<R>> {
         while (true) {
           if (completed) {
-            return { value: undefined as any, done: true };
+            return COMPLETE;
           }
 
           const result = await source.next();
           if (result.done) {
             completed = true;
-            return { value: undefined as any, done: true };
+            return COMPLETE;
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const transformedValue = await transform(result.value, index++);
-          return { value: transformedValue, done: false };
+          return NEXT(transformedValue);
         }
       },
     };

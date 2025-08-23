@@ -1,4 +1,4 @@
-import { createOperator, Stream } from "../abstractions";
+import { createOperator, NEXT, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 import { StreamResult } from './../abstractions/stream';
 
@@ -19,7 +19,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const delayUntil = <T = any>(notifier: Stream<any>) =>
-  createOperator<T, T>("delayUntil", (source) => {
+  createOperator<T, T>("delayUntil", (source, context) => {
     let canEmit = false;
     let notifierDone = false;
     let notifierStarted = false;
@@ -48,14 +48,14 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
         while (true) {
           if (canEmit) {
             if (buffer.length) {
-              return { value: buffer.shift()!, done: false };
+              return NEXT(buffer.shift()!);
             }
             return source.next();
           }
 
           const result = await source.next();
           if (result.done) return result;
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           buffer.push(result.value);
 

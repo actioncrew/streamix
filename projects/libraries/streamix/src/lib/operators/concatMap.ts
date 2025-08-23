@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, NEXT, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from "../converters";
 import { StreamResult } from './../abstractions/stream';
 
@@ -25,7 +25,7 @@ import { StreamResult } from './../abstractions/stream';
 export const concatMap = <T = any, R = T>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) =>
-  createOperator<T, R>("concatMap", (source) => {
+  createOperator<T, R>("concatMap", (source, context) => {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
     let outerResult: StreamResult<T> | null = null;
@@ -38,8 +38,8 @@ export const concatMap = <T = any, R = T>(
           if (!innerIterator) {
             outerResult = await source.next();
 
-            if (outerResult.done) return { done: true, value: undefined };
-            if (outerResult.phantom) return { done: false, value: outerResult.value as any, phantom: true };
+            if (outerResult.done) return COMPLETE;
+            if (outerResult.phantom) { context.phantomHandler(outerResult.value); continue; }
 
             // Initialize inner stream
             innerHadEmissions = false;
@@ -56,7 +56,7 @@ export const concatMap = <T = any, R = T>(
 
             // If inner stream emitted nothing, produce a phantom
             if (!innerHadEmissions && outerResult !== null) {
-              return { done: false, value: outerResult.value as any, phantom: true };
+              context.phantomHandler(outerResult.value);
             }
 
             // Otherwise continue to next outer value
@@ -65,7 +65,7 @@ export const concatMap = <T = any, R = T>(
 
           // Mark that inner stream produced a value
           innerHadEmissions = true;
-          return { done: false, value: innerResult.value };
+          return NEXT(innerResult.value);
         }
       },
     };

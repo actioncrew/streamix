@@ -1,29 +1,64 @@
-import { Stream, StreamIterator } from "./stream";
+import { CallbackReturnType } from "./receiver";
+import { Stream, StreamIterator, StreamResult } from "./stream";
 
 /**
- * A stream operator that transforms a value from an input stream to an output stream.
+ * A constant representing a completed stream result.
+ *
+ * Always `{ done: true, value: undefined }`.
+ * Used to signal the end of a stream.
+ */
+export const COMPLETE = { done: true, value: undefined } as const;
+
+/**
+ * Factory function to create a normal stream result.
+ *
+ * @template R The type of the emitted value.
+ * @param value The value to emit downstream.
+ * @returns A `StreamResult<R>` object with `{ done: false, value }`.
+ */
+export const NEXT = <R = any>(value: R) => ({ done: false, value });
+
+/**
+ * Factory function to create a phantom stream result.
+ *
+ * Phantom results represent suppressed or filtered values that should not
+ * propagate downstream, but can still be tracked by the pipeline.
+ *
+ * @template T The type of the phantom value.
+ * @param value The suppressed value.
+ * @returns A `StreamResult<T>` object with `{ done: false, value, phantom: true }`.
+ */
+export const PHANTOM = <T = any>(value: T) => ({ done: false, value, phantom: true });
+
+/**
+ * Represents a stream operator that transforms values from an input stream into an output stream.
  *
  * Operators are the fundamental building blocks for composing stream transformations.
- * They are functions that take one stream and return another, allowing for a chain of operations.
+ * They consume values from an input `StreamIterator<T>` and produce transformed values
+ * through a new `StreamIterator<R>`. Operators can be chained together using `pipe`.
  *
- * @template T The type of the value being consumed by the operator.
- * @template R The type of the value being produced by the operator.
+ * @template T The type of values consumed by the operator (input).
+ * @template R The type of values produced by the operator (output).
  */
 export type Operator<T = any, R = T> = {
   /**
-   * An optional name for the operator, useful for debugging.
+   * An optional human-readable name for the operator, useful for debugging or logging.
    */
   name?: string;
+
   /**
-   * A type discriminator to identify this object as an operator.
+   * A type discriminator identifying this object as an operator.
    */
-  type: 'operator';
+  type: "operator";
+
   /**
-   * The core function that defines the operator's transformation logic. It takes an
-   * asynchronous iterator of type `T` and returns a new asynchronous iterator of type `R`.
-   * @param source The source async iterator to apply the transformation to.
+   * The core transformation function of the operator.
+   *
+   * @param source The source async stream iterator providing values of type `T`.
+   * @param context Additional metadata or utilities provided by the pipeline.
+   * @returns A new async stream iterator that yields values of type `R`.
    */
-  apply: (source: StreamIterator<T>) => StreamIterator<R>;
+  apply: (source: StreamIterator<T>, context: PipeContext) => StreamIterator<R>;
 };
 
 /**
@@ -40,12 +75,12 @@ export type Operator<T = any, R = T> = {
  */
 export function createOperator<T = any, R = T>(
   name: string,
-  transformFn: (source: StreamIterator<T>) => StreamIterator<R>
+  transformFn: (source: StreamIterator<T>, context: PipeContext) => StreamIterator<R>
 ): Operator<T, R> {
   return {
     name,
     type: 'operator',
-    apply: transformFn
+    apply: transformFn,
   };
 }
 
@@ -222,3 +257,70 @@ export interface OperatorChain<T> {
 
   (...operators: Operator<any, any>[]): Stream<any>;
 };
+
+/**
+ * Context object provided to operators during stream piping.
+ *
+ * `PipeContext` carries metadata and utility functions that help operators
+ * coordinate within a pipeline, such as tracking the operator stack and
+ * handling phantom (filtered or suppressed) values.
+ */
+export interface PipeContext {
+  /**
+   * A stack of operator names representing the current pipeline order.
+   * Useful for debugging or tracing the flow of values through operators.
+   */
+  operatorStack: string[];
+
+  /**
+   * A handler invoked when a value is filtered, dropped, or otherwise
+   * not emitted by the current operator. Allows the pipeline to
+   * account for "phantom" emissions without breaking the chain.
+   *
+   * @param value The suppressed or phantom value.
+   * @returns A result indicating how the phantom should be processed.
+   */
+  phantomHandler: (value: any) => CallbackReturnType;
+}
+
+export function patchOperator<TIn, TOut>(
+  operator: Operator<TIn, TOut>
+): Operator<TIn, TOut> {
+  const originalApply = operator.apply;
+
+  return {
+    ...operator,
+    apply: (source: StreamIterator<TIn>, context: PipeContext) => {
+      // Get the iterator created by the original operator
+      const originalIterator = originalApply.call(operator, source, context);
+
+      // Return a new iterator with a patched next() method
+      return {
+        async next(): Promise<StreamResult<TOut>> {
+          context.operatorStack.push(operator.name!);
+
+          let result = await originalIterator.next.apply(originalIterator);
+
+          if (result.done) {
+            return result;
+          }
+
+          // This is the core logic for phantom handling
+          if (result.phantom) {
+            // Call the shared phantom handler
+            await context.phantomHandler(result.value);
+
+            // Continue to the next item from the original iterator
+            // This is key: it re-runs the operator for the next item
+            result = await this.next();
+          }
+
+          context.operatorStack.pop();
+          return result;
+        },
+        return: () => originalIterator.return?.apply(originalIterator) ?? Promise.resolve({ done: true, value: undefined }),
+        throw: () => originalIterator.throw?.apply(originalIterator) ?? Promise.resolve({ done: true, value: undefined }),
+      };
+    },
+  };
+}

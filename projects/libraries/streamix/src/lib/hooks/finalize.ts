@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -15,7 +15,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const finalize = <T = any>(callback: () => CallbackReturnType) =>
-  createOperator<T, T>("finalize", (source) => {
+  createOperator<T, T>("finalize", (source, context) => {
     let finalized = false;
     let completed = false;
 
@@ -23,7 +23,7 @@ export const finalize = <T = any>(callback: () => CallbackReturnType) =>
       async next(): Promise<StreamResult<T>> {
         while (true) {
           if (completed) {
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
           try {
@@ -33,15 +33,15 @@ export const finalize = <T = any>(callback: () => CallbackReturnType) =>
               finalized = true;
               completed = true;
               await callback?.();
-              return { done: true, value: undefined };
+              return COMPLETE;
             }
 
             if (result.done) {
               completed = true;
-              return { done: true, value: undefined };
+              return COMPLETE;
             }
 
-            if (result.phantom) continue;
+            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             return result;
           } catch (err) {

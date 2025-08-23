@@ -1,4 +1,4 @@
-import { createOperator, Operator } from "../abstractions";
+import { COMPLETE, createOperator, NEXT, Operator } from "../abstractions";
 import { Coroutine } from "./coroutine";
 
 /**
@@ -65,35 +65,35 @@ export function cascade<T = any, R = any>(...tasks: Coroutine<any, any>[]): Coro
 export function cascade<T = any, R = any>(
   ...tasks: Coroutine<any, any>[]
 ): CoroutineLike<T, R> {
-  const operator = createOperator<T, R>("cascade", (source) => {
+  const operator = createOperator<T, R>("cascade", (source, context) => {
     let completed = false;
 
     return {
       async next() {
         while (true) {
           if (completed) {
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
           const result = await source.next();
           if (result.done) {
             completed = true;
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           let taskResult: any = result.value;
           for (const task of tasks) {
             taskResult = await task.processTask(taskResult);
           }
 
-          return { done: false, value: taskResult as R };
+          return NEXT(taskResult);
         }
       },
       async return() {
         completed = true;
-        return { done: true, value: undefined };
+        return COMPLETE;
       },
       async throw(err) {
         completed = true;

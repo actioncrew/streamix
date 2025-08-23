@@ -1,4 +1,4 @@
-import { createOperator, Operator } from "../abstractions";
+import { COMPLETE, createOperator, NEXT, Operator } from "../abstractions";
 
 /**
  * @typedef {object} CoroutineMessage
@@ -383,33 +383,33 @@ export function coroutine<T, R>(
       }
     };
 
-    const operator = createOperator<T, R>("coroutine", (source) => {
+    const operator = createOperator<T, R>("coroutine", (source, context) => {
       let completed = false;
 
       return {
         async next() {
           while (true) {
             if (completed || isFinalizing) {
-              return { done: true, value: undefined };
+              return COMPLETE;
             }
 
             const result = await source.next();
             if (result.done) {
               completed = true;
               await finalize();
-              return { done: true, value: undefined };
+              return COMPLETE;
             }
 
-            if (result.phantom) continue;
+            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             const taskResult = await processTask(result.value as any);
-            return { done: false, value: taskResult };
+            return NEXT(taskResult);
           }
         },
         async return() {
           completed = true;
           await finalize();
-          return { done: true, value: undefined };
+          return COMPLETE;
         },
         async throw(err) {
           completed = true;

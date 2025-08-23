@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { COMPLETE, createOperator, NEXT } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -15,7 +15,7 @@ import { StreamResult } from './../abstractions/stream';
  * The output stream will emit a single array of type `T[]`.
  */
 export const toArray = <T = any>() =>
-  createOperator<T, T[]>("toArray", (source) => {
+  createOperator<T, T[]>("toArray", (source, context) => {
     const collected: T[] = [];
     let completed = false;
     let emitted = false;
@@ -26,13 +26,14 @@ export const toArray = <T = any>() =>
         while (true) {
           // If everything is done and no more phantoms -> complete
           if (completed && emitted && phantomQueue.length === 0) {
-            return { done: true, value: undefined };
+            return COMPLETE;
           }
 
           // First drain phantom queue
           if (phantomQueue.length > 0) {
             const phantomValue = phantomQueue.shift()!;
-            return { done: false, value: phantomValue as any, phantom: true };
+            context.phantomHandler(phantomValue);
+            continue;
           }
 
           // Otherwise consume from source
@@ -43,13 +44,13 @@ export const toArray = <T = any>() =>
             if (!emitted) {
               emitted = true;
               // emit final array (may be empty)
-              return { done: false, value: collected };
+              return NEXT(collected);
             }
             // after array emission we loop back to phantomQueue
             continue;
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           // collect real value
           collected.push(result.value);

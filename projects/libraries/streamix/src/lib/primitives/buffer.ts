@@ -1,4 +1,4 @@
-import { StreamResult } from "../abstractions";
+import { COMPLETE, NEXT, StreamResult } from "../abstractions";
 import { createLock } from "./lock";
 import { createSemaphore } from "./semaphore";
 
@@ -169,7 +169,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
       try {
         const reader = readers.get(readerId);
         if (!reader || !reader.isActive) {
-          return { done: true } as StreamResult<T>;
+          return COMPLETE;
         }
 
         if (hasValue && reader.lastSeenVersion < version) {
@@ -178,10 +178,10 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
             throw error;
           }
 
-          result = { value: value as T, done: false };
+          result = NEXT(value as T);
           reader.lastSeenVersion = version;
         } else if (isCompleted) {
-          return { done: true } as StreamResult<T>;
+          return COMPLETE;
         }
       } finally {
         releaseLock();
@@ -202,19 +202,19 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
     try {
       const reader = readers.get(readerId);
       if (!reader || !reader.isActive) {
-        return { done: true } as StreamResult<T>;
+        return COMPLETE;
       }
 
       if (hasValue && reader.lastSeenVersion < version) {
         if (error) throw error;
-        return { value: value as T, done: false };
+        return NEXT(value as T);
       }
 
       if (isCompleted) {
-        return { done: true } as StreamResult<T>;
+        return COMPLETE;
       }
 
-      return { value: undefined as T, done: false };
+      return NEXT(undefined as T);
     } finally {
       release();
     }
@@ -301,7 +301,7 @@ export function createBehaviorSubjectBuffer<T = any>(initialValue?: T): SubjectB
       if (needsInitialValue && hasCurrentValue) {
         // Mark that this reader has now received the initial value
         behaviorReaders.set(readerId, true);
-        return { value: currentValue as T, done: false };
+        return NEXT(currentValue as T);
       }
 
       // Otherwise, delegate to the underlying subject
@@ -311,7 +311,7 @@ export function createBehaviorSubjectBuffer<T = any>(initialValue?: T): SubjectB
     async peek(readerId: number): Promise<StreamResult<T>> {
       // For BehaviorSubject, peek should return current value if available
       if (hasCurrentValue && behaviorReaders.has(readerId)) {
-        return { value: currentValue as T, done: false };
+        return NEXT(currentValue as T);
       }
 
       return await subject.peek(readerId);
@@ -480,7 +480,7 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
     while (true) {
       const release = await lock();
       const st = readers.get(id);
-      if (!st) { release(); return { value: undefined, done: true }; }
+      if (!st) { release(); return COMPLETE; }
       const off = st.offset;
       if (off < totalWritten) {
         const item = buffer[getIndex(off)];
@@ -488,9 +488,9 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
         release();
         if (isErrorItem(item)) throw item.__error;
         releaseSlot(off);
-        return { value: item as T, done: false };
+        return NEXT(item as T);
       }
-      if (isCompleted) { release(); return { value: undefined, done: true }; }
+      if (isCompleted) { release(); return COMPLETE; }
       release();
       await notifier.wait();
     }
@@ -516,12 +516,12 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
 
       // Check if reader is detached
       if (!st) {
-        return { value: undefined as any, done: true };
+        return COMPLETE;
       }
 
       // Check if no data available to peek
       if (totalWritten === 0 || st.offset >= totalWritten) {
-        return { value: undefined as any, done: true };
+        return COMPLETE;
       }
 
       const readPos = st.offset;
@@ -532,7 +532,7 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
         throw item.__error;
       }
 
-      return { value: item as T, done: false };
+      return NEXT(item as T);
     } finally {
       release();
     }

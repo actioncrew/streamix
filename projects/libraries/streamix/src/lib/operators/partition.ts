@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, NEXT } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 import { GroupItem } from "./groupBy";
 
@@ -22,7 +22,7 @@ import { GroupItem } from "./groupBy";
 export const partition = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, GroupItem<T, "true" | "false">>('partition', (source) => {
+  createOperator<T, GroupItem<T, "true" | "false">>('partition', (source, context) => {
     let index = 0;
     let completed = false;
 
@@ -30,19 +30,19 @@ export const partition = <T = any>(
       async next(): Promise<StreamResult<GroupItem<T, "true" | "false">>> {
         while (true) {
           if (completed) {
-            return { value: undefined, done: true };
+            return COMPLETE;
           }
 
           const result = await source.next();
           if (result.done) {
             completed = true;
-            return { value: undefined, done: true };
+            return COMPLETE;
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const key = await predicate(result.value, index++) ? "true" : "false";
-          return { value: { key, value: result.value }, done: false };
+          return NEXT({ key, value: result.value });
         }
       }
     };

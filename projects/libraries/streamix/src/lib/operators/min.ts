@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from '../abstractions';
+import { COMPLETE, createOperator, NEXT } from '../abstractions';
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -14,61 +14,57 @@ import { StreamResult } from './../abstractions/stream';
  * if they are equal. Defaults to using the `<` operator for comparison.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
+/**
+ * Creates a stream operator that emits the minimum value from the source stream.
+ *
+ * This is a terminal operator that consumes the source lazily.
+ * It keeps track of the smallest value seen so far and emits phantoms for intermediate values.
+ *
+ * @template T The type of the values in the source stream.
+ * @param comparator Optional function to compare two values. Returns negative if `a < b`.
+ * @returns An `Operator` instance usable in a stream's `pipe` method.
+ */
 export const min = <T = any>(
-  comparator?: (a: T, b: T) => CallbackReturnType<number>
+  comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
-  createOperator<T, T>('min', (source) => {
+  createOperator<T, T>("min", (source, context) => {
     let minValue: T | undefined;
     let hasMin = false;
-    const phantomQueue: T[] = [];
-
-    // Eagerly process the source
-    const ready = (async () => {
-      while (true) {
-        const result = await source.next();
-        if (result.done) break;
-
-        const value = result.value;
-
-        if (!hasMin) {
-          minValue = value;
-          hasMin = true;
-        } else if (comparator) {
-          if (await comparator(value, minValue!) < 0) {
-            phantomQueue.push(minValue!); // previous min becomes phantom
-            minValue = value;
-          } else {
-            phantomQueue.push(value); // non-min is phantom
-          }
-        } else if (value < minValue!) {
-          phantomQueue.push(minValue!); // previous min becomes phantom
-          minValue = value;
-        } else {
-          phantomQueue.push(value); // non-min is phantom
-        }
-      }
-    })();
-
     let emittedMin = false;
 
     return {
       async next(): Promise<StreamResult<T>> {
-        await ready;
+        while (true) {
+          const result = await source.next();
 
-        // Emit queued phantoms first
-        if (phantomQueue.length > 0) {
-          const value = phantomQueue.shift()!;
-          return { value, done: false, phantom: true };
+          if (result.done) {
+            // Emit the final minimum once
+            if (hasMin && !emittedMin) {
+              emittedMin = true;
+              return NEXT(minValue!);
+            }
+            return COMPLETE;
+          }
+
+          const value = result.value;
+
+          if (!hasMin) {
+            minValue = value;
+            hasMin = true;
+            continue;
+          }
+
+          const cmp = comparator ? await comparator(value, minValue!) : (value < minValue! ? -1 : 1);
+
+          if (cmp < 0) {
+            // previous min becomes phantom
+            context.phantomHandler(minValue!);
+            minValue = value;
+          } else {
+            // current value is phantom
+            context.phantomHandler(value);
+          }
         }
-
-        // Emit the real min once
-        if (!emittedMin && hasMin) {
-          emittedMin = true;
-          return { value: minValue!, done: false };
-        }
-
-        // Completed
-        return { value: undefined, done: true };
       },
     };
   });

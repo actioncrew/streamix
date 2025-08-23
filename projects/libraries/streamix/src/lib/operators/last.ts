@@ -1,4 +1,4 @@
-import { createOperator, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, NEXT, StreamResult } from "../abstractions";
 import { CallbackReturnType } from "./../abstractions/receiver";
 
 /**
@@ -20,7 +20,7 @@ import { CallbackReturnType } from "./../abstractions/receiver";
 export const last = <T = any>(
   predicate?: (value: T) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, T>("last", (source) => {
+  createOperator<T, T>("last", (source, context) => {
     let lastValue: T | undefined = undefined;
     let hasMatch = false;
     let finished = false;
@@ -28,17 +28,17 @@ export const last = <T = any>(
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          if (finished) return { done: true, value: undefined };
+          if (finished) return COMPLETE;
 
           const result = await source.next();
 
           if (result.done) {
             finished = true;
             if (!hasMatch) throw new Error("No elements in sequence");
-            return { done: false, value: lastValue! }; // emit final value normally
+            return NEXT(lastValue!);
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const value = result.value;
           const matches = !predicate || (await predicate(value));
@@ -48,15 +48,16 @@ export const last = <T = any>(
               // Previous last value becomes phantom
               const phantom = lastValue!;
               lastValue = value;
-              return { done: false, value: phantom, phantom: true };
+              context.phantomHandler(phantom);
+              continue;
             } else {
               lastValue = value;
               hasMatch = true;
-              continue; // first match, wait for next to decide phantom
+              continue;
             }
           } else {
             // Non-matching values are phantoms
-            return { done: false, value, phantom: true };
+            context.phantomHandler(value);
           }
         }
       }

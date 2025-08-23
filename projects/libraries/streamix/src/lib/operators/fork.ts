@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, NEXT, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 import { StreamResult } from './../abstractions/stream';
 
@@ -58,7 +58,7 @@ export interface ForkOption<T = any, R = any> {
  * @throws {Error} If a source value does not match any predicate.
  */
 export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
-  createOperator<T, R>('fork', (source) => {
+  createOperator<T, R>('fork', (source, context) => {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
     let outerValue: T | undefined;
@@ -71,10 +71,10 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
           if (!innerIterator) {
             const result = await source.next();
             if (result.done) {
-              return { done: true, value: undefined };
+              return COMPLETE;
             }
 
-            if (result.phantom) continue;
+            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             let matched: typeof options[number] | undefined;
             outerValue = result.value;
@@ -103,7 +103,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             // no emissions.
             if (!innerStreamHadEmissions) {
               // We return a phantom of the original outer value.
-              return { done: false, value: outerValue as any, phantom: true };
+              context.phantomHandler(outerValue);
             }
             // If the inner stream had emissions, we just continue the loop
             // to process the next outer value.
@@ -112,7 +112,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
 
           // A value was emitted, so we know the inner stream is not empty.
           innerStreamHadEmissions = true;
-          return { done: false, value: innerResult.value, phantom: false };
+          return NEXT(innerResult.value);
         }
       }
     };

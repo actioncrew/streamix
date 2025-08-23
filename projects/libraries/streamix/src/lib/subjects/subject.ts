@@ -3,6 +3,7 @@ import {
   createReceiver,
   createSubscription,
   Operator,
+  PipeContext,
   pipeStream,
   Receiver,
   Stream,
@@ -116,6 +117,10 @@ export function createSubject<T = any>(): Subject<T> {
 
   const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
+    const context: PipeContext = {
+      operatorStack: [],
+      phantomHandler: receiver.phantom.bind(receiver),
+    };
     let unsubscribing = false;
     let readerId: number | null = null;
 
@@ -136,7 +141,7 @@ export function createSubject<T = any>(): Subject<T> {
         while (true) {
           const { value: result, done } = await buffer.read(readerId);
           if (done) break;
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
           await receiver.next(result.value);
         }
       } catch (err: any) {

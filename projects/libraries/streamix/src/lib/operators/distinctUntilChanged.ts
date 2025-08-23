@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { COMPLETE, createOperator, NEXT } from '../abstractions';
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -18,7 +18,7 @@ import { StreamResult } from './../abstractions/stream';
 export const distinctUntilChanged = <T = any>(
   comparator?: (prev: T, curr: T) => boolean
 ) =>
-  createOperator<T, T>('distinctUntilChanged', (source) => {
+  createOperator<T, T>('distinctUntilChanged', (source, context) => {
     // State variables to keep track of the last emitted value.
     let lastValue: T | undefined;
     let hasLast = false;
@@ -32,10 +32,10 @@ export const distinctUntilChanged = <T = any>(
 
           // If the source stream is done, we are also done.
           if (result.done) {
-            return { value: undefined, done: true };
+            return COMPLETE;
           }
           // Phantom values from the source are ignored, as their purpose is fulfilled.
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           // Check if the value is different from the last one.
           const isDistinct = !hasLast || !(comparator ? comparator(lastValue!, result.value) : lastValue === result.value);
@@ -44,11 +44,12 @@ export const distinctUntilChanged = <T = any>(
             // If the value is distinct, we update our state and return it as a normal StreamResult.
             lastValue = result.value;
             hasLast = true;
-            return { value: result.value, done: false, phantom: false };
+            return NEXT(result.value);
           } else {
             // If the value is a consecutive duplicate, we do not update the lastValue,
             // and instead, we return a phantom StreamResult to signal that a value was dropped.
-            return { value: result.value, done: false, phantom: true };
+            context.phantomHandler(result.value);
+            continue;
           }
         }
       },

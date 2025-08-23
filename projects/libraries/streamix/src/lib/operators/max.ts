@@ -1,75 +1,63 @@
-import { createOperator } from '../abstractions';
-import { CallbackReturnType } from './../abstractions/receiver';
-import { StreamResult } from './../abstractions/stream';
+import { COMPLETE, createOperator, NEXT, PipeContext, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the maximum value from the source stream.
  *
- * This is a terminal operator that must consume the entire source stream before
- * it can emit a single value. It iterates through all values, keeping track of
- * the largest one seen so far.
+ * This is a terminal operator that consumes the entire source lazily,
+ * emitting phantoms along the way and finally emitting the maximum value.
  *
  * @template T The type of the values in the source stream.
- * @param comparator An optional function to compare two values. It should return a positive
- * number if `a` is greater than `b`, a negative number if `a` is less than `b`, and zero
- * if they are equal. Defaults to using the `>` operator for comparison.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @param comparator Optional comparison function: positive if `a > b`, negative if `a < b`.
+ * @returns An `Operator` instance usable in a stream's `pipe` method.
  */
 export const max = <T = any>(
-  comparator?: (a: T, b: T) => CallbackReturnType<number>
+  comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
-  createOperator<T, T>("max", (source) => {
+  createOperator<T, T>("max", (source, context: PipeContext) => {
     let maxValue: T | undefined;
     let hasMax = false;
-    const phantomQueue: T[] = []; // store intermediate phantoms
-
-    // Process source eagerly
-    const ready = (async () => {
-      while (true) {
-        const result = await source.next();
-        if (result.done) break;
-
-        const value = result.value;
-
-        if (!hasMax) {
-          maxValue = value;
-          hasMax = true;
-        } else if (comparator) {
-          if (await comparator(value, maxValue!) > 0) {
-            phantomQueue.push(maxValue!); // previous max becomes phantom
-            maxValue = value;
-          } else {
-            phantomQueue.push(value); // non-max is phantom
-          }
-        } else if (value > maxValue!) {
-          phantomQueue.push(maxValue!); // previous max becomes phantom
-          maxValue = value;
-        } else {
-          phantomQueue.push(value); // non-max is phantom
-        }
-      }
-    })();
-
     let emittedMax = false;
 
     return {
       async next(): Promise<StreamResult<T>> {
-        await ready;
+        while (true) {
+          // If all values processed, emit max once and complete
+          if (emittedMax && !hasMax) return COMPLETE;
+          if (emittedMax && hasMax) {
+            emittedMax = true;
+            return COMPLETE;
+          }
 
-        // Emit queued phantoms first
-        if (phantomQueue.length > 0) {
-          const value = phantomQueue.shift()!;
-          return { value, done: false, phantom: true };
+          const result = await source.next();
+
+          if (result.done) {
+            // Emit final max if exists
+            if (hasMax && !emittedMax) {
+              emittedMax = true;
+              return NEXT(maxValue!);
+            }
+            return COMPLETE;
+          }
+
+          const value = result.value;
+
+          if (!hasMax) {
+            maxValue = value;
+            hasMax = true;
+            continue;
+          }
+
+          let cmp = comparator ? await comparator(value, maxValue!) : (value > maxValue! ? 1 : -1);
+
+          if (cmp > 0) {
+            // previous max becomes phantom
+            context.phantomHandler(maxValue!);
+            maxValue = value;
+          } else {
+            // current value is phantom
+            context.phantomHandler(value);
+          }
         }
-
-        // Emit real max once
-        if (!emittedMax && hasMax) {
-          emittedMax = true;
-          return { value: maxValue!, done: false };
-        }
-
-        // Completed
-        return { value: undefined, done: true };
       },
     };
   });

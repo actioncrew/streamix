@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, NEXT } from "../abstractions";
 import { StreamResult } from './../abstractions/stream';
 
 /**
@@ -32,26 +32,26 @@ export type GroupItem<T = any, K = any> = {
 export const groupBy = <T = any, K = any>(
   keySelector: (value: T) => CallbackReturnType<K>
 ) =>
-  createOperator<T, GroupItem<T, K>>("groupBy", (source) => {
+  createOperator<T, GroupItem<T, K>>("groupBy", (source, context) => {
     let completed = false;
 
     return {
       async next(): Promise<StreamResult<GroupItem<T, K>>> {
         while (true) {
           if (completed) {
-            return { value: undefined as any, done: true };
+            return COMPLETE;
           }
 
           const result = await source.next();
           if (result.done) {
             completed = true;
-            return { value: undefined as any, done: true };
+            return COMPLETE;
           }
 
-          if (result.phantom) continue;
+          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const key = await keySelector(result.value);
-          return { value: { key, value: result.value }, done: false };
+          return NEXT({ key, value: result.value });
         }
       }
     };
