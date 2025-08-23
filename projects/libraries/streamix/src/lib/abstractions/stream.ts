@@ -1,26 +1,39 @@
 import { eachValueFrom, firstValueFrom } from "../converters";
-import { Operator, OperatorChain, patchOperator, PipeContext } from "./operator";
+import { createContext } from "./context";
+import { Operator, OperatorChain, patchOperator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
 /**
  * Represents a single emission from a Streamix stream.
  *
- * This can be either:
- * 1. A normal iterator result (`StreamResult<T>`) with `value` and `done` properties.
- * 2. A "phantom" emission, where `phantom: true` indicates that the value
- *    was suppressed by an operator or the stream ended prematurely.
+ * A stream emission can be either:
+ *
+ * 1. **Normal value**: The operator emitted a value downstream.
+ *    - `value` contains the emitted data.
+ *    - `done` is `false`.
+ *    - `phantom` is optional and indicates that this value was filtered or
+ *      suppressed but tracked in the pipeline.
+ *    - `pending` is optional and indicates that the value is in-flight,
+ *      awaiting final resolution or phantom marking.
+ *
+ * 2. **Completion**: Signals the end of the stream.
+ *    - `value` is `undefined`.
+ *    - `done` is `true`.
  *
  * @template T - The type of the values emitted by the stream.
  */
-export type StreamResult<T> = {
-  value: T;
-  done: boolean;
-  phantom?: boolean;
-} | {
-  value: undefined;
-  done: true;
-};
+export type StreamResult<T> =
+  | {
+      value: T;
+      done: false;
+      phantom?: boolean;
+      pending?: boolean;
+    }
+  | {
+      value: undefined;
+      done: true;
+    };
 
 /**
  * A specialized asynchronous iterator for streams that yields {@link StreamResult} objects.
@@ -318,10 +331,7 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 
     subscribe(cb) {
       const receiver = createReceiver(cb);
-      const context: PipeContext = {
-        operatorStack: [],
-        phantomHandler: receiver.phantom.bind(receiver),
-      };
+      const context = createContext(receiver.phantom.bind(receiver));
 
       let currentIterator: StreamIterator<any> = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
 

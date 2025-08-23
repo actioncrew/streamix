@@ -1,4 +1,4 @@
-import { CallbackReturnType } from "./receiver";
+import { PipeContext } from "./context";
 import { Stream, StreamIterator, StreamResult } from "./stream";
 
 /**
@@ -247,30 +247,23 @@ export interface OperatorChain<T> {
 };
 
 /**
- * Context object provided to operators during stream piping.
+ * Patches a stream operator to add observability and pipeline context management.
+ * * This higher-order function wraps an existing `Operator` to automatically handle
+ * the `PipeContext` lifecycle, such as pushing and popping the operator's name
+ * onto the `operatorStack` for each value processed. This provides a transparent
+ * way to track the flow of data through a stream pipeline for debugging and
+ * tracing purposes without each operator needing to manage the context manually.
+ * * The patched operator's `apply` method intercepts the stream and returns a new
+ * iterator that decorates the original one. The `next()` method of this new iterator
+ * pushes the operator's name to the stack before the original operation and pops it
+ * off after the value is processed, ensuring the stack accurately represents the
+ * current position in the pipeline.
  *
- * `PipeContext` carries metadata and utility functions that help operators
- * coordinate within a pipeline, such as tracking the operator stack and
- * handling phantom (filtered or suppressed) values.
+ * @template TIn The type of the values in the input stream.
+ * @template TOut The type of the values in the output stream.
+ * @param operator The original `Operator` to be patched.
+ * @returns A new `Operator` instance with patched behavior for context management.
  */
-export interface PipeContext {
-  /**
-   * A stack of operator names representing the current pipeline order.
-   * Useful for debugging or tracing the flow of values through operators.
-   */
-  operatorStack: string[];
-
-  /**
-   * A handler invoked when a value is filtered, dropped, or otherwise
-   * not emitted by the current operator. Allows the pipeline to
-   * account for "phantom" emissions without breaking the chain.
-   *
-   * @param value The suppressed or phantom value.
-   * @returns A result indicating how the phantom should be processed.
-   */
-  phantomHandler: (value: any) => CallbackReturnType;
-}
-
 export function patchOperator<TIn, TOut>(
   operator: Operator<TIn, TOut>
 ): Operator<TIn, TOut> {
