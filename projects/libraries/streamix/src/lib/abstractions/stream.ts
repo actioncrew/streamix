@@ -152,37 +152,6 @@ export type Stream<T = any> = {
 };
 
 /**
- * Wraps a StreamIterator to intercept phantoms immediately
- */
-export function createStreamInterceptor<T>(
-  source: StreamIterator<T>,
-  phantomHandler?: (value: T) => CallbackReturnType
-): StreamIterator<T> {
-  return {
-    async next(value?: any): Promise<StreamResult<T>> {
-      const result = await source.next(value);
-
-      // Intercept phantom immediately when it's emitted
-      if (!result.done && result.phantom && phantomHandler) {
-        await phantomHandler(result.value);
-        // Continue to next value instead of returning phantom
-        return this.next(value);
-      }
-
-      return result;
-    },
-
-    async return(value?: any): Promise<StreamResult<T>> {
-      return source.return?.(value) ?? { done: true, value: undefined };
-    },
-
-    async throw(e?: any): Promise<StreamResult<T>> {
-      return source.throw?.(e) ?? { done: true, value: undefined };
-    }
-  };
-}
-
-/**
  * Creates a multicast stream from an async generator function.
  *
  * A **multicast stream** (also known as a hot stream) starts executing its work
