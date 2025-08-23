@@ -39,6 +39,8 @@ export const takeWhile = <T = any>(
             done = true;
             return { done: true, value: undefined };
           }
+
+          return result;
         }
       },
     };
