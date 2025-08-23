@@ -6,33 +6,24 @@ import { createSubject } from '../streams';
  * Creates a stream operator that emits the latest value from the source stream
  * at most once per specified duration.
  *
- * This operator is a form of trailing-edge throttle. It ignores values that arrive
- * while a timer is active. When a new value arrives and the timer is not active,
- * it starts a new timer. Upon the timer's expiration, it emits the most recent
- * buffered value and resets its state, ready for the next duration window.
- *
- * This is useful for limiting the rate of event handling, for example, to process
- * a user's resizing of a window only after they have stopped.
- *
  * @template T The type of the values in the stream.
  * @param duration The time in milliseconds to wait before emitting the latest value.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const audit = <T = any>(duration: number) => {
-  return createOperator<T, T>('audit', (source, context) => {
+  return createOperator<T, T>('audit', (source) => {
     const output = createSubject<T>();
 
     let lastValue: T | undefined = undefined;
-    let timerActive = false;
+    let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
 
     const startTimer = () => {
-      timerActive = true;
-      setTimeout(() => {
+      timerId = setTimeout(() => {
         if (lastValue !== undefined) {
           output.next(lastValue);
           lastValue = undefined;
         }
-        timerActive = false;
+        timerId = undefined; // Timer has finished
       }, duration);
     };
 
@@ -41,26 +32,29 @@ export const audit = <T = any>(duration: number) => {
       try {
         while (true) {
           const result = await source.next();
-          if (result.done) break;
-
-          if (timerActive && lastValue !== undefined) {
-            context.phantomHandler(lastValue);
+          if (result.done) {
+            // Corrected completion logic
+            if (lastValue !== undefined) {
+              output.next(lastValue);
+            }
+            break;
           }
 
           lastValue = result.value;
 
-          if (!timerActive) {
+          // Start a new timer only if one isn't already active
+          if (timerId === undefined) {
             startTimer();
           }
-        }
-
-        // If a value is still buffered after stream ends, emit it
-        if (!timerActive && lastValue !== undefined) {
-          output.next(lastValue);
         }
       } catch (err) {
         output.error(err);
       } finally {
+        // Clear any pending timers on completion
+        if (timerId !== undefined) {
+          clearTimeout(timerId);
+          timerId = undefined;
+        }
         output.complete();
       }
     })();
