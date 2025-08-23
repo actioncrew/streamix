@@ -48,10 +48,6 @@ export const min = <T = any>(
           if (cmp < 0) {
             // previous min becomes phantom
             minValue = value;
-            continue;
-          } else {
-            // current value is phantom
-            continue;
           }
         }
       },

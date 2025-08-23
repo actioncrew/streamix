@@ -55,10 +55,6 @@ export const max = <T = any>(
           if (cmp > 0) {
             // previous max becomes phantom
             maxValue = value;
-            continue;
-          } else {
-            // current value is phantom
-            continue;
           }
         }
       },
