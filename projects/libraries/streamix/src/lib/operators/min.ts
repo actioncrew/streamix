@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from '../abstractions';
+import { createOperator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the minimum value from the source stream.
@@ -14,43 +14,46 @@ import { CallbackReturnType, createOperator } from '../abstractions';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const min = <T = any>(
-  comparator?: (a: T, b: T) => CallbackReturnType<number>
+  comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
-  createOperator<T, T>('min', (source) => {
+  createOperator<T, T>("min", (source) => {
     let minValue: T | undefined;
     let hasMin = false;
-
-    // Await entire source and compute min eagerly
-    const ready = (async () => {
-      while (true) {
-        const { value, done: sourceDone } = await source.next();
-        if (sourceDone) break;
-
-        if (!hasMin) {
-          minValue = value;
-          hasMin = true;
-        } else if (comparator) {
-          if (await comparator(value, minValue!) < 0) {
-            minValue = value;
-          }
-        } else if (value < minValue!) {
-          minValue = value;
-        }
-      }
-    })();
-
-    let emitted = false;
+    let emittedMin = false;
 
     return {
-      async next() {
-        await ready;
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
+          const result = await source.next();
 
-        if (!emitted && hasMin) {
-          emitted = true;
-          return { value: minValue!, done: false };
+          if (result.done) {
+            // Emit the final minimum once
+            if (hasMin && !emittedMin) {
+              emittedMin = true;
+              return { done: false, value: minValue! };
+            }
+            return { done: true, value: undefined };
+          }
+
+          const value = result.value;
+
+          if (!hasMin) {
+            minValue = value;
+            hasMin = true;
+            continue;
+          }
+
+          const cmp = comparator ? await comparator(value, minValue!) : (value < minValue! ? -1 : 1);
+
+          if (cmp < 0) {
+            // previous min becomes phantom
+            minValue = value;
+            continue;
+          } else {
+            // current value is phantom
+            continue;
+          }
         }
-
-        return { value: undefined, done: true };
       },
     };
   });

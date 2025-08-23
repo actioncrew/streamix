@@ -1,5 +1,4 @@
 import { createOperator } from '../abstractions';
-import { CallbackReturnType } from './../abstractions/receiver';
 
 /**
  * Creates a stream operator that emits the maximum value from the source stream.
@@ -15,43 +14,53 @@ import { CallbackReturnType } from './../abstractions/receiver';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const max = <T = any>(
-  comparator?: (a: T, b: T) => CallbackReturnType<number>
+  comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
-  createOperator<T, T>('max', (source) => {
+  createOperator<T, T>("max", (source) => {
     let maxValue: T | undefined;
     let hasMax = false;
-
-    // Process the source eagerly
-    const ready = (async () => {
-      while (true) {
-        const { value, done: sourceDone } = await source.next();
-        if (sourceDone) break;
-
-        if (!hasMax) {
-          maxValue = value;
-          hasMax = true;
-        } else if (comparator) {
-          if (await comparator(value, maxValue!) > 0) {
-            maxValue = value;
-          }
-        } else if (value > maxValue!) {
-          maxValue = value;
-        }
-      }
-    })();
-
-    let emitted = false;
+    let emittedMax = false;
 
     return {
-      async next() {
-        await ready;
+      async next(): Promise<IteratorResult<T>> {
+        while (true) {
+          // If all values processed, emit max once and complete
+          if (emittedMax && !hasMax) return { done: true, value: undefined };
+          if (emittedMax && hasMax) {
+            emittedMax = true;
+            return { done: true, value: undefined };
+          }
 
-        if (!emitted && hasMax) {
-          emitted = true;
-          return { value: maxValue!, done: false };
+          const result = await source.next();
+
+          if (result.done) {
+            // Emit final max if exists
+            if (hasMax && !emittedMax) {
+              emittedMax = true;
+              return { done: false, value: maxValue! };
+            }
+            return { done: true, value: undefined };
+          }
+
+          const value = result.value;
+
+          if (!hasMax) {
+            maxValue = value;
+            hasMax = true;
+            continue;
+          }
+
+          let cmp = comparator ? await comparator(value, maxValue!) : (value > maxValue! ? 1 : -1);
+
+          if (cmp > 0) {
+            // previous max becomes phantom
+            maxValue = value;
+            continue;
+          } else {
+            // current value is phantom
+            continue;
+          }
         }
-
-        return { value: undefined, done: true };
       },
     };
   });

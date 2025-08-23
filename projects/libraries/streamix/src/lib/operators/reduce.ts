@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { createOperator } from "../abstractions";
 
 /**
  * Creates a stream operator that accumulates all values from the source stream
@@ -18,32 +18,31 @@ import { CallbackReturnType, createOperator } from "../abstractions";
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const reduce = <T = any, A = any>(
-  accumulator: (acc: A, value: T) => CallbackReturnType<A>,
+  accumulator: (acc: A, value: T) => Promise<A> | A,
   seed: A
 ) =>
   createOperator<T, A>("reduce", (source) => {
-    let completed = false;
+    let finalValue: A = seed;
+    let emittedFinal = false;
 
     return {
       async next(): Promise<IteratorResult<A>> {
         while (true) {
-          if (completed) {
+          const result = await source.next();
+
+          if (result.done) {
+            if (!emittedFinal) {
+              emittedFinal = true;
+              return { done: false, value: finalValue }; // emit seed if stream is empty
+            }
             return { done: true, value: undefined };
           }
 
-          let acc = seed;
+          // Accumulate value
+          finalValue = await accumulator(finalValue, result.value);
 
-          // Consume the entire source stream
-          while (true) {
-            const result = await source.next();
-            if (result.done) {
-              break;
-            }
-            acc = await accumulator(acc, result.value);
-          }
-
-          completed = true;
-          return { done: false, value: acc };
+          // Treat intermediate accumulated value as phantom
+          continue;
         }
       },
     };
