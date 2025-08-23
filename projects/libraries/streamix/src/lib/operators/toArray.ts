@@ -1,58 +1,44 @@
 import { COMPLETE, createOperator, NEXT } from "../abstractions";
-import { StreamResult } from './../abstractions/stream';
+import { StreamResult } from "../abstractions/stream";
 
 /**
- * Creates a stream operator that collects all emitted values from the source stream
- * into an array and emits that array as a single value once the source completes.
- *
- * This operator is an aggregation tool. It consumes all values from the source,
- * buffers them in memory, and only produces a single output when the source stream
- * has completed. Because it holds all values in memory, it should be used with
- * caution on very large or infinite streams.
+ * Collects all emitted values from the source stream into an array
+ * and emits that array once the source completes, tracking pending state.
  *
  * @template T The type of the values in the source stream.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
- * The output stream will emit a single array of type `T[]`.
+ * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export const toArray = <T = any>() =>
   createOperator<T, T[]>("toArray", (source, context) => {
-    const collected: T[] = [];
+    const collected: StreamResult<T>[] = [];
     let completed = false;
     let emitted = false;
-    const phantomQueue: T[] = [];
 
     return {
       async next(): Promise<StreamResult<T[]>> {
         while (true) {
-          // If everything is done and no more phantoms -> complete
-          if (completed && emitted && phantomQueue.length === 0) {
+          // All done and final array emitted → complete
+          if (completed && emitted) {
             return COMPLETE;
           }
 
-          // First drain phantom queue
-          if (phantomQueue.length > 0) {
-            const phantomValue = phantomQueue.shift()!;
-            await context.phantomHandler(phantomValue);
-            continue;
-          }
-
-          // Otherwise consume from source
           const result = await source.next();
 
           if (result.done) {
             completed = true;
             if (!emitted) {
               emitted = true;
-              // emit final array (may be empty)
-              return NEXT(collected);
+              // Resolve all pending results
+              collected.forEach((r) => context.resolvePending(r));
+              // Emit the final array of values
+              return NEXT(collected.map((r) => r.value!));
             }
-            // after array emission we loop back to phantomQueue
             continue;
           }
 
-          // collect real value
-          collected.push(result.value);
-          phantomQueue.push(result.value);
+          // Mark the value as pending
+          context.pendingResults.add(result);
+          collected.push(result);
         }
       },
     };
