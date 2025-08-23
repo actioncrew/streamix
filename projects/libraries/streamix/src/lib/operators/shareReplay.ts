@@ -23,7 +23,7 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
   let isConnected = false;
   let output: ReplaySubject<T> | undefined;
 
-  return createOperator<T, T>('shareReplay', (source, context) => {
+  return createOperator<T, T>('shareReplay', (source) => {
     if (!output) {
       output = createReplaySubject<T>(bufferSize);
     }
@@ -36,7 +36,6 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
           while (true) {
             let result = await source.next();
             if (result.done) break;
-            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             output.next(result.value);
             result = await source.next();

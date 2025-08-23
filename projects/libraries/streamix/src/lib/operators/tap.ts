@@ -18,14 +18,13 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType) =>
-  createOperator<T, T>('tap', (source, context) => {
+  createOperator<T, T>('tap', (source) => {
     return {
       async next(): Promise<StreamResult<T>> {
         while(true) {
           const result = await source.next();
 
           if (result.done) return result;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           await tapFunction(result.value); // side-effect
           return result;

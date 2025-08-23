@@ -22,7 +22,7 @@ export const scan = <T = any, R = any>(
   accumulator: (acc: R, value: T, index: number) => CallbackReturnType<R>,
   seed: R
 ) =>
-  createOperator<T, R>("scan", (source, context) => {
+  createOperator<T, R>("scan", (source) => {
     let acc = seed;
     let index = 0;
     let completed = false;
@@ -40,8 +40,6 @@ export const scan = <T = any, R = any>(
             completed = true;
             return COMPLETE;
           }
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           acc = await accumulator(acc, result.value, index++);
           return NEXT(acc);

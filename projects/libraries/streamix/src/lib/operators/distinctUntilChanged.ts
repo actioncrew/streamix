@@ -31,11 +31,7 @@ export const distinctUntilChanged = <T = any>(
           const result = await source.next();
 
           // If the source stream is done, we are also done.
-          if (result.done) {
-            return COMPLETE;
-          }
-          // Phantom values from the source are ignored, as their purpose is fulfilled.
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
+          if (result.done) return COMPLETE;
 
           // Check if the value is different from the last one.
           const isDistinct = !hasLast || !(comparator ? comparator(lastValue!, result.value) : lastValue === result.value);

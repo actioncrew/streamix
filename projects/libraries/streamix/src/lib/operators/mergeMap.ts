@@ -27,7 +27,7 @@ import { createSubject, Subject } from '../streams';
 export function mergeMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>,
 ) {
-  return createOperator<T, R>('mergeMap', (source, context) => {
+  return createOperator<T, R>('mergeMap', (source) => {
     const output: Subject<R> = createSubject<R>();
 
     let index = 0;
@@ -66,7 +66,6 @@ export function mergeMap<T = any, R = any>(
         while (true) {
           const result = await source.next();
           if (result.done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
           if (errorOccurred) break;
 
           const inner = fromAny(project(result.value, index++));

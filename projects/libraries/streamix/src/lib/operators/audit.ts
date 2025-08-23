@@ -19,7 +19,7 @@ import { createSubject } from '../streams';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const audit = <T = any>(duration: number) => {
-  return createOperator<T, T>('audit', (source, context) => {
+  return createOperator<T, T>('audit', (source) => {
     const output = createSubject<T>();
 
     let lastValue: T | undefined = undefined;
@@ -42,7 +42,6 @@ export const audit = <T = any>(duration: number) => {
         while (true) {
           const result = await source.next();
           if (result.done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           if (timerActive && lastValue !== undefined) {
             output.phantom(lastValue);

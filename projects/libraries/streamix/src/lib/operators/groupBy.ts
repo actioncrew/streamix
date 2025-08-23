@@ -32,7 +32,7 @@ export type GroupItem<T = any, K = any> = {
 export const groupBy = <T = any, K = any>(
   keySelector: (value: T) => CallbackReturnType<K>
 ) =>
-  createOperator<T, GroupItem<T, K>>("groupBy", (source, context) => {
+  createOperator<T, GroupItem<T, K>>("groupBy", (source) => {
     let completed = false;
 
     return {
@@ -47,8 +47,6 @@ export const groupBy = <T = any, K = any>(
             completed = true;
             return COMPLETE;
           }
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const key = await keySelector(result.value);
           return NEXT({ key, value: result.value });

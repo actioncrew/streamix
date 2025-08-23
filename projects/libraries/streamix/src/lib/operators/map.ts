@@ -20,7 +20,7 @@ import { StreamResult } from './../abstractions/stream';
 export const map = <T = any, R = any>(
   transform: (value: T, index: number) => CallbackReturnType<R>
 ) =>
-  createOperator<T, R>('map', (source, context) => {
+  createOperator<T, R>('map', (source) => {
     let index = 0;
     let completed = false;
 
@@ -36,8 +36,6 @@ export const map = <T = any, R = any>(
             completed = true;
             return COMPLETE;
           }
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const transformedValue = await transform(result.value, index++);
           return NEXT(transformedValue);

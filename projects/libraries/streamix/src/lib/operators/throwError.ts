@@ -16,14 +16,13 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that creates a stream which errors upon its first request.
  */
 export const throwError = <T = any>(message: string) =>
-  createOperator<T, never>('throwError', (source, context) => {
+  createOperator<T, never>('throwError', (source) => {
 
     return {
       async next(): Promise<StreamResult<never>> {
         while (true) {
           const result = await source.next();
           if (result.done) return COMPLETE;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
           break;
         }
         throw new Error(message);

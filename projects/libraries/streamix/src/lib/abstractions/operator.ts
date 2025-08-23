@@ -293,16 +293,6 @@ export function patchOperator<TIn, TOut>(
             return result;
           }
 
-          // This is the core logic for phantom handling
-          if (result.phantom) {
-            // Call the shared phantom handler
-            await context.phantomHandler(result.value);
-
-            // Continue to the next item from the original iterator
-            // This is key: it re-runs the operator for the next item
-            result = await this.next();
-          }
-
           context.operatorStack.pop();
           return result;
         },

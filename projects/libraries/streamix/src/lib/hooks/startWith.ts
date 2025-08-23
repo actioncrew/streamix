@@ -13,7 +13,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const startWith = <T = any>(initialValue: T) =>
-  createOperator<T, T>("startWith", (source, context) => {
+  createOperator<T, T>("startWith", (source) => {
     let emittedInitial = false;
     let completed = false;
 
@@ -34,8 +34,6 @@ export const startWith = <T = any>(initialValue: T) =>
             completed = true;
             return COMPLETE;
           }
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           return result;
         }

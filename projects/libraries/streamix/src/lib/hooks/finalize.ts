@@ -15,7 +15,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const finalize = <T = any>(callback: () => CallbackReturnType) =>
-  createOperator<T, T>("finalize", (source, context) => {
+  createOperator<T, T>("finalize", (source) => {
     let finalized = false;
     let completed = false;
 
@@ -40,8 +40,6 @@ export const finalize = <T = any>(callback: () => CallbackReturnType) =>
               completed = true;
               return COMPLETE;
             }
-
-            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             return result;
           } catch (err) {

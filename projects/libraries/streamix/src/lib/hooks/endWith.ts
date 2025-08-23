@@ -13,7 +13,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const endWith = <T = any>(finalValue: T) =>
-  createOperator<T, T>("endWith", (source, context) => {
+  createOperator<T, T>("endWith", (source) => {
     let sourceDone = false;
     let finalEmitted = false;
     let completed = false;
@@ -27,7 +27,6 @@ export const endWith = <T = any>(finalValue: T) =>
 
           if (!sourceDone) {
             const result = await source.next();
-            if (!result.done && result.phantom) { context.phantomHandler(result.value); continue; }
 
             if (!result.done) {
               return result;

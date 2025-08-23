@@ -17,7 +17,7 @@ import { createSubject } from '../streams';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function delay<T = any>(ms: number) {
-  return createOperator<T, T>('delay', (source, context) => {
+  return createOperator<T, T>('delay', (source) => {
     const output = createSubject<T>();
 
     (async () => {
@@ -25,7 +25,6 @@ export function delay<T = any>(ms: number) {
         while (true) {
           const result = await source.next();
           if (result.done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           await new Promise((resolve) => setTimeout(resolve, ms)); // Delay before forwarding
           output.next(result.value);

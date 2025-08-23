@@ -50,8 +50,6 @@ export const toArray = <T = any>() =>
             continue;
           }
 
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
-
           // collect real value
           collected.push(result.value);
           phantomQueue.push(result.value);

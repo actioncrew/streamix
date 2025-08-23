@@ -23,8 +23,6 @@ export const skip = <T = any>(count: number) =>
           const result = await source.next();
           if (result.done) return COMPLETE;
 
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
-
           if (counter > 0) {
             counter--;
             context.phantomHandler(result.value);

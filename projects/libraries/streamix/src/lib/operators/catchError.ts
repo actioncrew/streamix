@@ -23,7 +23,7 @@ import { StreamResult } from './../abstractions/stream';
 export const catchError = <T = any>(
   handler: (error: any) => CallbackReturnType = () => {} // Handler still returns void
 ) =>
-  createOperator<T, T>('catchError', (source, context) => {
+  createOperator<T, T>('catchError', (source) => {
     let errorCaughtAndHandled = false;
     let completed = false;
 
@@ -41,8 +41,6 @@ export const catchError = <T = any>(
               completed = true; // Source completed without error
               return COMPLETE;
             }
-
-            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             return result; // Emit value from source
           } catch (error) {

@@ -14,7 +14,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const defaultIfEmpty = <T = any>(defaultValue: T) =>
-  createOperator<T, T>("defaultIfEmpty", (source, context) => {
+  createOperator<T, T>("defaultIfEmpty", (source) => {
     let emitted = false;
     let completed = false;
 
@@ -26,8 +26,6 @@ export const defaultIfEmpty = <T = any>(defaultValue: T) =>
           }
 
           const result = await source.next();
-
-          if (!result.done && result.phantom) { context.phantomHandler(result.value); continue };
 
           if (!result.done) {
             emitted = true;

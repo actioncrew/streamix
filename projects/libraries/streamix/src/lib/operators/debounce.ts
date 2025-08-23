@@ -16,7 +16,7 @@ import { createSubject, Subject } from "../streams";
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function debounce<T = any>(duration: number) {
-  return createOperator<T, T>("debounce", (source, context) => {
+  return createOperator<T, T>("debounce", (source) => {
     // Create a subject to act as the output stream.
     // We use a subject because we need to manually control when values are emitted.
     let output: Subject<T> = createSubject<T>();
@@ -51,8 +51,6 @@ export function debounce<T = any>(duration: number) {
           // Await the next result from the source stream.
           const result = await source.next();
           if (result.done) break;
-          // Phantom values from the source are ignored.
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           // If a value was already waiting to be emitted, the new value
           // will cause it to be dropped. We signal this with a phantom.

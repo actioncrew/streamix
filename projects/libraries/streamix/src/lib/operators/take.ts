@@ -16,14 +16,16 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const take = <T = any>(count: number) =>
-  createOperator<T, T>("take", (source, context) => {
+  createOperator<T, T>("take", (source) => {
     let emitted = 0;
     let done = false;
 
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          if (done) return COMPLETE;
+          if (done) {
+            return COMPLETE;
+          }
 
           const result = await source.next();
 
@@ -31,8 +33,6 @@ export const take = <T = any>(count: number) =>
             done = true;
             return COMPLETE;
           }
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           emitted++;
 

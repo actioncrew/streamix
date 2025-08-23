@@ -36,11 +36,6 @@ export const reduce = <T = any, A = any>(
             return COMPLETE;
           }
 
-          if (result.phantom) {
-            context.phantomHandler(result.value);
-            continue;
-          }
-
           // Accumulate value
           finalValue = await accumulator(finalValue, result.value);
 

@@ -39,12 +39,12 @@ export const some = <T = any>(
 
             if (result.done) break;
 
-            if (result.phantom) { context.phantomHandler(result.value); continue; }
-
             if (await predicate(result.value, index++)) {
               found = true;
               break; // Predicate matched
             }
+
+            context.phantomHandler(result.value);
           }
         } finally {
           evaluated = true;

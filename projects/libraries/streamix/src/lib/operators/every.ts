@@ -22,7 +22,7 @@ import { StreamResult } from './../abstractions/stream';
 export const every = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, boolean>("every", (source, context) => {
+  createOperator<T, boolean>("every", (source) => {
     let index = 0;
     let emitted = false;
 
@@ -37,8 +37,6 @@ export const every = <T = any>(
             emitted = true;
             return NEXT(true);
           }
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           if (!await predicate(result.value, index++)) {
             emitted = true;

@@ -43,8 +43,6 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
                 : COMPLETE;
             }
 
-            if (result.phantom) { context.phantomHandler(result.value); continue; }
-
             buffer.push(result.value);
 
             // Queue this value as phantom for later emission

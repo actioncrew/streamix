@@ -22,7 +22,7 @@ import { createSubject } from '../streams';
  */
 
 export const sample = <T = any>(period: number) =>
-  createOperator<T, T>('sample', (source, context) => {
+  createOperator<T, T>('sample', (source) => {
     const output = createSubject<T>();
 
     let lastValue: T | undefined;
@@ -54,8 +54,6 @@ export const sample = <T = any>(period: number) =>
         while (true) {
           const result = await source.next();
           if (result.done) break;
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           lastValue = result.value;
           skipped = false; // new value received, reset phantom flag

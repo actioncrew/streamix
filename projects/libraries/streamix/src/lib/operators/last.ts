@@ -38,8 +38,6 @@ export const last = <T = any>(
             return NEXT(lastValue!);
           }
 
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
-
           const value = result.value;
           const matches = !predicate || (await predicate(value));
 

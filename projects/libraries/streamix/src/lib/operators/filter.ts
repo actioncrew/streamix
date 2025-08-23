@@ -29,7 +29,6 @@ export const filter = <T = any>(
         while (true) {
           const result = await source.next();
           if (result.done) return result;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const value = result.value;
           let shouldInclude = false;
@@ -46,11 +45,10 @@ export const filter = <T = any>(
             index++; // Increment index only if included
             // If the value passes the filter, return it as a normal StreamResult.
             return NEXT(value);
-          } else {
-            // If the value is filtered out, return a phantom StreamResult to signal the dropped value.
-            context.phantomHandler(value);
-            continue;
           }
+
+          // If the value is filtered out, return a phantom StreamResult to signal the dropped value.
+          context.phantomHandler(value);
         }
       }
     };

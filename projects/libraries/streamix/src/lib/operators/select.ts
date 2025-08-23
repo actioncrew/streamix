@@ -26,7 +26,7 @@ function toStreamGenerator<T>(gen: AsyncGenerator<T>): StreamGenerator<T> {
 export const select = <T = any>(
   indexIterator: Iterator<number> | AsyncIterator<number>
 ) =>
-  createOperator<T, T>("select", (source, context) => {
+  createOperator<T, T>("select", (source) => {
     function toAsyncIterator(
       iter: Iterator<number> | AsyncIterator<number>
     ): AsyncIterableIterator<number> {
@@ -53,13 +53,6 @@ export const select = <T = any>(
       while (true) {
         const result: StreamResult<T> = await source.next();
         if (result.done) break;
-
-        if (result.phantom) {
-          // propagate phantom immediately
-          context.phantomHandler(undefined);
-          currentIndex++;
-          continue;
-        }
 
         const nextTargetIndex = (await nextTargetIndexPromise).value;
         const indexDone = (await nextTargetIndexPromise).done;

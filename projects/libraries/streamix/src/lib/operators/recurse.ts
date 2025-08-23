@@ -43,7 +43,7 @@ export const recurse = <T = any>(
   project: (value: T) => Stream<T>,
   options: RecurseOptions = {}
 ) =>
-  createOperator<T, T>('recurse', (source, context) => {
+  createOperator<T, T>('recurse', (source) => {
     type QueueItem = { value: T; depth: number };
     const queue: QueueItem[] = [];
     let sourceDone = false;
@@ -72,7 +72,6 @@ export const recurse = <T = any>(
               sourceDone = true;
               break;
             }
-            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             queue.push({ value: result.value, depth: 0 });
           }

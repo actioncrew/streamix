@@ -29,7 +29,7 @@ import { createSubject } from "../streams";
  * The output stream emits tuples of `[T, ...R]`.
  */
 export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(...streams: { [K in keyof R]: Stream<R[K]> }) {
-  return createOperator<T, [T, ...R]>("withLatestFrom", (source, context) => {
+  return createOperator<T, [T, ...R]>("withLatestFrom", (source) => {
     const output = createSubject<[T, ...R]>();
     const latestValues: any[] = new Array(streams.length).fill(undefined);
     const hasValue: boolean[] = new Array(streams.length).fill(false);
@@ -73,7 +73,6 @@ export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(..
           const result = winner.result;
 
           if (result.done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           if (hasValue.every(Boolean)) {
             output.next([result.value, ...latestValues] as [T, ...R]);

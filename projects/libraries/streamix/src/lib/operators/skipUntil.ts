@@ -21,7 +21,7 @@ import { createSubject } from '../streams';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function skipUntil<T = any>(notifier: Stream) {
-  return createOperator<T, T>('skipUntil', (source, context) => {
+  return createOperator<T, T>('skipUntil', (source) => {
     const output = createSubject<T>();
     let canEmit = false;
 
@@ -50,9 +50,6 @@ export function skipUntil<T = any>(notifier: Stream) {
             output.complete();
             break;
           }
-
-          // If the source stream has phantom values, we pass them through.
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           if (canEmit) {
             output.next(result.value);

@@ -17,7 +17,7 @@ import { StreamResult } from './../abstractions/stream';
  * emitting tuples of `[T | undefined, T]`.
  */
 export const slidingPair = <T = any>() =>
-  createOperator<T, [T | undefined, T]>('slidingPair', (source, context) => {
+  createOperator<T, [T | undefined, T]>('slidingPair', (source) => {
     let prev: T | undefined = undefined;
     let first = true;
     let completed = false;
@@ -35,8 +35,6 @@ export const slidingPair = <T = any>() =>
             completed = true;
             return COMPLETE;
           }
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const value: [T | undefined, T] = [first ? undefined : prev, result.value];
           prev = result.value;

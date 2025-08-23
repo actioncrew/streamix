@@ -30,7 +30,6 @@ export const unique = <T = any, K = any>(
         while (true) {
           const result = await source.next();
           if (result.done) return COMPLETE;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           const key = keySelector ? await keySelector(result.value) : result.value;
 

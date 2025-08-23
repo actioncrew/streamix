@@ -18,7 +18,7 @@ import { StreamResult } from './../abstractions/stream';
 export const skipWhile = <T = any>(
   predicate: (value: T) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, T>('skipWhile', (source, context) => {
+  createOperator<T, T>('skipWhile', (source) => {
     let skipping = true;
 
     return {
@@ -27,8 +27,6 @@ export const skipWhile = <T = any>(
           const result = await source.next();
 
           if (result.done) return COMPLETE;
-
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           if (skipping) {
             if (!await predicate(result.value)) {

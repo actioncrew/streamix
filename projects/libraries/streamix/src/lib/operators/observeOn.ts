@@ -50,7 +50,7 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
     }
   };
 
-  return createOperator<T, T>('observeOn', (source, context) => {
+  return createOperator<T, T>('observeOn', (source) => {
     const output = createSubject<T>();
 
     (async () => {
@@ -58,7 +58,6 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
         while (true) {
           const result = await source.next();
           if (result.done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
 
           schedule(() => output.next(result.value));
         }

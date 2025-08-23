@@ -383,7 +383,7 @@ export function coroutine<T, R>(
       }
     };
 
-    const operator = createOperator<T, R>("coroutine", (source, context) => {
+    const operator = createOperator<T, R>("coroutine", (source) => {
       let completed = false;
 
       return {
@@ -399,8 +399,6 @@ export function coroutine<T, R>(
               await finalize();
               return COMPLETE;
             }
-
-            if (result.phantom) { context.phantomHandler(result.value); continue; }
 
             const taskResult = await processTask(result.value as any);
             return NEXT(taskResult);

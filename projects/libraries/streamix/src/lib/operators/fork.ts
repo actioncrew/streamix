@@ -74,8 +74,6 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
               return COMPLETE;
             }
 
-            if (result.phantom) { context.phantomHandler(result.value); continue; }
-
             let matched: typeof options[number] | undefined;
             outerValue = result.value;
             innerStreamHadEmissions = false;

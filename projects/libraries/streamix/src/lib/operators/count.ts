@@ -12,7 +12,7 @@ import { StreamResult } from './../abstractions/stream';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const count = <T = any>() =>
-  createOperator<T, number>("count", (source, context) => {
+  createOperator<T, number>("count", (source) => {
     let counted = false;
     let total = 0;
 
@@ -23,7 +23,7 @@ export const count = <T = any>() =>
         while (true) {
           const result = await source.next();
           if (result.done) break;
-          if (result.phantom) { context.phantomHandler(result.value); continue; }
+
           total++;
         }
 

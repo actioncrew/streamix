@@ -20,7 +20,7 @@ import { CallbackReturnType, COMPLETE, createOperator, NEXT, StreamResult } from
  * value is found before the source stream completes.
  */
 export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator<T, T>('first', (source, context) => {
+  createOperator<T, T>('first', (source) => {
     let found = false;
     let firstValue: T | undefined;
     let sourceDone = false;
@@ -40,8 +40,6 @@ export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<bool
           sourceDone = true;
           throw new Error("No elements in sequence");
         }
-
-        if (result.phantom) { context.phantomHandler(result.value); continue; }
 
         const value = result.value;
         if (!predicate || await predicate(value)) {
