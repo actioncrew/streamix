@@ -16,7 +16,7 @@ export const COMPLETE = { done: true, value: undefined } as const;
  * @param value The value to emit downstream.
  * @returns A `StreamResult<R>` object with `{ done: false, value }`.
  */
-export const NEXT = <R = any>(value: R) => ({ done: false, value });
+export const NEXT = <R = any>(value: R) => ({ done: false, value }) as const;
 
 /**
  * Represents a stream operator that transforms values from an input stream into an output stream.

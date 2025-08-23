@@ -1,61 +1,70 @@
-import { createOperator } from '../abstractions';
+import { createOperator, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 /**
  * Creates a stream operator that emits the latest value from the source stream
- * at most once per specified duration.
+ * at most once per specified duration, while managing pending and phantom states.
+ *
+ * Every value is added to the PipeContext.pendingResults set. If a new value arrives
+ * while the timer is active, the previous value is marked as phantom and removed
+ * from pending. The last value is resolved when emitted downstream or upon completion.
  *
  * @template T The type of the values in the stream.
  * @param duration The time in milliseconds to wait before emitting the latest value.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const audit = <T = any>(duration: number) => {
-  return createOperator<T, T>('audit', (source, context) => {
+export const audit = <T = any>(duration: number) =>
+  createOperator<T, T>('audit', (source, context) => {
     const output = createSubject<T>();
 
-    let lastValue: T | undefined = undefined;
+    let lastResult: StreamResult<T> | undefined = undefined;
     let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
 
-    const startTimer = () => {
-      timerId = setTimeout(() => {
-        if (lastValue !== undefined) {
-          output.next(lastValue);
-          lastValue = undefined;
-        }
-        timerId = undefined; // Timer has finished
-      }, duration);
+    const flush = () => {
+      if (lastResult !== undefined) {
+        output.next(lastResult.value!);
+        context.resolvePending(lastResult);
+        lastResult = undefined;
+      }
+      timerId = undefined;
     };
 
-    // Start processing the source
+    const startTimer = () => {
+      timerId = setTimeout(() => flush(), duration);
+    };
+
     (async () => {
       try {
         while (true) {
           const result = await source.next();
+
+          // Stream completed
           if (result.done) {
-            // Corrected completion logic
-            if (lastValue !== undefined) {
-              output.next(lastValue);
+            if (lastResult !== undefined) {
+              flush();
             }
             break;
           }
 
-          // If a timer is active, the previous lastValue becomes phantom
-          if (timerId !== undefined && lastValue !== undefined) {
-            await await context.phantomHandler(lastValue);
+          // If a previous value is still pending, mark it as phantom
+          if (timerId !== undefined && lastResult !== undefined) {
+            context.phantomPending(lastResult);
           }
 
-          lastValue = result.value;
+          // Add new value to pending set and buffer it
+          context.pendingResults.add(result);
+          lastResult = result;
 
-          // Start a new timer only if one isn't already active
+          // Start a new timer if not active
           if (timerId === undefined) {
             startTimer();
           }
         }
       } catch (err) {
         output.error(err);
+        if (lastResult) context.pendingResults.delete(lastResult);
       } finally {
-        // Clear any pending timers on completion
         if (timerId !== undefined) {
           clearTimeout(timerId);
           timerId = undefined;
@@ -67,4 +76,3 @@ export const audit = <T = any>(duration: number) => {
     const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
-};

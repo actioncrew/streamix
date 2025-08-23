@@ -43,35 +43,49 @@ export interface PipeContext {
    * @param result The stream result to resolve.
    */
   resolvePending: (result: StreamResult<any>) => CallbackReturnType;
+
+  /**
+   * Handles a phantom (suppressed) result by calling the phantom handler
+   * and removing it from the pending results set.
+   * @param result The stream result to mark as phantom and resolve.
+   */
+  phantomPending: (result: StreamResult<any>) => CallbackReturnType;
 }
 
 /**
  * Creates and initializes a new PipeContext object for a stream pipeline.
- * * This function provides a clean, reusable way to set up the necessary
+ * This function provides a clean, reusable way to set up the necessary
  * tracking mechanisms for a stream, ensuring that the pending results,
  * operator stack, and handler functions are properly configured from the start.
- * * @param [initialPhantomHandler] An optional function to handle phantom values. Defaults to a no-op function.
- * @param [initialResolvePending] An optional function to resolve pending values. Defaults to a function that removes the result from the pendingResults set.
+ * @param [initialPhantomHandler] An optional function to handle phantom values. Defaults to a no-op function.
  * @returns A new PipeContext instance.
  */
 export function createContext(
-  initialPhantomHandler?: (value: any) => CallbackReturnType,
-  initialResolvePending?: (result: StreamResult<any>) => CallbackReturnType
+  initialPhantomHandler?: (value: any) => CallbackReturnType
 ): PipeContext {
   const pendingResults = new Set<StreamResult<any>>();
 
-  const resolvePending = initialResolvePending || ((result: StreamResult<any>) => {
-    pendingResults.delete(result);
+  // The phantomHandler is a simple callback for a dropped value.
+  const phantomHandler = initialPhantomHandler || (() => {
+    // Default phantom handler does nothing, but can be customized.
   });
 
-  const phantomHandler = initialPhantomHandler || (() => {
-    // Default phantom handler does nothing, but you could log here for debugging.
-  });
+  // The resolvePending function removes the item from the pending set.
+  const resolvePending = (result: StreamResult<any>) => {
+    pendingResults.delete(result);
+  };
+
+  // The phantomPending function is a combination of phantomHandler and resolvePending.
+  const phantomPending = (result: StreamResult<any>) => {
+    phantomHandler(result.value);
+    pendingResults.delete(result);
+  };
 
   return {
     pendingResults,
     operatorStack: [],
     phantomHandler,
     resolvePending,
+    phantomPending
   };
 }

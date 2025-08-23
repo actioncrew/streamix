@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, NEXT, PipeContext, StreamResult } from '../abstractions';
+import { COMPLETE, createOperator, NEXT, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the maximum value from the source stream.
@@ -13,7 +13,7 @@ import { COMPLETE, createOperator, NEXT, PipeContext, StreamResult } from '../ab
 export const max = <T = any>(
   comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
-  createOperator<T, T>("max", (source, context: PipeContext) => {
+  createOperator<T, T>("max", (source, context) => {
     let maxValue: T | undefined;
     let hasMax = false;
     let emittedMax = false;
