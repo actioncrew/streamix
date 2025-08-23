@@ -1,50 +1,45 @@
-import { createOperator } from '../abstractions';
+import { createOperator, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 
 /**
  * Creates a stream operator that emits the most recent value from the source stream
- * at a fixed periodic interval.
+ * at a fixed periodic interval while tracking pending and phantom states.
  *
- * This operator controls the rate of emissions. It maintains a buffer for the latest
- * value received from the source stream. It then uses an internal timer to periodically
- * emit that latest value to the output stream at a rate defined by the `period`.
- * If the source stream is faster than the `period`, multiple values will be skipped.
- * If the source is slower, the same value will be re-emitted.
- *
- * This is useful for:
- * - Sampling live data streams (e.g., sensor readings) for display on a UI.
- * - Limiting the frequency of expensive operations triggered by a fast event source.
+ * Values that arrive faster than the period are considered phantoms if skipped,
+ * and pending results are tracked in PipeContext until resolved or emitted.
  *
  * @template T The type of the values in the source and output streams.
  * @param period The time in milliseconds between each emission.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @returns An Operator instance for use in a stream's `pipe` method.
  */
-
 export const sample = <T = any>(period: number) =>
   createOperator<T, T>('sample', (source, context) => {
-    const output = createSubject<T>();
+    const output: Subject<T> = createSubject<T>();
 
-    let lastValue: T | undefined;
-    let intervalId: any;
+    let lastResult: StreamResult<T> | undefined;
     let skipped = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    // Timer periodically emits last value, or phantom if skipped
     const startSampling = () => {
       intervalId = setInterval(async () => {
-        if (lastValue !== undefined) {
-          if (skipped) {
-            await context.phantomHandler(lastValue); // phantom for skipped value
-          } else {
-            output.next(lastValue);
-          }
-          skipped = true; // assume next interval will skip if no new value
+        if (!lastResult) return;
+
+        if (skipped) {
+          // Mark as phantom if the last value was skipped
+          context.phantomPending(lastResult);
+        } else {
+          output.next(lastResult.value!);
+          context.resolvePending(lastResult);
         }
+
+        skipped = true;
       }, period);
     };
 
     const stopSampling = () => {
-      if (intervalId != null) clearInterval(intervalId);
+      if (intervalId !== null) clearInterval(intervalId);
+      intervalId = null;
     };
 
     (async () => {
@@ -52,25 +47,33 @@ export const sample = <T = any>(period: number) =>
         startSampling();
 
         while (true) {
-          const result = await source.next();
+          const result: StreamResult<T> = await source.next();
           if (result.done) break;
 
-          lastValue = result.value;
-          skipped = false; // new value received, reset phantom flag
+          // Previous lastResult becomes phantom if it existed and was skipped
+          if (lastResult && skipped) {
+            context.phantomPending(lastResult);
+          }
+
+          // Track new result as pending
+          context.pendingResults.add(result);
+          lastResult = result;
+          skipped = false;
         }
 
-        // Emit final value after source completes
-        if (lastValue !== undefined) {
-          output.next(lastValue);
+        // Emit final value
+        if (lastResult) {
+          output.next(lastResult.value!);
+          context.resolvePending(lastResult);
         }
       } catch (err) {
+        if (lastResult) context.pendingResults.delete(lastResult);
         output.error(err);
       } finally {
-        output.complete();
         stopSampling();
+        output.complete();
       }
     })();
 
-    const iterable = eachValueFrom<T>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });

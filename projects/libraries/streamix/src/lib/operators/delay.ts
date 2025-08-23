@@ -1,42 +1,49 @@
-import { createOperator } from '../abstractions';
+import { createOperator, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 
 /**
- * Creates a stream operator that delays the emission of each value from the source stream.
+ * Creates a stream operator that delays the emission of each value from the source stream
+ * while tracking pending and phantom states.
  *
- * This operator introduces a delay of `ms` milliseconds before each value received from the
- * source is re-emitted. The values maintain their original order but are emitted
- * with a time gap between them.
- *
- * This is useful for simulating latency or for controlling the rate of events in a predictable
- * manner, such as for animations or staggered data loading.
+ * Each value received from the source is added to `context.pendingResults` and is only
+ * resolved once the delay has elapsed and the value is emitted downstream.
  *
  * @template T The type of the values in the source and output streams.
  * @param ms The time in milliseconds to delay each value.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export function delay<T = any>(ms: number) {
-  return createOperator<T, T>('delay', (source) => {
-    const output = createSubject<T>();
+  return createOperator<T, T>('delay', (source, context) => {
+    const output: Subject<T> = createSubject<T>();
 
     (async () => {
       try {
         while (true) {
-          const result = await source.next();
+          const result: StreamResult<T> = await source.next();
           if (result.done) break;
 
-          await new Promise((resolve) => setTimeout(resolve, ms)); // Delay before forwarding
+          // Mark the value as pending
+          context.pendingResults.add(result);
+
+          // Delay emission
+          await new Promise((resolve) => setTimeout(resolve, ms));
+
+          // Emit downstream
           output.next(result.value);
+
+          // Resolve pending state
+          context.resolvePending(result);
         }
       } catch (err) {
+        // On error, remove any last pending value
+        context.pendingResults.forEach((res) => context.pendingResults.delete(res));
         output.error(err);
       } finally {
         output.complete();
       }
     })();
 
-    const iterable = eachValueFrom<T>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });
 }
