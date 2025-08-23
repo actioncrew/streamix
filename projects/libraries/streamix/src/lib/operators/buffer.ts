@@ -25,7 +25,7 @@ import { createSubject, timer } from "../streams";
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function buffer<T = any>(period: number) {
-  return createOperator<T, T[]>('buffer', (source) => {
+  return createOperator<T, T[]>('buffer', (source, context) => {
     const output = createSubject<T[]>();
     let buffer: T[] = [];
     let completed = false;
@@ -66,7 +66,7 @@ export function buffer<T = any>(period: number) {
           if (result.done) break;
 
           buffer.push(result.value);
-          output.phantom(result.value);
+          context.phantomHandler(result.value);
         }
       } catch (err) {
         cleanup();

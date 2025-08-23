@@ -27,7 +27,7 @@ import { createSubject } from "../streams";
 export function switchMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) {
-  return createOperator<T, R>("switchMap", (source) => {
+  return createOperator<T, R>("switchMap", (source, context) => {
     const output = createSubject<R>();
 
     let currentSubscription: Subscription | null = null;
@@ -47,7 +47,7 @@ export function switchMap<T = any, R = any>(
       // Cancel previous inner stream
       if (currentSubscription) {
         if (!innerHadEmissions && pendingPhantom) {
-          output.phantom(pendingPhantom);
+          context.phantomHandler(pendingPhantom);
         }
 
         currentSubscription.unsubscribe();

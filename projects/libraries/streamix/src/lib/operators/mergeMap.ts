@@ -27,7 +27,7 @@ import { createSubject, Subject } from '../streams';
 export function mergeMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>,
 ) {
-  return createOperator<T, R>('mergeMap', (source) => {
+  return createOperator<T, R>('mergeMap', (source, context) => {
     const output: Subject<R> = createSubject<R>();
 
     let index = 0;
@@ -53,7 +53,7 @@ export function mergeMap<T = any, R = any>(
         activeInner--;
         // If the inner stream had no emissions, signal a phantom.
         if (!innerStreamHadEmissions && !errorOccurred) {
-          output.phantom(outerValue as never);
+          context.phantomHandler(outerValue);
         }
         if (outerCompleted && activeInner === 0 && !errorOccurred) {
           output.complete();

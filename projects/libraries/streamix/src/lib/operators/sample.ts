@@ -22,7 +22,7 @@ import { createSubject } from '../streams';
  */
 
 export const sample = <T = any>(period: number) =>
-  createOperator<T, T>('sample', (source) => {
+  createOperator<T, T>('sample', (source, context) => {
     const output = createSubject<T>();
 
     let lastValue: T | undefined;
@@ -34,7 +34,7 @@ export const sample = <T = any>(period: number) =>
       intervalId = setInterval(() => {
         if (lastValue !== undefined) {
           if (skipped) {
-            output.phantom(lastValue); // phantom for skipped value
+            context.phantomHandler(lastValue); // phantom for skipped value
           } else {
             output.next(lastValue);
           }

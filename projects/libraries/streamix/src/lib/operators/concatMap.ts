@@ -28,7 +28,7 @@ export const concatMap = <T = any, R = T>(
   createOperator<T, R>("concatMap", (source, context) => {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
-    let outerResult: StreamResult<T> | null = null;
+    let result: StreamResult<T> | null = null;
     let innerHadEmissions = false;
 
     return {
@@ -36,15 +36,14 @@ export const concatMap = <T = any, R = T>(
         while (true) {
           // If no active inner iterator, pull the next outer value
           if (!innerIterator) {
-            outerResult = await source.next();
+            result = await source.next();
 
-            if (outerResult.done) return COMPLETE;
-            if (outerResult.phantom) { context.phantomHandler(outerResult.value); continue; }
+            if (result.done) return COMPLETE;
 
             // Initialize inner stream
             innerHadEmissions = false;
             innerIterator = eachValueFrom<R>(
-              fromAny(project(outerResult.value, outerIndex++))
+              fromAny(project(result.value, outerIndex++))
             );
           }
 
@@ -55,8 +54,8 @@ export const concatMap = <T = any, R = T>(
             innerIterator = null;
 
             // If inner stream emitted nothing, produce a phantom
-            if (!innerHadEmissions && outerResult !== null) {
-              context.phantomHandler(outerResult.value);
+            if (!innerHadEmissions && result !== null) {
+              context.phantomHandler(result.value);
             }
 
             // Otherwise continue to next outer value

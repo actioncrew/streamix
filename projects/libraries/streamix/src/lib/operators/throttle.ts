@@ -15,7 +15,7 @@ import { createSubject } from '../streams';
  * @returns {Operator<T, T>} An operator function that applies throttling to the source async iterable.
  */
 export const throttle = <T = any>(duration: number) =>
-  createOperator<T, T>("throttle", (source) => {
+  createOperator<T, T>("throttle", (source, context) => {
     const output = createSubject<T>();
 
     let lastEmit = 0;
@@ -41,7 +41,7 @@ export const throttle = <T = any>(duration: number) =>
             lastEmit = now;
             output.next(result.value);
           } else {
-            output.phantom(result.value);
+            context.phantomHandler(result.value);
 
             // store as candidate for trailing emit
             pending = result.value;
