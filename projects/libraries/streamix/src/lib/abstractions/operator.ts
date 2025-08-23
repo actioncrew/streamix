@@ -19,18 +19,6 @@ export const COMPLETE = { done: true, value: undefined } as const;
 export const NEXT = <R = any>(value: R) => ({ done: false, value });
 
 /**
- * Factory function to create a phantom stream result.
- *
- * Phantom results represent suppressed or filtered values that should not
- * propagate downstream, but can still be tracked by the pipeline.
- *
- * @template T The type of the phantom value.
- * @param value The suppressed value.
- * @returns A `StreamResult<T>` object with `{ done: false, value, phantom: true }`.
- */
-export const PHANTOM = <T = any>(value: T) => ({ done: false, value, phantom: true });
-
-/**
  * Represents a stream operator that transforms values from an input stream into an output stream.
  *
  * Operators are the fundamental building blocks for composing stream transformations.

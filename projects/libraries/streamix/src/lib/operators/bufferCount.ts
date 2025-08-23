@@ -1,4 +1,4 @@
-import { COMPLETE, NEXT, PHANTOM, StreamResult, createOperator } from "../abstractions";
+import { COMPLETE, NEXT, StreamResult, createOperator } from "../abstractions";
 
 /**
  * Creates a stream operator that buffers a fixed number of values and emits them as arrays.
@@ -27,7 +27,8 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
           // First emit any queued phantom values
           if (phantomQueue.length > 0) {
             const phantomValue = phantomQueue.shift()!;
-            return PHANTOM(phantomValue) as any;
+            context.phantomHandler(phantomValue);
+            continue;
           }
 
           const buffer: T[] = [];
