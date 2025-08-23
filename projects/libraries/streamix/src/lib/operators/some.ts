@@ -44,7 +44,7 @@ export const some = <T = any>(
               break; // Predicate matched
             }
 
-            context.phantomHandler(result.value);
+            await context.phantomHandler(result.value);
           }
         } finally {
           evaluated = true;

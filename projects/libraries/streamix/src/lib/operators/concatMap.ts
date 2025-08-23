@@ -55,7 +55,7 @@ export const concatMap = <T = any, R = T>(
 
             // If inner stream emitted nothing, produce a phantom
             if (!innerHadEmissions && result !== null) {
-              context.phantomHandler(result.value);
+              await context.phantomHandler(result.value);
             }
 
             // Otherwise continue to next outer value

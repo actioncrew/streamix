@@ -54,7 +54,7 @@ export const max = <T = any>(
             maxValue = value;
           }
 
-          context.phantomHandler(maxValue!);
+          await context.phantomHandler(maxValue!);
         }
       },
     };

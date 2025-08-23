@@ -42,7 +42,7 @@ export const audit = <T = any>(duration: number) => {
 
           // If a timer is active, the previous lastValue becomes phantom
           if (timerId !== undefined && lastValue !== undefined) {
-            await context.phantomHandler(lastValue);
+            await await context.phantomHandler(lastValue);
           }
 
           lastValue = result.value;

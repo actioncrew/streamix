@@ -44,7 +44,7 @@ export const distinctUntilChanged = <T = any>(
           } else {
             // If the value is a consecutive duplicate, we do not update the lastValue,
             // and instead, we return a phantom StreamResult to signal that a value was dropped.
-            context.phantomHandler(result.value);
+            await context.phantomHandler(result.value);
             continue;
           }
         }

@@ -43,11 +43,11 @@ export function switchMap<T = any, R = any>(
       }
     };
 
-    const subscribeToInner = (innerStream: Stream<R>, streamId: number) => {
+    const subscribeToInner = async (innerStream: Stream<R>, streamId: number) => {
       // Cancel previous inner stream
       if (currentSubscription) {
         if (!innerHadEmissions && pendingPhantom) {
-          context.phantomHandler(pendingPhantom);
+          await context.phantomHandler(pendingPhantom);
         }
 
         currentSubscription.unsubscribe();
@@ -87,7 +87,7 @@ export function switchMap<T = any, R = any>(
 
           const streamId = ++currentInnerStreamId;
           const innerStream = fromAny(project(result.value, index++));
-          subscribeToInner(innerStream, streamId);
+          await subscribeToInner(innerStream, streamId);
         }
 
         inputCompleted = true;

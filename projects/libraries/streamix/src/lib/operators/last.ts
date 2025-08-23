@@ -46,7 +46,7 @@ export const last = <T = any>(
               // Previous last value becomes phantom
               const phantom = lastValue!;
               lastValue = value;
-              context.phantomHandler(phantom);
+              await context.phantomHandler(phantom);
               continue;
             } else {
               lastValue = value;
@@ -55,7 +55,7 @@ export const last = <T = any>(
             }
           } else {
             // Non-matching values are phantoms
-            context.phantomHandler(value);
+            await context.phantomHandler(value);
           }
         }
       }

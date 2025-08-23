@@ -41,7 +41,7 @@ export const throttle = <T = any>(duration: number) =>
             lastEmit = now;
             output.next(result.value);
           } else {
-            context.phantomHandler(result.value);
+            await context.phantomHandler(result.value);
 
             // store as candidate for trailing emit
             pending = result.value;

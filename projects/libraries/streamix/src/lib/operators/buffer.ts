@@ -66,7 +66,7 @@ export function buffer<T = any>(period: number) {
           if (result.done) break;
 
           buffer.push(result.value);
-          context.phantomHandler(result.value);
+          await context.phantomHandler(result.value);
         }
       } catch (err) {
         cleanup();

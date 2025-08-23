@@ -31,10 +31,10 @@ export const sample = <T = any>(period: number) =>
 
     // Timer periodically emits last value, or phantom if skipped
     const startSampling = () => {
-      intervalId = setInterval(() => {
+      intervalId = setInterval(async () => {
         if (lastValue !== undefined) {
           if (skipped) {
-            context.phantomHandler(lastValue); // phantom for skipped value
+            await context.phantomHandler(lastValue); // phantom for skipped value
           } else {
             output.next(lastValue);
           }

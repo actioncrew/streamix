@@ -55,7 +55,7 @@ export function debounce<T = any>(duration: number) {
           // If a value was already waiting to be emitted, the new value
           // will cause it to be dropped. We signal this with a phantom.
           if (latestValue !== null) {
-            context.phantomHandler(latestValue);
+            await context.phantomHandler(latestValue);
           }
 
           hasReceivedValues = true;

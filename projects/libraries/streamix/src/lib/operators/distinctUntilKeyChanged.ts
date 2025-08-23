@@ -45,7 +45,7 @@ export const distinctUntilKeyChanged = <T extends object = any>(
             return NEXT(current);
           } else {
             // If the value's key is a consecutive duplicate, return a phantom.
-            context.phantomHandler(current);
+            await context.phantomHandler(current);
             continue;
           }
         }

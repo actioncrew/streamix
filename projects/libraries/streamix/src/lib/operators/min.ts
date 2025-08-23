@@ -61,7 +61,7 @@ export const min = <T = any>(
             minValue = value;
           }
 
-          context.phantomHandler(minValue!);
+          await context.phantomHandler(minValue!);
         }
       },
     };

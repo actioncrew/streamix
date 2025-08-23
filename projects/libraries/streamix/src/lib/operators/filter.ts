@@ -48,7 +48,7 @@ export const filter = <T = any>(
           }
 
           // If the value is filtered out, return a phantom StreamResult to signal the dropped value.
-          context.phantomHandler(value);
+          await context.phantomHandler(value);
         }
       }
     };

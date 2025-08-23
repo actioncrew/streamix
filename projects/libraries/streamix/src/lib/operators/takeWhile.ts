@@ -33,7 +33,7 @@ export const takeWhile = <T = any>(
           if (result.done) return result;
 
           if (!active) {
-            context.phantomHandler(result.value);
+            await context.phantomHandler(result.value);
             continue;
           }
 
@@ -41,7 +41,7 @@ export const takeWhile = <T = any>(
           if (!pass) {
             active = false;
             // turn this failed one into phantom too
-            context.phantomHandler(result.value);
+            await context.phantomHandler(result.value);
             continue;
           }
 

@@ -27,7 +27,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
           // First emit any queued phantom values
           if (phantomQueue.length > 0) {
             const phantomValue = phantomQueue.shift()!;
-            context.phantomHandler(phantomValue);
+            await context.phantomHandler(phantomValue);
             continue;
           }
 

@@ -24,7 +24,7 @@ export const ignoreElements = <T>() =>
 
         // For every value received, we return a phantom.
         // The value is not passed along, but the event is still signaled.
-        context.phantomHandler(result.value);
+        await context.phantomHandler(result.value);
       }
     }
   }));

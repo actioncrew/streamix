@@ -101,7 +101,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             // no emissions.
             if (!innerStreamHadEmissions) {
               // We return a phantom of the original outer value.
-              context.phantomHandler(outerValue);
+              await context.phantomHandler(outerValue);
             }
             // If the inner stream had emissions, we just continue the loop
             // to process the next outer value.

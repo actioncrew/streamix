@@ -25,7 +25,7 @@ export const skip = <T = any>(count: number) =>
 
           if (counter > 0) {
             counter--;
-            context.phantomHandler(result.value);
+            await context.phantomHandler(result.value);
             continue;
           }
 

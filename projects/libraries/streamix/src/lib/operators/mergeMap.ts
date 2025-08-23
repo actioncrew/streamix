@@ -53,7 +53,7 @@ export function mergeMap<T = any, R = any>(
         activeInner--;
         // If the inner stream had no emissions, signal a phantom.
         if (!innerStreamHadEmissions && !errorOccurred) {
-          context.phantomHandler(outerValue);
+          await context.phantomHandler(outerValue);
         }
         if (outerCompleted && activeInner === 0 && !errorOccurred) {
           output.complete();

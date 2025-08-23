@@ -32,7 +32,7 @@ export const toArray = <T = any>() =>
           // First drain phantom queue
           if (phantomQueue.length > 0) {
             const phantomValue = phantomQueue.shift()!;
-            context.phantomHandler(phantomValue);
+            await context.phantomHandler(phantomValue);
             continue;
           }
 
