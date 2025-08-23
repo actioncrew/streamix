@@ -31,13 +31,13 @@ export const reduce = <T = any, A = any>(
           if (result.done) {
             if (!emittedFinal) {
               emittedFinal = true;
-              return NEXT(finalValue); // emit seed if stream is empty
+              return NEXT(finalValue);
             }
             return COMPLETE;
           }
 
           if (result.phantom) {
-            await context.phantomHandler(result.value);
+            context.phantomHandler(result.value);
             continue;
           }
 
@@ -45,7 +45,7 @@ export const reduce = <T = any, A = any>(
           finalValue = await accumulator(finalValue, result.value);
 
           // Treat intermediate accumulated value as phantom
-          await context.phantomHandler(finalValue);
+          context.phantomHandler(finalValue);
         }
       },
     };

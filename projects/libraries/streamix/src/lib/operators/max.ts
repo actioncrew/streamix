@@ -51,12 +51,10 @@ export const max = <T = any>(
 
           if (cmp > 0) {
             // previous max becomes phantom
-            context.phantomHandler(maxValue!);
             maxValue = value;
-          } else {
-            // current value is phantom
-            context.phantomHandler(value);
           }
+
+          context.phantomHandler(maxValue!);
         }
       },
     };

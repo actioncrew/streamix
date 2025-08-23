@@ -58,12 +58,10 @@ export const min = <T = any>(
 
           if (cmp < 0) {
             // previous min becomes phantom
-            context.phantomHandler(minValue!);
             minValue = value;
-          } else {
-            // current value is phantom
-            context.phantomHandler(value);
           }
+
+          context.phantomHandler(minValue!);
         }
       },
     };
