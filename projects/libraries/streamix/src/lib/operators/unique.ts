@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
 
 /**
@@ -28,7 +28,7 @@ export const unique = <T = any, K = any>(
       next: async () => {
         while (true) {
           const result = createStreamResult(await source.next());
-          if (result.done) return COMPLETE;
+          if (result.done) return DONE;
 
           const key = keySelector ? await keySelector(result.value) : result.value;
 

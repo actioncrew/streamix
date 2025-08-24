@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that prepends a specified value to the beginning of the stream.
@@ -20,7 +20,7 @@ export const startWith = <T = any>(initialValue: T) =>
       next: async () => {
         while (true) {
           if (completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           if (!emittedInitial) {
@@ -31,7 +31,7 @@ export const startWith = <T = any>(initialValue: T) =>
           const result = createStreamResult(await source.next());
           if (result.done) {
             completed = true;
-            return COMPLETE;
+            return DONE;
           }
 
           return result;

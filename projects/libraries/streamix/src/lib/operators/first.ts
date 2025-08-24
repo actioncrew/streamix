@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits only the first element from the source stream
@@ -28,7 +28,7 @@ export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<bool
     return {
       next: async () => {
         if (found) {
-          return COMPLETE;
+          return DONE;
         }
 
         if (sourceDone) {
@@ -50,7 +50,7 @@ export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<bool
           }
         }
 
-        return COMPLETE;
+        return DONE;
       }
     };
   });

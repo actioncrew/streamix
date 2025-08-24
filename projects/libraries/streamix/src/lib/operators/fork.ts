@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 
 /**
@@ -70,7 +70,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
           if (!innerIterator) {
             const result = createStreamResult(await source.next());
             if (result.done) {
-              return COMPLETE;
+              return DONE;
             }
 
             let matched: typeof options[number] | undefined;

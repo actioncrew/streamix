@@ -1,4 +1,4 @@
-export * from './audit';
+export * from '../hooks/audit';
 export * from './buffer';
 export * from './bufferCount';
 export * from './cascade';

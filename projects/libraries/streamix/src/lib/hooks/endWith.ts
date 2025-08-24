@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits a final, specified value after the source stream has completed.
@@ -20,7 +20,7 @@ export const endWith = <T = any>(finalValue: T) =>
       next: async () => {
         while (true) {
           if (completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           if (!sourceDone) {
@@ -40,7 +40,7 @@ export const endWith = <T = any>(finalValue: T) =>
           }
 
           completed = true;
-          return COMPLETE;
+          return DONE;
         }
       }
     };

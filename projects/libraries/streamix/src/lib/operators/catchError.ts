@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, Operator } from '../abstractions';
+import { CallbackReturnType, createOperator, createStreamResult, DONE, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that catches errors from the source stream and handles them.
@@ -31,14 +31,14 @@ export const catchError = <T = any>(
         while (true) {
           // If an error was already caught and handled, or we're completed, this operator is done
           if (errorCaughtAndHandled || completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           try {
             const result = createStreamResult(await source.next());
             if (result.done) {
               completed = true; // Source completed without error
-              return COMPLETE;
+              return DONE;
             }
 
             return result; // Emit value from source
@@ -49,7 +49,7 @@ export const catchError = <T = any>(
               errorCaughtAndHandled = true; // Mark as handled
               completed = true;
               // After handling, this operator completes
-              return COMPLETE;
+              return DONE;
             } else {
               // If subsequent errors occur (shouldn't happen with a proper upstream), re-throw
               throw error;

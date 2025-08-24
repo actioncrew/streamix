@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * @typedef {object} CoroutineMessage
@@ -390,14 +390,14 @@ export function coroutine<T, R>(
         next: async() => {
           while (true) {
             if (completed || isFinalizing) {
-              return COMPLETE;
+              return DONE;
             }
 
             const result = createStreamResult(await source.next());
             if (result.done) {
               completed = true;
               await finalize();
-              return COMPLETE;
+              return DONE;
             }
 
             const taskResult = await processTask(result.value as any);
@@ -407,7 +407,7 @@ export function coroutine<T, R>(
         async return() {
           completed = true;
           await finalize();
-          return COMPLETE;
+          return DONE;
         },
         async throw(err) {
           completed = true;

@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that invokes a finalizer callback upon stream termination.
@@ -22,7 +22,7 @@ export const finalize = <T = any>(callback: () => CallbackReturnType) =>
       next: async () => {
         while (true) {
           if (completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           try {
@@ -32,12 +32,12 @@ export const finalize = <T = any>(callback: () => CallbackReturnType) =>
               finalized = true;
               completed = true;
               await callback?.();
-              return COMPLETE;
+              return DONE;
             }
 
             if (result.done) {
               completed = true;
-              return COMPLETE;
+              return DONE;
             }
 
             return result;

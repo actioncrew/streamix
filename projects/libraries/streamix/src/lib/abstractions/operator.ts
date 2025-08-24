@@ -7,7 +7,7 @@ import { Stream, StreamIterator } from "./stream";
  * Always `{ done: true, value: undefined }`.
  * Used to signal the end of a stream.
  */
-export const COMPLETE: StreamResult<any> = createStreamResult({ done: true, value: undefined });
+export const DONE: StreamResult<any> = createStreamResult({ done: true, value: undefined });
 /**
  * Factory function to create a normal stream result.
  *

@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Represents a grouped item with its original value and the associated key.
@@ -38,13 +38,13 @@ export const groupBy = <T = any, K = any>(
       next: async () => {
         while (true) {
           if (completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           const result = createStreamResult(await source.next());
           if (result.done) {
             completed = true;
-            return COMPLETE;
+            return DONE;
           }
 
           const key = await keySelector(result.value);

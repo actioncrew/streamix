@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from '../abstractions';
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -75,14 +75,14 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
       async next() {
         while (true) {
           if (completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           const result = await iterator.next();
 
           if (result.done) {
             completed = true;
-            return COMPLETE;
+            return DONE;
           }
 
           return NEXT(result.value);

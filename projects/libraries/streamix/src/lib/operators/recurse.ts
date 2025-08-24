@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
 /**
@@ -85,7 +85,7 @@ export const recurse = <T = any>(
 
           // If queue is empty and source is done, we're done
           if (sourceDone && queue.length === 0) {
-            return COMPLETE;
+            return DONE;
           }
 
           // Yield control briefly (avoid busy waiting)

@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that accumulates values from the source stream,
@@ -30,14 +30,14 @@ export const scan = <T = any, R = any>(
       next: async () => {
         while (true) {
           if (completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           const result = createStreamResult(await source.next());
 
           if (result.done) {
             completed = true;
-            return COMPLETE;
+            return DONE;
           }
 
           acc = await accumulator(acc, result.value, index++);

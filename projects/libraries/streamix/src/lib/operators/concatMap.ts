@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator, Stream, StreamResult } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator, Stream, StreamResult } from "../abstractions";
 import { eachValueFrom, fromAny } from "../converters";
 
 /**
@@ -37,7 +37,7 @@ export const concatMap = <T = any, R = T>(
           if (!innerIterator) {
             result = createStreamResult(await source.next());
 
-            if (result.done) return COMPLETE;
+            if (result.done) return DONE;
 
             // Initialize inner stream
             innerHadEmissions = false;

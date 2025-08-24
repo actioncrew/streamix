@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator, StreamResult } from "../abstractions";
+import { createOperator, createStreamResult, DONE, NEXT, Operator, StreamResult } from "../abstractions";
 
 /**
  * Collects all emitted values from the source stream into an array
@@ -18,7 +18,7 @@ export const toArray = <T = any>() =>
         while (true) {
           // All done and final array emitted → complete
           if (completed && emitted) {
-            return COMPLETE;
+            return DONE;
           }
 
           const result = createStreamResult(await source.next());

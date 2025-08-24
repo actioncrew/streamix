@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that accumulates all values from the source stream
@@ -32,7 +32,7 @@ export const reduce = <T = any, A = any>(
               emittedFinal = true;
               return NEXT(finalValue);
             }
-            return COMPLETE;
+            return DONE;
           }
 
           // Accumulate value

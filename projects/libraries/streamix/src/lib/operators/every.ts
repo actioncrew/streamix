@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that tests if all values from the source stream satisfy a predicate.
@@ -27,7 +27,7 @@ export const every = <T = any>(
 
     return {
       next: async () => {
-        if (emitted) return COMPLETE;
+        if (emitted) return DONE;
 
         while (true) {
           const result = createStreamResult(await source.next());

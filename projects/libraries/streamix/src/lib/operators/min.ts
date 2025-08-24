@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from '../abstractions';
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the minimum value from the source stream.
@@ -42,7 +42,7 @@ export const min = <T = any>(
               emittedMin = true;
               return NEXT(minValue!);
             }
-            return COMPLETE;
+            return DONE;
           }
 
           const value = result.value;

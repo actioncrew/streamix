@@ -1,4 +1,4 @@
-import { COMPLETE, NEXT, Operator, StreamResult, createOperator, createStreamResult } from "../abstractions";
+import { DONE, NEXT, Operator, StreamResult, createOperator, createStreamResult } from "../abstractions";
 
 /**
  * Buffers a fixed number of values from the source stream and emits them as arrays,
@@ -14,7 +14,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
 
     return {
       async next(): Promise<StreamResult<T[]>> {
-        if (completed) return COMPLETE;
+        if (completed) return DONE;
 
         const buffer: StreamResult<T>[] = [];
 
@@ -30,7 +30,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
               return NEXT(buffer.map((r) => r.value!));
             }
 
-            return COMPLETE;
+            return DONE;
           }
 
           // Mark the value as pending

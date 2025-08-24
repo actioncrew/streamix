@@ -1,4 +1,4 @@
-import { COMPLETE, NEXT, StreamResult } from "../abstractions";
+import { DONE, NEXT, StreamResult } from "../abstractions";
 import { createLock } from "./lock";
 import { createSemaphore } from "./semaphore";
 
@@ -169,7 +169,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
       try {
         const reader = readers.get(readerId);
         if (!reader || !reader.isActive) {
-          return COMPLETE;
+          return DONE;
         }
 
         if (hasValue && reader.lastSeenVersion < version) {
@@ -181,7 +181,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
           result = NEXT(value as T);
           reader.lastSeenVersion = version;
         } else if (isCompleted) {
-          return COMPLETE;
+          return DONE;
         }
       } finally {
         releaseLock();
@@ -202,7 +202,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
     try {
       const reader = readers.get(readerId);
       if (!reader || !reader.isActive) {
-        return COMPLETE;
+        return DONE;
       }
 
       if (hasValue && reader.lastSeenVersion < version) {
@@ -211,7 +211,7 @@ export function createSubjectBuffer<T = any>(): CyclicBuffer<T> {
       }
 
       if (isCompleted) {
-        return COMPLETE;
+        return DONE;
       }
 
       return NEXT(undefined as T);
@@ -480,7 +480,7 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
     while (true) {
       const release = await lock();
       const st = readers.get(id);
-      if (!st) { release(); return COMPLETE; }
+      if (!st) { release(); return DONE; }
       const off = st.offset;
       if (off < totalWritten) {
         const item = buffer[getIndex(off)];
@@ -490,7 +490,7 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
         releaseSlot(off);
         return NEXT(item as T);
       }
-      if (isCompleted) { release(); return COMPLETE; }
+      if (isCompleted) { release(); return DONE; }
       release();
       await notifier.wait();
     }
@@ -516,12 +516,12 @@ export function createReplayBuffer<T = any>(capacity: number): ReplayBuffer<T> {
 
       // Check if reader is detached
       if (!st) {
-        return COMPLETE;
+        return DONE;
       }
 
       // Check if no data available to peek
       if (totalWritten === 0 || st.offset >= totalWritten) {
-        return COMPLETE;
+        return DONE;
       }
 
       const readPos = st.offset;

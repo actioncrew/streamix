@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, Operator } from "../abstractions";
+import { createOperator, createStreamResult, DONE, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that ignores all values emitted by the source stream.
@@ -20,7 +20,7 @@ export const ignoreElements = <T>() =>
           const result = createStreamResult(await source.next());
           if (result.done) {
             // If the source is done, we are also done.
-            return COMPLETE as any;
+            return DONE as any;
           }
 
           // For every value received, we return a phantom.

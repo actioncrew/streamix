@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits pairs of values from the source stream,
@@ -25,14 +25,14 @@ export const slidingPair = <T = any>() =>
       next: async () => {
         while (true) {
           if (completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           const result = createStreamResult(await source.next());
 
           if (result.done) {
             completed = true;
-            return COMPLETE;
+            return DONE;
           }
 
           const value: [T | undefined, T] = [first ? undefined : prev, result.value];

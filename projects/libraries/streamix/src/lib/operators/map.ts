@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator, StreamResult } from '../abstractions';
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that applies a transformation function to each value
@@ -27,13 +27,13 @@ export const map = <T = any, R = any>(
       async next(): Promise<StreamResult<R>> {
         while (true) {
           if (completed) {
-            return COMPLETE;
+            return DONE;
           }
 
           const result = createStreamResult(await source.next());
           if (result.done) {
             completed = true;
-            return COMPLETE;
+            return DONE;
           }
 
           const transformedValue = await transform(result.value, index++);

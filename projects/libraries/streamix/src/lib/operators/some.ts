@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that tests if at least one value from the source stream satisfies a predicate.
@@ -29,7 +29,7 @@ export const some = <T = any>(
     return {
       next: async () => {
         if (evaluated) {
-          return COMPLETE;
+          return DONE;
         }
 
         try {

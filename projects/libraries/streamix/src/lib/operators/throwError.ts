@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, Operator } from '../abstractions';
+import { createOperator, createStreamResult, DONE, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that immediately throws an error with the provided message.
@@ -21,7 +21,7 @@ export const throwError = <T = any>(message: string) =>
       next: async () => {
         while (true) {
           const result = createStreamResult(await source.next());
-          if (result.done) return COMPLETE as any;
+          if (result.done) return DONE as any;
           break;
         }
         throw new Error(message);

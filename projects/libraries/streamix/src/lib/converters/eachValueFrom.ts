@@ -1,4 +1,4 @@
-import { COMPLETE, NEXT, Stream, StreamGenerator } from "../abstractions";
+import { DONE, NEXT, Stream, StreamGenerator } from "../abstractions";
 
 /**
  * Converts a `Stream` into an async generator, yielding each emitted value.
@@ -58,7 +58,7 @@ export function eachValueFrom<T = any>(stream: Stream<T>): StreamGenerator<T> {
           const r = resolveNext;
           resolveNext = null;
           rejectNext = null;
-          r(COMPLETE);
+          r(DONE);
         }
         subscription.unsubscribe();
       },

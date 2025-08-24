@@ -316,12 +316,13 @@ export function createStreamContext(
     },
 
     resolvePending(result) {
+      result.done = true; delete result.pending;
       pendingResults.delete(result);
       return result.resolve();
     },
 
     markPhantom(operator, result) {
-      result.phantom = true;
+      result.done = true; result.phantom = true; delete result.pending;
       pipelineContext.phantomHandler(operator, this, result.value);
       pendingResults.delete(result);
     },

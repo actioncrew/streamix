@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from '../abstractions';
+import { createOperator, createStreamResult, DONE, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits values from the source stream only if
@@ -30,7 +30,7 @@ export const distinctUntilChanged = <T = any>(
           const result = createStreamResult(await source.next());
 
           // If the source stream is done, we are also done.
-          if (result.done) return COMPLETE;
+          if (result.done) return DONE;
 
           // Check if the value is different from the last one.
           const isDistinct = !hasLast || !(comparator ? comparator(lastValue!, result.value) : lastValue === result.value);
