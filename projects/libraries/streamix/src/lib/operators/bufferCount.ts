@@ -1,4 +1,4 @@
-import { COMPLETE, NEXT, StreamResult, createOperator } from "../abstractions";
+import { COMPLETE, NEXT, StreamResult, createOperator, createStreamResult } from "../abstractions";
 
 /**
  * Buffers a fixed number of values from the source stream and emits them as arrays,
@@ -19,7 +19,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
         const buffer: StreamResult<T>[] = [];
 
         while (buffer.length < bufferSize) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) {
             completed = true;

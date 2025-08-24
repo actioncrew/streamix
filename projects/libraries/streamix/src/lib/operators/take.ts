@@ -1,5 +1,4 @@
-import { COMPLETE, createOperator, NEXT } from "../abstractions";
-import { StreamResult } from './../abstractions/stream';
+import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that emits only the first `count` values from the source stream
@@ -27,7 +26,7 @@ export const take = <T = any>(count: number) =>
             return COMPLETE;
           }
 
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) {
             done = true;

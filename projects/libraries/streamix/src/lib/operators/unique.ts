@@ -1,6 +1,5 @@
-import { COMPLETE, createOperator, NEXT } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
-import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that emits only distinct values from the source stream.
@@ -28,7 +27,7 @@ export const unique = <T = any, K = any>(
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) return COMPLETE;
 
           const key = keySelector ? await keySelector(result.value) : result.value;

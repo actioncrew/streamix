@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream } from '../abstractions';
+import { CallbackReturnType, createOperator, createStreamResult, Stream } from '../abstractions';
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -64,7 +64,7 @@ export function mergeMap<T = any, R = any>(
     (async () => {
       try {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) break;
           if (errorOccurred) break;
 

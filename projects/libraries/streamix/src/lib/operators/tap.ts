@@ -1,6 +1,5 @@
-import { createOperator } from '../abstractions';
+import { createOperator, createStreamResult, StreamResult } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
-import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that performs a side-effect for each value from the source
@@ -22,7 +21,7 @@ export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType) =>
     return {
       async next(): Promise<StreamResult<T>> {
         while(true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) return result;
 

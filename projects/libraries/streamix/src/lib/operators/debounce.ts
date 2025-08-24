@@ -1,5 +1,4 @@
-import { createOperator } from "../abstractions";
-import { StreamResult } from "../abstractions/stream";
+import { createOperator, createStreamResult, StreamResult } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject, Subject } from "../streams";
 
@@ -42,7 +41,7 @@ export function debounce<T = any>(duration: number) {
     (async () => {
       try {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) {
             isCompleted = true;
@@ -56,7 +55,7 @@ export function debounce<T = any>(duration: number) {
 
           // If a pending value exists and the timer is active, mark it as phantom
           if (timeoutId !== undefined && latestResult !== undefined) {
-            context.phantomPending(latestResult);
+            context.markPhantom(latestResult);
           }
 
           // Add the new result to pending set

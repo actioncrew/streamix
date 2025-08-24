@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, NEXT, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 import { CallbackReturnType } from "./../abstractions/receiver";
 
 /**
@@ -30,7 +30,7 @@ export const last = <T = any>(
         while (true) {
           if (finished) return COMPLETE;
 
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) {
             finished = true;

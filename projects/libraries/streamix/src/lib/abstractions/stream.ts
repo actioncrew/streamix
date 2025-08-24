@@ -1,39 +1,9 @@
 import { eachValueFrom, firstValueFrom } from "../converters";
-import { createContext } from "./context";
+import { createPipelineContext, createStreamContext, PipelineContext, StreamResult } from "./context";
 import { Operator, OperatorChain, patchOperator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
-/**
- * Represents a single emission from a Streamix stream.
- *
- * A stream emission can be either:
- *
- * 1. **Normal value**: The operator emitted a value downstream.
- *    - `value` contains the emitted data.
- *    - `done` is `false`.
- *    - `phantom` is optional and indicates that this value was filtered or
- *      suppressed but tracked in the pipeline.
- *    - `pending` is optional and indicates that the value is in-flight,
- *      awaiting final resolution or phantom marking.
- *
- * 2. **Completion**: Signals the end of the stream.
- *    - `value` is `undefined`.
- *    - `done` is `true`.
- *
- * @template T - The type of the values emitted by the stream.
- */
-export type StreamResult<T> =
-  | {
-      value: T;
-      done: false;
-      phantom?: boolean;
-      pending?: boolean;
-    }
-  | {
-      value: undefined;
-      done: true;
-    };
 
 /**
  * A specialized asynchronous iterator for streams that yields {@link StreamResult} objects.
@@ -98,7 +68,7 @@ export interface StreamGenerator<T> extends StreamIterator<T> {
 export function toStreamGenerator<T>(
   gen: AsyncGenerator<T>
 ): StreamGenerator<T> {
-  return gen as StreamGenerator<T>;
+  return gen as unknown as StreamGenerator<T>;
 }
 
 /**
@@ -299,7 +269,8 @@ export function createStream<T>(
 
   // Create pipe function that uses self
   const pipe = ((...operators: Operator<any, any>[]) => {
-    return pipeStream(self, ...operators);
+    const context = createPipelineContext();
+    return pipeStream(self, context, ...operators);
   }) as OperatorChain<T>;
 
   // Now define self, closing over pipe
@@ -320,24 +291,25 @@ export function createStream<T>(
  */
 export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
+  context: PipelineContext,
   ...operators: [...Ops]
 ): Stream<any> {
   const pipedStream: Stream<any> = {
-    name: "piped",
-    type: "stream",
+    ...source,
     pipe: ((...nextOps: Operator<any, any>[]) => {
-      return pipeStream(source, ...operators, ...nextOps);
+      const context = createPipelineContext();
+      return pipeStream(source, context, ...operators, ...nextOps);
     }) as OperatorChain<any>,
 
     subscribe(cb) {
       const receiver = createReceiver(cb);
-      const context = createContext(receiver.phantom.bind(receiver));
 
+      const streamContext = createStreamContext(context);
       let currentIterator: StreamIterator<any> = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
 
       for (const op of operators) {
         const patchedOp = patchOperator(op);
-        currentIterator = patchedOp.apply(currentIterator, context);
+        currentIterator = patchedOp.apply(currentIterator, streamContext);
       }
 
       const abortController = new AbortController();
@@ -385,3 +357,4 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   };
   return pipedStream;
 }
+

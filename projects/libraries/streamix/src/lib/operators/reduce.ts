@@ -1,5 +1,4 @@
-import { COMPLETE, createOperator, NEXT } from "../abstractions";
-import { StreamResult } from './../abstractions/stream';
+import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that accumulates all values from the source stream
@@ -26,7 +25,7 @@ export const reduce = <T = any, A = any>(
     return {
       async next(): Promise<StreamResult<A>> {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) {
             if (!emittedFinal) {

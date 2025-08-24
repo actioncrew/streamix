@@ -1,4 +1,4 @@
-import { createOperator, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -33,7 +33,7 @@ export const throttle = <T = any>(duration: number) =>
     (async () => {
       try {
         while (true) {
-          const result: StreamResult<T> = await source.next();
+          const result: StreamResult<T> = createStreamResult(await source.next());
           if (result.done) break;
 
           const now = Date.now();
@@ -44,7 +44,7 @@ export const throttle = <T = any>(duration: number) =>
           } else {
             // Previous value is superseded → phantom if any
             if (pendingResult !== undefined) {
-              context.phantomPending(pendingResult);
+              context.markPhantom(pendingResult);
             }
 
             // Add current value as pending

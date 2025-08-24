@@ -1,5 +1,4 @@
-import { COMPLETE, createOperator, NEXT } from '../abstractions';
-import { StreamResult } from './../abstractions/stream';
+import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that emits values from the source stream only if
@@ -28,7 +27,7 @@ export const distinctUntilChanged = <T = any>(
       async next(): Promise<StreamResult<T>> {
         while (true) {
           // Await the next value from the source stream.
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           // If the source stream is done, we are also done.
           if (result.done) return COMPLETE;

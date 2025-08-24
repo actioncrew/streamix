@@ -1,6 +1,5 @@
-import { createOperator, NEXT, Stream } from "../abstractions";
+import { createOperator, createStreamResult, NEXT, Stream, StreamResult } from "../abstractions";
 import { eachValueFrom } from '../converters';
-import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that delays the emission of values from the source stream
@@ -53,7 +52,7 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
             return source.next();
           }
 
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) return result;
 
           buffer.push(result.value);

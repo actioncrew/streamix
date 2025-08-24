@@ -1,4 +1,4 @@
-import { createOperator, StreamGenerator, StreamResult } from "../abstractions";
+import { createOperator, createStreamResult, StreamGenerator, StreamResult } from "../abstractions";
 
 function toStreamGenerator<T>(gen: AsyncGenerator<T>): StreamGenerator<T> {
   const iterator = gen as unknown as StreamGenerator<T>;
@@ -51,7 +51,7 @@ export const select = <T = any>(
 
     async function* generator() {
       while (true) {
-        const result: StreamResult<T> = await source.next();
+        const result: StreamResult<T> = createStreamResult(await source.next());
         if (result.done) break;
 
         const nextTargetIndex = (await nextTargetIndexPromise).value;

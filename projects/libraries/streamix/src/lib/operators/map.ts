@@ -1,5 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, NEXT } from '../abstractions';
-import { StreamResult } from './../abstractions/stream';
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that applies a transformation function to each value
@@ -31,7 +30,7 @@ export const map = <T = any, R = any>(
             return COMPLETE;
           }
 
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) {
             completed = true;
             return COMPLETE;

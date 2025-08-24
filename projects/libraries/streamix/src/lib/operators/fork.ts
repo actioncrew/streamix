@@ -1,6 +1,5 @@
-import { CallbackReturnType, COMPLETE, createOperator, NEXT, Stream } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Stream, StreamResult } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
-import { StreamResult } from './../abstractions/stream';
 
 /**
  * Represents a conditional branch for the `fork` operator.
@@ -69,7 +68,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
         while (true) {
           // If no active inner iterator, get next outer value
           if (!innerIterator) {
-            const result = await source.next();
+            const result = createStreamResult(await source.next());
             if (result.done) {
               return COMPLETE;
             }
@@ -79,7 +78,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             innerStreamHadEmissions = false;
 
             for (const option of options) {
-              if (await option.on(outerValue, outerIndex++)) {
+              if (await option.on(outerValue!, outerIndex++)) {
                 matched = option;
                 break;
               }
@@ -89,7 +88,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
               throw new Error(`No handler found for value: ${outerValue}`);
             }
 
-            innerIterator = eachValueFrom(fromAny(matched.handler(outerValue)));
+            innerIterator = eachValueFrom(fromAny(matched.handler(outerValue!)));
           }
 
           // Pull next inner value

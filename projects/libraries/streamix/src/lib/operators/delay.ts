@@ -1,4 +1,4 @@
-import { createOperator, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -20,7 +20,7 @@ export function delay<T = any>(ms: number) {
     (async () => {
       try {
         while (true) {
-          const result: StreamResult<T> = await source.next();
+          const result: StreamResult<T> = createStreamResult(await source.next());
           if (result.done) break;
 
           // Mark the value as pending

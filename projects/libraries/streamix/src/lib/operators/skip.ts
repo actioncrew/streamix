@@ -1,6 +1,5 @@
-import { COMPLETE, createOperator } from '../abstractions';
+import { COMPLETE, createOperator, createStreamResult, StreamResult } from '../abstractions';
 import { NEXT } from './../abstractions/operator';
-import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that skips the first specified number of values from the source stream.
@@ -20,7 +19,7 @@ export const skip = <T = any>(count: number) =>
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) return COMPLETE;
 
           if (counter > 0) {

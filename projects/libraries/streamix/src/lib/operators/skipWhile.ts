@@ -1,5 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, NEXT } from '../abstractions';
-import { StreamResult } from './../abstractions/stream';
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that skips values from the source stream while a predicate returns true.
@@ -24,7 +23,7 @@ export const skipWhile = <T = any>(
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) return COMPLETE;
 

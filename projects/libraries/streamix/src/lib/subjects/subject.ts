@@ -1,5 +1,6 @@
 import {
   CallbackReturnType,
+  createPipelineContext,
   createReceiver,
   createSubscription,
   Operator,
@@ -143,8 +144,9 @@ export function createSubject<T = any>(): Subject<T> {
     get snappy() {
       return latestValue;
     },
-    pipe(...steps: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...steps);
+    pipe(...operators: Operator<any, any>[]): Stream<any> {
+      const context = createPipelineContext();
+      return pipeStream(this, context, ...operators);
     },
     subscribe,
     async query(): Promise<T> {

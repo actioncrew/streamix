@@ -1,6 +1,5 @@
-import { createOperator, NEXT } from '../abstractions';
+import { createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
-import { StreamResult } from './../abstractions/stream';
 
 /**
  * Creates a stream operator that filters values emitted by the source stream.
@@ -27,7 +26,7 @@ export const filter = <T = any>(
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) return result;
 
           const value = result.value;

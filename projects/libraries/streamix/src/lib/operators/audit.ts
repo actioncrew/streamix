@@ -1,4 +1,4 @@
-import { createOperator, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -37,7 +37,7 @@ export const audit = <T = any>(duration: number) =>
     (async () => {
       try {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           // Stream completed
           if (result.done) {
@@ -49,12 +49,12 @@ export const audit = <T = any>(duration: number) =>
 
           // If a previous value is still pending, mark it as phantom
           if (timerId !== undefined && lastResult !== undefined) {
-            context.phantomPending(lastResult);
+            context.markPhantom(lastResult);
           }
 
           // Add new value to pending set and buffer it
-          context.pendingResults.add(result);
           lastResult = result;
+          context.pendingResults.add(lastResult);
 
           // Start a new timer if not active
           if (timerId === undefined) {

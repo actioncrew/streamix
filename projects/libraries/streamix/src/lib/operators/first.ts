@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, NEXT, StreamResult } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that emits only the first element from the source stream
@@ -35,7 +35,7 @@ export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<bool
       }
 
       while (!found) {
-        const result = await source.next();
+        const result = createStreamResult(await source.next());
         if (result.done) {
           sourceDone = true;
           throw new Error("No elements in sequence");

@@ -1,6 +1,5 @@
-import { CallbackReturnType, COMPLETE, createOperator, NEXT, Stream } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Stream, StreamResult } from "../abstractions";
 import { eachValueFrom } from '../converters';
-import { StreamResult } from './../abstractions/stream';
 
 /**
  * Options to configure the recursive traversal behavior.
@@ -67,7 +66,7 @@ export const recurse = <T = any>(
         while (true) {
           // Refill queue from source if it's empty
           while (queue.length === 0 && !sourceDone) {
-            const result = await source.next();
+            const result = createStreamResult(await source.next());
             if (result.done) {
               sourceDone = true;
               break;

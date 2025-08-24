@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, NEXT, StreamResult } from '../abstractions';
+import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the maximum value from the source stream.
@@ -28,7 +28,7 @@ export const max = <T = any>(
             return COMPLETE;
           }
 
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) {
             // Emit final max if exists

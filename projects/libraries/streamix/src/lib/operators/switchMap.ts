@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream, StreamResult, Subscription } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, Stream, StreamResult, Subscription } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject } from "../streams";
 
@@ -79,7 +79,7 @@ export function switchMap<T = any, R = any>(
     (async () => {
       try {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) break;
 
           // Track outer value in case inner stream emits nothing

@@ -1,4 +1,4 @@
-import { createOperator, Stream } from '../abstractions';
+import { createOperator, createStreamResult, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -61,7 +61,7 @@ export function takeUntil<T = any>(notifier: Stream) {
     setTimeout(async () => {
       try {
         while (!shouldStop) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done || shouldStop) break;
 
           output.next(result.value);

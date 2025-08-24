@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, createStreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createReplaySubject, ReplaySubject } from '../streams';
 
@@ -34,11 +34,11 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
       (async () => {
         try {
           while (true) {
-            let result = await source.next();
+            let result = createStreamResult(await source.next());
             if (result.done) break;
 
             output.next(result.value);
-            result = await source.next();
+            result = createStreamResult(await source.next());
           }
         } catch (err) {
           output.error(err);

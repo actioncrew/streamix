@@ -1,4 +1,4 @@
-import { createOperator, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -27,7 +27,7 @@ export const sample = <T = any>(period: number) =>
 
         if (skipped) {
           // Mark as phantom if the last value was skipped
-          context.phantomPending(lastResult);
+          context.markPhantom(lastResult);
         } else {
           output.next(lastResult.value!);
           context.resolvePending(lastResult);
@@ -47,12 +47,12 @@ export const sample = <T = any>(period: number) =>
         startSampling();
 
         while (true) {
-          const result: StreamResult<T> = await source.next();
+          const result: StreamResult<T> = createStreamResult(await source.next());
           if (result.done) break;
 
           // Previous lastResult becomes phantom if it existed and was skipped
           if (lastResult && skipped) {
-            context.phantomPending(lastResult);
+            context.markPhantom(lastResult);
           }
 
           // Track new result as pending

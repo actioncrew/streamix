@@ -1,5 +1,4 @@
-import { COMPLETE, createOperator, NEXT } from '../abstractions';
-import { StreamResult } from './../abstractions/stream';
+import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the minimum value from the source stream.
@@ -35,7 +34,7 @@ export const min = <T = any>(
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) {
             // Emit the final minimum once

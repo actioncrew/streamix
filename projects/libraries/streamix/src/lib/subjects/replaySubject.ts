@@ -1,5 +1,6 @@
 import {
   CallbackReturnType,
+  createPipelineContext,
   createReceiver,
   createSubscription,
   Operator,
@@ -121,8 +122,9 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
-    pipe<O extends readonly [Operator<any, any>, ...Operator<any, any>[]]>(...operators: O): Stream<any> {
-      return pipeStream(this, ...operators);
+    pipe(...operators: Operator<any, any>[]): Stream<any> {
+      const context = createPipelineContext();
+      return pipeStream(this, context, ...operators);
     },
     subscribe,
     async query(): Promise<T> {

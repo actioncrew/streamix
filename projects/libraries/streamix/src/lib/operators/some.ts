@@ -1,5 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, NEXT } from "../abstractions";
-import { StreamResult } from './../abstractions/stream';
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that tests if at least one value from the source stream satisfies a predicate.
@@ -35,7 +34,7 @@ export const some = <T = any>(
 
         try {
           while (true) {
-            const result = await source.next();
+            const result = createStreamResult(await source.next());
 
             if (result.done) break;
 

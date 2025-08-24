@@ -1,5 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator } from '../abstractions';
-import { StreamResult } from './../abstractions/stream';
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that catches errors from the source stream and handles them.
@@ -36,7 +35,7 @@ export const catchError = <T = any>(
           }
 
           try {
-            const result = await source.next();
+            const result = createStreamResult(await source.next());
             if (result.done) {
               completed = true; // Source completed without error
               return COMPLETE;

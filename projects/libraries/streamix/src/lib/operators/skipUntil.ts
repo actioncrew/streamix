@@ -1,4 +1,4 @@
-import { createOperator, Stream } from '../abstractions';
+import { createOperator, createStreamResult, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -45,7 +45,7 @@ export function skipUntil<T = any>(notifier: Stream) {
     setTimeout(async () => {
       try {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) {
             output.complete();
             break;

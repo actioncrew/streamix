@@ -1,5 +1,6 @@
 import {
   CallbackReturnType,
+  createPipelineContext,
   createReceiver,
   createSubscription,
   Operator,
@@ -125,8 +126,9 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
     get snappy() {
       return latestValue;
     },
-    pipe<O extends readonly [Operator<any, any>, ...Operator<any, any>[]]>(...operators: O): Stream<any> {
-      return pipeStream(this, ...operators);
+    pipe(...operators: Operator<any, any>[]): Stream<any> {
+      const context = createPipelineContext();
+      return pipeStream(this, context, ...operators);
     },
     subscribe,
     async query(): Promise<T> {

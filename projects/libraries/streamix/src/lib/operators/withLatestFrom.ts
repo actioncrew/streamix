@@ -2,6 +2,7 @@ import {
   CallbackReturnType,
   createOperator,
   createReceiver,
+  createStreamResult,
   createSubscription,
   Receiver,
   Stream,
@@ -66,7 +67,7 @@ export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(..
         while (true) {
           const winner = await Promise.race([
             abortPromise.then(() => ({ aborted: true })),
-            iterator.next().then(result => ({ result }))
+            iterator.next().then(result => ({ result: createStreamResult(result) }))
           ]);
 
           if ('aborted' in winner || signal.aborted) break;

@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, NEXT, Operator } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 
 /**
  * @typedef {object} CoroutineMessage
@@ -393,7 +393,7 @@ export function coroutine<T, R>(
               return COMPLETE;
             }
 
-            const result = await source.next();
+            const result = createStreamResult(await source.next());
             if (result.done) {
               completed = true;
               await finalize();

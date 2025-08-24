@@ -1,5 +1,4 @@
-import { CallbackReturnType, createOperator, NEXT } from "../abstractions";
-import { StreamResult } from './../abstractions/stream';
+import { CallbackReturnType, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that emits values from the source stream as long as
@@ -28,7 +27,7 @@ export const takeWhile = <T = any>(
     return {
       async next(): Promise<StreamResult<T>> {
         while (true) {
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) return result;
 

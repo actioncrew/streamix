@@ -1,5 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, NEXT } from "../abstractions";
-import { StreamResult } from './../abstractions/stream';
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 import { GroupItem } from "./groupBy";
 
 /**
@@ -33,14 +32,14 @@ export const partition = <T = any>(
             return COMPLETE;
           }
 
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
           if (result.done) {
             completed = true;
             return COMPLETE;
           }
 
           const key = await predicate(result.value, index++) ? "true" : "false";
-          return NEXT({ key, value: result.value });
+          return NEXT({ key, value: result.value } as GroupItem<T, "true" | "false">);
         }
       }
     };

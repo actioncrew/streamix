@@ -1,5 +1,5 @@
-import { PipeContext } from "./context";
-import { Stream, StreamIterator, StreamResult } from "./stream";
+import { createStreamResult, StreamContext, StreamResult } from "./context";
+import { Stream, StreamIterator } from "./stream";
 
 /**
  * A constant representing a completed stream result.
@@ -7,8 +7,7 @@ import { Stream, StreamIterator, StreamResult } from "./stream";
  * Always `{ done: true, value: undefined }`.
  * Used to signal the end of a stream.
  */
-export const COMPLETE = { done: true, value: undefined } as const;
-
+export const COMPLETE: StreamResult<any> = createStreamResult({ done: true, value: undefined });
 /**
  * Factory function to create a normal stream result.
  *
@@ -16,7 +15,7 @@ export const COMPLETE = { done: true, value: undefined } as const;
  * @param value The value to emit downstream.
  * @returns A `StreamResult<R>` object with `{ done: false, value }`.
  */
-export const NEXT = <R = any>(value: R) => ({ done: false, value }) as const;
+export const NEXT = <R = any>(value: R) => createStreamResult({ done: false, value });
 
 /**
  * Represents a stream operator that transforms values from an input stream into an output stream.
@@ -46,7 +45,7 @@ export type Operator<T = any, R = T> = {
    * @param context Additional metadata or utilities provided by the pipeline.
    * @returns A new async stream iterator that yields values of type `R`.
    */
-  apply: (source: StreamIterator<T>, context: PipeContext) => StreamIterator<R>;
+  apply: (source: StreamIterator<T>, context: StreamContext) => StreamIterator<R>;
 };
 
 /**
@@ -63,7 +62,7 @@ export type Operator<T = any, R = T> = {
  */
 export function createOperator<T = any, R = T>(
   name: string,
-  transformFn: (source: StreamIterator<T>, context: PipeContext) => StreamIterator<R>
+  transformFn: (source: StreamIterator<T>, context: StreamContext) => StreamIterator<R>
 ): Operator<T, R> {
   return {
     name,
@@ -271,26 +270,36 @@ export function patchOperator<TIn, TOut>(
 
   return {
     ...operator,
-    apply: (source: StreamIterator<TIn>, context: PipeContext) => {
-      // Get the iterator created by the original operator
+    apply: (source: StreamIterator<TIn>, context: StreamContext) => {
       const originalIterator = originalApply.call(operator, source, context);
 
-      // Return a new iterator with a patched next() method
       return {
         async next(): Promise<StreamResult<TOut>> {
-          context.operatorStack.push(operator.name!);
+          context.pipeline.operatorStack.push(operator.name!);
 
-          let result = await originalIterator.next.apply(originalIterator);
+          const result = await originalIterator.next.apply(originalIterator);
 
-          if (result.done) {
-            return result;
-          }
-
-          context.operatorStack.pop();
-          return result;
+          context.pipeline.operatorStack.pop();
+          return createStreamResult<TOut>({
+            ...result,
+          });
         },
-        return: () => originalIterator.return?.apply(originalIterator) ?? Promise.resolve({ done: true, value: undefined }),
-        throw: () => originalIterator.throw?.apply(originalIterator) ?? Promise.resolve({ done: true, value: undefined }),
+
+        return: async (): Promise<StreamResult<TOut>> => {
+          if (originalIterator.return) {
+            const res = await originalIterator.return();
+            return createStreamResult<TOut>({ ...res });
+          }
+          return createStreamResult<TOut>({ done: true, value: undefined });
+        },
+
+        throw: async (err?: any): Promise<StreamResult<TOut>> => {
+          if (originalIterator.throw) {
+            const res = await originalIterator.throw(err);
+            return createStreamResult<TOut>({ ...res });
+          }
+          return createStreamResult<TOut>({ done: true, value: undefined, error: err });
+        },
       };
     },
   };

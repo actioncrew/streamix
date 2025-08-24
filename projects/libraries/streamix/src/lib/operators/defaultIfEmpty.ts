@@ -1,5 +1,4 @@
-import { COMPLETE, createOperator, NEXT } from "../abstractions";
-import { StreamResult } from './../abstractions/stream';
+import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that emits a default value if the source stream is empty.
@@ -25,7 +24,7 @@ export const defaultIfEmpty = <T = any>(defaultValue: T) =>
             return COMPLETE;
           }
 
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (!result.done) {
             emitted = true;
