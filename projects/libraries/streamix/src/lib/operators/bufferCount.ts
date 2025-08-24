@@ -13,7 +13,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
     let completed = false;
 
     return {
-      async next(): Promise<StreamResult<T[]>> {
+      next: async () => {
         if (completed) return DONE;
 
         const buffer: StreamResult<T>[] = [];

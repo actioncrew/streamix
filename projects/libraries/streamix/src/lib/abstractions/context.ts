@@ -311,7 +311,7 @@ export function createStreamContext(
     pendingResults,
     timestamp: performance.now(),
 
-    phantomHandler: function(operator, value) {
+    phantomHandler(operator, value) {
       return this.pipeline.phantomHandler(operator, this, value);
     },
 

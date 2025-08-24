@@ -41,13 +41,20 @@ export function buffer<T = any>(period: number) {
       cleanup();
     };
 
+    const fail = (err: any) => {
+      // resolve all pending before error
+      if (buffer.length > 0) {
+        buffer.forEach((r) => context.markPhantom(this, r));
+        buffer = [];
+      }
+      output.error(err);
+      cleanup();
+    };
+
     // Timer triggers periodic flush
     const intervalSubscription = timer(period, period).subscribe({
       next: () => flush(),
-      error: (err) => {
-        output.error(err);
-        cleanup();
-      },
+      error: (err) => fail(err),
       complete: () => flushAndComplete(),
     });
 
