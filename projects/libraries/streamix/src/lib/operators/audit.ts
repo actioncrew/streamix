@@ -49,7 +49,7 @@ export const audit = <T = any>(duration: number) =>
 
           // If a previous value is still pending, mark it as phantom
           if (timerId !== undefined && lastResult !== undefined) {
-            context.markPhantom(lastResult);
+            context.markPhantom(this, lastResult);
           }
 
           // Add new value to pending set and buffer it

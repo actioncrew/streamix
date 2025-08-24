@@ -86,7 +86,7 @@ export interface StreamContext {
   /**
    * Mark a result as phantom (produced but not emitted) and handle via pipeline phantomHandler.
    */
-  markPhantom: (result: StreamResult<any>) => CallbackReturnType;
+  markPhantom: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
 
   /**
    * Create a new result associated with this stream.
@@ -115,7 +115,7 @@ export interface PipelineContext {
   operatorStack: string[];
 
   /** Callback invoked when a phantom result is produced. */
-  phantomHandler: (value: any, streamContext: StreamContext) => CallbackReturnType;
+  phantomHandler: (operator: Operator, streamContext: StreamContext, value: any) => CallbackReturnType;
 
   /** Active stream contexts in this pipeline. */
   activeStreams: Map<string, StreamContext>;
@@ -311,8 +311,8 @@ export function createStreamContext(
     pendingResults,
     timestamp: performance.now(),
 
-    phantomHandler: function(value) {
-      return this.pipeline.phantomHandler(value, this);
+    phantomHandler: function(operator, value) {
+      return this.pipeline.phantomHandler(operator, this, value);
     },
 
     resolvePending(result) {
@@ -320,9 +320,9 @@ export function createStreamContext(
       return result.resolve();
     },
 
-    markPhantom(result) {
+    markPhantom(operator, result) {
       result.phantom = true;
-      pipelineContext.phantomHandler(result.value, this);
+      pipelineContext.phantomHandler(operator, this, result.value);
       pendingResults.delete(result);
     },
 
@@ -353,7 +353,7 @@ export function createStreamContext(
  * @param phantomHandler Optional callback for phantom results (default: console.debug).
  */
 export function createPipelineContext(
-  phantomHandler: (v: any, s: StreamContext) => CallbackReturnType = () => {}
+  phantomHandler: (operator: Operator, s: StreamContext, value: any) => CallbackReturnType = () => {}
 ): PipelineContext {
   const activeStreams = new Map<string, StreamContext>();
 

@@ -27,7 +27,7 @@ export const sample = <T = any>(period: number) =>
 
         if (skipped) {
           // Mark as phantom if the last value was skipped
-          context.markPhantom(lastResult);
+          context.markPhantom(this, lastResult);
         } else {
           output.next(lastResult.value!);
           context.resolvePending(lastResult);
@@ -52,7 +52,7 @@ export const sample = <T = any>(period: number) =>
 
           // Previous lastResult becomes phantom if it existed and was skipped
           if (lastResult && skipped) {
-            context.markPhantom(lastResult);
+            context.markPhantom(this, lastResult);
           }
 
           // Track new result as pending

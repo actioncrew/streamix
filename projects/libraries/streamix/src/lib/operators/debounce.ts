@@ -55,7 +55,7 @@ export function debounce<T = any>(duration: number) {
 
           // If a pending value exists and the timer is active, mark it as phantom
           if (timeoutId !== undefined && latestResult !== undefined) {
-            context.markPhantom(latestResult);
+            context.markPhantom(this, latestResult);
           }
 
           // Add the new result to pending set

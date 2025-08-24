@@ -44,7 +44,7 @@ export const throttle = <T = any>(duration: number) =>
           } else {
             // Previous value is superseded → phantom if any
             if (pendingResult !== undefined) {
-              context.markPhantom(pendingResult);
+              context.markPhantom(this, pendingResult);
             }
 
             // Add current value as pending
