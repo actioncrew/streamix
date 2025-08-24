@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that counts the number of items emitted by the source stream.
@@ -11,22 +11,23 @@ import { createOperator } from "../abstractions";
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const count = <T = any>() =>
-  createOperator<T, number>("count", (source) => {
+  createOperator<T, number>("count", function(this: Operator, source) {
     let counted = false;
     let total = 0;
 
     return {
       async next(): Promise<IteratorResult<number>> {
-        if (counted) return { done: true, value: undefined };
+        if (counted) return DONE;
 
         while (true) {
-          const { done } = await source.next();
-          if (done) break;
+          const result = await source.next();
+          if (result.done) break;
+
           total++;
         }
 
         counted = true;
-        return { done: false, value: total };
+        return NEXT(total);
       },
     };
   });

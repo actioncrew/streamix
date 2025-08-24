@@ -1,36 +1,40 @@
-import { createOperator } from "../abstractions";
+import { createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
- * Creates a stream operator that collects all emitted values from the source stream
- * into an array and emits that array as a single value once the source completes.
- *
- * This operator is an aggregation tool. It consumes all values from the source,
- * buffers them in memory, and only produces a single output when the source stream
- * has completed. Because it holds all values in memory, it should be used with
- * caution on very large or infinite streams.
+ * Collects all emitted values from the source stream into an array
+ * and emits that array once the source completes, tracking pending state.
  *
  * @template T The type of the values in the source stream.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
- * The output stream will emit a single array of type `T[]`.
+ * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export const toArray = <T = any>() =>
-  createOperator<T, T[]>("toArray", (source) => {
-    const collected: T[] = [];   // ✅ lives across all next() calls
-    let emitted = false;         // ✅ ensures we only emit once
+  createOperator<T, T[]>("toArray", function (this: Operator, source) {
+    const collected: IteratorResult<T>[] = [];
+    let completed = false;
+    let emitted = false;
 
     return {
-      async next(): Promise<IteratorResult<T[]>> {
+      next: async () => {
         while (true) {
-          if (emitted) return { done: true, value: undefined };
+          // All done and final array emitted → complete
+          if (completed && emitted) {
+            return DONE;
+          }
+
           const result = await source.next();
 
           if (result.done) {
-            emitted = true;
-            return { done: false, value: collected };
+            completed = true;
+            if (!emitted) {
+              emitted = true;
+              // Emit the final array of values
+              return NEXT(collected.map((r) => r.value!));
+            }
+            continue;
           }
 
-          collected.push(result.value);
+          collected.push(result);
         }
-      }
+      },
     };
   });

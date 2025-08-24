@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { createOperator, DONE, NEXT, Operator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
 
 /**
@@ -21,22 +21,21 @@ import { CallbackReturnType } from './../abstractions/receiver';
 export const unique = <T = any, K = any>(
   keySelector?: (value: T) => CallbackReturnType<K>
 ) =>
-  createOperator<T, T>("unique", (source) => {
+  createOperator<T, T>("unique", function (this: Operator, source) {
     const seen = new Set<K | T>();
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) return { done: true, value: undefined };
+          const result = await source.next();
+          if (result.done) return DONE;
 
-          const key = keySelector ? await keySelector(value) : value;
+          const key = keySelector ? await keySelector(result.value) : result.value;
 
           if (!seen.has(key)) {
             seen.add(key);
-            return { done: false, value };
+            return NEXT(result.value);
           }
-          // skip duplicate
         }
       }
     };

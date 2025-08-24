@@ -1,47 +1,41 @@
-import { createOperator } from "../abstractions";
+import { DONE, NEXT, Operator, createOperator } from "../abstractions";
 
 /**
- * Creates a stream operator that buffers a fixed number of values and emits them as arrays.
+ * Buffers a fixed number of values from the source stream and emits them as arrays,
+ * tracking pending and phantom values in the PipeContext.
  *
- * This operator collects values from the source stream until the buffer reaches the
- * specified `bufferSize`. Once the buffer is full, it is emitted as an array, and a new
- * buffer is started. If the source stream completes before the buffer is full, the
- * operator will emit any remaining values and then complete.
- *
- * @template T The type of the values in the stream.
- * @param bufferSize The maximum number of values to collect in each buffer. Defaults to `Infinity`.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @template T The type of values in the source stream.
+ * @param bufferSize The maximum number of values per buffer (default: Infinity).
+ * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
-  createOperator<T, T[]>("bufferCount", (source) => {
+  createOperator<T, T[]>("bufferCount", function (this: Operator, source) {
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<T[]>> {
-        while (true) {
-          if (completed) {
-            return { done: true, value: undefined };
-          }
+      next: async () => {
+        if (completed) return DONE;
 
-          const buffer: T[] = [];
+        const buffer: IteratorResult<T>[] = [];
 
-          while (buffer.length < bufferSize) {
-            const { done: sourceDone, value } = await source.next();
+        while (buffer.length < bufferSize) {
+          const result = await source.next();
 
-            if (sourceDone) {
-              completed = true;
-              // Emit any remaining buffered items before completing
-              return buffer.length > 0
-                ? { done: false, value: buffer }
-                : { done: true, value: undefined };
+          if (result.done) {
+            completed = true;
+
+            // Flush any remaining buffered values
+            if (buffer.length > 0) {
+              return NEXT(buffer.map((r) => r.value!));
             }
 
-            buffer.push(value);
+            return DONE;
           }
 
-          // Buffer full, emit it
-          return { done: false, value: buffer };
+          buffer.push(result);
         }
-      }
+
+        return NEXT(buffer.map((r) => r.value!));
+      },
     };
   });

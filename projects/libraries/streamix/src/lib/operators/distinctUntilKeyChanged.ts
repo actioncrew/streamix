@@ -1,4 +1,4 @@
-import { createOperator, Operator } from '../abstractions';
+import { createOperator, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that filters out consecutive values from the source
@@ -19,12 +19,12 @@ export const distinctUntilKeyChanged = <T extends object = any>(
   key: keyof T,
   comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean | Promise<boolean>
 ): Operator<T, T> =>
-  createOperator<T, T>('distinctUntilKeyChanged', (source) => {
+  createOperator<T, T>('distinctUntilKeyChanged', function (this: Operator, source) {
     let lastValue: T | undefined;
     let isFirst = true;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
           const result = await source.next();
           if (result.done) return result;
@@ -41,9 +41,8 @@ export const distinctUntilKeyChanged = <T extends object = any>(
 
           if (isDistinct) {
             lastValue = current;
-            return { value: current, done: false };
+            return NEXT(current);
           }
-          // else skip this value and continue looping
         }
       }
     };

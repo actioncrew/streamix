@@ -1,6 +1,6 @@
-import { CallbackReturnType, createOperator, Stream } from '../abstractions';
+import { CallbackReturnType, createOperator, Operator, Stream } from '../abstractions';
 import { eachValueFrom, fromAny } from '../converters';
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 
 /**
  * Creates a stream operator that maps each value from the source stream to an "inner" stream
@@ -25,17 +25,17 @@ import { createSubject } from '../streams';
  * @returns An {@link Operator} instance that can be used in a stream's `pipe` method.
  */
 export function mergeMap<T = any, R = any>(
-  project: (value: T, index: number) =>  Stream<R> | CallbackReturnType<R> | Array<R>,
+  project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>,
 ) {
-  return createOperator<T, R>('mergeMap', (source) => {
-    const output = createSubject<R>();
+  return createOperator<T, R>('mergeMap', function (this: Operator, source) {
+    const output: Subject<R> = createSubject<R>();
 
     let index = 0;
     let activeInner = 0;
     let outerCompleted = false;
     let errorOccurred = false;
 
-    // Process each inner stream concurrently
+    // Process each inner stream concurrently.
     const processInner = async (innerStream: Stream<R>) => {
       try {
         for await (const val of eachValueFrom(innerStream)) {
@@ -58,13 +58,13 @@ export function mergeMap<T = any, R = any>(
     (async () => {
       try {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
+          const result = await source.next();
+          if (result.done) break;
           if (errorOccurred) break;
 
-          const inner = fromAny(project(value, index++));
+          const inner = fromAny(project(result.value, index++));
           activeInner++;
-          processInner(inner); // concurrent, do not await
+          processInner(inner);
         }
 
         outerCompleted = true;

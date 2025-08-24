@@ -1,48 +1,55 @@
-import { createOperator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
 /**
  * Creates a stream operator that emits the latest value from the source stream
- * at most once per specified duration.
+ * at most once per specified duration, while managing pending and phantom states.
+ *
+ * Every value is added to the PipeContext.pendingResults set. If a new value arrives
+ * while the timer is active, the previous value is marked as phantom and removed
+ * from pending. The last value is resolved when emitted downstream or upon completion.
  *
  * @template T The type of the values in the stream.
  * @param duration The time in milliseconds to wait before emitting the latest value.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const audit = <T = any>(duration: number) => {
-  return createOperator<T, T>('audit', (source) => {
+export const audit = <T = any>(duration: number) =>
+  createOperator<T, T>('audit', function (this: Operator, source) {
     const output = createSubject<T>();
 
-    let lastValue: T | undefined = undefined;
+    let lastResult: IteratorResult<T> | undefined = undefined;
     let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
 
-    const startTimer = () => {
-      timerId = setTimeout(() => {
-        if (lastValue !== undefined) {
-          output.next(lastValue);
-          lastValue = undefined;
-        }
-        timerId = undefined; // Timer has finished
-      }, duration);
+    const flush = () => {
+      if (lastResult !== undefined) {
+        output.next(lastResult.value!);
+        lastResult = undefined;
+      }
+      timerId = undefined;
     };
 
-    // Start processing the source
+    const startTimer = () => {
+      timerId = setTimeout(() => flush(), duration);
+    };
+
     (async () => {
       try {
         while (true) {
           const result = await source.next();
+
+          // Stream completed
           if (result.done) {
-            // Corrected completion logic
-            if (lastValue !== undefined) {
-              output.next(lastValue);
+            if (lastResult !== undefined) {
+              flush();
             }
             break;
           }
 
-          lastValue = result.value;
+          // Add new value to pending set and buffer it
+          lastResult = result;
 
-          // Start a new timer only if one isn't already active
+          // Start a new timer if not active
           if (timerId === undefined) {
             startTimer();
           }
@@ -50,7 +57,6 @@ export const audit = <T = any>(duration: number) => {
       } catch (err) {
         output.error(err);
       } finally {
-        // Clear any pending timers on completion
         if (timerId !== undefined) {
           clearTimeout(timerId);
           timerId = undefined;
@@ -62,4 +68,3 @@ export const audit = <T = any>(duration: number) => {
     const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
-};

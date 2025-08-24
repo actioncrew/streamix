@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from "../converters";
 
 /**
@@ -21,35 +21,42 @@ import { eachValueFrom, fromAny } from "../converters";
  *   - or an array of `R`.
  * @returns An {@link Operator} instance that can be used in a stream's `pipe` method.
  */
-export const concatMap = <T = any, R = any>(
+export const concatMap = <T = any, R = T>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) =>
-  createOperator<T, R>("concatMap", (source) => {
+  createOperator<T, R>("concatMap", function (this : Operator, source) {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
+    let result: IteratorResult<T> | null = null;
 
-    // Async iterator object that sequentially flattens projected inner async iterables
     return {
-      async next(): Promise<IteratorResult<R>> {
+      next: async () => {
         while (true) {
-          // If no active inner iterator, get next outer value and create one
+          // If no active inner iterator, pull the next outer value
           if (!innerIterator) {
-            const outerResult = await source.next();
-            if (outerResult.done) {
-              return { done: true, value: undefined };
-            }
-            innerIterator = eachValueFrom<R>(fromAny(project(outerResult.value, outerIndex++)));
+            result = await source.next();
+
+            if (result.done) return DONE;
+
+            // Initialize inner stream
+            innerIterator = eachValueFrom<R>(
+              fromAny(project(result.value, outerIndex++))
+            );
           }
 
-          // Pull from the active inner iterator
+          // Pull next value from inner stream
           const innerResult = await innerIterator.next();
+
           if (innerResult.done) {
-            innerIterator = null; // Finished this inner stream, go back to outer
-            continue; // loop again to fetch next outer value
+            innerIterator = null;
+
+            // Otherwise continue to next outer value
+            continue;
           }
-          // Return next inner value
-          return { done: false, value: innerResult.value };
+
+          // Mark that inner stream produced a value
+          return NEXT(innerResult.value);
         }
-      }
+      },
     };
   });

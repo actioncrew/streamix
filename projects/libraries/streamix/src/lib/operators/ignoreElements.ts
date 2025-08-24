@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { createOperator, DONE, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that ignores all values emitted by the source stream.
@@ -12,13 +12,17 @@ import { createOperator } from "../abstractions";
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const ignoreElements = <T>() =>
-  createOperator<T, never>("ignoreElements", (source) => ({
-    async next(): Promise<IteratorResult<never>> {
-      while (true) {
-        const result = await source.next();
-        if (result.done) {
-          return { done: true, value: undefined as never };
+  createOperator<T, never>("ignoreElements", function (this: Operator, source) {
+
+    return {
+      next: async () => {
+        while (true) {
+          const result = await source.next();
+          if (result.done) {
+            // If the source is done, we are also done.
+            return DONE;
+          }
         }
       }
-    }
-  }));
+    };
+  });

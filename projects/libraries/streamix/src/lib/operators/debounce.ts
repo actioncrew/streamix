@@ -1,73 +1,77 @@
-import { createOperator } from "../abstractions";
+import { createOperator, Operator } from "../abstractions";
 import { eachValueFrom } from "../converters";
-import { createSubject } from "../streams";
+import { createSubject, Subject } from "../streams";
 
 /**
  * Creates a stream operator that emits the most recent value from the source stream
  * only after a specified duration has passed without another new value.
  *
- * This operator is a classic debounce function applied to a stream. It's useful for
- * reducing the rate of events that occur in rapid succession, such as user input
- * or window resizing. Each time a new value arrives, a timer is reset. The value is
- * emitted only if the timer completes without being reset.
+ * This version tracks pending results in the PipeContext and marks
+ * superseded values as phantoms.
  *
  * @template T The type of the values in the source and output streams.
- * @param duration The time in milliseconds to wait for inactivity before emitting a value.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @param duration The debounce duration in milliseconds.
+ * @returns An Operator instance for use in a stream pipeline.
  */
 export function debounce<T = any>(duration: number) {
-  return createOperator<T, T>("debounce", (source) => {
-    let output = createSubject<T>();
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let latestValue: T | null = null;
-    let hasValues = false;
+  return createOperator<T, T>("debounce", function (this: Operator, source) {
+    const output: Subject<T> = createSubject<T>();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
+    let latestResult: IteratorResult<T> | undefined = undefined;
     let isCompleted = false;
 
     const flush = () => {
-      if (latestValue !== null) {
-        output.next(latestValue);
-        latestValue = null;
-      }
-      timeoutId = null;
+      if (latestResult !== undefined) {
+        // Emit the latest value
+        output.next(latestResult.value!);
 
-      // Complete if we finished processing
+        latestResult = undefined;
+      }
+      timeoutId = undefined;
+
+      // If the source has completed, complete the output stream
       if (isCompleted) {
         output.complete();
       }
     };
 
-    // Handle input stream
     (async () => {
       try {
         while (true) {
           const result = await source.next();
-          if (result.done) break;
 
-          latestValue = result.value;
+          if (result.done) {
+            isCompleted = true;
 
-          if (timeoutId) clearTimeout(timeoutId);
+            // If a pending value exists, flush it before completing
+            if (timeoutId === undefined && latestResult !== undefined) {
+              flush();
+            }
+            break;
+          }
+
+          latestResult = result;
+
+          // Reset the timer
+          if (timeoutId !== undefined) clearTimeout(timeoutId);
           timeoutId = setTimeout(flush, duration);
         }
-        // Otherwise wait for flush() to handle completion
       } catch (err) {
-        if (timeoutId) clearTimeout(timeoutId);
         output.error(err);
       } finally {
-        // Mark as completed
         isCompleted = true;
-
-        // If no pending timer, complete immediately
-        if (!timeoutId) {
-          // Only emit if we got values but no pending timer
-          if (hasValues && latestValue !== null) {
-            flush();
-          }
-          output.complete();
+        // Clear pending timer
+        if (timeoutId !== undefined) {
+          clearTimeout(timeoutId);
+          timeoutId = undefined;
         }
+        // Flush any remaining latest value
+        if (latestResult !== undefined) flush();
+        output.complete();
       }
     })();
 
-    const iterable = eachValueFrom(output);
+    const iterable = eachValueFrom<T>(output);
     return iterable[Symbol.asyncIterator]();
   });
 }

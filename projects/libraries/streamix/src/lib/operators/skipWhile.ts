@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from '../abstractions';
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that skips values from the source stream while a predicate returns true.
@@ -14,27 +14,27 @@ import { CallbackReturnType, createOperator } from '../abstractions';
  * and `false` means to stop skipping and begin emitting.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const skipWhile = <T = any>(predicate: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator<T, T>('skipWhile', (source) => {
+export const skipWhile = <T = any>(
+  predicate: (value: T) => CallbackReturnType<boolean>
+) =>
+  createOperator<T, T>('skipWhile', function (this: Operator, source) {
     let skipping = true;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
-          const { value, done } = await source.next();
+          const result = await source.next();
 
-          if (done) {
-            return { value: undefined, done: true };
-          }
+          if (result.done) return DONE;
 
           if (skipping) {
-            if (!await predicate(value)) {
+            if (!await predicate(result.value)) {
               skipping = false;
-              return { value, done: false };
+              return NEXT(result.value);
             }
-            // If still skipping, continue looping
+            // Still skipping, ignore this value
           } else {
-            return { value, done: false };
+            return NEXT(result.value);
           }
         }
       }

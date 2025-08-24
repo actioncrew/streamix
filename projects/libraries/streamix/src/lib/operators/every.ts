@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that tests if all values from the source stream satisfy a predicate.
@@ -21,25 +21,25 @@ import { CallbackReturnType, createOperator } from "../abstractions";
 export const every = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, boolean>("every", (source) => {
+  createOperator<T, boolean>("every", function (this: Operator, source) {
     let index = 0;
     let emitted = false;
 
     return {
-      async next(): Promise<IteratorResult<boolean>> {
-        if (emitted) return { done: true, value: undefined };
+      next: async () => {
+        if (emitted) return DONE;
 
         while (true) {
-          const { value, done } = await source.next();
+          const result = await source.next();
 
-          if (done) {
+          if (result.done) {
             emitted = true;
-            return { done: false, value: true };
+            return NEXT(true);
           }
 
-          if (!await predicate(value, index++)) {
+          if (!await predicate(result.value, index++)) {
             emitted = true;
-            return { done: false, value: false };
+            return NEXT(false);
           }
         }
       },

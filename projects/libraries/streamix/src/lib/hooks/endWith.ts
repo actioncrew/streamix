@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits a final, specified value after the source stream has completed.
@@ -11,33 +11,36 @@ import { createOperator } from "../abstractions";
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const endWith = <T = any>(finalValue: T) =>
-  createOperator<T, T>("endWith", (source) => {
+  createOperator<T, T>("endWith", function (this: Operator, source) {
     let sourceDone = false;
     let finalEmitted = false;
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
           if (completed) {
-            return { done: true, value: undefined };
+            return DONE;
           }
 
           if (!sourceDone) {
             const result = await source.next();
+
             if (!result.done) {
               return result;
             }
+
             sourceDone = true;
           }
 
+
           if (!finalEmitted) {
             finalEmitted = true;
-            return { done: false, value: finalValue };
+            return NEXT(finalValue);
           }
 
           completed = true;
-          return { done: true, value: undefined };
+          return DONE;
         }
       }
     };

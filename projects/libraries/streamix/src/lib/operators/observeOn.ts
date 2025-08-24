@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, DONE, NEXT, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -50,15 +50,16 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
     }
   };
 
-  return createOperator<T, T>('observeOn', (source) => {
+  return createOperator<T, T>('observeOn', function (this: Operator, source) {
     const output = createSubject<T>();
 
     (async () => {
       try {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
-          schedule(() => output.next(value));
+          const result = await source.next();
+          if (result.done) break;
+
+          schedule(() => output.next(result.value));
         }
       } catch (err) {
         output.error(err);
@@ -74,17 +75,17 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
       async next() {
         while (true) {
           if (completed) {
-            return { value: undefined as any, done: true };
+            return DONE;
           }
 
           const result = await iterator.next();
 
           if (result.done) {
             completed = true;
-            return { value: undefined as any, done: true };
+            return DONE;
           }
 
-          return { value: result.value, done: false };
+          return NEXT(result.value);
         }
       }
     };

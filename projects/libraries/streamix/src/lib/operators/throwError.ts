@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, DONE, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that immediately throws an error with the provided message.
@@ -15,14 +15,15 @@ import { createOperator } from '../abstractions';
  * @returns An `Operator` instance that creates a stream which errors upon its first request.
  */
 export const throwError = <T = any>(message: string) =>
-  createOperator<T, never>('throwError', () => {
-    let done = false;
+  createOperator<T, never>('throwError', function (this: Operator, source) {
 
     return {
-      async next(): Promise<IteratorResult<never>> {
-        if (done) return { done: true as const, value: undefined as never };
-
-        done = true;
+      next: async () => {
+        while (true) {
+          const result = await source.next();
+          if (result.done) return DONE as any;
+          break;
+        }
         throw new Error(message);
       }
     };

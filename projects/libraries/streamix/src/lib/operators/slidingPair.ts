@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits pairs of values from the source stream,
@@ -16,29 +16,29 @@ import { createOperator } from "../abstractions";
  * emitting tuples of `[T | undefined, T]`.
  */
 export const slidingPair = <T = any>() =>
-  createOperator<T, [T | undefined, T]>('slidingPair', (source) => {
+  createOperator<T, [T | undefined, T]>('slidingPair', function (this: Operator, source) {
     let prev: T | undefined = undefined;
     let first = true;
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<[T | undefined, T]>> {
+      next: async () => {
         while (true) {
           if (completed) {
-            return { value: undefined as any, done: true };
+            return DONE;
           }
 
-          const { value, done } = await source.next();
+          const result = await source.next();
 
-          if (done) {
+          if (result.done) {
             completed = true;
-            return { value: undefined as any, done: true };
+            return DONE;
           }
 
-          const result: [T | undefined, T] = [first ? undefined : prev, value];
-          prev = value;
+          const value: [T | undefined, T] = [first ? undefined : prev, result.value];
+          prev = result.value;
           first = false;
-          return { value: result, done: false };
+          return NEXT(value);
         }
       }
     };

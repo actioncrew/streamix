@@ -1,4 +1,4 @@
-import { createOperator } from "../abstractions";
+import { createOperator, DONE, NEXT, Operator } from "../abstractions";
 import { CallbackReturnType } from "./../abstractions/receiver";
 
 /**
@@ -20,52 +20,38 @@ import { CallbackReturnType } from "./../abstractions/receiver";
 export const last = <T = any>(
   predicate?: (value: T) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, T>("last", (source) => {
-    let finished = false;
-    let consumed = false;
-    let lastValue: T;
+  createOperator<T, T>("last", function (this: Operator, source) {
+    let lastValue: T | undefined = undefined;
     let hasMatch = false;
+    let finished = false;
 
-    async function next(): Promise<IteratorResult<T>> {
-      // If we’ve already consumed and emitted, we’re done.
-      if (finished && consumed) {
-        return { value: undefined as any, done: true };
-      }
-
-      // If finished but not yet emitted the last value, emit it now.
-      if (finished && !consumed) {
-        consumed = true;
-        return { value: lastValue, done: false };
-      }
-
-      // Otherwise, drain the source completely.
-      try {
+    return {
+      next: async () => {
         while (true) {
+          if (finished) return DONE;
+
           const result = await source.next();
-          if (result.done) break;
+
+          if (result.done) {
+            finished = true;
+            if (!hasMatch) throw new Error("No elements in sequence");
+            return NEXT(lastValue!);
+          }
 
           const value = result.value;
-          if (!predicate || (await predicate(value))) {
-            lastValue = value;
-            hasMatch = true;
+          const matches = !predicate || (await predicate(value));
+
+          if (matches) {
+            if (hasMatch) {
+              lastValue = value;
+              continue;
+            } else {
+              lastValue = value;
+              hasMatch = true;
+              continue;
+            }
           }
         }
-
-        finished = true;
-
-        if (!hasMatch) {
-          throw new Error("No elements in sequence");
-        }
-
-        // Immediately return the last value, but mark it as not yet consumed.
-        consumed = true;
-        return { value: lastValue, done: false };
-      } catch (err) {
-        finished = true;
-        throw err;
       }
-    }
-
-    return { next };
+    };
   });
-  

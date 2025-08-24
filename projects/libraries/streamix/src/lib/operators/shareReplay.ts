@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createReplaySubject, ReplaySubject } from '../streams';
 
@@ -23,7 +23,7 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
   let isConnected = false;
   let output: ReplaySubject<T> | undefined;
 
-  return createOperator<T, T>('shareReplay', (source) => {
+  return createOperator<T, T>('shareReplay', function (this: Operator, source) {
     if (!output) {
       output = createReplaySubject<T>(bufferSize);
     }
@@ -36,6 +36,7 @@ export function shareReplay<T = any>(bufferSize: number = Infinity) {
           while (true) {
             let result = await source.next();
             if (result.done) break;
+
             output.next(result.value);
             result = await source.next();
           }

@@ -1,38 +1,28 @@
-import { createOperator } from "../abstractions";
-import { eachValueFrom } from '../converters';
+import { createOperator, Operator } from "../abstractions";
+import { eachValueFrom } from "../converters";
 import { createSubject, timer } from "../streams";
 
 /**
- * Creates a stream operator that buffers values from the source stream and emits
- * them as arrays every `period` milliseconds.
- *
- * This operator collects all values that arrive within a specified time window.
- * It uses an internal timer that fires periodically to "flush" the collected
- * values, emitting them as a single array before starting a new collection.
- *
- * - **Periodic Emission:** The operator's output stream emits arrays of buffered
- * values at a fixed interval determined by `period`.
- * - **Completion:** When the source stream completes, the operator will perform
- * one final flush of any remaining values in the buffer before completing its own output stream.
- * - **Error Handling:** Any error from either the source stream or the internal
- * timer will immediately cause the output stream to error and terminate.
- *
- * This is useful for batching asynchronous events or data to reduce processing
- * overhead or network requests.
+ * Buffers values from the source stream and emits them as arrays every `period` milliseconds,
+ * while tracking pending and phantom values in the PipeContext.
  *
  * @template T The type of the values in the source stream.
- * @param period The time in milliseconds to wait between each buffer emission.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @param period Time in milliseconds between each buffer flush.
+ * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export function buffer<T = any>(period: number) {
-  return createOperator<T, T[]>('buffer', (source) => {
+  return createOperator<T, T[]>("buffer", function (this: Operator, source) {
     const output = createSubject<T[]>();
-    let buffer: T[] = [];
+    let buffer: IteratorResult<T>[] = [];
     let completed = false;
 
     const flush = () => {
       if (buffer.length > 0) {
-        output.next([...buffer]);
+        // Emit an array of the actual values
+        const values = buffer.map((r) => r.value!);
+        output.next(values);
+
+        // Resolve all pending results for this flush
         buffer = [];
       }
     };
@@ -50,21 +40,30 @@ export function buffer<T = any>(period: number) {
       cleanup();
     };
 
+    const fail = (err: any) => {
+      // resolve all pending before error
+      if (buffer.length > 0) {
+        buffer = [];
+      }
+      output.error(err);
+      cleanup();
+    };
+
+    // Timer triggers periodic flush
     const intervalSubscription = timer(period, period).subscribe({
       next: () => flush(),
-      error: (err) => {
-        output.error(err);
-        cleanup();
-      },
+      error: (err) => fail(err),
       complete: () => flushAndComplete(),
     });
 
     (async () => {
       try {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
-          buffer.push(value);
+          const result: IteratorResult<T> = await source.next();
+          if (result.done) break;
+
+          // Add to buffer
+          buffer.push(result);
         }
       } catch (err) {
         cleanup();

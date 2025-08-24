@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 
 /**
@@ -57,44 +57,46 @@ export interface ForkOption<T = any, R = any> {
  * @throws {Error} If a source value does not match any predicate.
  */
 export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
-  createOperator<T, R>('fork', (source) => {
+  createOperator<T, R>('fork', function (this: Operator, source) {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
+    let outerValue: T | undefined;
 
     return {
-      async next(): Promise<IteratorResult<R>> {
+      next: async () => {
         while (true) {
           // If no active inner iterator, get next outer value
           if (!innerIterator) {
-            const outerResult = await source.next();
-            if (outerResult.done) {
-              return { done: true, value: undefined };
+            const result = await source.next();
+            if (result.done) {
+              return DONE;
             }
 
             let matched: typeof options[number] | undefined;
+            outerValue = result.value;
 
             for (const option of options) {
-              if (await option.on(outerResult.value, outerIndex++)) {
+              if (await option.on(outerValue!, outerIndex++)) {
                 matched = option;
                 break;
               }
             }
 
             if (!matched) {
-              throw new Error(`No handler found for value: ${outerResult.value}`);
+              throw new Error(`No handler found for value: ${outerValue}`);
             }
 
-            innerIterator = eachValueFrom(fromAny(matched.handler(outerResult.value)));
+            innerIterator = eachValueFrom(fromAny(matched.handler(outerValue!)));
           }
 
           // Pull next inner value
           const innerResult = await innerIterator.next();
           if (innerResult.done) {
             innerIterator = null;
-            continue; // Try next outer value
+            continue;
           }
 
-          return { done: false, value: innerResult.value };
+          return NEXT(innerResult.value);
         }
       }
     };

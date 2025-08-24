@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
 /**
@@ -42,7 +42,7 @@ export const recurse = <T = any>(
   project: (value: T) => Stream<T>,
   options: RecurseOptions = {}
 ) =>
-  createOperator<T, T>('recurse', (source) => {
+  createOperator<T, T>('recurse', function (this: Operator, source) {
     type QueueItem = { value: T; depth: number };
     const queue: QueueItem[] = [];
     let sourceDone = false;
@@ -62,7 +62,7 @@ export const recurse = <T = any>(
     };
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
           // Refill queue from source if it's empty
           while (queue.length === 0 && !sourceDone) {
@@ -71,6 +71,7 @@ export const recurse = <T = any>(
               sourceDone = true;
               break;
             }
+
             queue.push({ value: result.value, depth: 0 });
           }
 
@@ -79,12 +80,12 @@ export const recurse = <T = any>(
             const item =
               options.traversal === 'breadth' ? queue.shift()! : queue.pop()!;
             await enqueueChildren(item.value, item.depth);
-            return { value: item.value, done: false };
+            return NEXT(item.value);
           }
 
           // If queue is empty and source is done, we're done
           if (sourceDone && queue.length === 0) {
-            return { value: undefined, done: true };
+            return DONE;
           }
 
           // Yield control briefly (avoid busy waiting)

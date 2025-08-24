@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits values from the source stream as long as
@@ -21,26 +21,27 @@ import { CallbackReturnType, createOperator } from "../abstractions";
 export const takeWhile = <T = any>(
   predicate: (value: T) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, T>("takeWhile", (source) => {
-    let done = false;
+  createOperator<T, T>("takeWhile", function (this: Operator, source) {
+    let active = true;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
-          if (done) return { done: true, value: undefined };
           const result = await source.next();
 
-          if (result.done) {
-            done = true;
-            return result;
+          if (result.done) return result;
+
+          if (!active) {
+            continue;
           }
 
-          if (!(await predicate(result.value))) {
-            done = true;
-            return { done: true, value: undefined };
+          const pass = await predicate(result.value);
+          if (!pass) {
+            active = false;
+            continue;
           }
 
-          return result;
+          return NEXT(result.value);
         }
       },
     };

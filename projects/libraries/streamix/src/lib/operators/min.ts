@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, DONE, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the minimum value from the source stream.
@@ -13,16 +13,26 @@ import { createOperator } from '../abstractions';
  * if they are equal. Defaults to using the `<` operator for comparison.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
+/**
+ * Creates a stream operator that emits the minimum value from the source stream.
+ *
+ * This is a terminal operator that consumes the source lazily.
+ * It keeps track of the smallest value seen so far and emits phantoms for intermediate values.
+ *
+ * @template T The type of the values in the source stream.
+ * @param comparator Optional function to compare two values. Returns negative if `a < b`.
+ * @returns An `Operator` instance usable in a stream's `pipe` method.
+ */
 export const min = <T = any>(
   comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
-  createOperator<T, T>("min", (source) => {
+  createOperator<T, T>("min", function (this: Operator, source) {
     let minValue: T | undefined;
     let hasMin = false;
     let emittedMin = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
           const result = await source.next();
 
@@ -30,9 +40,9 @@ export const min = <T = any>(
             // Emit the final minimum once
             if (hasMin && !emittedMin) {
               emittedMin = true;
-              return { done: false, value: minValue! };
+              return NEXT(minValue!);
             }
-            return { done: true, value: undefined };
+            return DONE;
           }
 
           const value = result.value;
@@ -46,7 +56,6 @@ export const min = <T = any>(
           const cmp = comparator ? await comparator(value, minValue!) : (value < minValue! ? -1 : 1);
 
           if (cmp < 0) {
-            // previous min becomes phantom
             minValue = value;
           }
         }

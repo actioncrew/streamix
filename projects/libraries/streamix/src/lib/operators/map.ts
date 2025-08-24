@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from '../abstractions';
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that applies a transformation function to each value
@@ -19,7 +19,7 @@ import { CallbackReturnType, createOperator } from '../abstractions';
 export const map = <T = any, R = any>(
   transform: (value: T, index: number) => CallbackReturnType<R>
 ) =>
-  createOperator<T, R>('map', (source) => {
+  createOperator<T, R>('map', function (this: Operator, source) {
     let index = 0;
     let completed = false;
 
@@ -27,17 +27,17 @@ export const map = <T = any, R = any>(
       async next(): Promise<IteratorResult<R>> {
         while (true) {
           if (completed) {
-            return { value: undefined as any, done: true };
+            return DONE;
           }
 
           const result = await source.next();
           if (result.done) {
             completed = true;
-            return { value: undefined as any, done: true };
+            return DONE;
           }
 
           const transformedValue = await transform(result.value, index++);
-          return { value: transformedValue, done: false };
+          return NEXT(transformedValue);
         }
       },
     };

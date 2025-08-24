@@ -1,34 +1,31 @@
-import { createOperator } from '../abstractions';
+import { createOperator, DONE, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the maximum value from the source stream.
  *
- * This is a terminal operator that must consume the entire source stream before
- * it can emit a single value. It iterates through all values, keeping track of
- * the largest one seen so far.
+ * This is a terminal operator that consumes the entire source lazily,
+ * emitting phantoms along the way and finally emitting the maximum value.
  *
  * @template T The type of the values in the source stream.
- * @param comparator An optional function to compare two values. It should return a positive
- * number if `a` is greater than `b`, a negative number if `a` is less than `b`, and zero
- * if they are equal. Defaults to using the `>` operator for comparison.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @param comparator Optional comparison function: positive if `a > b`, negative if `a < b`.
+ * @returns An `Operator` instance usable in a stream's `pipe` method.
  */
 export const max = <T = any>(
   comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
-  createOperator<T, T>("max", (source) => {
+  createOperator<T, T>("max", function (this: Operator, source) {
     let maxValue: T | undefined;
     let hasMax = false;
     let emittedMax = false;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
           // If all values processed, emit max once and complete
-          if (emittedMax && !hasMax) return { done: true, value: undefined };
+          if (emittedMax && !hasMax) return DONE;
           if (emittedMax && hasMax) {
             emittedMax = true;
-            return { done: true, value: undefined };
+            return DONE;
           }
 
           const result = await source.next();
@@ -37,9 +34,9 @@ export const max = <T = any>(
             // Emit final max if exists
             if (hasMax && !emittedMax) {
               emittedMax = true;
-              return { done: false, value: maxValue! };
+              return NEXT(maxValue!);
             }
-            return { done: true, value: undefined };
+            return DONE;
           }
 
           const value = result.value;

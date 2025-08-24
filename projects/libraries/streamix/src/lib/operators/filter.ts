@@ -1,4 +1,4 @@
-import { createOperator } from '../abstractions';
+import { createOperator, NEXT, Operator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
 
 /**
@@ -20,11 +20,11 @@ import { CallbackReturnType } from './../abstractions/receiver';
 export const filter = <T = any>(
   predicateOrValue: ((value: T, index: number) => CallbackReturnType<boolean>) | T | T[]
 ) =>
-  createOperator<T, T>('filter', (source) => {
+  createOperator<T, T>('filter', function (this: Operator, source) {
     let index = 0;
 
     return {
-      async next(): Promise<IteratorResult<T>> {
+      next: async () => {
         while (true) {
           const result = await source.next();
           if (result.done) return result;
@@ -42,7 +42,8 @@ export const filter = <T = any>(
 
           if (shouldInclude) {
             index++; // Increment index only if included
-            return { value, done: false };
+            // If the value passes the filter, return it as a normal IteratorResult.
+            return NEXT(value);
           }
         }
       }

@@ -1,4 +1,4 @@
-import { createOperator, Stream } from '../abstractions';
+import { createOperator, Operator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -19,8 +19,26 @@ import { createSubject } from '../streams';
  * should complete.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
+
+/**
+ * Creates a stream operator that emits all values from the source stream until
+ * a value is emitted by a `notifier` stream.
+ *
+ * This operator controls the lifespan of a stream based on an external signal.
+ * It consumes and re-emits values from the source until the `notifier` stream
+ * emits its first value. As soon as that happens, the operator completes the
+ * output stream and unsubscribes from both the source and the notifier.
+ *
+ * Phantom values are forwarded downstream as `{ value, phantom: true }`,
+ * preserving the semantics of skipped or suppressed emissions.
+ *
+ * @template T The type of the values in the source and output streams.
+ * @param notifier The stream that, upon its first emission, signals that the operator
+ * should complete.
+ * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ */
 export function takeUntil<T = any>(notifier: Stream) {
-  return createOperator<T, T>('takeUntil', (source) => {
+  return createOperator<T, T>('takeUntil', function (this: Operator, source) {
     const output = createSubject<T>();
     let shouldStop = false;
 
@@ -43,9 +61,10 @@ export function takeUntil<T = any>(notifier: Stream) {
     setTimeout(async () => {
       try {
         while (!shouldStop) {
-          const { value, done } = await source.next();
-          if (done || shouldStop) break;
-          output.next(value);
+          const result = await source.next();
+          if (result.done || shouldStop) break;
+
+          output.next(result.value);
         }
       } catch (err) {
         if (!output.completed()) output.error(err);

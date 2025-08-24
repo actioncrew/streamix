@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, Stream, Subscription } from "../abstractions";
+import { CallbackReturnType, createOperator, Operator, Stream, Subscription } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject } from "../streams";
 
@@ -24,8 +24,10 @@ import { createSubject } from "../streams";
  *   - or an array of `R`.
  * @returns An {@link Operator} instance suitable for use in a stream's `pipe` method.
  */
-export function switchMap<T = any, R = any>(project: (value: T, index: number) =>  Stream<R> | CallbackReturnType<R> | Array<R>) {
-  return createOperator<T, R>("switchMap", (source) => {
+export function switchMap<T = any, R = any>(
+  project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
+) {
+  return createOperator<T, R>("switchMap", function (this: Operator, source) {
     const output = createSubject<R>();
 
     let currentSubscription: Subscription | null = null;
@@ -39,7 +41,8 @@ export function switchMap<T = any, R = any>(project: (value: T, index: number) =
       }
     };
 
-    const subscribeToInner = (innerStream: Stream<R>, streamId: number) => {
+    const subscribeToInner = async (innerStream: Stream<R>, streamId: number) => {
+      // Cancel previous inner stream
       if (currentSubscription) {
         currentSubscription.unsubscribe();
         currentSubscription = null;
@@ -52,9 +55,7 @@ export function switchMap<T = any, R = any>(project: (value: T, index: number) =
           }
         },
         error: (err) => {
-          if (streamId === currentInnerStreamId) {
-            output.error(err);
-          }
+          if (streamId === currentInnerStreamId) output.error(err);
         },
         complete: () => {
           if (streamId === currentInnerStreamId) {
@@ -68,13 +69,14 @@ export function switchMap<T = any, R = any>(project: (value: T, index: number) =
     (async () => {
       try {
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
+          const result = await source.next();
+          if (result.done) break;
 
           const streamId = ++currentInnerStreamId;
-          const innerStream = fromAny(project(value, index++));
-          subscribeToInner(innerStream, streamId);
+          const innerStream = fromAny(project(result.value, index++));
+          await subscribeToInner(innerStream, streamId);
         }
+
         inputCompleted = true;
         checkComplete();
       } catch (err) {

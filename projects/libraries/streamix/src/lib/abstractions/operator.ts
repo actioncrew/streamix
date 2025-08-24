@@ -1,6 +1,22 @@
 import { Stream } from "./stream";
 
 /**
+ * A constant representing a completed stream result.
+ *
+ * Always `{ done: true, value: undefined }`.
+ * Used to signal the end of a stream.
+ */
+export const DONE: { readonly done: true; readonly value: undefined; } = ({ done: true, value: undefined }) as const;
+/**
+ * Factory function to create a normal stream result.
+ *
+ * @template R The type of the emitted value.
+ * @param value The value to emit downstream.
+ * @returns A `IteratorResult<R>` object with `{ done: false, value }`.
+ */
+export const NEXT = <R = any>(value: R): { readonly done: false; readonly value: R; } => ({ done: false, value }) as const;
+
+/**
  * A stream operator that transforms a value from an input stream to an output stream.
  *
  * Operators are the fundamental building blocks for composing stream transformations.

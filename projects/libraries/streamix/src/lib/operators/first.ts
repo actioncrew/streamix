@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits only the first element from the source stream
@@ -20,38 +20,37 @@ import { CallbackReturnType, createOperator } from "../abstractions";
  * value is found before the source stream completes.
  */
 export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator<T, T>('first', (source) => {
+  createOperator<T, T>('first', function (this: Operator, source) {
     let found = false;
     let firstValue: T | undefined;
     let sourceDone = false;
 
-    async function next(): Promise<IteratorResult<T>> {
-      if (found) {
-        return { value: undefined, done: true };
-      }
+    return {
+      next: async () => {
+        if (found) {
+          return DONE;
+        }
 
-      if (sourceDone) {
-        throw new Error("No elements in sequence");
-      }
-
-      while (!found) {
-        const result = await source.next();
-        if (result.done) {
-          sourceDone = true;
+        if (sourceDone) {
           throw new Error("No elements in sequence");
         }
 
-        const value = result.value;
-        if (!predicate || await predicate(value)) {
-          found = true;
-          firstValue = value;
-          return { value: firstValue!, done: false };
+        while (!found) {
+          const result = await source.next();
+          if (result.done) {
+            sourceDone = true;
+            throw new Error("No elements in sequence");
+          }
+
+          const value = result.value;
+          if (!predicate || await predicate(value)) {
+            found = true;
+            firstValue = value;
+            return NEXT(firstValue!);
+          }
         }
+
+        return DONE;
       }
-
-      // Should not reach here
-      return { value: undefined, done: true };
-    }
-
-    return { next };
+    };
   });

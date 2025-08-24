@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from "../abstractions";
 import { GroupItem } from "./groupBy";
 
 /**
@@ -21,25 +21,25 @@ import { GroupItem } from "./groupBy";
 export const partition = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, GroupItem<T, "true" | "false">>('partition', (source) => {
+  createOperator<T, GroupItem<T, "true" | "false">>('partition', function (this: Operator, source) {
     let index = 0;
     let completed = false;
 
     return {
-      async next(): Promise<IteratorResult<GroupItem<T, "true" | "false">>> {
+      next: async () => {
         while (true) {
           if (completed) {
-            return { value: undefined, done: true };
+            return DONE;
           }
 
           const result = await source.next();
           if (result.done) {
             completed = true;
-            return { value: undefined, done: true };
+            return DONE;
           }
 
           const key = await predicate(result.value, index++) ? "true" : "false";
-          return { value: { key, value: result.value }, done: false };
+          return NEXT({ key, value: result.value } as GroupItem<T, "true" | "false">);
         }
       }
     };

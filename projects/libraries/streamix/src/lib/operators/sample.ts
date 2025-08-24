@@ -1,45 +1,41 @@
-import { createOperator } from '../abstractions';
+import { createOperator, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
-import { createSubject } from '../streams';
+import { createSubject, Subject } from '../streams';
 
 /**
  * Creates a stream operator that emits the most recent value from the source stream
- * at a fixed periodic interval.
+ * at a fixed periodic interval while tracking pending and phantom states.
  *
- * This operator controls the rate of emissions. It maintains a buffer for the latest
- * value received from the source stream. It then uses an internal timer to periodically
- * emit that latest value to the output stream at a rate defined by the `period`.
- * If the source stream is faster than the `period`, multiple values will be skipped.
- * If the source is slower, the same value will be re-emitted.
- *
- * This is useful for:
- * - Sampling live data streams (e.g., sensor readings) for display on a UI.
- * - Limiting the frequency of expensive operations triggered by a fast event source.
+ * Values that arrive faster than the period are considered phantoms if skipped,
+ * and pending results are tracked in PipeContext until resolved or emitted.
  *
  * @template T The type of the values in the source and output streams.
  * @param period The time in milliseconds between each emission.
- * @returns An `Operator` instance that can be used in a stream's `pipe` method.
+ * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export const sample = <T = any>(period: number) =>
-  createOperator<T, T>('sample', (source) => {
-    const output = createSubject<T>();
+  createOperator<T, T>('sample', function (this: Operator, source) {
+    const output: Subject<T> = createSubject<T>();
 
-    let lastValue: T | undefined;
-    let intervalId: any;
+    let lastResult: IteratorResult<T> | undefined;
+    let skipped = false;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    // Starts a timer that periodically emits the last seen value
     const startSampling = () => {
-      intervalId = setInterval(() => {
-        if (lastValue !== undefined) {
-          output.next(lastValue);
+      intervalId = setInterval(async () => {
+        if (!lastResult) return;
+
+        if (!skipped) {
+          output.next(lastResult.value!);
         }
+
+        skipped = true;
       }, period);
     };
 
     const stopSampling = () => {
-      if (intervalId != null) {
-        clearInterval(intervalId);
-      }
+      if (intervalId !== null) clearInterval(intervalId);
+      intervalId = null;
     };
 
     (async () => {
@@ -47,23 +43,24 @@ export const sample = <T = any>(period: number) =>
         startSampling();
 
         while (true) {
-          const { value, done } = await source.next();
-          if (done) break;
-          lastValue = value;
+          const result: IteratorResult<T> = await source.next();
+          if (result.done) break;
+
+          lastResult = result;
+          skipped = false;
         }
 
-        // Emit the final value after source completes
-        if (lastValue !== undefined) {
-          output.next(lastValue);
+        // Emit final value
+        if (lastResult) {
+          output.next(lastResult.value!);
         }
       } catch (err) {
         output.error(err);
       } finally {
-        output.complete();
         stopSampling();
+        output.complete();
       }
     })();
 
-    const iterable = eachValueFrom<T>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });

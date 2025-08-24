@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that tests if at least one value from the source stream satisfies a predicate.
@@ -21,35 +21,33 @@ import { CallbackReturnType, createOperator } from "../abstractions";
 export const some = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, boolean>('some', (source) => {
+  createOperator<T, boolean>('some', function (this: Operator, source) {
     let evaluated = false;
-    let result: boolean = false;
+    let found = false;
     let index = 0;
 
     return {
-      async next(): Promise<IteratorResult<boolean>> {
+      next: async () => {
         if (evaluated) {
-          return { value: undefined, done: true };
+          return DONE;
         }
 
         try {
           while (true) {
-            const itemResult = await source.next();
-            if (itemResult.done) {
-              break; // Source completed
-            }
-            if (await predicate(itemResult.value, index++)) {
-              result = true;
-              break; // Predicate matched, no need to continue
+            const result = await source.next();
+
+            if (result.done) break;
+
+            if (await predicate(result.value, index++)) {
+              found = true;
+              break; // Predicate matched
             }
           }
-        } catch (err) {
-          throw err;
         } finally {
           evaluated = true;
         }
 
-        return { value: result, done: false };
+        return NEXT(found);
       }
     };
   });
