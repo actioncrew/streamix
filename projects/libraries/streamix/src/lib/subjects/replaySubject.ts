@@ -119,7 +119,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
   const replaySubject: ReplaySubject<T> = {
     type: "subject",
     name: "replaySubject",
-    pipe<O extends readonly [Operator<any, any>, ...Operator<any, any>[]]>(...operators: O): Stream<any> {
+    pipe(...operators: Operator<any, any>[]): Stream<any> {
       return pipeStream(this, ...operators);
     },
     subscribe,
