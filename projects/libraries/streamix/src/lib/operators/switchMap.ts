@@ -47,7 +47,7 @@ export function switchMap<T = any, R = any>(
       // Cancel previous inner stream
       if (currentSubscription) {
         if (!innerHadEmissions && pendingPhantom) {
-          await context.phantomHandler(this, pendingPhantom);
+          await context.phantomHandler(this, pendingPhantom.value);
         }
 
         currentSubscription.unsubscribe();
