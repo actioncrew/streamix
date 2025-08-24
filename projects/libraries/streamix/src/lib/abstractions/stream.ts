@@ -232,8 +232,8 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   };
 
   const pipedStream: Stream<any> = {
-    name: "piped",
-    type: "stream",
+    name: `${source.name}-piped`,
+    type: source.type,
     pipe: ((...nextOps: Operator<any, any>[]) => {
       return pipeStream(pipedStream, ...nextOps);
     }) as OperatorChain<any>,
