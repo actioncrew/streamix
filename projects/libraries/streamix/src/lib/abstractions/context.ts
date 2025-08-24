@@ -352,8 +352,7 @@ export function createStreamContext(
  * @param phantomHandler Optional callback for phantom results (default: console.debug).
  */
 export function createPipelineContext(
-  phantomHandler: (v: any, s: StreamContext) => CallbackReturnType = (v, s) =>
-    console.debug(`Phantom value in stream ${s.streamId}:`, v)
+  phantomHandler: (v: any, s: StreamContext) => CallbackReturnType = () => {}
 ): PipelineContext {
   const activeStreams = new Map<string, StreamContext>();
 
