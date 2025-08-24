@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the minimum value from the source stream.
@@ -26,13 +26,13 @@ import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from
 export const min = <T = any>(
   comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
-  createOperator<T, T>("min", (source, context) => {
+  createOperator<T, T>("min", function (this: Operator, source, context) {
     let minValue: T | undefined;
     let hasMin = false;
     let emittedMin = false;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           const result = createStreamResult(await source.next());
 
@@ -60,7 +60,7 @@ export const min = <T = any>(
             minValue = value;
           }
 
-          await context.phantomHandler(minValue!);
+          await context.phantomHandler(this, minValue!);
         }
       },
     };

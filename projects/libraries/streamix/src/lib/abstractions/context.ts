@@ -1,3 +1,4 @@
+import { Operator } from "./operator";
 import { CallbackReturnType } from "./receiver";
 
 /**
@@ -75,7 +76,7 @@ export interface StreamContext {
   timestamp: number;
 
   /** Callback invoked when a phantom result is produced. */
-  phantomHandler: (value: any) => CallbackReturnType;
+  phantomHandler: (operator: Operator, value: any) => CallbackReturnType;
 
   /**
    * Resolve a pending result and remove it from the pending set.

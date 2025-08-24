@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, Operator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
 
 /**
@@ -17,9 +17,9 @@ import { CallbackReturnType } from './../abstractions/receiver';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType) =>
-  createOperator<T, T>('tap', (source) => {
+  createOperator<T, T>('tap', function (this: Operator, source) {
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while(true) {
           const result = createStreamResult(await source.next());
 

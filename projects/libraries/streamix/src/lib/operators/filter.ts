@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, NEXT, Operator } from '../abstractions';
 import { CallbackReturnType } from './../abstractions/receiver';
 
 /**
@@ -20,11 +20,11 @@ import { CallbackReturnType } from './../abstractions/receiver';
 export const filter = <T = any>(
   predicateOrValue: ((value: T, index: number) => CallbackReturnType<boolean>) | T | T[]
 ) =>
-  createOperator<T, T>('filter', (source, context) => {
+  createOperator<T, T>('filter', function (this: Operator, source, context) {
     let index = 0;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           const result = createStreamResult(await source.next());
           if (result.done) return result;
@@ -47,7 +47,7 @@ export const filter = <T = any>(
           }
 
           // If the value is filtered out, return a phantom StreamResult to signal the dropped value.
-          await context.phantomHandler(value);
+          await context.phantomHandler(this, value);
         }
       }
     };

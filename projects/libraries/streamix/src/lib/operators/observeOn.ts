@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT } from '../abstractions';
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -50,7 +50,7 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
     }
   };
 
-  return createOperator<T, T>('observeOn', (source) => {
+  return createOperator<T, T>('observeOn', function (this: Operator, source) {
     const output = createSubject<T>();
 
     (async () => {

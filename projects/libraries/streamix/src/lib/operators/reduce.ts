@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that accumulates all values from the source stream
@@ -18,12 +18,12 @@ export const reduce = <T = any, A = any>(
   accumulator: (acc: A, value: T) => Promise<A> | A,
   seed: A
 ) =>
-  createOperator<T, A>("reduce", (source, context) => {
+  createOperator<T, A>("reduce", function (this: Operator, source, context) {
     let finalValue: A = seed;
     let emittedFinal = false;
 
     return {
-      async next(): Promise<StreamResult<A>> {
+      next: async () => {
         while (true) {
           const result = createStreamResult(await source.next());
 
@@ -39,7 +39,7 @@ export const reduce = <T = any, A = any>(
           finalValue = await accumulator(finalValue, result.value);
 
           // Treat intermediate accumulated value as phantom
-          await context.phantomHandler(finalValue);
+          await context.phantomHandler(this, finalValue);
         }
       },
     };

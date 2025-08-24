@@ -1,5 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, StreamResult } from '../abstractions';
-import { NEXT } from './../abstractions/operator';
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that skips the first specified number of values from the source stream.
@@ -13,18 +12,18 @@ import { NEXT } from './../abstractions/operator';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const skip = <T = any>(count: number) =>
-  createOperator<T, T>('skip', (source, context) => {
+  createOperator<T, T>('skip', function (this: Operator, source, context) {
     let counter = count;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           const result = createStreamResult(await source.next());
           if (result.done) return COMPLETE;
 
           if (counter > 0) {
             counter--;
-            await context.phantomHandler(result.value);
+            await context.phantomHandler(this, result.value);
             continue;
           }
 

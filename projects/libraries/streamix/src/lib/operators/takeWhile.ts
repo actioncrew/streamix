@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits values from the source stream as long as
@@ -21,18 +21,18 @@ import { CallbackReturnType, createOperator, createStreamResult, NEXT, StreamRes
 export const takeWhile = <T = any>(
   predicate: (value: T) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, T>("takeWhile", (source, context) => {
+  createOperator<T, T>("takeWhile", function (this: Operator, source, context) {
     let active = true; // controls real values
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           const result = createStreamResult(await source.next());
 
           if (result.done) return result;
 
           if (!active) {
-            await context.phantomHandler(result.value);
+            await context.phantomHandler(this, result.value);
             continue;
           }
 
@@ -40,7 +40,7 @@ export const takeWhile = <T = any>(
           if (!pass) {
             active = false;
             // turn this failed one into phantom too
-            await context.phantomHandler(result.value);
+            await context.phantomHandler(this, result.value);
             continue;
           }
 

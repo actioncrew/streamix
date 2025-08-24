@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 import { CallbackReturnType } from './../abstractions/receiver';
 
 /**
@@ -21,11 +21,11 @@ import { CallbackReturnType } from './../abstractions/receiver';
 export const unique = <T = any, K = any>(
   keySelector?: (value: T) => CallbackReturnType<K>
 ) =>
-  createOperator<T, T>("unique", (source, context) => {
+  createOperator<T, T>("unique", function (this: Operator, source, context) {
     const seen = new Set<K | T>();
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           const result = createStreamResult(await source.next());
           if (result.done) return COMPLETE;
@@ -38,7 +38,7 @@ export const unique = <T = any, K = any>(
           }
 
           // duplicate → still emit as phantom
-          await context.phantomHandler(result.value);
+          await context.phantomHandler(this, result.value);
         }
       }
     };

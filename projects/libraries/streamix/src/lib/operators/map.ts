@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator, StreamResult } from '../abstractions';
 
 /**
  * Creates a stream operator that applies a transformation function to each value
@@ -19,7 +19,7 @@ import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT,
 export const map = <T = any, R = any>(
   transform: (value: T, index: number) => CallbackReturnType<R>
 ) =>
-  createOperator<T, R>('map', (source) => {
+  createOperator<T, R>('map', function (this: Operator, source) {
     let index = 0;
     let completed = false;
 

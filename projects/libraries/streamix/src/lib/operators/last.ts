@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 import { CallbackReturnType } from "./../abstractions/receiver";
 
 /**
@@ -20,13 +20,13 @@ import { CallbackReturnType } from "./../abstractions/receiver";
 export const last = <T = any>(
   predicate?: (value: T) => CallbackReturnType<boolean>
 ) =>
-  createOperator<T, T>("last", (source, context) => {
+  createOperator<T, T>("last", function (this: Operator, source, context) {
     let lastValue: T | undefined = undefined;
     let hasMatch = false;
     let finished = false;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           if (finished) return COMPLETE;
 
@@ -46,7 +46,7 @@ export const last = <T = any>(
               // Previous last value becomes phantom
               const phantom = lastValue!;
               lastValue = value;
-              await context.phantomHandler(phantom);
+              await context.phantomHandler(this, phantom);
               continue;
             } else {
               lastValue = value;
@@ -55,7 +55,7 @@ export const last = <T = any>(
             }
           } else {
             // Non-matching values are phantoms
-            await context.phantomHandler(value);
+            await context.phantomHandler(this, value);
           }
         }
       }

@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, StreamResult } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that invokes a finalizer callback upon stream termination.
@@ -14,12 +14,12 @@ import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, Strea
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const finalize = <T = any>(callback: () => CallbackReturnType) =>
-  createOperator<T, T>("finalize", (source) => {
+  createOperator<T, T>("finalize", function (this: Operator, source) {
     let finalized = false;
     let completed = false;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           if (completed) {
             return COMPLETE;

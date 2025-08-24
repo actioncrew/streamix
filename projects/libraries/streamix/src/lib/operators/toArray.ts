@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator, StreamResult } from "../abstractions";
 
 /**
  * Collects all emitted values from the source stream into an array
@@ -8,13 +8,13 @@ import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from
  * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export const toArray = <T = any>() =>
-  createOperator<T, T[]>("toArray", (source, context) => {
+  createOperator<T, T[]>("toArray", function (this: Operator, source, context) {
     const collected: StreamResult<T>[] = [];
     let completed = false;
     let emitted = false;
 
     return {
-      async next(): Promise<StreamResult<T[]>> {
+      next: async () => {
         while (true) {
           // All done and final array emitted → complete
           if (completed && emitted) {

@@ -1,4 +1,4 @@
-import { COMPLETE, NEXT, StreamResult, createOperator, createStreamResult } from "../abstractions";
+import { COMPLETE, NEXT, Operator, StreamResult, createOperator, createStreamResult } from "../abstractions";
 
 /**
  * Buffers a fixed number of values from the source stream and emits them as arrays,
@@ -9,7 +9,7 @@ import { COMPLETE, NEXT, StreamResult, createOperator, createStreamResult } from
  * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
-  createOperator<T, T[]>("bufferCount", (source, context) => {
+  createOperator<T, T[]>("bufferCount", function (this: Operator, source, context) {
     let completed = false;
 
     return {

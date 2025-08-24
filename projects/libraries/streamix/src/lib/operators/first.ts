@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits only the first element from the source stream
@@ -20,37 +20,37 @@ import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT,
  * value is found before the source stream completes.
  */
 export const first = <T = any>(predicate?: (value: T) => CallbackReturnType<boolean>) =>
-  createOperator<T, T>('first', (source) => {
+  createOperator<T, T>('first', function (this: Operator, source) {
     let found = false;
     let firstValue: T | undefined;
     let sourceDone = false;
 
-    async function next(): Promise<StreamResult<T>> {
-      if (found) {
-        return COMPLETE;
-      }
+    return {
+      next: async () => {
+        if (found) {
+          return COMPLETE;
+        }
 
-      if (sourceDone) {
-        throw new Error("No elements in sequence");
-      }
-
-      while (!found) {
-        const result = createStreamResult(await source.next());
-        if (result.done) {
-          sourceDone = true;
+        if (sourceDone) {
           throw new Error("No elements in sequence");
         }
 
-        const value = result.value;
-        if (!predicate || await predicate(value)) {
-          found = true;
-          firstValue = value;
-          return NEXT(firstValue!);
+        while (!found) {
+          const result = createStreamResult(await source.next());
+          if (result.done) {
+            sourceDone = true;
+            throw new Error("No elements in sequence");
+          }
+
+          const value = result.value;
+          if (!predicate || await predicate(value)) {
+            found = true;
+            firstValue = value;
+            return NEXT(firstValue!);
+          }
         }
+
+        return COMPLETE;
       }
-
-      return COMPLETE;
-    }
-
-    return { next };
+    };
   });

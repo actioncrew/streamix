@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits only the first `count` values from the source stream
@@ -15,12 +15,12 @@ import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const take = <T = any>(count: number) =>
-  createOperator<T, T>("take", (source) => {
+  createOperator<T, T>("take", function (this: Operator, source) {
     let emitted = 0;
     let done = false;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           if (done) {
             return COMPLETE;

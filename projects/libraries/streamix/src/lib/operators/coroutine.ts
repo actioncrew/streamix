@@ -383,11 +383,11 @@ export function coroutine<T, R>(
       }
     };
 
-    const operator = createOperator<T, R>("coroutine", (source) => {
+    const operator = createOperator<T, R>("coroutine", function(this: Operator, source) {
       let completed = false;
 
       return {
-        async next() {
+        next: async() => {
           while (true) {
             if (completed || isFinalizing) {
               return COMPLETE;

@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, Stream } from '../abstractions';
+import { createOperator, createStreamResult, Operator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -38,7 +38,7 @@ import { createSubject } from '../streams';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function takeUntil<T = any>(notifier: Stream) {
-  return createOperator<T, T>('takeUntil', (source) => {
+  return createOperator<T, T>('takeUntil', function (this: Operator, source) {
     const output = createSubject<T>();
     let shouldStop = false;
 

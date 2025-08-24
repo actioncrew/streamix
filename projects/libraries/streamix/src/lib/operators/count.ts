@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator, StreamResult } from "../abstractions";
 
 /**
  * Creates a stream operator that counts the number of items emitted by the source stream.
@@ -11,7 +11,7 @@ import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const count = <T = any>() =>
-  createOperator<T, number>("count", (source) => {
+  createOperator<T, number>("count", function(this: Operator, source) {
     let counted = false;
     let total = 0;
 

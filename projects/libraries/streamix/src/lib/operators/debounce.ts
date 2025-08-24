@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, StreamResult } from "../abstractions";
+import { createOperator, createStreamResult, Operator, StreamResult } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject, Subject } from "../streams";
 
@@ -14,7 +14,7 @@ import { createSubject, Subject } from "../streams";
  * @returns An Operator instance for use in a stream pipeline.
  */
 export function debounce<T = any>(duration: number) {
-  return createOperator<T, T>("debounce", (source, context) => {
+  return createOperator<T, T>("debounce", function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
     let timeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
     let latestResult: StreamResult<T> | undefined = undefined;

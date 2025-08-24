@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, Operator, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -14,7 +14,7 @@ import { createSubject, Subject } from '../streams';
  * @returns An Operator instance that applies throttling to the source stream.
  */
 export const throttle = <T = any>(duration: number) =>
-  createOperator<T, T>('throttle', (source, context) => {
+  createOperator<T, T>('throttle', function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
     let lastEmit = 0;
     let pendingResult: StreamResult<T> | undefined;

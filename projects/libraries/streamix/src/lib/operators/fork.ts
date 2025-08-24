@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Stream, StreamResult } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 
 /**
@@ -57,14 +57,14 @@ export interface ForkOption<T = any, R = any> {
  * @throws {Error} If a source value does not match any predicate.
  */
 export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
-  createOperator<T, R>('fork', (source, context) => {
+  createOperator<T, R>('fork', function (this: Operator, source, context) {
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
     let outerValue: T | undefined;
     let innerStreamHadEmissions = false;
 
     return {
-      async next(): Promise<StreamResult<R>> {
+      next: async () => {
         while (true) {
           // If no active inner iterator, get next outer value
           if (!innerIterator) {
@@ -100,7 +100,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             // no emissions.
             if (!innerStreamHadEmissions) {
               // We return a phantom of the original outer value.
-              await context.phantomHandler(outerValue);
+              await context.phantomHandler(this, outerValue);
             }
             // If the inner stream had emissions, we just continue the loop
             // to process the next outer value.

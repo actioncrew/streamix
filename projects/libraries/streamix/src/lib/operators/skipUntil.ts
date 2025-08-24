@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, Stream } from '../abstractions';
+import { createOperator, createStreamResult, Operator, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -21,7 +21,7 @@ import { createSubject } from '../streams';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function skipUntil<T = any>(notifier: Stream) {
-  return createOperator<T, T>('skipUntil', (source, context) => {
+  return createOperator<T, T>('skipUntil', function (this: Operator, source, context) {
     const output = createSubject<T>();
     let canEmit = false;
 
@@ -55,7 +55,7 @@ export function skipUntil<T = any>(notifier: Stream) {
             output.next(result.value);
           } else {
             // If we are still skipping, emit a phantom value.
-            await context.phantomHandler(result.value);
+            await context.phantomHandler(this, result.value);
           }
         }
       } catch (err) {

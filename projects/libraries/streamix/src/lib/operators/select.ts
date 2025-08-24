@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, StreamGenerator, StreamResult } from "../abstractions";
+import { createOperator, createStreamResult, Operator, StreamGenerator, StreamResult } from "../abstractions";
 
 function toStreamGenerator<T>(gen: AsyncGenerator<T>): StreamGenerator<T> {
   const iterator = gen as unknown as StreamGenerator<T>;
@@ -26,7 +26,7 @@ function toStreamGenerator<T>(gen: AsyncGenerator<T>): StreamGenerator<T> {
 export const select = <T = any>(
   indexIterator: Iterator<number> | AsyncIterator<number>
 ) =>
-  createOperator<T, T>("select", (source) => {
+  createOperator<T, T>("select", function (this: Operator, source) {
     function toAsyncIterator(
       iter: Iterator<number> | AsyncIterator<number>
     ): AsyncIterableIterator<number> {

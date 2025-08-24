@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, Stream, StreamResult, Subscription } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream, StreamResult, Subscription } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject } from "../streams";
 
@@ -27,7 +27,7 @@ import { createSubject } from "../streams";
 export function switchMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) {
-  return createOperator<T, R>("switchMap", (source, context) => {
+  return createOperator<T, R>("switchMap", function (this: Operator, source, context) {
     const output = createSubject<R>();
 
     let currentSubscription: Subscription | null = null;
@@ -47,7 +47,7 @@ export function switchMap<T = any, R = any>(
       // Cancel previous inner stream
       if (currentSubscription) {
         if (!innerHadEmissions && pendingPhantom) {
-          await context.phantomHandler(pendingPhantom);
+          await context.phantomHandler(this, pendingPhantom);
         }
 
         currentSubscription.unsubscribe();

@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that prepends a specified value to the beginning of the stream.
@@ -12,12 +12,12 @@ import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const startWith = <T = any>(initialValue: T) =>
-  createOperator<T, T>("startWith", (source) => {
+  createOperator<T, T>("startWith", function (this: Operator, source) {
     let emittedInitial = false;
     let completed = false;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           if (completed) {
             return COMPLETE;

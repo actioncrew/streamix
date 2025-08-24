@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, StreamResult } from '../abstractions';
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that catches errors from the source stream and handles them.
@@ -22,12 +22,12 @@ import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, Strea
 export const catchError = <T = any>(
   handler: (error: any) => CallbackReturnType = () => {} // Handler still returns void
 ) =>
-  createOperator<T, T>('catchError', (source) => {
+  createOperator<T, T>('catchError', function (this: Operator, source) {
     let errorCaughtAndHandled = false;
     let completed = false;
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           // If an error was already caught and handled, or we're completed, this operator is done
           if (errorCaughtAndHandled || completed) {

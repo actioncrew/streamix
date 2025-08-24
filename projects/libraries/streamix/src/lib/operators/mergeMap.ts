@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, Stream } from '../abstractions';
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream } from '../abstractions';
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -27,7 +27,7 @@ import { createSubject, Subject } from '../streams';
 export function mergeMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>,
 ) {
-  return createOperator<T, R>('mergeMap', (source, context) => {
+  return createOperator<T, R>('mergeMap', function (this: Operator, source, context) {
     const output: Subject<R> = createSubject<R>();
 
     let index = 0;
@@ -53,7 +53,7 @@ export function mergeMap<T = any, R = any>(
         activeInner--;
         // If the inner stream had no emissions, signal a phantom.
         if (!innerStreamHadEmissions && !errorOccurred) {
-          await context.phantomHandler(outerValue);
+          await context.phantomHandler(this, outerValue);
         }
         if (outerCompleted && activeInner === 0 && !errorOccurred) {
           output.complete();

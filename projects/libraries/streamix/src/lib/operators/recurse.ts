@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Stream, StreamResult } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator, Stream } from "../abstractions";
 import { eachValueFrom } from '../converters';
 
 /**
@@ -42,7 +42,7 @@ export const recurse = <T = any>(
   project: (value: T) => Stream<T>,
   options: RecurseOptions = {}
 ) =>
-  createOperator<T, T>('recurse', (source) => {
+  createOperator<T, T>('recurse', function (this: Operator, source) {
     type QueueItem = { value: T; depth: number };
     const queue: QueueItem[] = [];
     let sourceDone = false;
@@ -62,7 +62,7 @@ export const recurse = <T = any>(
     };
 
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           // Refill queue from source if it's empty
           while (queue.length === 0 && !sourceDone) {

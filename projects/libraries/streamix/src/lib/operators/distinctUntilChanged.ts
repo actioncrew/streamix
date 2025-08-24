@@ -1,4 +1,4 @@
-import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from '../abstractions';
+import { COMPLETE, createOperator, createStreamResult, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits values from the source stream only if
@@ -17,14 +17,14 @@ import { COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from
 export const distinctUntilChanged = <T = any>(
   comparator?: (prev: T, curr: T) => boolean
 ) =>
-  createOperator<T, T>('distinctUntilChanged', (source, context) => {
+  createOperator<T, T>('distinctUntilChanged', function (this: Operator, source, context) {
     // State variables to keep track of the last emitted value.
     let lastValue: T | undefined;
     let hasLast = false;
 
     // The next() method now contains all the logic for a single value.
     return {
-      async next(): Promise<StreamResult<T>> {
+      next: async () => {
         while (true) {
           // Await the next value from the source stream.
           const result = createStreamResult(await source.next());
@@ -43,7 +43,7 @@ export const distinctUntilChanged = <T = any>(
           } else {
             // If the value is a consecutive duplicate, we do not update the lastValue,
             // and instead, we return a phantom StreamResult to signal that a value was dropped.
-            await context.phantomHandler(result.value);
+            await context.phantomHandler(this, result.value);
             continue;
           }
         }

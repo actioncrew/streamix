@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, Operator, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -14,7 +14,7 @@ import { createSubject, Subject } from '../streams';
  * @returns An Operator instance for use in a stream's `pipe` method.
  */
 export const sample = <T = any>(period: number) =>
-  createOperator<T, T>('sample', (source, context) => {
+  createOperator<T, T>('sample', function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
 
     let lastResult: StreamResult<T> | undefined;

@@ -1,4 +1,4 @@
-import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, StreamResult } from "../abstractions";
+import { CallbackReturnType, COMPLETE, createOperator, createStreamResult, NEXT, Operator } from "../abstractions";
 
 /**
  * Represents a grouped item with its original value and the associated key.
@@ -31,11 +31,11 @@ export type GroupItem<T = any, K = any> = {
 export const groupBy = <T = any, K = any>(
   keySelector: (value: T) => CallbackReturnType<K>
 ) =>
-  createOperator<T, GroupItem<T, K>>("groupBy", (source) => {
+  createOperator<T, GroupItem<T, K>>("groupBy", function (this: Operator, source) {
     let completed = false;
 
     return {
-      async next(): Promise<StreamResult<GroupItem<T, K>>> {
+      next: async () => {
         while (true) {
           if (completed) {
             return COMPLETE;

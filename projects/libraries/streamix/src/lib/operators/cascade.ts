@@ -65,7 +65,7 @@ export function cascade<T = any, R = any>(...tasks: Coroutine<any, any>[]): Coro
 export function cascade<T = any, R = any>(
   ...tasks: Coroutine<any, any>[]
 ): CoroutineLike<T, R> {
-  const operator = createOperator<T, R>("cascade", (source) => {
+  const operator = createOperator<T, R>("cascade", function (this: Operator, source) {
     let completed = false;
 
     return {
