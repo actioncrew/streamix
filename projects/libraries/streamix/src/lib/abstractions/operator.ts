@@ -6,7 +6,7 @@ import { Stream } from "./stream";
  * Always `{ done: true, value: undefined }`.
  * Used to signal the end of a stream.
  */
-export const DONE: { readonly done: true; readonly value: undefined; } = ({ done: true, value: undefined }) as const;
+export const DONE: { readonly done: true; readonly value: undefined; } = Object.freeze({ done: true, value: undefined });
 /**
  * Factory function to create a normal stream result.
  *
