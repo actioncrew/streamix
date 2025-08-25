@@ -1,19 +1,57 @@
+/**
+ * @fileoverview
+ * Comprehensive emission logging and pipeline context management for reactive streaming systems.
+ *
+ * This module provides a complete observability layer for stream processing pipelines, featuring:
+ *
+ * **Core Architecture:**
+ * - Hierarchical result tracking with parent-child relationships
+ * - Lifecycle state management (pending → resolved/rejected/phantom)
+ * - Multi-stream pipeline coordination with centralized context management
+ *
+ * **Emission Logging:**
+ * - Configurable log levels (DEBUG, INFO, WARN, ERROR, OFF)
+ * - Rich emission metadata including operator paths, timestamps, and result states
+ * - Multiple export formats (JSON, table, timeline) for analysis and debugging
+ * - Functional logger implementation with pure helper functions
+ *
+ * **Context Management:**
+ * - StreamContext: Per-subscription result tracking and lifecycle management
+ * - PipelineContext: Global operator stack, phantom handling, and stream coordination
+ * - Automatic logging integration across all pipeline operations
+ *
+ * **Key Features:**
+ * - Non-intrusive logging that can be disabled without performance impact
+ * - Phantom emission detection for filtered/discarded values
+ * - Async result resolution with proper error propagation
+ * - Memory-efficient closure-based state management
+ * - Type-safe interfaces with full TypeScript support
+ *
+ * **Use Cases:**
+ * - Debugging complex stream transformations
+ * - Performance monitoring and bottleneck identification
+ * - Audit trails for data processing workflows
+ * - Testing and validation of streaming behaviors
+ */
+
 import { Operator } from "./operator";
 import { CallbackReturnType } from "./receiver";
+
+/** Allowed StreamResult types. */
+export type ResultType = "pending" | "done" | "error" | "phantom";
 
 /**
  * Extended iterator result with lifecycle and hierarchy metadata.
  */
 export type StreamResult<T = any> = IteratorResult<T> & {
-  /** True if this result was produced but not emitted (phantom emission). */
-  phantom?: boolean;
-
-  /** True if this result is still unresolved (waiting on children or async). */
-  pending?: boolean;
-
+  /**
+ * The current state of this result in the stream lifecycle.
+ * Can be "pending", "done", "error", or "phantom".
+ */
+  type?: ResultType;
 
   /** True if the result and its children have been finalized. */
-  finalized?: boolean;
+  sealed?: boolean;
 
   /** Error associated with this result, if rejected. */
   error?: any;
@@ -176,11 +214,11 @@ function processChildren(result: StreamResult) {
   if (!result.children?.size) return;
 
   const allResolved = [...result.children].every(
-    c => c.done || c.error || c.phantom
+    c => c.done || c.error || c.type === 'phantom'
   );
   if (!allResolved) return;
 
-  result.pending = false;
+  result.type = 'done';
   result.done = true;
 
   if ([...result.children].some(c => c.error)) {
@@ -217,9 +255,8 @@ export function createStreamResult<T>(
     timestamp: performance.now(),
     children: options.children, // may be undefined
 
-    phantom: options.phantom,
-    pending: options.pending ?? true,
-    finalized: options.finalized,
+    type: options.type,
+    sealed: options.sealed,
     error: options.error,
     parent: options.parent,
 
@@ -232,7 +269,7 @@ export function createStreamResult<T>(
     async resolve(value?: T) {
       this.value = value ?? this.value;
       resolveFn();
-      this.pending = false;
+      this.type = 'done';
       this.done = true;
       this.notifyParent();
       return completion;
@@ -240,7 +277,7 @@ export function createStreamResult<T>(
 
     async reject(reason: any) {
       rejectFn(reason);
-      this.pending = false;
+      this.type = 'error';
       this.done = true;
       this.error = reason;
       this.notifyParent();
@@ -256,7 +293,7 @@ export function createStreamResult<T>(
     },
 
     finalize() {
-      this.finalized = true;
+      this.sealed = true;
       processChildren(this);
     },
 
@@ -274,12 +311,12 @@ export function createStreamResult<T>(
 
     isFullyResolved() {
       return this.getAllDescendants().every(
-        d => d.done || d.error || d.phantom
+        d => d.done || d.error || d.type === 'phantom'
       );
     },
 
     notifyParent() {
-      if (this.parent?.finalized) {
+      if (this.parent?.sealed) {
         processChildren(this.parent);
       }
     },
@@ -309,7 +346,7 @@ export function createStreamContext(
   const pendingResults = new Set<StreamResult<any>>();
 
   const addIfPending = <T>(r: StreamResult<T>) => {
-    if (r.pending) pendingResults.add(r);
+    if (r.type === 'pending') pendingResults.add(r);
     return r;
   };
 
@@ -324,21 +361,21 @@ export function createStreamContext(
     },
 
     resolvePending(result) {
-      result.done = true; delete result.pending;
+      result.type = 'done'; result.done = true;
       pendingResults.delete(result);
       return result.resolve();
     },
 
     markPhantom(operator, result) {
       console.log(`👻 [PHANTOM] ${this.pipeline.operatorStack(operator)} :`, result.value);
-      result.done = true; result.phantom = true; delete result.pending;
+      result.type = 'phantom'; result.done = true;
       pipelineContext.phantomHandler(operator, this, result.value);
       pendingResults.delete(result);
     },
 
     markPending(operator, result) {
       console.log(`⏳ [PENDING] ${this.pipeline.operatorStack(operator)} :`, result.value);
-      result.pending = true;
+      result.type = 'pending';
       pendingResults.add(result);
     },
 
