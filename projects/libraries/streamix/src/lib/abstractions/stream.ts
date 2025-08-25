@@ -296,7 +296,7 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 ): Stream<any> {
   const pipedStream: Stream<any> = {
     name: `${source.name}-sink`,
-    type: source.type,
+    type: 'stream',
     pipe: ((...nextOps: Operator<any, any>[]) => {
       const context = createPipelineContext();
       return pipeStream(source, context, ...operators, ...nextOps);
