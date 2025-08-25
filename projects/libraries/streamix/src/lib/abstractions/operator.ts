@@ -273,7 +273,7 @@ export function patchOperator<TIn, TOut>(
     type: operator.type,
     apply: (source: StreamIterator<TIn>, context: StreamContext) => {
       const originalIterator = originalApply.call(operator, source, context);
-      context.pipeline.operatorList.push(operator);
+      context.pipeline.operators.push(operator);
 
       return {
         async next(): Promise<StreamResult<TOut>> {

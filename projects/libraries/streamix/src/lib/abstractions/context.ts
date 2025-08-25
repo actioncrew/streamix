@@ -117,7 +117,10 @@ export interface StreamContext {
  */
 export interface PipelineContext {
   /** Stack of operator names currently being executed (for debugging). */
-  operatorList: Operator[];
+  operators: Operator[];
+
+  /** Builds a human-readable stack trace string for the given operator. */
+  operatorStack(operator: Operator): string;
 
   /** Callback invoked when a phantom result is produced. */
   phantomHandler: (operator: Operator, streamContext: StreamContext, value: any) => CallbackReturnType;
@@ -327,13 +330,14 @@ export function createStreamContext(
     },
 
     markPhantom(operator, result) {
+      console.log(`👻 [PHANTOM] ${this.pipeline.operatorStack(operator)} :`, result.value);
       result.done = true; result.phantom = true; delete result.pending;
       pipelineContext.phantomHandler(operator, this, result.value);
       pendingResults.delete(result);
     },
 
     markPending(operator, result) {
-      void operator;
+      console.log(`⏳ [PENDING] ${this.pipeline.operatorStack(operator)} :`, result.value);
       result.pending = true;
       pendingResults.add(result);
     },
@@ -366,28 +370,25 @@ export function createStreamContext(
  */
 export function createPipelineContext(
   phantomHandler: (operator: Operator, s: StreamContext, value: any) => CallbackReturnType = (operator: Operator, s: StreamContext, value: any) => {
-    if (!s.pipeline) return;
-
-      // Find the operator index in the stream's operator list
-      const operatorList = s.pipeline.operatorList ?? []; // assume we store full list here
-      const operatorIndex = operatorList.indexOf(operator);
-
-      // Slice path from first operator to current
-      let path = '';
-      for (let i = 0; i <= operatorIndex; i++) {
-        path += (i > 0 ? ' → ' : '') + (operatorList[i].name ?? 'unknown');
-      }
-
-      console.log(`👻 ${path} :`, value);
-
-      // Return whatever your CallbackReturnType expects
-      return undefined;
+    void operator, s, value;
   }
 ): PipelineContext {
   const activeStreams = new Map<string, StreamContext>();
 
   return {
-    operatorList: [],
+    operators: [],
+
+    operatorStack(operator: Operator): string {
+      const operatorIndex = this.operators.indexOf(operator);
+
+      // Slice path from first operator to current
+      let path = '';
+      for (let i = 0; i <= operatorIndex; i++) {
+        path += (i > 0 ? ' → ' : '') + (this.operators[i].name ?? 'unknown');
+      }
+
+      return path;
+    },
     phantomHandler,
     activeStreams,
     flags: { isPending: false, isFinalized: false },
