@@ -1,4 +1,4 @@
-name: Update bundle size badge
+name: bundle size
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
 
       # 3️⃣ Build library (so dist files exist)
       - name: Build library
-        run: npm ci && npm run build streamix
+        run: npm i && npm run build streamix
 
       # 4️⃣ Calculate gzipped bundle size
       - name: Calculate gzipped bundle size

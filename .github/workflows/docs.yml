@@ -35,7 +35,7 @@ jobs:
 
       # 3️⃣ Install dependencies
       - name: Install dependencies
-        run: npm ci
+        run: npm i
 
       # 4️⃣ Copy additional markdown files
       - name: Copy additional docs
