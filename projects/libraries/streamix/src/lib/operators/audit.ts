@@ -24,7 +24,7 @@ export const audit = <T = any>(duration: number) =>
     const flush = () => {
       if (lastResult !== undefined) {
         output.next(lastResult.value!);
-        context.resolvePending(lastResult);
+        context.resolvePending(this, lastResult);
         lastResult = undefined;
       }
       timerId = undefined;
@@ -63,7 +63,7 @@ export const audit = <T = any>(duration: number) =>
         }
       } catch (err) {
         output.error(err);
-        if (lastResult) context.resolvePending(lastResult);
+        if (lastResult) context.resolvePending(this, lastResult);
       } finally {
         if (timerId !== undefined) {
           clearTimeout(timerId);

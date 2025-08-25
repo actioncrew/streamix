@@ -26,7 +26,7 @@ export function debounce<T = any>(duration: number) {
         output.next(latestResult.value!);
 
         // Resolve pending in context
-        context.resolvePending(latestResult);
+        context.resolvePending(this, latestResult);
 
         latestResult = undefined;
       }
@@ -67,7 +67,7 @@ export function debounce<T = any>(duration: number) {
           timeoutId = setTimeout(flush, duration);
         }
       } catch (err) {
-        if (latestResult) context.resolvePending(latestResult);
+        if (latestResult) context.resolvePending(this, latestResult);
         output.error(err);
       } finally {
         isCompleted = true;

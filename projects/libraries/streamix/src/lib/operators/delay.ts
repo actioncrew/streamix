@@ -33,11 +33,11 @@ export function delay<T = any>(ms: number) {
           output.next(result.value);
 
           // Resolve pending state
-          context.resolvePending(result);
+          context.resolvePending(this, result);
         }
       } catch (err) {
         // On error, remove any last pending value
-        context.pendingResults.forEach((res) => context.resolvePending(res));
+        context.pendingResults.forEach((res) => context.resolvePending(this, res));
         output.error(err);
       } finally {
         output.complete();

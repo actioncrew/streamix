@@ -23,7 +23,7 @@ export function buffer<T = any>(period: number) {
         output.next(values);
 
         // Resolve all pending results for this flush
-        buffer.forEach((r) => context.resolvePending(r));
+        buffer.forEach((r) => context.resolvePending(this, r));
         buffer = [];
       }
     };

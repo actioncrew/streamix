@@ -26,7 +26,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
 
             // Flush any remaining buffered values
             if (buffer.length > 0) {
-              buffer.forEach((r) => context.resolvePending(r));
+              buffer.forEach((r) => context.resolvePending(this, r));
               return NEXT(buffer.map((r) => r.value!));
             }
 
@@ -39,7 +39,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
         }
 
         // Resolve all values in the buffer
-        buffer.forEach((r) => context.resolvePending(r));
+        buffer.forEach((r) => context.resolvePending(this, r));
 
         return NEXT(buffer.map((r) => r.value!));
       },

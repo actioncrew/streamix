@@ -37,135 +37,120 @@
 import { Operator } from "./operator";
 import { CallbackReturnType } from "./receiver";
 
+// -------------------------------
+// Types and Constants
+// -------------------------------
+
+/** Defines allowed log levels for emission tracking. */
+export enum LogLevel {
+  OFF = 0,
+  ERROR = 1,
+  WARN = 2,
+  INFO = 3,
+  DEBUG = 4,
+}
+
+/** Represents a single emission log entry. */
+export interface LogEntry {
+  /** Timestamp when the log was created. */
+  timestamp: number;
+  /** Numeric log level. */
+  level: LogLevel;
+  /** Human-readable log level name. */
+  levelName: string;
+  /** Log message describing the event. */
+  message: string;
+  /** Identifier of the stream associated with this entry. */
+  streamId: string;
+  /** Hierarchical operator path for context. */
+  operatorPath: string;
+  /** Type of the stream result, if applicable. */
+  resultType?: ResultType;
+  /** Value emitted by the operator, if any. */
+  value?: any;
+  /** Error associated with the result, if any. */
+  error?: any;
+}
+
+/** Immutable array representing the entire log history. */
+export type LogState = LogEntry[];
+
+
 /** Allowed StreamResult types. */
 export type ResultType = "pending" | "done" | "error" | "phantom";
 
 /**
- * Extended iterator result with lifecycle and hierarchy metadata.
+ * Extended iterator result including lifecycle, hierarchy, and resolution metadata.
  */
 export type StreamResult<T = any> = IteratorResult<T> & {
-  /**
- * The current state of this result in the stream lifecycle.
- * Can be "pending", "done", "error", or "phantom".
- */
+  /** Current lifecycle state of the result. */
   type?: ResultType;
-
-  /** True if the result and its children have been finalized. */
+  /** True if this result and all children are finalized. */
   sealed?: boolean;
-
-  /** Error associated with this result, if rejected. */
+  /** Error associated with the result, if rejected. */
   error?: any;
-
   /** Optional parent result (outer stream emission). */
   parent?: StreamResult<any>;
-
-  /** Child results spawned by this result (e.g. from inner streams). */
+  /** Child results spawned by this result (e.g., from inner streams). */
   children?: Set<StreamResult<any>>;
-
-  /** Timestamp when this result was created. */
+  /** Creation timestamp. */
   timestamp?: number;
-
-  /** Resolve this result as successful. */
+  /** Resolve this result with a value. */
   resolve(value?: T): Promise<void>;
-
   /** Reject this result with an error. */
   reject(reason: any): Promise<void>;
-
   /** Await resolution (resolve or reject). */
   wait(): Promise<void>;
-
   /** Add a child result to this result. */
   addChild(child: StreamResult<any>): void;
-
-  /** Mark this result as finalized and check child resolution. */
+  /** Mark this result as finalized and propagate resolution. */
   finalize(): void;
-
-  /** Walk up the hierarchy to return the root result. */
+  /** Traverse up the hierarchy to the root result. */
   root(): StreamResult<any>;
-
   /** Recursively collect all descendant results. */
   getAllDescendants(): StreamResult<any>[];
-
-  /** True if this result and all descendants are resolved/rejected/phantom. */
+  /** True if this result and all descendants are resolved, rejected, or phantom. */
   isFullyResolved(): boolean;
-
-  /** Notify the parent that this result’s state has changed. */
+  /** Notify parent that this result’s state has changed. */
   notifyParent(): void;
 }
 
-/**
- * Context object scoped to a single stream instance (one subscription).
- *
- * - Tracks all pending results for that stream.
- * - Provides helpers to create results and resolve them.
- * - Works together with a `PipelineContext` to manage lifecycles.
- */
+/** Context object scoped to a single stream subscription. */
 export interface StreamContext {
-  /** Reference to the parent pipeline context */
+  /** Reference to the parent pipeline context. */
   pipeline: PipelineContext;
-
   /** Unique identifier for this stream. */
   streamId: string;
-
-  /** Set of results still waiting for resolution. */
+  /** Set of results pending resolution in this stream. */
   pendingResults: Set<StreamResult<any>>;
-
-  /** Creation timestamp of this stream context. */
+  /** Timestamp of stream context creation. */
   timestamp: number;
-
   /** Callback invoked when a phantom result is produced. */
   phantomHandler: (operator: Operator, value: any) => CallbackReturnType;
-
-  /**
-   * Resolve a pending result and remove it from the pending set.
-   */
-  resolvePending: (result: StreamResult<any>) => CallbackReturnType;
-
-  /**
-   * Mark a result as phantom (produced but not emitted) and handle via pipeline phantomHandler.
-   */
+  /** Resolve a pending result. */
+  resolvePending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
+  /** Mark a result as phantom. */
   markPhantom: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
-
-  /**
-   * Marks a stream result as **pending** for a given operator.
-   */
+  /** Mark a result as pending. */
   markPending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
-
-  /**
-   * Create a new result associated with this stream.
-   */
-  createResult: <T>(
-    options?: Partial<StreamResult<T>>
-  ) => StreamResult<T>;
-
-  /**
-   * Finalize this stream context:
-   * - Forces all top-level pending results to finalize.
-   * - Awaits resolution of all remaining pending results.
-   */
+  /** Create a new stream result within this context. */
+  createResult: <T>(options?: Partial<StreamResult<T>>) => StreamResult<T>;
+  /** Finalize all pending results and await their resolution. */
   finalize(): Promise<void>;
 }
 
-/**
- * Context object scoped to the entire pipeline (all operators + streams).
- *
- * - Tracks active streams.
- * - Coordinates phantom emissions.
- * - Handles global lifecycle flags (pending, finalized).
- */
+/** Context object scoped to the entire pipeline (all streams and operators). */
 export interface PipelineContext {
-  /** Stack of operator names currently being executed (for debugging). */
+  /** Minimum log level for this pipeline. */
+  logLevel: LogLevel;
+  /** Stack of operators currently being executed. */
   operators: Operator[];
-
-  /** Builds a human-readable stack trace string for the given operator. */
+  /** Returns a human-readable operator path string. */
   operatorStack(operator: Operator): string;
-
   /** Callback invoked when a phantom result is produced. */
   phantomHandler: (operator: Operator, streamContext: StreamContext, value: any) => CallbackReturnType;
-
-  /** Active stream contexts in this pipeline. */
+  /** Map of active stream contexts keyed by stream ID. */
   activeStreams: Map<string, StreamContext>;
-
   /** Pipeline lifecycle flags. */
   flags: {
     /** True if there are unresolved results in the pipeline. */
@@ -173,20 +158,55 @@ export interface PipelineContext {
     /** True if pipeline has been finalized. */
     isFinalized: boolean;
   };
-
   /** Register a new stream context. */
   registerStream: (context: StreamContext) => void;
-
   /** Unregister a stream context by ID. */
   unregisterStream: (streamId: string) => void;
-
-  /**
-   * Finalize the pipeline:
-   * - Marks as finalized.
-   * - Finalizes all active streams.
-   */
+  /** Finalize all streams and mark pipeline as finalized. */
   finalize(): Promise<void>;
 }
+
+// -------------------------------
+// Functional Logger
+// -------------------------------
+
+/**
+ * Creates a new log entry from given data.
+ * @returns A new LogEntry object. This is a pure function.
+ */
+export const createLogEntry = (
+  level: LogLevel,
+  streamId: string,
+  operatorPath: string,
+  message: string,
+  result?: StreamResult
+): LogEntry => ({
+  timestamp: performance.now(),
+  level: level,
+  levelName: LogLevel[level],
+  message,
+  streamId,
+  operatorPath,
+  resultType: result?.type,
+  value: result?.value,
+  error: result?.error,
+});
+
+/**
+ * A pure function to add a new entry to the log state.
+ * @param logState The current log state.
+ * @param newEntry The new entry to add.
+ * @returns A new log state with the entry appended.
+ */
+export const appendLogEntry = (logState: LogState, newEntry: LogEntry): LogState =>
+  [...logState, newEntry];
+
+/**
+ * A pure function that returns the log state, filtered by a minimum log level.
+ * This can be used for more specific debugging.
+ */
+export const filterLogEntries = (logState: LogState, minLevel: LogLevel): LogEntry[] =>
+  logState.filter(entry => entry.level >= minLevel);
 
 // -------------------------------
 // Helpers
@@ -204,31 +224,30 @@ function processChildren(result: StreamResult) {
   );
   if (!allResolved) return;
 
-  result.type = 'done';
-  result.done = true;
-
-  if ([...result.children].some(c => c.error)) {
-    result.reject(new Error("One or more child results failed"));
+  const childErrors = [...result.children].filter(c => c.error);
+  if (childErrors.length > 0) {
+    const combinedError = new Error("One or more child results failed");
+    (combinedError as any).details = childErrors.map(c => c.error);
+    result.reject(combinedError);
   } else {
     result.resolve();
   }
 }
 
 // -------------------------------
-// Stream Result
+// Stream Result (Minimal Refactoring for FP compatibility)
 // -------------------------------
 
 /**
  * Factory for creating a hierarchical stream result.
- *
- * @param options Partial fields to initialize the result with (e.g. parent, value).
- * @returns A new `HierarchicalStreamResult` instance.
+ * This remains mostly imperative due to its async nature, but the context
+ * functions that use it now pass it explicitly, maintaining an FP-style flow.
  */
 export function createStreamResult<T>(
   options: Partial<StreamResult<T>> = {}
 ): StreamResult<T> {
-  let resolveFn!: () => void;
-  let rejectFn!: (reason: any) => void;
+  let resolveFn!: (value?: void | PromiseLike<void>) => void;
+  let rejectFn!: (reason?: any) => void;
 
   const completion = new Promise<void>((res, rej) => {
     resolveFn = res;
@@ -239,7 +258,7 @@ export function createStreamResult<T>(
     done: options.done ?? false,
     value: options.value,
     timestamp: performance.now(),
-    children: options.children, // may be undefined
+    children: options.children,
 
     type: options.type,
     sealed: options.sealed,
@@ -253,19 +272,21 @@ export function createStreamResult<T>(
     },
 
     async resolve(value?: T) {
+      if (this.type === 'done' || this.type === 'error') return completion;
       this.value = value ?? this.value;
-      resolveFn();
       this.type = 'done';
       this.done = true;
+      resolveFn();
       this.notifyParent();
       return completion;
     },
 
     async reject(reason: any) {
-      rejectFn(reason);
+      if (this.type === 'done' || this.type === 'error') return completion;
       this.type = 'error';
       this.done = true;
       this.error = reason;
+      rejectFn(reason);
       this.notifyParent();
       return completion;
     },
@@ -302,7 +323,7 @@ export function createStreamResult<T>(
     },
 
     notifyParent() {
-      if (this.parent?.sealed) {
+      if (this.parent) {
         processChildren(this.parent);
       }
     },
@@ -313,17 +334,28 @@ export function createStreamResult<T>(
 }
 
 // -------------------------------
-// Stream Context
+// Stream and Pipeline Context Factories (FP-style)
 // -------------------------------
 
 /**
- * Factory for creating a stream context.
- *
- * - Each stream subscription gets its own context.
- * - Manages pending results and interacts with the pipeline.
- *
- * @param pipelineContext Parent pipeline context.
- * @param streamId Optional custom ID (default: autogenerated).
+ * Helper to log an event and append it to the log state.
+ * This is the only place where the `console.log` side effect occurs.
+ */
+const logEvent = (
+  logLevel: LogLevel,
+  streamId: string,
+  operatorPath: string,
+  message: string,
+  result?: StreamResult
+) => {
+  const entry = createLogEntry(logLevel, streamId, operatorPath, message, result);
+  console.log(`[${entry.levelName}] ${entry.operatorPath} (${entry.streamId}): ${entry.message}`, result?.value ?? '');
+  return entry;
+};
+
+/**
+ * Factory for creating a stream context object.
+ * The core logic is defined here as explicit functions.
  */
 export function createStreamContext(
   pipelineContext: PipelineContext,
@@ -331,9 +363,33 @@ export function createStreamContext(
 ): StreamContext {
   const pendingResults = new Set<StreamResult<any>>();
 
-  const addIfPending = <T>(r: StreamResult<T>) => {
-    if (r.type === 'pending') pendingResults.add(r);
-    return r;
+  const markPending = (operator: Operator, result: StreamResult<any>) => {
+    logEvent(pipelineContext.logLevel, streamId, pipelineContext.operatorStack(operator), `Marked as pending`, result);
+    result.type = 'pending';
+    pendingResults.add(result);
+  };
+
+  const markPhantom = (operator: Operator, result: StreamResult<any>) => {
+    logEvent(pipelineContext.logLevel, streamId, pipelineContext.operatorStack(operator), `Marked as phantom`, result);
+    result.type = 'phantom';
+    result.done = true;
+    pipelineContext.phantomHandler(operator, context, result.value);
+    pendingResults.delete(result);
+  };
+
+  const resolvePending = (operator: Operator, result: StreamResult<any>) => {
+    result.type = 'done';
+    result.done = true;
+    pendingResults.delete(result);
+    logEvent(pipelineContext.logLevel, streamId, pipelineContext.operatorStack(operator), `Resolved result:`, result);
+    return result.resolve();
+  };
+
+  const finalize = async () => {
+    logEvent(pipelineContext.logLevel, streamId, 'finalize', `Finalizing stream, waiting for ${pendingResults.size} results.`);
+    [...pendingResults].filter(r => !r.parent).forEach(r => r.finalize());
+    await Promise.allSettled([...pendingResults].map(r => r.wait()));
+    logEvent(pipelineContext.logLevel, streamId, 'finalize', `Stream finalized. Remaining pending results: ${pendingResults.size}.`);
   };
 
   const context: StreamContext = {
@@ -341,92 +397,62 @@ export function createStreamContext(
     pipeline: pipelineContext,
     pendingResults,
     timestamp: performance.now(),
-
-    phantomHandler(operator, value) {
-      return this.pipeline.phantomHandler(operator, this, value);
-    },
-
-    resolvePending(result) {
-      result.type = 'done'; result.done = true;
-      pendingResults.delete(result);
-      return result.resolve();
-    },
-
-    markPhantom(operator, result) {
-      console.log(`👻 [PHANTOM] ${this.pipeline.operatorStack(operator)} :`, result.value);
-      result.type = 'phantom'; result.done = true;
-      pipelineContext.phantomHandler(operator, this, result.value);
-      pendingResults.delete(result);
-    },
-
-    markPending(operator, result) {
-      console.log(`⏳ [PENDING] ${this.pipeline.operatorStack(operator)} :`, result.value);
-      result.type = 'pending';
-      pendingResults.add(result);
-    },
-
-    createResult<T>(options = {}) {
-      return addIfPending(createStreamResult<T>(options));
-    },
-
-    async finalize() {
-      [...pendingResults].filter(r => !r.parent).forEach(r => r.finalize());
-      await Promise.all([...pendingResults].map(r => r.wait()));
-    }
+    phantomHandler: (operator, value) => pipelineContext.phantomHandler(operator, context, value),
+    resolvePending,
+    markPhantom,
+    markPending,
+    createResult: <T>(options = {}) => createStreamResult<T>(options),
+    finalize,
   };
 
   pipelineContext.registerStream(context);
   return context;
 }
 
-// -------------------------------
-// Pipeline Context
-// -------------------------------
-
 /**
- * Factory for creating a pipeline context.
- *
- * - One pipeline context exists per call to `pipeStream`.
- * - Coordinates all stream contexts, phantom handling, and finalization.
- *
- * @param phantomHandler Optional callback for phantom results (default: console.debug).
+ * Factory for creating a pipeline context object.
  */
 export function createPipelineContext(
-  phantomHandler: (operator: Operator, s: StreamContext, value: any) => CallbackReturnType = (operator: Operator, s: StreamContext, value: any) => {
-    void operator, s, value;
-  }
+  options: {
+    phantomHandler?: (operator: Operator, s: StreamContext, value: any) => CallbackReturnType;
+    logLevel?: LogLevel;
+  } = {}
 ): PipelineContext {
   const activeStreams = new Map<string, StreamContext>();
 
-  return {
+  const operatorStack = (operator: Operator): string => {
+    const operatorIndex = context.operators.indexOf(operator);
+    return context.operators.slice(0, operatorIndex + 1).map(op => op?.name ?? 'unknown').join(' → ');
+  };
+
+  const registerStream = (ctx: StreamContext) => {
+    activeStreams.set(ctx.streamId, ctx);
+    logEvent(context.logLevel, ctx.streamId, 'init', 'Registered new stream context.');
+  };
+
+  const unregisterStream = (id: string) => {
+    activeStreams.delete(id);
+    logEvent(context.logLevel, id, 'cleanup', 'Unregistered stream context.');
+  };
+
+  const finalize = async () => {
+    context.flags.isFinalized = true;
+    logEvent(context.logLevel, 'pipeline', 'finalize', 'Finalizing pipeline.');
+    await Promise.all([...activeStreams.values()].map(s => s.finalize()));
+    logEvent(context.logLevel, 'pipeline', 'finalize', 'Pipeline finalized.');
+  };
+
+  const context: PipelineContext = {
+    logLevel: options.logLevel ?? LogLevel.INFO,
     operators: [],
-
-    operatorStack(operator: Operator): string {
-      const operatorIndex = this.operators.indexOf(operator);
-
-      // Slice path from first operator to current
-      let path = '';
-      for (let i = 0; i <= operatorIndex; i++) {
-        path += (i > 0 ? ' → ' : '') + (this.operators[i].name ?? 'unknown');
-      }
-
-      return path;
-    },
-    phantomHandler,
+    operatorStack,
+    phantomHandler: options.phantomHandler ?? (() => { }),
     activeStreams,
     flags: { isPending: false, isFinalized: false },
-
-    registerStream(ctx) {
-      activeStreams.set(ctx.streamId, ctx);
-    },
-
-    unregisterStream(id) {
-      activeStreams.delete(id);
-    },
-
-    async finalize() {
-      this.flags.isFinalized = true;
-      await Promise.all([...activeStreams.values()].map(s => s.finalize()));
-    }
+    registerStream,
+    unregisterStream,
+    finalize,
   };
+
+  return context;
 }

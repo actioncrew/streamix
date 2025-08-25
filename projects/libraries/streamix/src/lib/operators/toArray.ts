@@ -28,7 +28,7 @@ export const toArray = <T = any>() =>
             if (!emitted) {
               emitted = true;
               // Resolve all pending results
-              collected.forEach((r) => context.resolvePending(r));
+              collected.forEach((r) => context.resolvePending(this, r));
               // Emit the final array of values
               return NEXT(collected.map((r) => r.value!));
             }

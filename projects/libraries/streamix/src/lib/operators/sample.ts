@@ -30,7 +30,7 @@ export const sample = <T = any>(period: number) =>
           context.markPhantom(this, lastResult);
         } else {
           output.next(lastResult.value!);
-          context.resolvePending(lastResult);
+          context.resolvePending(this, lastResult);
         }
 
         skipped = true;
@@ -64,10 +64,10 @@ export const sample = <T = any>(period: number) =>
         // Emit final value
         if (lastResult) {
           output.next(lastResult.value!);
-          context.resolvePending(lastResult);
+          context.resolvePending(this, lastResult);
         }
       } catch (err) {
-        if (lastResult) context.resolvePending(lastResult);
+        if (lastResult) context.resolvePending(this, lastResult);
         output.error(err);
       } finally {
         stopSampling();

@@ -23,7 +23,7 @@ export const throttle = <T = any>(duration: number) =>
     const flushPending = () => {
       if (pendingResult !== undefined) {
         output.next(pendingResult.value!);
-        context.resolvePending(pendingResult);
+        context.resolvePending(this, pendingResult);
         pendingResult = undefined;
       }
       timer = null;
@@ -62,7 +62,7 @@ export const throttle = <T = any>(duration: number) =>
         // Source completed → flush trailing pending
         if (pendingResult !== undefined) flushPending();
       } catch (err) {
-        if (pendingResult) context.resolvePending(pendingResult);
+        if (pendingResult) context.resolvePending(this, pendingResult);
         output.error(err);
       } finally {
         if (timer) {
