@@ -56,7 +56,7 @@ export const sample = <T = any>(period: number) =>
           }
 
           // Track new result as pending
-          context.pendingResults.add(result);
+          context.markPending(this, result);
           lastResult = result;
           skipped = false;
         }
@@ -67,7 +67,7 @@ export const sample = <T = any>(period: number) =>
           context.resolvePending(lastResult);
         }
       } catch (err) {
-        if (lastResult) context.pendingResults.delete(lastResult);
+        if (lastResult) context.resolvePending(lastResult);
         output.error(err);
       } finally {
         stopSampling();

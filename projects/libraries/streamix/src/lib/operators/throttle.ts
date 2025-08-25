@@ -48,7 +48,7 @@ export const throttle = <T = any>(duration: number) =>
             }
 
             // Add current value as pending
-            context.pendingResults.add(result);
+            context.markPending(this, result);
             pendingResult = result;
 
             // Schedule trailing emit
@@ -62,7 +62,7 @@ export const throttle = <T = any>(duration: number) =>
         // Source completed → flush trailing pending
         if (pendingResult !== undefined) flushPending();
       } catch (err) {
-        if (pendingResult) context.pendingResults.delete(pendingResult);
+        if (pendingResult) context.resolvePending(pendingResult);
         output.error(err);
       } finally {
         if (timer) {

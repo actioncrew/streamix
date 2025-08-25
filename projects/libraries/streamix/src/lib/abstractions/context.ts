@@ -89,6 +89,11 @@ export interface StreamContext {
   markPhantom: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
 
   /**
+   * Marks a stream result as **pending** for a given operator.
+   */
+  markPending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
+
+  /**
    * Create a new result associated with this stream.
    */
   createResult: <T>(
@@ -325,6 +330,12 @@ export function createStreamContext(
       result.done = true; result.phantom = true; delete result.pending;
       pipelineContext.phantomHandler(operator, this, result.value);
       pendingResults.delete(result);
+    },
+
+    markPending(operator, result) {
+      void operator;
+      result.pending = true;
+      pendingResults.add(result);
     },
 
     createResult<T>(options = {}) {

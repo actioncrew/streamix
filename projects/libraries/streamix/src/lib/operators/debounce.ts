@@ -59,7 +59,7 @@ export function debounce<T = any>(duration: number) {
           }
 
           // Add the new result to pending set
-          context.pendingResults.add(result);
+          context.markPending(this, result);
           latestResult = result;
 
           // Reset the timer
@@ -67,7 +67,7 @@ export function debounce<T = any>(duration: number) {
           timeoutId = setTimeout(flush, duration);
         }
       } catch (err) {
-        if (latestResult) context.pendingResults.delete(latestResult);
+        if (latestResult) context.resolvePending(latestResult);
         output.error(err);
       } finally {
         isCompleted = true;

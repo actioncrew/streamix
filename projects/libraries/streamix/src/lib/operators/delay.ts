@@ -24,7 +24,7 @@ export function delay<T = any>(ms: number) {
           if (result.done) break;
 
           // Mark the value as pending
-          context.pendingResults.add(result);
+          context.markPending(this, result);
 
           // Delay emission
           await new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,7 +37,7 @@ export function delay<T = any>(ms: number) {
         }
       } catch (err) {
         // On error, remove any last pending value
-        context.pendingResults.forEach((res) => context.pendingResults.delete(res));
+        context.pendingResults.forEach((res) => context.resolvePending(res));
         output.error(err);
       } finally {
         output.complete();

@@ -36,7 +36,7 @@ export const toArray = <T = any>() =>
           }
 
           // Mark the value as pending
-          context.pendingResults.add(result);
+          context.markPending(this, result);
           collected.push(result);
         }
       },

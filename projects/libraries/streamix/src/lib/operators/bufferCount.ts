@@ -34,7 +34,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
           }
 
           // Mark the value as pending
-          context.pendingResults.add(result);
+          context.markPending(this, result);
           buffer.push(result);
         }
 

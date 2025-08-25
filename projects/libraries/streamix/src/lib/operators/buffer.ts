@@ -65,7 +65,7 @@ export function buffer<T = any>(period: number) {
           if (result.done) break;
 
           // Mark this value as pending in the context
-          context.pendingResults.add(result);
+          context.markPending(this, result);
 
           // Add to buffer
           buffer.push(result);

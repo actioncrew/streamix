@@ -54,7 +54,7 @@ export const audit = <T = any>(duration: number) =>
 
           // Add new value to pending set and buffer it
           lastResult = result;
-          context.pendingResults.add(lastResult);
+          context.markPending(this, lastResult);
 
           // Start a new timer if not active
           if (timerId === undefined) {
@@ -63,7 +63,7 @@ export const audit = <T = any>(duration: number) =>
         }
       } catch (err) {
         output.error(err);
-        if (lastResult) context.pendingResults.delete(lastResult);
+        if (lastResult) context.resolvePending(lastResult);
       } finally {
         if (timerId !== undefined) {
           clearTimeout(timerId);
