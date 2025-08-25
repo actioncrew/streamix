@@ -188,20 +188,6 @@ export interface PipelineContext {
   finalize(): Promise<void>;
 }
 
-/**
- * Operator execution context.
- *
- * Passed into each operator so it can:
- * - Create results via `stream.createResult`.
- * - Access pipeline-wide state via `pipeline`.
- */
-export interface OperatorContext {
-  /** Context for the current stream subscription. */
-  stream: StreamContext;
-  /** Shared pipeline context across all streams. */
-  pipeline: PipelineContext;
-}
-
 // -------------------------------
 // Helpers
 // -------------------------------
