@@ -70,7 +70,7 @@ export function mergeMap<T = any, R = any>(
           if (errorOccurred) break;
 
           const innerStream = fromAny(project(result.value, index++));
-          context && context.registerStream(createStreamContext(context, innerStream));
+          context && createStreamContext(context, innerStream);
 
           activeInner++;
           processInner(innerStream, result.value); // Pass outerValue

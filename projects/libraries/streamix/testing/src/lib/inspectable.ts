@@ -10,7 +10,7 @@ import {
   Stream,
   StreamIterator,
   Subscription,
-} from "@actioncrew/streamix";
+} from "../../../src/lib";
 
 // Operator and other types from previous files are assumed to be available.
 
@@ -26,7 +26,7 @@ export interface InspectableStream<T = any> extends Stream<T> {
  */
 export function inspectable<T>(stream: Stream<T>): InspectableStream<T> {
   const context = createPipelineContext();
-  context && context.registerStream(createStreamContext(context, stream));
+  context && createStreamContext(context, stream);
 
   const decorated: InspectableStream<T> = {
     ...stream,
@@ -42,7 +42,6 @@ export function inspectable<T>(stream: Stream<T>): InspectableStream<T> {
 
         subscribe(cb?: any): Subscription {
           const receiver = createReceiver(cb);
-
 
           let currentIterator: StreamIterator<any> = eachValueFrom(stream)[Symbol.asyncIterator]();
 

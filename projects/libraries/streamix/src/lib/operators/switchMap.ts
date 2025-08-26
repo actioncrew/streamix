@@ -88,7 +88,7 @@ export function switchMap<T = any, R = any>(
 
           const streamId = ++currentInnerStreamId;
           const innerStream = fromAny(project(result.value, index++));
-          context && context.registerStream(createStreamContext(context, innerStream));
+          context && createStreamContext(context, innerStream);
           await subscribeToInner(innerStream, streamId);
         }
 

@@ -90,7 +90,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             }
 
             const innerStream = fromAny(matched.handler(outerValue!));
-            context && context.registerStream(createStreamContext(context, innerStream));
+            context && createStreamContext(context, innerStream);
             innerIterator = eachValueFrom(innerStream);
           }
 
