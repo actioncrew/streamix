@@ -259,7 +259,6 @@ export function createInspectableSubscription(
       streamContext.logFlow('resolved',
         { name: 'subscription' } as any,
         eventData.value,
-        undefined,
         'received by subscription'
       );
     }
