@@ -32,6 +32,9 @@
       "@actioncrew/streamix/http": [
         "./projects/libraries/streamix/http/src/public-api.ts"
       ],
+      "@actioncrew/streamix/testing": [
+        "./projects/libraries/streamix/testing/src/public-api.ts"
+      ],
       "@actioncrew/streamix/coroutine/async": [
         "./projects/libraries/streamix/coroutine/async/src/public-api.ts"
       ]
