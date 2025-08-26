@@ -27,8 +27,8 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
   // One PipelineContext for the entire source pipeline
   const pipelineContext = createPipelineContext({
     logLevel: LogLevel.INFO,
-    phantomHandler: (operator, streamContext, value) => {
-      streamContext.logFlow('phantom', operator, value, undefined, 'Phantom value dropped');
+    phantomHandler: (operator, streamContext, result) => {
+      streamContext.logFlow('phantom', operator, result, 'Phantom value dropped');
     },
   });
 
@@ -83,12 +83,12 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
               if (result.done) break;
 
               const streamResult = streamContext.createResult({ value: result.value });
-              streamContext.logFlow('resolved', null as any, result.value, streamResult, 'Emitted value');
+              streamContext.logFlow('resolved', null as any, streamResult, 'Emitted value');
 
               await receiver.next?.(result.value);
             }
           } catch (err: any) {
-            streamContext.logFlow('error', null as any, undefined, undefined, String(err));
+            streamContext.logFlow('error', null as any, undefined, String(err));
             await receiver.error?.(err);
           } finally {
             await receiver.complete?.();
@@ -146,12 +146,12 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
             if (result.done) break;
 
             const streamResult = rootContext.createResult({ value: result.value });
-            rootContext.logFlow('resolved', null as any, result.value, streamResult, 'Emitted value');
+            rootContext.logFlow('resolved', null as any, streamResult, 'Emitted value');
 
             await receiver.next?.(result.value);
           }
         } catch (err: any) {
-          rootContext.logFlow('error', null as any, undefined, undefined, String(err));
+          rootContext.logFlow('error', null as any, undefined, String(err));
           await receiver.error?.(err);
         } finally {
           await receiver.complete?.();
