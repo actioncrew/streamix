@@ -21,6 +21,7 @@ export const filter = <T = any>(
   predicateOrValue: ((value: T, index: number) => CallbackReturnType<boolean>) | T | T[]
 ) =>
   createOperator<T, T>('filter', function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     let index = 0;
 
     return {
@@ -47,7 +48,7 @@ export const filter = <T = any>(
           }
 
           // If the value is filtered out, return a phantom StreamResult to signal the dropped value.
-          await context.phantomHandler(this, value);
+          await sc?.phantomHandler(this, value);
         }
       }
     };

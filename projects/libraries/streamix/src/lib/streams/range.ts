@@ -6,7 +6,7 @@ import { loop } from './loop';
  * incrementing by `step`, and emitting a total of `count` values.
  *
  * This operator is a powerful way to generate a numerical sequence in a
- * reactive context. It's similar to a standard `for` loop but produces
+ * reactive sc?. It's similar to a standard `for` loop but produces
  * values as a stream. It's built upon the `loop` operator for its
  * underlying logic.
  *

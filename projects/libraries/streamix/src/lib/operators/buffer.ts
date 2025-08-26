@@ -13,6 +13,8 @@ import { createSubject, timer } from "../streams";
 export function buffer<T = any>(period: number) {
   return createOperator<T, T[]>("buffer", function (this: Operator, source, context) {
     const output = createSubject<T[]>();
+    const sc = context?.currentStreamContext();
+
     let buffer: StreamResult<T>[] = [];
     let completed = false;
 
@@ -23,7 +25,7 @@ export function buffer<T = any>(period: number) {
         output.next(values);
 
         // Resolve all pending results for this flush
-        buffer.forEach((r) => context.resolvePending(this, r));
+        buffer.forEach((r) => sc?.resolvePending(this, r));
         buffer = [];
       }
     };
@@ -44,7 +46,7 @@ export function buffer<T = any>(period: number) {
     const fail = (err: any) => {
       // resolve all pending before error
       if (buffer.length > 0) {
-        buffer.forEach((r) => context.markPhantom(this, r));
+        buffer.forEach((r) => sc?.markPhantom(this, r));
         buffer = [];
       }
       output.error(err);
@@ -65,7 +67,7 @@ export function buffer<T = any>(period: number) {
           if (result.done) break;
 
           // Mark this value as pending in the context
-          context.markPending(this, result);
+          sc?.markPending(this, result);
 
           // Add to buffer
           buffer.push(result);

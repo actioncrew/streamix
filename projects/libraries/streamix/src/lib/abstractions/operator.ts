@@ -1,4 +1,4 @@
-import { createStreamResult, StreamContext, StreamResult } from "./context";
+import { createStreamResult, PipelineContext, StreamResult } from "./context";
 import { Stream, StreamIterator } from "./stream";
 
 /**
@@ -45,7 +45,7 @@ export type Operator<T = any, R = T> = {
    * @param context Additional metadata or utilities provided by the pipeline.
    * @returns A new async stream iterator that yields values of type `R`.
    */
-  apply: (source: StreamIterator<T>, context: StreamContext) => StreamIterator<R>;
+  apply: (source: StreamIterator<T>, context?: PipelineContext) => StreamIterator<R>;
 };
 
 /**
@@ -62,7 +62,7 @@ export type Operator<T = any, R = T> = {
  */
 export function createOperator<T = any, R = T>(
   name: string,
-  transformFn: (source: StreamIterator<T>, context: StreamContext) => StreamIterator<R>
+  transformFn: (source: StreamIterator<T>, context?: PipelineContext) => StreamIterator<R>
 ): Operator<T, R> {
   return {
     name,
@@ -271,9 +271,9 @@ export function patchOperator<TIn, TOut>(
   return {
     name: operator.name,
     type: operator.type,
-    apply: (source: StreamIterator<TIn>, context: StreamContext) => {
-      const originalIterator = originalApply.call(operator, source, context);
-      context.pipeline.operators.push(operator);
+    apply: (source: StreamIterator<TIn>, context?: PipelineContext) => {
+      const originalIterator = originalApply.call(operator, source);
+      context?.operators.push(operator);
 
       return {
         async next(): Promise<StreamResult<TOut>> {

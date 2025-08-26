@@ -17,6 +17,7 @@ import { createSubject } from '../streams';
 export const audit = <T = any>(duration: number) =>
   createOperator<T, T>('audit', function (this: Operator, source, context) {
     const output = createSubject<T>();
+    const sc = context?.currentStreamContext();
 
     let lastResult: StreamResult<T> | undefined = undefined;
     let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
@@ -24,7 +25,7 @@ export const audit = <T = any>(duration: number) =>
     const flush = () => {
       if (lastResult !== undefined) {
         output.next(lastResult.value!);
-        context.resolvePending(this, lastResult);
+        sc?.resolvePending(this, lastResult);
         lastResult = undefined;
       }
       timerId = undefined;
@@ -49,12 +50,12 @@ export const audit = <T = any>(duration: number) =>
 
           // If a previous value is still pending, mark it as phantom
           if (timerId !== undefined && lastResult !== undefined) {
-            context.markPhantom(this, lastResult);
+            sc?.markPhantom(this, lastResult);
           }
 
           // Add new value to pending set and buffer it
           lastResult = result;
-          context.markPending(this, lastResult);
+          sc?.markPending(this, lastResult);
 
           // Start a new timer if not active
           if (timerId === undefined) {
@@ -63,7 +64,7 @@ export const audit = <T = any>(duration: number) =>
         }
       } catch (err) {
         output.error(err);
-        if (lastResult) context.resolvePending(this, lastResult);
+        if (lastResult) sc?.resolvePending(this, lastResult);
       } finally {
         if (timerId !== undefined) {
           clearTimeout(timerId);

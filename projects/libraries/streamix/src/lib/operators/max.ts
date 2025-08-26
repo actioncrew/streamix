@@ -14,6 +14,7 @@ export const max = <T = any>(
   comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
   createOperator<T, T>("max", function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     let maxValue: T | undefined;
     let hasMax = false;
     let emittedMax = false;
@@ -54,7 +55,7 @@ export const max = <T = any>(
             maxValue = value;
           }
 
-          await context.phantomHandler(this, maxValue!);
+          await sc?.phantomHandler(this, maxValue!);
         }
       },
     };

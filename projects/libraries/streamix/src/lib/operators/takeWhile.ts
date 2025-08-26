@@ -22,6 +22,7 @@ export const takeWhile = <T = any>(
   predicate: (value: T) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, T>("takeWhile", function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     let active = true; // controls real values
 
     return {
@@ -32,7 +33,7 @@ export const takeWhile = <T = any>(
           if (result.done) return result;
 
           if (!active) {
-            await context.phantomHandler(this, result.value);
+            await sc?.phantomHandler(this, result.value);
             continue;
           }
 
@@ -40,7 +41,7 @@ export const takeWhile = <T = any>(
           if (!pass) {
             active = false;
             // turn this failed one into phantom too
-            await context.phantomHandler(this, result.value);
+            await sc?.phantomHandler(this, result.value);
             continue;
           }
 

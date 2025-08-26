@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator, Stream, StreamResult } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamContext, createStreamResult, DONE, NEXT, Operator, Stream, StreamResult } from "../abstractions";
 import { eachValueFrom, fromAny } from "../converters";
 
 /**
@@ -25,6 +25,7 @@ export const concatMap = <T = any, R = T>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) =>
   createOperator<T, R>("concatMap", function (this : Operator, source, context) {
+    const sc = context?.currentStreamContext();
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
     let result: StreamResult<T> | null = null;
@@ -41,6 +42,8 @@ export const concatMap = <T = any, R = T>(
 
             // Initialize inner stream
             innerHadEmissions = false;
+            context && context.registerStream(createStreamContext(context));
+
             innerIterator = eachValueFrom<R>(
               fromAny(project(result.value, outerIndex++))
             );
@@ -54,7 +57,7 @@ export const concatMap = <T = any, R = T>(
 
             // If inner stream emitted nothing, produce a phantom
             if (!innerHadEmissions && result !== null) {
-              await context.phantomHandler(this, result.value);
+              await sc?.phantomHandler(this, result.value);
             }
 
             // Otherwise continue to next outer value

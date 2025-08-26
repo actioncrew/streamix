@@ -18,6 +18,7 @@ export const distinctUntilChanged = <T = any>(
   comparator?: (prev: T, curr: T) => boolean
 ) =>
   createOperator<T, T>('distinctUntilChanged', function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     // State variables to keep track of the last emitted value.
     let lastValue: T | undefined;
     let hasLast = false;
@@ -43,7 +44,7 @@ export const distinctUntilChanged = <T = any>(
           } else {
             // If the value is a consecutive duplicate, we do not update the lastValue,
             // and instead, we return a phantom StreamResult to signal that a value was dropped.
-            await context.phantomHandler(this, result.value);
+            await sc?.phantomHandler(this, result.value);
             continue;
           }
         }

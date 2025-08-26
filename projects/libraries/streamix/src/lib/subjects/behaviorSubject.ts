@@ -1,6 +1,5 @@
 import {
   CallbackReturnType,
-  createPipelineContext,
   createReceiver,
   createSubscription,
   Operator,
@@ -127,8 +126,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       return latestValue;
     },
     pipe(...operators: Operator<any, any>[]): Stream<any> {
-      const context = createPipelineContext();
-      return pipeStream(this, context, ...operators);
+      return pipeStream(this, ...operators);
     },
     subscribe,
     async query(): Promise<T> {

@@ -20,6 +20,7 @@ export const distinctUntilKeyChanged = <T extends object = any>(
   comparator?: (prev: T[typeof key], curr: T[typeof key]) => boolean | Promise<boolean>
 ): Operator<T, T> =>
   createOperator<T, T>('distinctUntilKeyChanged', function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     let lastValue: T | undefined;
     let isFirst = true;
 
@@ -44,7 +45,7 @@ export const distinctUntilKeyChanged = <T extends object = any>(
             return NEXT(current);
           } else {
             // If the value's key is a consecutive duplicate, return a phantom.
-            await context.phantomHandler(this, current);
+            await sc?.phantomHandler(this, current);
             continue;
           }
         }

@@ -13,6 +13,7 @@ import { createOperator, createStreamResult, DONE, NEXT, Operator } from '../abs
  */
 export const skip = <T = any>(count: number) =>
   createOperator<T, T>('skip', function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     let counter = count;
 
     return {
@@ -23,7 +24,7 @@ export const skip = <T = any>(count: number) =>
 
           if (counter > 0) {
             counter--;
-            await context.phantomHandler(this, result.value);
+            await sc?.phantomHandler(this, result.value);
             continue;
           }
 

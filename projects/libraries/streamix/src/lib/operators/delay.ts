@@ -6,7 +6,7 @@ import { createSubject, Subject } from '../streams';
  * Creates a stream operator that delays the emission of each value from the source stream
  * while tracking pending and phantom states.
  *
- * Each value received from the source is added to `context.pendingResults` and is only
+ * Each value received from the source is added to `sc?.pendingResults` and is only
  * resolved once the delay has elapsed and the value is emitted downstream.
  *
  * @template T The type of the values in the source and output streams.
@@ -16,6 +16,7 @@ import { createSubject, Subject } from '../streams';
 export function delay<T = any>(ms: number) {
   return createOperator<T, T>('delay', function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
+    const sc = context?.currentStreamContext();
 
     (async () => {
       try {
@@ -24,7 +25,7 @@ export function delay<T = any>(ms: number) {
           if (result.done) break;
 
           // Mark the value as pending
-          context.markPending(this, result);
+          sc?.markPending(this, result);
 
           // Delay emission
           await new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,11 +34,11 @@ export function delay<T = any>(ms: number) {
           output.next(result.value);
 
           // Resolve pending state
-          context.resolvePending(this, result);
+          sc?.resolvePending(this, result);
         }
       } catch (err) {
         // On error, remove any last pending value
-        context.pendingResults.forEach((res) => context.resolvePending(this, res));
+        sc?.pendingResults.forEach((res) => sc?.resolvePending(this, res));
         output.error(err);
       } finally {
         output.complete();

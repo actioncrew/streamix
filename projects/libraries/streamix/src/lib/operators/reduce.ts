@@ -19,6 +19,8 @@ export const reduce = <T = any, A = any>(
   seed: A
 ) =>
   createOperator<T, A>("reduce", function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
+
     let finalValue: A = seed;
     let emittedFinal = false;
 
@@ -39,7 +41,7 @@ export const reduce = <T = any, A = any>(
           finalValue = await accumulator(finalValue, result.value);
 
           // Treat intermediate accumulated value as phantom
-          await context.phantomHandler(this, finalValue);
+          await sc?.phantomHandler(this, finalValue);
         }
       },
     };

@@ -16,6 +16,7 @@ import { createSubject, Subject } from "../streams";
 export function debounce<T = any>(duration: number) {
   return createOperator<T, T>("debounce", function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
+    const sc = context?.currentStreamContext();
     let timeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
     let latestResult: StreamResult<T> | undefined = undefined;
     let isCompleted = false;
@@ -26,7 +27,7 @@ export function debounce<T = any>(duration: number) {
         output.next(latestResult.value!);
 
         // Resolve pending in context
-        context.resolvePending(this, latestResult);
+        sc?.resolvePending(this, latestResult);
 
         latestResult = undefined;
       }
@@ -55,11 +56,11 @@ export function debounce<T = any>(duration: number) {
 
           // If a pending value exists and the timer is active, mark it as phantom
           if (timeoutId !== undefined && latestResult !== undefined) {
-            context.markPhantom(this, latestResult);
+            sc?.markPhantom(this, latestResult);
           }
 
           // Add the new result to pending set
-          context.markPending(this, result);
+          sc?.markPending(this, result);
           latestResult = result;
 
           // Reset the timer
@@ -67,7 +68,7 @@ export function debounce<T = any>(duration: number) {
           timeoutId = setTimeout(flush, duration);
         }
       } catch (err) {
-        if (latestResult) context.resolvePending(this, latestResult);
+        if (latestResult) sc?.resolvePending(this, latestResult);
         output.error(err);
       } finally {
         isCompleted = true;

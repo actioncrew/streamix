@@ -9,6 +9,7 @@ import { createOperator, createStreamResult, DONE, NEXT, Operator, StreamResult 
  */
 export const toArray = <T = any>() =>
   createOperator<T, T[]>("toArray", function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     const collected: StreamResult<T>[] = [];
     let completed = false;
     let emitted = false;
@@ -28,7 +29,7 @@ export const toArray = <T = any>() =>
             if (!emitted) {
               emitted = true;
               // Resolve all pending results
-              collected.forEach((r) => context.resolvePending(this, r));
+              collected.forEach((r) => sc?.resolvePending(this, r));
               // Emit the final array of values
               return NEXT(collected.map((r) => r.value!));
             }
@@ -36,7 +37,7 @@ export const toArray = <T = any>() =>
           }
 
           // Mark the value as pending
-          context.markPending(this, result);
+          sc?.markPending(this, result);
           collected.push(result);
         }
       },

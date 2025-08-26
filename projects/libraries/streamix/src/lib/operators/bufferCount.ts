@@ -10,6 +10,7 @@ import { DONE, NEXT, Operator, StreamResult, createOperator, createStreamResult 
  */
 export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
   createOperator<T, T[]>("bufferCount", function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     let completed = false;
 
     return {
@@ -26,7 +27,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
 
             // Flush any remaining buffered values
             if (buffer.length > 0) {
-              buffer.forEach((r) => context.resolvePending(this, r));
+              buffer.forEach((r) => sc?.resolvePending(this, r));
               return NEXT(buffer.map((r) => r.value!));
             }
 
@@ -34,12 +35,12 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
           }
 
           // Mark the value as pending
-          context.markPending(this, result);
+          sc?.markPending(this, result);
           buffer.push(result);
         }
 
         // Resolve all values in the buffer
-        buffer.forEach((r) => context.resolvePending(this, r));
+        buffer.forEach((r) => sc?.resolvePending(this, r));
 
         return NEXT(buffer.map((r) => r.value!));
       },

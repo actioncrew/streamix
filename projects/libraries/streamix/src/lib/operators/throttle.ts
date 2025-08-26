@@ -15,6 +15,7 @@ import { createSubject, Subject } from '../streams';
  */
 export const throttle = <T = any>(duration: number) =>
   createOperator<T, T>('throttle', function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     const output: Subject<T> = createSubject<T>();
     let lastEmit = 0;
     let pendingResult: StreamResult<T> | undefined;
@@ -23,7 +24,7 @@ export const throttle = <T = any>(duration: number) =>
     const flushPending = () => {
       if (pendingResult !== undefined) {
         output.next(pendingResult.value!);
-        context.resolvePending(this, pendingResult);
+        sc?.resolvePending(this, pendingResult);
         pendingResult = undefined;
       }
       timer = null;
@@ -44,11 +45,11 @@ export const throttle = <T = any>(duration: number) =>
           } else {
             // Previous value is superseded → phantom if any
             if (pendingResult !== undefined) {
-              context.markPhantom(this, pendingResult);
+              sc?.markPhantom(this, pendingResult);
             }
 
             // Add current value as pending
-            context.markPending(this, result);
+            sc?.markPending(this, result);
             pendingResult = result;
 
             // Schedule trailing emit
@@ -62,7 +63,7 @@ export const throttle = <T = any>(duration: number) =>
         // Source completed → flush trailing pending
         if (pendingResult !== undefined) flushPending();
       } catch (err) {
-        if (pendingResult) context.resolvePending(this, pendingResult);
+        if (pendingResult) sc?.resolvePending(this, pendingResult);
         output.error(err);
       } finally {
         if (timer) {

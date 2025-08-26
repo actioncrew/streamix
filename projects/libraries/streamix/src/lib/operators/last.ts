@@ -21,6 +21,8 @@ export const last = <T = any>(
   predicate?: (value: T) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, T>("last", function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
+
     let lastValue: T | undefined = undefined;
     let hasMatch = false;
     let finished = false;
@@ -46,7 +48,7 @@ export const last = <T = any>(
               // Previous last value becomes phantom
               const phantom = lastValue!;
               lastValue = value;
-              await context.phantomHandler(this, phantom);
+              await sc?.phantomHandler(this, phantom);
               continue;
             } else {
               lastValue = value;
@@ -55,7 +57,7 @@ export const last = <T = any>(
             }
           } else {
             // Non-matching values are phantoms
-            await context.phantomHandler(this, value);
+            await sc?.phantomHandler(this, value);
           }
         }
       }

@@ -22,6 +22,7 @@ export const unique = <T = any, K = any>(
   keySelector?: (value: T) => CallbackReturnType<K>
 ) =>
   createOperator<T, T>("unique", function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     const seen = new Set<K | T>();
 
     return {
@@ -38,7 +39,7 @@ export const unique = <T = any, K = any>(
           }
 
           // duplicate → still emit as phantom
-          await context.phantomHandler(this, result.value);
+          await sc?.phantomHandler(this, result.value);
         }
       }
     };

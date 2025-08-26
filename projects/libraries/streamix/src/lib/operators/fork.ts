@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamContext, createStreamResult, DONE, NEXT, Operator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 
 /**
@@ -58,6 +58,7 @@ export interface ForkOption<T = any, R = any> {
  */
 export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
   createOperator<T, R>('fork', function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
     let outerIndex = 0;
     let innerIterator: AsyncIterator<R> | null = null;
     let outerValue: T | undefined;
@@ -88,6 +89,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
               throw new Error(`No handler found for value: ${outerValue}`);
             }
 
+            context && context.registerStream(createStreamContext(context));
             innerIterator = eachValueFrom(fromAny(matched.handler(outerValue!)));
           }
 
@@ -100,7 +102,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             // no emissions.
             if (!innerStreamHadEmissions) {
               // We return a phantom of the original outer value.
-              await context.phantomHandler(this, outerValue);
+              await sc?.phantomHandler(this, outerValue);
             }
             // If the inner stream had emissions, we just continue the loop
             // to process the next outer value.

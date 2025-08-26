@@ -1,5 +1,5 @@
 import { eachValueFrom, firstValueFrom } from "../converters";
-import { createPipelineContext, createStreamContext, PipelineContext, StreamResult } from "./context";
+import { StreamResult } from "./context";
 import { Operator, OperatorChain, patchOperator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
@@ -269,8 +269,7 @@ export function createStream<T>(
 
   // Create pipe function that uses self
   const pipe = ((...operators: Operator<any, any>[]) => {
-    const context = createPipelineContext();
-    return pipeStream(self, context, ...operators);
+    return pipeStream(self, ...operators);
   }) as OperatorChain<T>;
 
   // Now define self, closing over pipe
@@ -291,26 +290,23 @@ export function createStream<T>(
  */
 export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
-  context: PipelineContext,
   ...operators: [...Ops]
 ): Stream<any> {
   const pipedStream: Stream<any> = {
     name: `${source.name}-sink`,
     type: 'stream',
     pipe: ((...nextOps: Operator<any, any>[]) => {
-      const context = createPipelineContext();
-      return pipeStream(source, context, ...operators, ...nextOps);
+
+      return pipeStream(source, ...operators, ...nextOps);
     }) as OperatorChain<any>,
 
     subscribe(cb) {
       const receiver = createReceiver(cb);
-
-      const streamContext = createStreamContext(context);
       let currentIterator: StreamIterator<any> = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
 
       for (const op of operators) {
         const patchedOp = patchOperator(op);
-        currentIterator = patchedOp.apply(currentIterator, streamContext);
+        currentIterator = patchedOp.apply(currentIterator);
       }
 
       const abortController = new AbortController();

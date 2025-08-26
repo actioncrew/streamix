@@ -27,6 +27,8 @@ export const min = <T = any>(
   comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
   createOperator<T, T>("min", function (this: Operator, source, context) {
+    const sc = context?.currentStreamContext();
+
     let minValue: T | undefined;
     let hasMin = false;
     let emittedMin = false;
@@ -60,7 +62,7 @@ export const min = <T = any>(
             minValue = value;
           }
 
-          await context.phantomHandler(this, minValue!);
+          await sc?.phantomHandler(this, minValue!);
         }
       },
     };
