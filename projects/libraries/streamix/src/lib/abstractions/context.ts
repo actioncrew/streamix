@@ -63,12 +63,16 @@ export interface StreamContext {
   markPhantom: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
   markPending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
   createResult: <T>(options?: Partial<StreamResult<T>>) => StreamResult<T>;
+  logFlow(eventType: 'pending' | 'resolved' | 'phantom' | 'error',
+    operator: Operator, value?: any, result?: StreamResult<any>, message?: string
+  ): void;
   finalize(): Promise<void>;
 }
 
 export interface PipelineContext {
   logLevel: LogLevel;
   operators: Operator[];
+  flowLoggingEnabled: boolean;
   operatorStack(operator: Operator): string;
   phantomHandler: (operator: Operator, streamContext: StreamContext, value: any) => CallbackReturnType;
   activeStreams: Map<string, StreamContext>;
@@ -237,6 +241,16 @@ export function createStreamContext(pipelineContext: PipelineContext, stream: St
     return result.resolve();
   };
 
+  const logFlow = (eventType: 'pending' | 'resolved' | 'phantom' | 'error',
+    operator: Operator, value?: any, result?: StreamResult<any>, message?: string
+  ) => {
+    if (!pipelineContext.flowLoggingEnabled) return;
+
+    const opPath = pipelineContext.operatorStack(operator);
+    const logMsg = message ?? `${eventType} ${value ?? ''}`;
+    console.log(`[Flow] [${eventType}] [${streamId}] [${opPath}]: ${logMsg}`, result?.value ?? value);
+  }
+
   const finalize = async () => {
     logEvent(pipelineContext.logLevel, streamId, 'finalize', `Finalizing stream, waiting for ${pendingResults.size} results.`);
     [...pendingResults].filter(r => !r.parent).forEach(r => r.finalize());
@@ -254,6 +268,7 @@ export function createStreamContext(pipelineContext: PipelineContext, stream: St
     markPhantom,
     markPending,
     createResult: <T>(options = {}) => createStreamResult<T>(options),
+    logFlow,
     finalize,
   };
 
@@ -299,6 +314,7 @@ export function createPipelineContext(options: { phantomHandler?: (operator: Ope
   const context: PipelineContext = {
     logLevel: options.logLevel ?? LogLevel.INFO,
     operators: [],
+    flowLoggingEnabled: true,
     operatorStack,
     phantomHandler: options.phantomHandler ?? (() => {}),
     activeStreams,
