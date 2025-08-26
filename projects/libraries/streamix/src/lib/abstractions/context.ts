@@ -248,7 +248,7 @@ export function createStreamContext(pipelineContext: PipelineContext, stream: St
 
     const opPath = pipelineContext.operatorStack(operator);
     const logMsg = message ?? `${eventType} ${value ?? ''}`;
-    console.log(`[Flow] [${eventType}] [${streamId}] [${opPath}]: ${logMsg}`, result?.value ?? value);
+    console.log(`[FLOW] [${eventType}] [${streamId}] [${opPath}]: ${logMsg}`, result?.value ?? value);
   }
 
   const finalize = async () => {

@@ -5,6 +5,7 @@ import {
   createSubscription,
   eachValueFrom,
   firstValueFrom,
+  LogLevel,
   Operator,
   patchOperator,
   PipelineContext,
@@ -15,78 +16,49 @@ import {
 
 export interface InspectableStream<T = any> extends Stream<T> {
   pipe<S>(...operators: Operator<T, S>[]): InspectableStream<S>;
-  readonly context?: PipelineContext;
+  readonly context: PipelineContext;
 }
 
 /**
- * Wraps a stream to make it "inspectable".
+ * Wrap a stream to make it "inspectable".
+ * All operators will receive a proper PipelineContext and StreamContext.
  */
 export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
-  const rootContext = createPipelineContext();
-  if (rootContext) {
-    createStreamContext(rootContext, source);
-  }
+  // One PipelineContext for the entire source pipeline
+  const pipelineContext = createPipelineContext({
+    logLevel: LogLevel.INFO,
+    phantomHandler: (operator, streamContext, value) => {
+      streamContext.logFlow('phantom', operator, value, undefined, 'Phantom value dropped');
+    },
+  });
 
-  // Helper function to safely get current stream context
-  function getSafeStreamContext(context?: PipelineContext) {
-    if (!context) return undefined;
-
-    // Check if the context has the method you expect
-    if (typeof (context as any).currentStreamContext === 'function') {
-      return (context as any).currentStreamContext();
-    }
-
-    // Alternative: check if there's a different way to get stream context
-    if (typeof (context as any).getCurrentStream === 'function') {
-      return (context as any).getCurrentStream();
-    }
-
-    // Or check if context itself has stream information
-    if ((context as any).stream) {
-      return (context as any).stream;
-    }
-
-    return undefined;
-  }
+  // Root StreamContext for the source stream itself
+  const rootContext = createStreamContext(pipelineContext, source);
 
   function createInspectableStream<S>(
     upstream: Stream<any>,
     operators: Operator<any, any>[],
-    parentContext?: PipelineContext
+    parentContext: PipelineContext
   ): InspectableStream<S> {
-    const context = parentContext ?? createPipelineContext();
-    if (context) {
-      createStreamContext(context, upstream);
-    }
+    const streamContext = createStreamContext(parentContext, upstream);
 
     const pipedStream: InspectableStream<S> = {
       name: `${upstream.name}-sink`,
       type: "stream",
-      context,
+      context: parentContext,
 
       pipe<U>(...nextOps: Operator<any, any>[]): InspectableStream<U> {
-        return createInspectableStream<U>(pipedStream, nextOps, context);
+        return createInspectableStream<U>(pipedStream, nextOps, parentContext);
       },
 
       subscribe(cb?: any): Subscription {
         const receiver = createReceiver(cb);
+        let iterator: StreamIterator<any> = eachValueFrom(upstream)[Symbol.asyncIterator]();
 
-        // Get current stream context safely
-        const streamContext = getSafeStreamContext(context);
-        if (streamContext) {
-          streamContext.onSubscribe?.();
-        }
-
-        let currentIterator: StreamIterator<any> =
-          eachValueFrom(upstream)[Symbol.asyncIterator]();
-
+        // Apply operators
         for (const op of operators) {
-          const patchedOp = patchOperator(op);
-
-          // Apply operator with context - check what patchOperator expects
-          if (typeof patchedOp.apply === 'function') {
-            currentIterator = patchedOp.apply(currentIterator, context);
-          }
+          const patched = patchOperator(op);
+          iterator = patched.apply(iterator, parentContext);
         }
 
         const abortController = new AbortController();
@@ -102,103 +74,102 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
             while (true) {
               const winner = await Promise.race([
                 abortPromise.then(() => ({ aborted: true } as const)),
-                currentIterator.next().then((result) => ({ result })),
+                iterator.next().then(result => ({ result })),
               ]);
 
               if ("aborted" in winner || signal.aborted) break;
-              const result = winner.result;
+
+              const { result } = winner;
               if (result.done) break;
 
-              // Notify stream context about emission
-              if (streamContext) {
-                streamContext.onEmit?.(result.value);
-              }
+              const streamResult = streamContext.createResult({ value: result.value });
+              streamContext.logFlow('resolved', null as any, result.value, streamResult, 'Emitted value');
 
               await receiver.next?.(result.value);
             }
           } catch (err: any) {
-            if (!signal.aborted) {
-              if (streamContext) {
-                streamContext.onError?.(err);
-              }
-              await receiver.error?.(err);
-            }
+            streamContext.logFlow('error', null as any, undefined, undefined, String(err));
+            await receiver.error?.(err);
           } finally {
-            if (streamContext) {
-              streamContext.onComplete?.();
-            }
             await receiver.complete?.();
+            await streamContext.finalize();
           }
         })();
 
         return createSubscription(async () => {
-          if (streamContext) {
-            streamContext.onUnsubscribe?.();
-          }
           abortController.abort();
-          if (currentIterator.return) {
-            await currentIterator.return().catch(() => {});
+          if (iterator.return) {
+            await iterator.return().catch(() => {});
           }
         });
       },
 
       async query() {
         return firstValueFrom(pipedStream);
-      }
+      },
     };
 
     return pipedStream;
   }
 
-  // Decorate original stream
   const decorated: InspectableStream<T> = {
     ...source,
-    context: rootContext,
+    context: pipelineContext,
 
     pipe<S>(...operators: Operator<any, any>[]): InspectableStream<S> {
-      return createInspectableStream<S>(source, operators, rootContext);
+      return createInspectableStream<S>(source, operators, pipelineContext);
     },
 
     subscribe(cb?: any): Subscription {
       const receiver = createReceiver(cb);
-      const streamContext = getSafeStreamContext(rootContext);
+      let iterator: StreamIterator<T> = eachValueFrom(source)[Symbol.asyncIterator]();
 
-      if (streamContext) {
-        streamContext.onSubscribe?.();
-      }
+      const abortController = new AbortController();
+      const { signal } = abortController;
 
-      const originalSubscription = source.subscribe({
-        next: (value) => {
-          if (streamContext) {
-            streamContext.onEmit?.(value);
-          }
-          receiver.next?.(value);
-        },
-        error: (err) => {
-          if (streamContext) {
-            streamContext.onError?.(err);
-          }
-          receiver.error?.(err);
-        },
-        complete: () => {
-          if (streamContext) {
-            streamContext.onComplete?.();
-          }
-          receiver.complete?.();
-        }
+      const abortPromise = new Promise<void>((resolve) => {
+        if (signal.aborted) resolve();
+        else signal.addEventListener("abort", () => resolve(), { once: true });
       });
 
-      return createSubscription(async () => {
-        if (streamContext) {
-          streamContext.onUnsubscribe?.();
+      (async () => {
+        try {
+          while (true) {
+            const winner = await Promise.race([
+              abortPromise.then(() => ({ aborted: true } as const)),
+              iterator.next().then(result => ({ result })),
+            ]);
+
+            if ("aborted" in winner || signal.aborted) break;
+
+            const { result } = winner;
+            if (result.done) break;
+
+            const streamResult = rootContext.createResult({ value: result.value });
+            rootContext.logFlow('resolved', null as any, result.value, streamResult, 'Emitted value');
+
+            await receiver.next?.(result.value);
+          }
+        } catch (err: any) {
+          rootContext.logFlow('error', null as any, undefined, undefined, String(err));
+          await receiver.error?.(err);
+        } finally {
+          await receiver.complete?.();
+          await rootContext.finalize();
         }
-        await originalSubscription.unsubscribe();
+      })();
+
+      return createSubscription(async () => {
+        abortController.abort();
+        if (iterator.return) {
+          await iterator.return().catch(() => {});
+        }
       });
     },
 
     query(): Promise<T> {
       return firstValueFrom(source);
-    }
+    },
   };
 
   return decorated;
