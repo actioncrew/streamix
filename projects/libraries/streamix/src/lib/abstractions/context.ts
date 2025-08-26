@@ -5,6 +5,7 @@
 
 import { Operator } from "./operator";
 import { CallbackReturnType } from "./receiver";
+import { Stream } from "./stream";
 
 // -------------------------------
 // Types and Constants
@@ -210,7 +211,8 @@ export function createStreamResult<T>(options: Partial<StreamResult<T>> = {}): S
 // StreamContext Factory
 // -------------------------------
 
-export function createStreamContext(pipelineContext: PipelineContext, streamId = `stream_${Date.now()}_${Math.random().toString(36).slice(2)}`): StreamContext {
+export function createStreamContext(pipelineContext: PipelineContext, stream: Stream): StreamContext {
+  const streamId = `${stream.name}_${Date.now()}_${Math.random().toString(36).slice(2)}`
   const pendingResults = new Set<StreamResult<any>>();
 
   const markPending = (operator: Operator, result: StreamResult<any>) => {

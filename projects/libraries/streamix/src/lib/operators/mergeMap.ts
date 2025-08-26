@@ -69,11 +69,11 @@ export function mergeMap<T = any, R = any>(
           if (result.done) break;
           if (errorOccurred) break;
 
-          const inner = fromAny(project(result.value, index++));
-          context && context.registerStream(createStreamContext(context));
+          const innerStream = fromAny(project(result.value, index++));
+          context && context.registerStream(createStreamContext(context, innerStream));
 
           activeInner++;
-          processInner(inner, result.value); // Pass outerValue
+          processInner(innerStream, result.value); // Pass outerValue
         }
 
         outerCompleted = true;

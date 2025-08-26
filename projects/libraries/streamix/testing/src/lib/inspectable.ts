@@ -26,7 +26,7 @@ export interface InspectableStream<T = any> extends Stream<T> {
  */
 export function inspectable<T>(stream: Stream<T>): InspectableStream<T> {
   const context = createPipelineContext();
-  context && context.registerStream(createStreamContext(context));
+  context && context.registerStream(createStreamContext(context, stream));
 
   const decorated: InspectableStream<T> = {
     ...stream,

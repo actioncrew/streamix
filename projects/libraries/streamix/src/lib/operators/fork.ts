@@ -89,8 +89,9 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
               throw new Error(`No handler found for value: ${outerValue}`);
             }
 
-            context && context.registerStream(createStreamContext(context));
-            innerIterator = eachValueFrom(fromAny(matched.handler(outerValue!)));
+            const innerStream = fromAny(matched.handler(outerValue!));
+            context && context.registerStream(createStreamContext(context, innerStream));
+            innerIterator = eachValueFrom(innerStream);
           }
 
           // Pull next inner value

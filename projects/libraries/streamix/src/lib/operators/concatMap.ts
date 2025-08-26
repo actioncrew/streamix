@@ -42,11 +42,10 @@ export const concatMap = <T = any, R = T>(
 
             // Initialize inner stream
             innerHadEmissions = false;
-            context && context.registerStream(createStreamContext(context));
 
-            innerIterator = eachValueFrom<R>(
-              fromAny(project(result.value, outerIndex++))
-            );
+            const innerStream = fromAny(project(result.value, outerIndex++));
+            context && context.registerStream(createStreamContext(context, innerStream));
+            innerIterator = eachValueFrom(innerStream);
           }
 
           // Pull next value from inner stream
