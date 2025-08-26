@@ -12,7 +12,7 @@ import {
   Stream,
   StreamIterator,
   Subscription,
-} from "../../../src/lib";
+} from "@actioncrew/streamix";
 
 export interface InspectableStream<T = any> extends Stream<T> {
   pipe<S>(...operators: Operator<T, S>[]): InspectableStream<S>;
