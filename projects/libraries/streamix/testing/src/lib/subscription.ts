@@ -1,4 +1,4 @@
-import { CallbackReturnType, StreamContext } from "../../../src/lib";
+import { CallbackReturnType, StreamContext } from "@actioncrew/streamix";
 
 /**
  * Enhanced subscription lifecycle states for comprehensive inspection.
