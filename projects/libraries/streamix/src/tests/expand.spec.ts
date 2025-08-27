@@ -1,4 +1,4 @@
-import { eachValueFrom, expand, from } from '../lib';
+import { eachValueFrom, expand, from } from '@actioncrew/streamix';
 
 describe('Expand Stream (RxJS-like)', () => {
   it('should handle errors thrown by the project function', async () => {

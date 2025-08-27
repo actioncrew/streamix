@@ -1,7 +1,6 @@
-import { eachValueFrom } from '../lib';
-import { loop } from '../lib'; // adjust the path if needed
+import { eachValueFrom, loop } from '@actioncrew/streamix';
 
-function collect<T>(stream: AsyncGenerator<T, void, unknown>): Promise<T[]> {
+function collect<T>(stream: AsyncGenerator<T>): Promise<T[]> {
   const result: T[] = [];
   return (async () => {
     for await (const v of stream) {

@@ -1,4 +1,4 @@
-import { range } from "../lib";
+import { range } from "@actioncrew/streamix";
 
 describe("range", () => {
   it("should emit the correct range of values", async () => {

@@ -1,4 +1,4 @@
-import { catchError, from, map } from '../lib';
+import { catchError, from, map } from '@actioncrew/streamix';
 
 describe('map operator', () => {
   it('should transform values correctly', (done) => {

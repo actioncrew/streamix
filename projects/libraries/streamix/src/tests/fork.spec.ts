@@ -1,4 +1,4 @@
-import { fork, from, of } from '../lib'; // Adjust the import path accordingly
+import { fork, from, of } from '@actioncrew/streamix'; // Adjust the import path accordingly
 
 describe('fork operator', () => {
   let source$: any;

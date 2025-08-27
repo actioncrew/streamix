@@ -1,4 +1,4 @@
-import { onResize } from "../lib";
+import { onResize } from "@actioncrew/streamix";
 
 xdescribe('Functional tests for fromResizeObserver', () => {
   it('should detect element resize changes', (done) => {

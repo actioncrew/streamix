@@ -1,4 +1,4 @@
-import { delay, from } from '../lib';
+import { delay, from } from '@actioncrew/streamix';
 
 describe('DelayOperator', () => {
   it('should delay each value by the specified time', (done) => {

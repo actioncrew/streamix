@@ -1,4 +1,4 @@
-import { createSubject, defer, Stream } from '../lib';
+import { createSubject, defer, Stream } from '@actioncrew/streamix';
 
 // Mocking Stream class
 export function mockStream(values: any[], completed = false, error?: Error): Stream<any> {

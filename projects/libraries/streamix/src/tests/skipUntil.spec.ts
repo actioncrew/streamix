@@ -1,4 +1,4 @@
-import { createBehaviorSubject, createSubject, from, skipUntil } from '../lib';
+import { createBehaviorSubject, createSubject, from, skipUntil } from '@actioncrew/streamix';
 
 describe('skipUntil', () => {
   it('should skip values before notifier emits and emit after that', (done) => {

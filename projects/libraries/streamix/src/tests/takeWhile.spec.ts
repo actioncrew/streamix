@@ -1,4 +1,4 @@
-import { from, takeWhile } from '../lib';
+import { from, takeWhile } from '@actioncrew/streamix';
 
 describe('takeWhile operator', () => {
   it('should take emissions while predicate returns true', (done) => {

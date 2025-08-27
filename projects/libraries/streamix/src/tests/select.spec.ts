@@ -1,4 +1,4 @@
-import { createSubject, eachValueFrom, select } from '../lib';
+import { createSubject, eachValueFrom, select } from '@actioncrew/streamix';
 
 describe('select operator tests', () => {
   let subject: any;

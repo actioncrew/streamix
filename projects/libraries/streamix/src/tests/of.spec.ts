@@ -1,4 +1,4 @@
-import { of } from '../lib';
+import { of } from '@actioncrew/streamix';
 
 describe('OfStream', () => {
   it('should emit the given value', async () => {

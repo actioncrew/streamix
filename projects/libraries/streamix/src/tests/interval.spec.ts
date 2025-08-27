@@ -1,4 +1,4 @@
-import { interval } from '../lib';
+import { interval } from '@actioncrew/streamix';
 
 describe('IntervalStream', () => {
   it('should emit values at specified interval', async () => {

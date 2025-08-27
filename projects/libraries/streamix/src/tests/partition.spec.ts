@@ -1,5 +1,4 @@
-import { createStream, partition } from '../lib';
-import { eachValueFrom } from '../lib/converters';
+import { createStream, eachValueFrom, partition } from '@actioncrew/streamix';
 
 describe('partition operator', () => {
 

@@ -1,4 +1,4 @@
-import { createStream, createSubject, race } from "../lib";
+import { createStream, createSubject, race } from "@actioncrew/streamix";
 
 describe('race', () => {
   it('should only emit values from the winning stream', (done) => {

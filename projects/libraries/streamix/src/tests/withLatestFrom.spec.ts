@@ -1,4 +1,4 @@
-import { from, withLatestFrom } from '../lib';
+import { from, withLatestFrom } from '@actioncrew/streamix';
 
 describe('withLatestFrom operator', () => {
   it('should handle cancellation of the main stream', (done) => {

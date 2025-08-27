@@ -1,4 +1,4 @@
-import { createSubject, from, zip } from '../lib';
+import { createSubject, from, zip } from '@actioncrew/streamix';
 
 describe('zip operator', () => {
   it('should zip values from multiple streams', (done) => {

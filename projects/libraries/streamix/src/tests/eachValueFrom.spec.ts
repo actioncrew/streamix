@@ -1,4 +1,4 @@
-import { eachValueFrom, EMPTY, firstValueFrom, from, lastValueFrom } from '../lib';
+import { eachValueFrom, EMPTY, firstValueFrom, from, lastValueFrom } from '@actioncrew/streamix';
 
 describe('eachValueFrom', () => {
   it('should get first value from the stream', async () => {

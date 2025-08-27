@@ -1,4 +1,4 @@
-import { createSubject, eachValueFrom, Stream, unique } from '../lib';
+import { createSubject, eachValueFrom, Stream, unique } from '@actioncrew/streamix';
 
 describe('unique operator', () => {
   let subject: ReturnType<typeof createSubject<any>>;

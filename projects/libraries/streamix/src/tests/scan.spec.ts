@@ -1,4 +1,4 @@
-import { catchError, from, scan } from '../lib';
+import { catchError, from, scan } from '@actioncrew/streamix';
 
 describe('scan operator', () => {
   it('should accumulate values correctly', (done) => {

@@ -1,4 +1,4 @@
-import { createSubject, ignoreElements } from "../lib"; // Import your ignoreElements operator
+import { createSubject, ignoreElements } from "@actioncrew/streamix"; // Import your ignoreElements operator
 
 describe("ignoreElements", () => {
   it("should ignore all emitted values and only emit complete", async () => {

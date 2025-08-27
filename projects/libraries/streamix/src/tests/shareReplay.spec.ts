@@ -1,4 +1,4 @@
-import { createStream, shareReplay } from '../lib';
+import { createStream, shareReplay } from '@actioncrew/streamix';
 
 describe('shareReplay operator', () => {
   it('should replay last emitted value to new subscribers', done => {

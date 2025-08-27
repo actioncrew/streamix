@@ -1,4 +1,4 @@
-import { from, skip } from '../lib';
+import { from, skip } from '@actioncrew/streamix';
 
 describe('skip operator', () => {
   it('should skip the specified number of emissions', (done) => {

@@ -1,4 +1,4 @@
-import { delay, EMPTY, filter, from, map, mergeMap, take, timer } from '../lib';
+import { delay, EMPTY, filter, from, map, mergeMap, take, timer } from '@actioncrew/streamix';
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {

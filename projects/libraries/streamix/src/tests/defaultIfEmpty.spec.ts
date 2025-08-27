@@ -1,4 +1,4 @@
-import { concatMap, createSubject, defaultIfEmpty, EMPTY, of } from '../lib';
+import { concatMap, createSubject, defaultIfEmpty, EMPTY, of } from '@actioncrew/streamix';
 
 describe('DefaultIfEmptyOperator', () => {
   it('should emit the default value if no values are emitted', (done) => {

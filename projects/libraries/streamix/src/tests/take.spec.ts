@@ -1,4 +1,4 @@
-import { from, take } from '../lib';
+import { from, take } from '@actioncrew/streamix';
 
 describe('take operator', () => {
   it('should take specified number of emissions', (done) => {

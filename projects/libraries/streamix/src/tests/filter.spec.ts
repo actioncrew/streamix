@@ -1,4 +1,4 @@
-import { filter, from } from '../lib';
+import { filter, from } from '@actioncrew/streamix';
 
 describe('FilterOperator', () => {
   it('should allow values that pass the predicate', (done) => {

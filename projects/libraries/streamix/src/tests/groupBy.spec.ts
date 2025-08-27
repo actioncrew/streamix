@@ -1,4 +1,4 @@
-import { from, groupBy, map, merge, mergeMap, of, tap } from '../lib';
+import { from, groupBy, map, merge, mergeMap, of, tap } from '@actioncrew/streamix';
 
 describe('groupBy and custom partitioning', () => {
   it('should partition values using groupBy and sort them by key', (done) => {

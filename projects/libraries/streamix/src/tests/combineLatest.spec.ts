@@ -1,4 +1,4 @@
-import { combineLatest, from, Subscription, timer } from '../lib';
+import { combineLatest, from, Subscription, timer } from '@actioncrew/streamix';
 
 describe('CombineLatestStream with TimerStreams', () => {
   it('should combine timer streams correctly', (done) => {

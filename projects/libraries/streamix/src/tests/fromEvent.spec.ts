@@ -1,4 +1,4 @@
-import { fromEvent } from '../lib';
+import { fromEvent } from '@actioncrew/streamix';
 
 xdescribe('fromEvent function', () => {
   it('should emit events from the element', (done) => {

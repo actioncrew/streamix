@@ -1,4 +1,4 @@
-import { createSubject, eachValueFrom, throttle } from '../lib';
+import { createSubject, eachValueFrom, throttle } from '@actioncrew/streamix';
 
 describe('throttle operator', () => {
   it('should emit first value immediately and throttle subsequent values', async () => {

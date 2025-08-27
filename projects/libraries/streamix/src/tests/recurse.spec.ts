@@ -1,4 +1,4 @@
-import { eachValueFrom, from, recurse, Stream } from '../lib';
+import { eachValueFrom, from, recurse, Stream } from '@actioncrew/streamix';
 
 describe('recurse', () => {
   it('should recurse depth-first by default', async () => {

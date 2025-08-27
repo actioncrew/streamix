@@ -1,4 +1,4 @@
-import { concat, from } from '../lib';
+import { concat, from } from '@actioncrew/streamix';
 
 
 describe('ConcatStream', () => {
