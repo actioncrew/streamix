@@ -64,7 +64,7 @@ export interface StreamContext {
   markPending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
   createResult: <T>(options?: Partial<StreamResult<T>>) => StreamResult<T>;
   logFlow(eventType: 'pending' | 'resolved' | 'phantom' | 'error',
-    operator: Operator, result?: StreamResult<any>, message?: string
+    operator: Operator, result?: any, message?: string
   ): void;
   finalize(): Promise<void>;
 }
@@ -242,12 +242,12 @@ export function createStreamContext(pipelineContext: PipelineContext, stream: St
   };
 
   const logFlow = (eventType: 'pending' | 'resolved' | 'phantom' | 'error',
-    operator: Operator, result?: StreamResult<any>, message?: string
+    operator: Operator, result?: any, message?: string
   ) => {
     if (!pipelineContext.flowLoggingEnabled) return;
 
     const opPath = pipelineContext.operatorStack(operator);
-    const logMsg = message ?? `${eventType} ${result?.value ?? ''}`;
+    const logMsg = `${message} ${result ?? ''}`;
     console.log(`[FLOW] [${eventType}] [${streamId}] [${opPath}]: ${logMsg}`);
   }
 

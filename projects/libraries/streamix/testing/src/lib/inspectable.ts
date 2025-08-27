@@ -82,8 +82,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
               const { result } = winner;
               if (result.done) break;
 
-              const streamResult = streamContext.createResult({ value: result.value });
-              streamContext.logFlow('resolved', null as any, streamResult, 'Emitted value');
+              streamContext.logFlow('resolved', null as any, result.value, 'Emitted value');
 
               await receiver.next?.(result.value);
             }
