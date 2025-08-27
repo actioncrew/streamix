@@ -1,4 +1,4 @@
-import { distinctUntilChanged, from } from '../lib';
+import { distinctUntilChanged, from } from '@actioncrew/streamix';
 
 
 describe('distinctUntilChanged', () => {

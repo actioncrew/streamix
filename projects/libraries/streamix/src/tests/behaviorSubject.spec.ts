@@ -1,4 +1,4 @@
-import { createBehaviorSubject } from '../lib';
+import { createBehaviorSubject } from '@actioncrew/streamix';
 
 describe('BehaviorSubject', () => {
   it('should emit the current value to new subscribers immediately', (done) => {

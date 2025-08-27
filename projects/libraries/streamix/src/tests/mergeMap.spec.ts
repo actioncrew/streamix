@@ -1,4 +1,5 @@
-import { delay, EMPTY, filter, from, map, mergeMap, take, timer } from '../lib';
+import { delay, EMPTY, filter, from, map, mergeMap, take, timer } from '@actioncrew/streamix';
+import { inspectable } from '@actioncrew/streamix/testing';
 
 describe('mergeMap operator', () => {
   it('should merge emissions from inner streams correctly', (done) => {
@@ -28,7 +29,7 @@ describe('mergeMap operator', () => {
     const secondProject = (value: number) => from([value * 2]);
 
     // Create the chained stream
-    const chainedStream = testStream.pipe(
+    const chainedStream = inspectable(testStream).pipe(
       // Filter: Keep only even numbers
       filter((value) => value % 2 === 0),
       // MergeMap: Project each even number into an array [value, value * 10]

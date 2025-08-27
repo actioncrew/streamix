@@ -1,4 +1,4 @@
-import { catchError, endWith, finalize, from, startWith, tap } from '../lib';
+import { catchError, endWith, finalize, from, startWith, tap } from '@actioncrew/streamix';
 
 describe('tap operator', () => {
   it('should perform side effects for each emission', (done) => {

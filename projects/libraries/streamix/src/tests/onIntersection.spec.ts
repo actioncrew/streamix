@@ -1,4 +1,4 @@
-import { onIntersection } from '../lib';
+import { onIntersection } from '@actioncrew/streamix';
 
 xdescribe('Functional tests for fromIntersectionObserver', () => {
   let element: HTMLElement;

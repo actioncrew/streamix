@@ -1,4 +1,4 @@
-import { createStream, debounce, from, interval, take } from "../lib";
+import { createStream, debounce, from, interval, take } from "@actioncrew/streamix";
 
 describe('debounce operator', () => {
   it('should debounce values from an array stream', (done) => {

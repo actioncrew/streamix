@@ -1,4 +1,4 @@
-import { createSubject, eachValueFrom, sample } from '../lib';
+import { createSubject, eachValueFrom, sample } from '@actioncrew/streamix';
 
 describe("sample operator", () => {
   let subject: any;

@@ -1,4 +1,4 @@
-import { from, skipWhile } from '../lib';
+import { from, skipWhile } from '@actioncrew/streamix';
 
 describe('skipWhile', () => {
   it('should skip values while the predicate is true', (done) => {

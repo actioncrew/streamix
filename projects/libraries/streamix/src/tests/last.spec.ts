@@ -1,4 +1,4 @@
-import { from, last } from "../lib";
+import { from, last } from "@actioncrew/streamix";
 
 describe('last Operator', () => {
   it('should emit the last value of the stream', (done) => {

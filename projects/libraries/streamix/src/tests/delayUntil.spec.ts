@@ -1,4 +1,4 @@
-import { createSubject, delayUntil } from "../lib"; // Import your delayUntil operator
+import { createSubject, delayUntil } from "@actioncrew/streamix"; // Import your delayUntil operator
 
 describe("delayUntil", () => {
   it("should delay emissions until the condition stream emits a value", async () => {

@@ -1,4 +1,4 @@
-import { createStream, eachValueFrom, retry } from "../lib";
+import { createStream, eachValueFrom, retry } from "@actioncrew/streamix";
 
 describe('retry stream', () => {
   it('should retry the stream once on error and emit correct values', async () => {

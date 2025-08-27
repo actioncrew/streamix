@@ -1,4 +1,4 @@
-import { concatMap, createStream, from, of, Stream } from '../lib';
+import { concatMap, createStream, from, of, Stream } from '@actioncrew/streamix';
 
 describe('ConcatMapOperator', () => {
 

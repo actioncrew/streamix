@@ -1,4 +1,4 @@
-import { catchError, createSubject, map, Subject } from '../lib';
+import { catchError, createSubject, map, Subject } from '@actioncrew/streamix';
 
 describe('CatchErrorOperator Functional Test', () => {
   let subject: Subject;

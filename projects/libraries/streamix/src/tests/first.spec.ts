@@ -1,4 +1,4 @@
-import { first, from } from "../lib";
+import { first, from } from "@actioncrew/streamix";
 
 describe('first Operator', () => {
   it('should emit the first value even when there is a delay', (done) => {

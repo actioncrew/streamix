@@ -1,4 +1,4 @@
-import { from, iif, switchMap } from '../lib';
+import { from, iif, switchMap } from '@actioncrew/streamix';
 
 
 describe('iif operator', () => {

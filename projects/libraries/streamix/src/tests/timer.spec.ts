@@ -1,4 +1,4 @@
-import { timer } from '../lib';
+import { timer } from '@actioncrew/streamix';
 
 describe('TimerStream', () => {
   it('should emit values at specified interval', (done) => {

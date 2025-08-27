@@ -1,4 +1,4 @@
-import { createReplaySubject, eachValueFrom } from '../lib';
+import { createReplaySubject, eachValueFrom } from '@actioncrew/streamix';
 
 describe('ReplaySubject', () => {
   it('should emit values to subscribers in real-time as well as replay buffered values', async () => {

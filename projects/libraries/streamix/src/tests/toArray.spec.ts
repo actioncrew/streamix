@@ -1,4 +1,4 @@
-import { createSubject, eachValueFrom, Stream, toArray } from '../lib';
+import { createSubject, eachValueFrom, Stream, toArray } from '@actioncrew/streamix';
 
 describe('toArray operator', () => {
   let subject: ReturnType<typeof createSubject<number>>;

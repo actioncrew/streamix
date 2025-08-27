@@ -1,4 +1,4 @@
-import { count, createSubject, eachValueFrom, max, min, Stream } from '../lib';
+import { count, createSubject, eachValueFrom, max, min, Stream } from '@actioncrew/streamix';
 
 describe('min operator', () => {
   let subject: ReturnType<typeof createSubject<number>>;

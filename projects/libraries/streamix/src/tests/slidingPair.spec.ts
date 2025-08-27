@@ -1,4 +1,4 @@
-import { from, slidingPair } from "../lib";
+import { from, slidingPair } from "@actioncrew/streamix";
 
 
 describe('slidingPair Operator', () => {

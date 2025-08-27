@@ -1,4 +1,4 @@
-import { map, onAnimationFrame, takeWhile } from '../lib';
+import { map, onAnimationFrame, takeWhile } from '@actioncrew/streamix';
 
 xdescribe('fromAnimationFrame - Functional Test', () => {
 

@@ -1,4 +1,4 @@
-import { EMPTY } from '../lib';
+import { EMPTY } from '@actioncrew/streamix';
 
 describe('EmptyStream', () => {
   it('should auto-complete without emitting any values', async () => {

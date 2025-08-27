@@ -1,4 +1,4 @@
-import { from, of, take, takeUntil, timer } from '../lib';
+import { from, of, take, takeUntil, timer } from '@actioncrew/streamix';
 
 describe('takeUntil operator', () => {
   it('should take emissions until notifier emits', (done) => {

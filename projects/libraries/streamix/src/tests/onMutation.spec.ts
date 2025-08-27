@@ -1,4 +1,4 @@
-import { onMutation } from '../lib';
+import { onMutation } from '@actioncrew/streamix';
 
 // Mock DOM element for testing purposes
 let observedElement: HTMLDivElement;

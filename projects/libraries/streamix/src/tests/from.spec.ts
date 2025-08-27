@@ -1,4 +1,4 @@
-import { from } from '../lib';
+import { from } from '@actioncrew/streamix';
 
 describe('from function', () => {
   it('should emit values in sequence and complete', async () => {

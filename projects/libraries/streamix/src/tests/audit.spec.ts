@@ -1,4 +1,4 @@
-import { audit, createSubject } from '../lib';
+import { audit, createSubject } from '@actioncrew/streamix';
 
 describe('audit operator', () => {
   let input: ReturnType<typeof createSubject<number>>;

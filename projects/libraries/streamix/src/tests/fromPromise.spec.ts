@@ -1,4 +1,4 @@
-import { fromPromise } from '../lib';
+import { fromPromise } from '@actioncrew/streamix';
 
 describe('FromPromiseStream', () => {
   it('should emit value from resolved promise', (done) => {

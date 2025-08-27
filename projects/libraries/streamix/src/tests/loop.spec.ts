@@ -1,4 +1,4 @@
-import { eachValueFrom, loop, StreamGenerator } from '../lib';
+import { eachValueFrom, loop, StreamGenerator } from '@actioncrew/streamix';
 
 function collect<T>(stream: StreamGenerator<T>): Promise<T[]> {
   const result: T[] = [];

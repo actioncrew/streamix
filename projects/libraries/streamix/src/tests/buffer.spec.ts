@@ -1,4 +1,4 @@
-import { buffer, createSubject, eachValueFrom, Stream } from "../lib";
+import { buffer, createSubject, eachValueFrom, Stream } from "@actioncrew/streamix";
 
 describe("buffer operator", () => {
   let source: Stream<number>;
