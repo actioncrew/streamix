@@ -121,7 +121,7 @@ export const filterLogEntries = (logState: LogState, minLevel: LogLevel): LogEnt
 // Enhanced Logging Functions with Full Colorization
 // -------------------------------
 
-export const logEvent = (
+const logEvent = (
   threshold: LogLevel,
   severity: LogLevel,
   streamId: string,
@@ -129,6 +129,8 @@ export const logEvent = (
   message: string,
   result?: StreamResult
 ) => {
+  if (severity > threshold) return null;
+  
   // store the actual severity on the entry
   const entry = createLogEntry(severity, streamId, operatorPath, message, result);
 
