@@ -171,8 +171,6 @@ const getFlowEventColor = (eventType: 'emitted' | 'pending' | 'resolved' | 'phan
   }
 };
 
-const isNode = typeof process !== 'undefined' && process.versions?.node;
-
 // -------------------------------
 // Enhanced Logging Functions with Full Colorization
 // -------------------------------
@@ -188,56 +186,27 @@ const logEvent = (
   // store the actual severity on the entry
   const entry = createLogEntry(severity, streamId, operatorPath, message, result);
 
-  if (!shouldLog(threshold, severity)) return entry;
-
-  if (isNode) {
-    const levelColor = getLogLevelColor(severity);
-    const streamColor = ConsoleColors.STREAM_ID;
-    const operatorColor = ConsoleColors.OPERATOR_PATH;
-    const messageColor = ConsoleColors.MESSAGE;
-    const valueColor = ConsoleColors.VALUE;
-    const reset = ConsoleColors.RESET;
-
-    const formattedMessage =
-      `${levelColor}[${entry.levelName}]${reset} ${operatorColor}${entry.operatorPath}${reset} ` +
-      `${streamColor}(${entry.streamId})${reset}: ${messageColor}${entry.message}${reset}`;
-
-    const valueToLog = result?.value;
-    const formattedValue =
-      valueToLog === undefined
-        ? ''
-        : ` ${valueColor}${typeof valueToLog === 'object' ? JSON.stringify(valueToLog) : valueToLog}${reset}`;
-
+  const levelStyle = (() => {
     switch (severity) {
-      case LogLevel.ERROR: console.error(formattedMessage + formattedValue); break;
-      case LogLevel.WARN:  console.warn (formattedMessage + formattedValue); break;
-      case LogLevel.INFO:  console.info (formattedMessage + formattedValue); break;
-      case LogLevel.DEBUG: console.debug(formattedMessage + formattedValue); break;
-      default:             console.log  (formattedMessage + formattedValue);
+      case LogLevel.ERROR: return 'color: red; font-weight: bold;';
+      case LogLevel.WARN:  return 'color: orange; font-weight: bold;';
+      case LogLevel.INFO:  return 'color: teal; font-weight: bold;';
+      case LogLevel.DEBUG: return 'color: purple; font-weight: bold;';
+      default:             return 'color: black;';
     }
-  } else {
-    const levelStyle = (() => {
-      switch (severity) {
-        case LogLevel.ERROR: return 'color: red; font-weight: bold;';
-        case LogLevel.WARN:  return 'color: orange; font-weight: bold;';
-        case LogLevel.INFO:  return 'color: teal; font-weight: bold;';
-        case LogLevel.DEBUG: return 'color: purple; font-weight: bold;';
-        default:             return 'color: black;';
-      }
-    })();
+  })();
 
-    const valueToLog = result?.value;
-    if (valueToLog === undefined) {
-      console.log(
-        `%c[${entry.levelName}] %c${entry.operatorPath} %c(${entry.streamId}): %c${entry.message}`,
-        levelStyle, 'color: blue;', 'color: gray;', 'color: black;'
-      );
-    } else {
-      console.log(
-        `%c[${entry.levelName}] %c${entry.operatorPath} %c(${entry.streamId}): %c${entry.message} %c${typeof valueToLog === 'object' ? JSON.stringify(valueToLog) : String(valueToLog)}`,
-        levelStyle, 'color: blue;', 'color: gray;', 'color: black;', 'color: orange;'
-      );
-    }
+  const valueToLog = result?.value;
+  if (valueToLog === undefined) {
+    console.log(
+      `%c[${entry.levelName}] %c${entry.operatorPath} %c(${entry.streamId}): %c${entry.message}`,
+      levelStyle, 'color: blue;', 'color: gray;', 'color: black;'
+    );
+  } else {
+    console.log(
+      `%c[${entry.levelName}] %c${entry.operatorPath} %c(${entry.streamId}): %c${entry.message} %c${typeof valueToLog === 'object' ? JSON.stringify(valueToLog) : String(valueToLog)}`,
+      levelStyle, 'color: blue;', 'color: gray;', 'color: black;', 'color: orange;'
+    );
   }
 
   return entry;
