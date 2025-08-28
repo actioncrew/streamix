@@ -147,31 +147,6 @@ export const filterLogEntries = (logState: LogState, minLevel: LogLevel): LogEnt
   logState.filter(entry => entry.level <= minLevel);
 
 // -------------------------------
-// Color Helpers
-// -------------------------------
-
-const getLogLevelColor = (level: LogLevel): string => {
-  switch (level) {
-    case LogLevel.ERROR: return ConsoleColors.ERROR;
-    case LogLevel.WARN: return ConsoleColors.WARN;
-    case LogLevel.INFO: return ConsoleColors.INFO;
-    case LogLevel.DEBUG: return ConsoleColors.DEBUG;
-    default: return ConsoleColors.RESET;
-  }
-};
-
-const getFlowEventColor = (eventType: 'emitted' | 'pending' | 'resolved' | 'phantom' | 'error'): string => {
-  switch (eventType) {
-    case 'emitted': return ConsoleColors.FLOW_EMITTED;
-    case 'pending': return ConsoleColors.FLOW_PENDING;
-    case 'resolved': return ConsoleColors.FLOW_RESOLVED;
-    case 'phantom': return ConsoleColors.FLOW_PHANTOM;
-    case 'error': return ConsoleColors.FLOW_ERROR;
-    default: return ConsoleColors.RESET;
-  }
-};
-
-// -------------------------------
 // Enhanced Logging Functions with Full Colorization
 // -------------------------------
 
