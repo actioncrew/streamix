@@ -388,88 +388,63 @@ export function createStreamContext(
         : String(result)
       : '';
 
-    if (isNode) {
-      // Node.js with ANSI colors - full message colorization
-      const eventColor = getFlowEventColor(eventType);
-      const streamColor = ConsoleColors.STREAM_ID;
-      const operatorColor = ConsoleColors.OPERATOR_PATH;
-      const messageColor = ConsoleColors.MESSAGE;
-      const valueColor = ConsoleColors.VALUE;
-      const flowLabelColor = ConsoleColors.FLOW_LABEL;
-      const reset = ConsoleColors.RESET;
+    // Browser with CSS styles - full message colorization
+    const eventStyle = (() => {
+      switch (eventType) {
+        case 'emitted':
+          return 'color: green; font-weight: bold;';
+        case 'pending':
+          return 'color: orange; font-weight: bold;';
+        case 'resolved':
+          return 'color: teal; font-weight: bold;';
+        case 'phantom':
+          return 'color: purple; font-weight: bold;';
+        case 'error':
+          return 'color: red; font-weight: bold;';
+        default:
+          return 'color: black;';
+      }
+    })();
 
-      if (opPath) {
-        const baseMessage = `${flowLabelColor}[FLOW]${reset} ${eventColor}[${eventType}]${reset} ${streamColor}[${streamId}]${reset} ${operatorColor}[${opPath}]${reset}: ${messageColor}${logMsg}`;
-        const fullMessage = hasResult
-          ? `${baseMessage} ${valueColor}${resultStr}${reset}`
-          : baseMessage;
-        console.log(fullMessage);
+    if (opPath) {
+      if (hasResult) {
+        console.log(
+          `%c[FLOW] %c[${eventType}] %c[${streamId}] %c[${opPath}]: %c${logMsg} %c${resultStr}`,
+          'color: darkgreen; font-weight: bold;',
+          eventStyle,
+          'color: gray;',
+          'color: blue;',
+          'color: black;',
+          'color: orange;', // Yellow for values
+        );
       } else {
-        const baseMessage = `${flowLabelColor}[FLOW]${reset} ${eventColor}[${eventType}]${reset} ${streamColor}[${streamId}]${reset}: ${messageColor}${logMsg}`;
-        const fullMessage = hasResult
-          ? `${baseMessage} ${valueColor}${resultStr}${reset}`
-          : baseMessage;
-        console.log(fullMessage);
+        console.log(
+          `%c[FLOW] %c[${eventType}] %c[${streamId}] %c[${opPath}]: %c${logMsg}`,
+          'color: darkgreen; font-weight: bold;',
+          eventStyle,
+          'color: gray;',
+          'color: blue;',
+          'color: black;',
+        );
       }
     } else {
-      // Browser with CSS styles - full message colorization
-      const eventStyle = (() => {
-        switch (eventType) {
-          case 'emitted':
-            return 'color: green; font-weight: bold;';
-          case 'pending':
-            return 'color: orange; font-weight: bold;';
-          case 'resolved':
-            return 'color: teal; font-weight: bold;';
-          case 'phantom':
-            return 'color: purple; font-weight: bold;';
-          case 'error':
-            return 'color: red; font-weight: bold;';
-          default:
-            return 'color: black;';
-        }
-      })();
-
-      if (opPath) {
-        if (hasResult) {
-          console.log(
-            `%c[FLOW] %c[${eventType}] %c[${streamId}] %c[${opPath}]: %c${logMsg} %c${resultStr}`,
-            'color: darkgreen; font-weight: bold;',
-            eventStyle,
-            'color: gray;',
-            'color: blue;',
-            'color: black;',
-            'color: orange;', // Yellow for values
-          );
-        } else {
-          console.log(
-            `%c[FLOW] %c[${eventType}] %c[${streamId}] %c[${opPath}]: %c${logMsg}`,
-            'color: darkgreen; font-weight: bold;',
-            eventStyle,
-            'color: gray;',
-            'color: blue;',
-            'color: black;',
-          );
-        }
+      if (hasResult) {
+        console.log(
+          `%c[FLOW] %c[${eventType}] %c[${streamId}]: %c${logMsg} %c${resultStr}`,
+          'color: darkgreen; font-weight: bold;',
+          eventStyle,
+          'color: gray;',
+          'color: black;',
+          'color: orange;', // Yellow for values
+        );
       } else {
-        if (hasResult) {
-          console.log(
-            `%c[FLOW] %c[${eventType}] %c[${streamId}]: %c${logMsg} %c${resultStr}`,
-            'color: darkgreen; font-weight: bold;',
-            eventStyle,
-            'color: gray;',
-            'color: black;',
-            'color: orange;', // Yellow for values
-          );
-        } else {
-          console.log(
-            `%c[FLOW] %c[${eventType}] %c[${streamId}]: %c${logMsg}`,
-            'color: darkgreen; font-weight: bold;',
-            eventStyle,
-            'color: gray;',
-            'color: black;',
-          );
-        }
+        console.log(
+          `%c[FLOW] %c[${eventType}] %c[${streamId}]: %c${logMsg}`,
+          'color: darkgreen; font-weight: bold;',
+          eventStyle,
+          'color: gray;',
+          'color: black;',
+        );
       }
     }
   };
