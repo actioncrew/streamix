@@ -26,7 +26,8 @@ export interface InspectableStream<T = any> extends Stream<T> {
 export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
   // One PipelineContext for the entire source pipeline
   const pipelineContext = createPipelineContext({
-    logLevel: LogLevel.INFO,
+    logLevel: LogLevel.WARN,
+    flowLogLevel: LogLevel.DEBUG,
     phantomHandler: (operator, streamContext, result) => {
       streamContext.logFlow('phantom', operator, result, 'Phantom value dropped');
     },
