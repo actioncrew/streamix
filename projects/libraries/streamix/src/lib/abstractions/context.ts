@@ -86,35 +86,6 @@ export interface PipelineContext {
 }
 
 // -------------------------------
-// Console Color Constants
-// -------------------------------
-
-const ConsoleColors = {
-  // LogLevel colors
-  ERROR: '\x1b[31m', // Red
-  WARN: '\x1b[33m',  // Yellow
-  INFO: '\x1b[36m',  // Cyan
-  DEBUG: '\x1b[35m', // Magenta
-
-  // Flow event type colors
-  FLOW_EMITTED: '\x1b[32m',  // Green
-  FLOW_PENDING: '\x1b[33m',  // Yellow
-  FLOW_RESOLVED: '\x1b[36m', // Cyan
-  FLOW_PHANTOM: '\x1b[35m',  // Magenta
-  FLOW_ERROR: '\x1b[31m',    // Red
-
-  // Context colors
-  STREAM_ID: '\x1b[90m',     // Gray
-  OPERATOR_PATH: '\x1b[94m', // Blue
-  MESSAGE: '\x1b[37m',       // White
-  FLOW_LABEL: '\x1b[32m',    // Green (for [FLOW] label)
-  VALUE: '\x1b[33m',         // Yellow (for values)
-
-  // Reset
-  RESET: '\x1b[0m'
-} as const;
-
-// -------------------------------
 // Logging Helpers
 // -------------------------------
 
@@ -150,7 +121,7 @@ export const filterLogEntries = (logState: LogState, minLevel: LogLevel): LogEnt
 // Enhanced Logging Functions with Full Colorization
 // -------------------------------
 
-const logEvent = (
+export const logEvent = (
   threshold: LogLevel,
   severity: LogLevel,
   streamId: string,
