@@ -33,15 +33,16 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
   });
 
   // Root StreamContext for the source stream itself
-  const rootContext = createStreamContext(pipelineContext, source);
+  const sc = pipelineContext.currentStreamContext();
 
   function createInspectableStream<S>(
     upstream: Stream<any>,
     operators: Operator<any, any>[],
     parentContext: PipelineContext
   ): InspectableStream<S> {
-    const streamContext = createStreamContext(parentContext, upstream);
+    const upstreamSc = createStreamContext(parentContext, upstream);
 
+    // Create the piped stream object first
     const pipedStream: InspectableStream<S> = {
       name: `${upstream.name}-sink`,
       type: "stream",
@@ -53,9 +54,26 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
 
       subscribe(cb?: any): Subscription {
         const receiver = createReceiver(cb);
-        let iterator: StreamIterator<any> = eachValueFrom(upstream)[Symbol.asyncIterator]();
+        const sourceIterator: StreamIterator<any> = eachValueFrom(upstream)[Symbol.asyncIterator]();
 
-        // Apply operators
+        // Create a logging wrapper for the source iterator
+        const loggingSourceIterator = {
+          async next() {
+            const result = await sourceIterator.next();
+            if (!result.done) {
+              // Log source values in upstream context
+              upstreamSc?.logFlow('emitted', null as any, result.value, 'Emitted source value');
+            }
+            return result;
+          },
+          return: sourceIterator.return?.bind(sourceIterator),
+          throw: sourceIterator.throw?.bind(sourceIterator),
+          [Symbol.asyncIterator]() { return this; }
+        };
+
+        let iterator: StreamIterator<any> = loggingSourceIterator;
+
+        // Apply operators to create the sink iterator
         for (const op of operators) {
           const patched = patchOperator(op);
           iterator = patched.apply(iterator, parentContext);
@@ -82,23 +100,25 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
               const { result } = winner;
               if (result.done) break;
 
-              streamContext.logFlow('resolved', null as any, result.value, 'Emitted value');
+              // Log sink values in sink context (values after transformation)
+              sinkSc?.logFlow('resolved', null as any, result.value, 'Emitted sink value');
 
               await receiver.next?.(result.value);
             }
           } catch (err: any) {
-            streamContext.logFlow('error', null as any, undefined, String(err));
+            sinkSc?.logFlow('error', null as any, undefined, String(err));
             await receiver.error?.(err);
           } finally {
             await receiver.complete?.();
-            await streamContext.finalize();
+            await upstreamSc?.finalize();
+            await sinkSc?.finalize();
           }
         })();
 
         return createSubscription(async () => {
           abortController.abort();
-          if (iterator.return) {
-            await iterator.return().catch(() => {});
+          if (sourceIterator.return) {
+            await sourceIterator.return().catch(() => {});
           }
         });
       },
@@ -107,6 +127,9 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
         return firstValueFrom(pipedStream);
       },
     };
+
+    // Now create the sink StreamContext with the pipedStream object
+    const sinkSc = createStreamContext(parentContext, pipedStream);
 
     return pipedStream;
   }
@@ -144,17 +167,17 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
             const { result } = winner;
             if (result.done) break;
 
-            const streamResult = rootContext.createResult({ value: result.value });
-            rootContext.logFlow('resolved', null as any, streamResult, 'Emitted value');
+            // For the root stream (no operators), this logs the source values
+            sc?.logFlow('resolved', null as any, result.value, 'Emitted source value');
 
             await receiver.next?.(result.value);
           }
         } catch (err: any) {
-          rootContext.logFlow('error', null as any, undefined, String(err));
+          sc?.logFlow('error', null as any, undefined, String(err));
           await receiver.error?.(err);
         } finally {
           await receiver.complete?.();
-          await rootContext.finalize();
+          await sc?.finalize();
         }
       })();
 

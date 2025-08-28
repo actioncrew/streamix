@@ -63,7 +63,7 @@ export interface StreamContext {
   markPhantom: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
   markPending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
   createResult: <T>(options?: Partial<StreamResult<T>>) => StreamResult<T>;
-  logFlow(eventType: 'pending' | 'resolved' | 'phantom' | 'error',
+  logFlow(eventType: 'emitted' | 'pending' | 'resolved' | 'phantom' | 'error',
     operator: Operator, result?: any, message?: string
   ): void;
   finalize(): Promise<void>;
