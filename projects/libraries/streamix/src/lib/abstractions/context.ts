@@ -64,7 +64,7 @@ export interface StreamContext {
   markPending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
   createResult: <T>(options?: Partial<StreamResult<T>>) => StreamResult<T>;
   logFlow(eventType: 'emitted' | 'pending' | 'resolved' | 'phantom' | 'error',
-    operator: Operator, result?: any, message?: string
+    operator: Operator | null, result?: any, message?: string
   ): void;
   finalize(): Promise<void>;
 }
@@ -83,6 +83,35 @@ export interface PipelineContext {
   unregisterStream(streamId: string): void;
   finalize(): Promise<void>;
 }
+
+// -------------------------------
+// Console Color Constants
+// -------------------------------
+
+const ConsoleColors = {
+  // LogLevel colors
+  ERROR: '\x1b[31m', // Red
+  WARN: '\x1b[33m',  // Yellow
+  INFO: '\x1b[36m',  // Cyan
+  DEBUG: '\x1b[35m', // Magenta
+
+  // Flow event type colors
+  FLOW_EMITTED: '\x1b[32m',  // Green
+  FLOW_PENDING: '\x1b[33m',  // Yellow
+  FLOW_RESOLVED: '\x1b[36m', // Cyan
+  FLOW_PHANTOM: '\x1b[35m',  // Magenta
+  FLOW_ERROR: '\x1b[31m',    // Red
+
+  // Context colors
+  STREAM_ID: '\x1b[90m',     // Gray
+  OPERATOR_PATH: '\x1b[94m', // Blue
+  MESSAGE: '\x1b[37m',       // White
+  FLOW_LABEL: '\x1b[32m',    // Green (for [FLOW] label)
+  VALUE: '\x1b[33m',         // Yellow (for values)
+
+  // Reset
+  RESET: '\x1b[0m'
+} as const;
 
 // -------------------------------
 // Logging Helpers
@@ -111,6 +140,37 @@ export const appendLogEntry = (logState: LogState, newEntry: LogEntry): LogState
 export const filterLogEntries = (logState: LogState, minLevel: LogLevel): LogEntry[] =>
   logState.filter(entry => entry.level >= minLevel);
 
+// -------------------------------
+// Color Helpers
+// -------------------------------
+
+const getLogLevelColor = (level: LogLevel): string => {
+  switch (level) {
+    case LogLevel.ERROR: return ConsoleColors.ERROR;
+    case LogLevel.WARN: return ConsoleColors.WARN;
+    case LogLevel.INFO: return ConsoleColors.INFO;
+    case LogLevel.DEBUG: return ConsoleColors.DEBUG;
+    default: return ConsoleColors.RESET;
+  }
+};
+
+const getFlowEventColor = (eventType: 'emitted' | 'pending' | 'resolved' | 'phantom' | 'error'): string => {
+  switch (eventType) {
+    case 'emitted': return ConsoleColors.FLOW_EMITTED;
+    case 'pending': return ConsoleColors.FLOW_PENDING;
+    case 'resolved': return ConsoleColors.FLOW_RESOLVED;
+    case 'phantom': return ConsoleColors.FLOW_PHANTOM;
+    case 'error': return ConsoleColors.FLOW_ERROR;
+    default: return ConsoleColors.RESET;
+  }
+};
+
+const isNode = typeof process !== 'undefined' && process.versions?.node;
+
+// -------------------------------
+// Enhanced Logging Functions with Full Colorization
+// -------------------------------
+
 const logEvent = (
   logLevel: LogLevel,
   streamId: string,
@@ -119,7 +179,61 @@ const logEvent = (
   result?: StreamResult
 ) => {
   const entry = createLogEntry(logLevel, streamId, operatorPath, message, result);
-  console.log(`[${entry.levelName}] ${entry.operatorPath} (${entry.streamId}): ${entry.message}`, result?.value ?? '');
+
+  if (logLevel === LogLevel.OFF) return entry;
+
+  if (isNode) {
+    // Node.js with ANSI colors - full message colorization
+    const levelColor = getLogLevelColor(logLevel);
+    const streamColor = ConsoleColors.STREAM_ID;
+    const operatorColor = ConsoleColors.OPERATOR_PATH;
+    const messageColor = ConsoleColors.MESSAGE;
+    const valueColor = ConsoleColors.VALUE;
+    const reset = ConsoleColors.RESET;
+
+    const formattedMessage = `${levelColor}[${entry.levelName}]${reset} ${operatorColor}${entry.operatorPath}${reset} ${streamColor}(${entry.streamId})${reset}: ${messageColor}${entry.message}${reset}`;
+
+    const valueToLog = result?.value ?? '';
+    const formattedValue = valueToLog ? ` ${valueColor}${typeof valueToLog === 'object' ? JSON.stringify(valueToLog) : valueToLog}${reset}` : '';
+
+    switch (logLevel) {
+      case LogLevel.ERROR: console.error(formattedMessage + formattedValue); break;
+      case LogLevel.WARN: console.warn(formattedMessage + formattedValue); break;
+      case LogLevel.INFO: console.info(formattedMessage + formattedValue); break;
+      case LogLevel.DEBUG: console.debug(formattedMessage + formattedValue); break;
+      default: console.log(formattedMessage + formattedValue);
+    }
+  } else {
+    // Browser with CSS styles - full message colorization
+    const levelStyle = (() => {
+      switch (logLevel) {
+        case LogLevel.ERROR: return 'color: red; font-weight: bold;';
+        case LogLevel.WARN: return 'color: orange; font-weight: bold;';
+        case LogLevel.INFO: return 'color: teal; font-weight: bold;';
+        case LogLevel.DEBUG: return 'color: purple; font-weight: bold;';
+        default: return 'color: black;';
+      }
+    })();
+
+    const valueToLog = result?.value ?? '';
+    if (valueToLog) {
+      console.log(`%c[${entry.levelName}] %c${entry.operatorPath} %c(${entry.streamId}): %c${entry.message} %c${typeof valueToLog === 'object' ? JSON.stringify(valueToLog) : valueToLog}`,
+        levelStyle,
+        'color: blue;',
+        'color: gray;',
+        'color: black;',
+        'color: orange;'  // Yellow for values
+      );
+    } else {
+      console.log(`%c[${entry.levelName}] %c${entry.operatorPath} %c(${entry.streamId}): %c${entry.message}`,
+        levelStyle,
+        'color: blue;',
+        'color: gray;',
+        'color: black;'
+      );
+    }
+  }
+
   return entry;
 };
 
@@ -250,12 +364,79 @@ export function createStreamContext(pipelineContext: PipelineContext, stream: St
     if (!pipelineContext.flowLoggingEnabled) return;
 
     const opPath = operator !== null ? pipelineContext.operatorStack(operator) : '';
-    const logMsg = `${message ?? ''} ${result ?? ''}`;
+    const logMsg = `${message ?? ''}`.trim();
+    const hasResult = result !== undefined && result !== null;
+    const resultStr = hasResult ? (typeof result === 'object' ? JSON.stringify(result) : String(result)) : '';
 
-    if (opPath) {
-      console.log(`[FLOW] [${eventType}] [${streamId}] [${opPath}]: ${logMsg}`);
+    if (isNode) {
+      // Node.js with ANSI colors - full message colorization
+      const eventColor = getFlowEventColor(eventType);
+      const streamColor = ConsoleColors.STREAM_ID;
+      const operatorColor = ConsoleColors.OPERATOR_PATH;
+      const messageColor = ConsoleColors.MESSAGE;
+      const valueColor = ConsoleColors.VALUE;
+      const flowLabelColor = ConsoleColors.FLOW_LABEL;
+      const reset = ConsoleColors.RESET;
+
+      if (opPath) {
+        const baseMessage = `${flowLabelColor}[FLOW]${reset} ${eventColor}[${eventType}]${reset} ${streamColor}[${streamId}]${reset} ${operatorColor}[${opPath}]${reset}: ${messageColor}${logMsg}`;
+        const fullMessage = hasResult ? `${baseMessage} ${valueColor}${resultStr}${reset}` : baseMessage;
+        console.log(fullMessage);
+      } else {
+        const baseMessage = `${flowLabelColor}[FLOW]${reset} ${eventColor}[${eventType}]${reset} ${streamColor}[${streamId}]${reset}: ${messageColor}${logMsg}`;
+        const fullMessage = hasResult ? `${baseMessage} ${valueColor}${resultStr}${reset}` : baseMessage;
+        console.log(fullMessage);
+      }
     } else {
-      console.log(`[FLOW] [${eventType}] [${streamId}]: ${logMsg}`);
+      // Browser with CSS styles - full message colorization
+      const eventStyle = (() => {
+        switch (eventType) {
+          case 'emitted': return 'color: green; font-weight: bold;';
+          case 'pending': return 'color: orange; font-weight: bold;';
+          case 'resolved': return 'color: teal; font-weight: bold;';
+          case 'phantom': return 'color: purple; font-weight: bold;';
+          case 'error': return 'color: red; font-weight: bold;';
+          default: return 'color: black;';
+        }
+      })();
+
+      if (opPath) {
+        if (hasResult) {
+          console.log(`%c[FLOW] %c[${eventType}] %c[${streamId}] %c[${opPath}]: %c${logMsg} %c${resultStr}`,
+            'color: darkgreen; font-weight: bold;',
+            eventStyle,
+            'color: gray;',
+            'color: blue;',
+            'color: black;',
+            'color: orange;'  // Yellow for values
+          );
+        } else {
+          console.log(`%c[FLOW] %c[${eventType}] %c[${streamId}] %c[${opPath}]: %c${logMsg}`,
+            'color: darkgreen; font-weight: bold;',
+            eventStyle,
+            'color: gray;',
+            'color: blue;',
+            'color: black;'
+          );
+        }
+      } else {
+        if (hasResult) {
+          console.log(`%c[FLOW] %c[${eventType}] %c[${streamId}]: %c${logMsg} %c${resultStr}`,
+            'color: darkgreen; font-weight: bold;',
+            eventStyle,
+            'color: gray;',
+            'color: black;',
+            'color: orange;'  // Yellow for values
+          );
+        } else {
+          console.log(`%c[FLOW] %c[${eventType}] %c[${streamId}]: %c${logMsg}`,
+            'color: darkgreen; font-weight: bold;',
+            eventStyle,
+            'color: gray;',
+            'color: black;'
+          );
+        }
+      }
     }
   };
 
@@ -288,7 +469,11 @@ export function createStreamContext(pipelineContext: PipelineContext, stream: St
 // PipelineContext Factory
 // -------------------------------
 
-export function createPipelineContext(options: { phantomHandler?: (operator: Operator, s: StreamContext, value: any) => CallbackReturnType; logLevel?: LogLevel } = {}): PipelineContext {
+export function createPipelineContext(options: {
+  phantomHandler?: (operator: Operator, s: StreamContext, value: any) => CallbackReturnType;
+  logLevel?: LogLevel;
+  flowLoggingEnabled?: boolean;
+} = {}): PipelineContext {
   const activeStreams = new Map<string, StreamContext>();
   const streamStack: StreamContext[] = [];
 
@@ -322,7 +507,7 @@ export function createPipelineContext(options: { phantomHandler?: (operator: Ope
   const context: PipelineContext = {
     logLevel: options.logLevel ?? LogLevel.INFO,
     operators: [],
-    flowLoggingEnabled: true,
+    flowLoggingEnabled: options.flowLoggingEnabled ?? true,
     operatorStack,
     phantomHandler: options.phantomHandler ?? (() => {}),
     activeStreams,
