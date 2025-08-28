@@ -241,15 +241,23 @@ export function createStreamContext(pipelineContext: PipelineContext, stream: St
     return result.resolve();
   };
 
-  const logFlow = (eventType: 'pending' | 'resolved' | 'phantom' | 'error',
-    operator: Operator, result?: any, message?: string
+  const logFlow = (
+    eventType: 'emitted' | 'pending' | 'resolved' | 'phantom' | 'error',
+    operator: Operator | null,
+    result?: any,
+    message?: string
   ) => {
     if (!pipelineContext.flowLoggingEnabled) return;
 
-    const opPath = pipelineContext.operatorStack(operator);
-    const logMsg = `${message} ${result ?? ''}`;
-    console.log(`[FLOW] [${eventType}] [${streamId}] [${opPath}]: ${logMsg}`);
-  }
+    const opPath = operator !== null ? pipelineContext.operatorStack(operator) : '';
+    const logMsg = `${message ?? ''} ${result ?? ''}`;
+
+    if (opPath) {
+      console.log(`[FLOW] [${eventType}] [${streamId}] [${opPath}]: ${logMsg}`);
+    } else {
+      console.log(`[FLOW] [${eventType}] [${streamId}]: ${logMsg}`);
+    }
+  };
 
   const finalize = async () => {
     logEvent(pipelineContext.logLevel, streamId, 'finalize', `Finalizing stream, waiting for ${pendingResults.size} results.`);
