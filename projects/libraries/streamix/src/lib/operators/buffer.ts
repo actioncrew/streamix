@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, Operator, StreamResult } from "../abstractions";
+import { createOperator, createStreamResult, Operator } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject, timer } from "../streams";
 
@@ -13,19 +13,12 @@ import { createSubject, timer } from "../streams";
 export function buffer<T = any>(period: number) {
   return createOperator<T, T[]>("buffer", function (this: Operator, source, context) {
     const output = createSubject<T[]>();
-    const sc = context?.currentStreamContext();
-
-    let buffer: StreamResult<T>[] = [];
+    let buffer: T[] = [];
     let completed = false;
 
     const flush = () => {
       if (buffer.length > 0) {
-        // Emit an array of the actual values
-        const values = buffer.map((r) => r.value!);
-        output.next(values);
-
-        // Resolve all pending results for this flush
-        buffer.forEach((r) => sc?.resolvePending(this, r));
+        output.next(buffer);
         buffer = [];
       }
     };
@@ -44,11 +37,6 @@ export function buffer<T = any>(period: number) {
     };
 
     const fail = (err: any) => {
-      // resolve all pending before error
-      if (buffer.length > 0) {
-        buffer.forEach((r) => sc?.markPhantom(this, r));
-        buffer = [];
-      }
       output.error(err);
       cleanup();
     };
@@ -63,24 +51,43 @@ export function buffer<T = any>(period: number) {
     (async () => {
       try {
         while (true) {
-          const result: StreamResult<T> = createStreamResult(await source.next());
+          // CORRECT: Get current stream context INSIDE the processing loop
+          const sc = context?.currentStreamContext();
+
+          const result = await source.next();
           if (result.done) break;
 
           // Mark this value as pending in the context
-          sc?.markPending(this, result);
+          if (sc) {
+            const pendingResult = createStreamResult({
+              value: result.value,
+              done: false
+            });
+            sc.markPending(this, pendingResult);
+          }
 
           // Add to buffer
-          buffer.push(result);
+          buffer.push(result.value);
         }
       } catch (err) {
-        cleanup();
+        // CORRECT: Get current context for error handling too
+        const sc = context?.currentStreamContext();
+        if (sc && buffer.length > 0) {
+          buffer.forEach(value => {
+            const phantomResult = createStreamResult({
+              value: value,
+              type: 'phantom',
+              done: true
+            });
+            sc.markPhantom(this, phantomResult);
+          });
+        }
         output.error(err);
       } finally {
         flushAndComplete();
       }
     })();
 
-    const iterable = eachValueFrom<T[]>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom<T[]>(output);
   });
 }

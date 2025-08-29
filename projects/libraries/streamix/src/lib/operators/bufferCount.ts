@@ -10,11 +10,11 @@ import { DONE, NEXT, Operator, StreamResult, createOperator, createStreamResult 
  */
 export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
   createOperator<T, T[]>("bufferCount", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
     let completed = false;
 
     return {
       next: async () => {
+        const sc = context?.currentStreamContext();
         if (completed) return DONE;
 
         const buffer: StreamResult<T>[] = [];

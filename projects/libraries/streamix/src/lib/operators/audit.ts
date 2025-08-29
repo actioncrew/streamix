@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, Operator, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, Operator, StreamContext, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -14,57 +14,76 @@ import { createSubject } from '../streams';
  * @param duration The time in milliseconds to wait before emitting the latest value.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
+
 export const audit = <T = any>(duration: number) =>
   createOperator<T, T>('audit', function (this: Operator, source, context) {
     const output = createSubject<T>();
-    const sc = context?.currentStreamContext();
 
+    let lastValue: T | undefined = undefined;
     let lastResult: StreamResult<T> | undefined = undefined;
     let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
 
-    const flush = () => {
-      if (lastResult !== undefined) {
-        output.next(lastResult.value!);
-        sc?.resolvePending(this, lastResult);
+    const flush = (sc: StreamContext) => {
+      if (lastValue !== undefined && lastResult !== undefined) {
+        output.next(lastValue);
+        sc.resolvePending(this, lastResult);
+        lastValue = undefined;
         lastResult = undefined;
       }
       timerId = undefined;
     };
 
-    const startTimer = () => {
-      timerId = setTimeout(() => flush(), duration);
+    const startTimer = (sc: StreamContext) => {
+      timerId = setTimeout(() => flush(sc), duration);
     };
 
     (async () => {
       try {
         while (true) {
-          const result = createStreamResult(await source.next());
+          // CORRECT: Get current context inside the loop
+          const sc = context?.currentStreamContext();
+
+          // CORRECT: source.next() already returns StreamResult
+          const result = await source.next();
 
           // Stream completed
           if (result.done) {
-            if (lastResult !== undefined) {
-              flush();
+            if (lastResult !== undefined && sc) {
+              flush(sc);
             }
             break;
           }
 
           // If a previous value is still pending, mark it as phantom
-          if (timerId !== undefined && lastResult !== undefined) {
-            sc?.markPhantom(this, lastResult);
+          if (timerId !== undefined && lastResult !== undefined && sc) {
+            sc.markPhantom(this, lastResult);
           }
 
+          // Create proper pending result for the new value
+          const pendingResult = createStreamResult({
+            value: result.value,
+            done: false
+          });
+
           // Add new value to pending set and buffer it
-          lastResult = result;
-          sc?.markPending(this, lastResult);
+          lastValue = result.value;
+          lastResult = pendingResult;
+
+          if (sc) {
+            sc.markPending(this, pendingResult);
+          }
 
           // Start a new timer if not active
-          if (timerId === undefined) {
-            startTimer();
+          if (timerId === undefined && sc) {
+            startTimer(sc);
           }
         }
       } catch (err) {
+        const sc = context?.currentStreamContext();
         output.error(err);
-        if (lastResult) sc?.resolvePending(this, lastResult);
+        if (lastResult && sc) {
+          sc.resolvePending(this, lastResult);
+        }
       } finally {
         if (timerId !== undefined) {
           clearTimeout(timerId);
@@ -74,6 +93,5 @@ export const audit = <T = any>(duration: number) =>
       }
     })();
 
-    const iterable = eachValueFrom<T>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom<T>(output);
   });
