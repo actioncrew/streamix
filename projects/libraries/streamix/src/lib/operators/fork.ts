@@ -1,5 +1,6 @@
-import { CallbackReturnType, createOperator, createStreamContext, createStreamResult, DONE, NEXT, Operator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamContext, createStreamResult, Operator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
+import { createSubject, Subject } from "../streams";
 
 /**
  * Represents a conditional branch for the `fork` operator.
@@ -57,63 +58,114 @@ export interface ForkOption<T = any, R = any> {
  * @throws {Error} If a source value does not match any predicate.
  */
 export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
-  createOperator<T, R>('fork', function (this: Operator, source, context) {
+  createOperator<T, R>("fork", function (this: Operator, source, context) {
+    // Use a Subject for the output stream, mirroring the concatMap pattern
+    const output: Subject<R> = createSubject<R>();
     const sc = context?.currentStreamContext();
+
     let outerIndex = 0;
-    let innerIterator: AsyncIterator<R> | null = null;
-    let outerValue: T | undefined;
-    let innerStreamHadEmissions = false;
+    let outerCompleted = false;
+    let errorOccurred = false;
+    let currentInnerCompleted = true;
+    let pendingValues: T[] = [];
 
-    return {
-      next: async () => {
-        while (true) {
-          // If no active inner iterator, get next outer value
-          if (!innerIterator) {
-            const result = createStreamResult(await source.next());
-            if (result.done) {
-              return DONE;
-            }
+    // This async function processes a single inner stream at a time
+    const processNextInner = async () => {
+      // Don't proceed if there are no pending values or an inner stream is already processing
+      if (pendingValues.length === 0 || !currentInnerCompleted) return;
 
-            let matched: typeof options[number] | undefined;
-            outerValue = result.value;
-            innerStreamHadEmissions = false;
+      currentInnerCompleted = false;
+      const outerValue = pendingValues.shift()!;
+      let matchedOption: typeof options[number] | undefined;
 
-            for (const option of options) {
-              if (await option.on(outerValue!, outerIndex++)) {
-                matched = option;
-                break;
-              }
-            }
-
-            if (!matched) {
-              throw new Error(`No handler found for value: ${outerValue}`);
-            }
-
-            const innerStream = fromAny(matched.handler(outerValue!));
-            context && createStreamContext(context, innerStream);
-            innerIterator = eachValueFrom(innerStream);
+      try {
+        // Find the first matching handler by checking each predicate
+        for (const option of options) {
+          if (await option.on(outerValue, outerIndex++)) {
+            matchedOption = option;
+            break;
           }
+        }
 
-          // Pull next inner value
-          const innerResult = await innerIterator.next();
-          if (innerResult.done) {
-            innerIterator = null;
-            // Now we can use the flag to determine if we should emit a phantom
-            // or just continue. A phantom is only needed if the inner stream had
-            // no emissions.
-            if (!innerStreamHadEmissions) {
-              // We return a phantom of the original outer value.
-              await sc?.phantomHandler(this, outerValue);
-            }
-            // If the inner stream had emissions, we just continue the loop
-            // to process the next outer value.
-            continue;
-          }
+        if (!matchedOption) {
+          throw new Error(`No handler found for value: ${outerValue}`);
+        }
 
-          // A value was emitted, so we know the inner stream is not empty.
-          innerStreamHadEmissions = true;
-          return NEXT(innerResult.value);
+        // Create the inner stream from the matched handler's result
+        const innerStream = fromAny(matchedOption.handler(outerValue));
+        const innerSc = context && createStreamContext(context, innerStream);
+        let innerHadEmissions = false;
+
+        // Consume the inner stream using a for await...of loop,
+        // which ensures sequential processing.
+        for await (const val of eachValueFrom(innerStream)) {
+          if (errorOccurred) break;
+
+          output.next(val);
+          innerHadEmissions = true;
+
+          // Log emissions from the inner stream
+          innerSc?.logFlow('emitted', null as any, val, 'Inner stream emitted from fork handler');
+        }
+
+        // Handle the "phantom" value for inner streams that complete with no emissions
+        if (!innerHadEmissions && !errorOccurred) {
+          await innerSc?.phantomHandler(null as any, outerValue);
+        }
+
+      } catch (err) {
+        if (!errorOccurred) {
+          errorOccurred = true;
+          output.error(err);
+        }
+      } finally {
+        currentInnerCompleted = true;
+
+        // If there are more pending values, process the next one
+        if (pendingValues.length > 0) {
+          processNextInner();
+        } else if (outerCompleted && !errorOccurred) {
+          // If the outer stream is complete and the queue is empty, complete the output stream
+          output.complete();
         }
       }
     };
+
+    // This immediately-invoked async function handles the outer stream
+    (async () => {
+      try {
+        // Loop to pull values from the source stream
+        while (true) {
+          const result = createStreamResult(await source.next());
+          if (result.done) break;
+          if (errorOccurred) break;
+
+          // Push the received value to the pending queue
+          pendingValues.push(result.value);
+
+          // Log the outer value reception
+          sc?.logFlow('emitted', this, result.value, 'Outer value received');
+
+          // If no inner stream is currently active, start processing the queue
+          if (currentInnerCompleted) {
+            processNextInner();
+          }
+        }
+
+        outerCompleted = true;
+
+        // Final check to complete the output stream if all processing is done
+        if (pendingValues.length === 0 && currentInnerCompleted && !errorOccurred) {
+          output.complete();
+        }
+      } catch (err) {
+        if (!errorOccurred) {
+          errorOccurred = true;
+          output.error(err);
+        }
+      }
+    })();
+
+    // Return the output stream, which will be consumed by the next operator in the pipeline
+    return eachValueFrom<R>(output);
   });

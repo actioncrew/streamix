@@ -1,5 +1,6 @@
-import { CallbackReturnType, createOperator, createStreamContext, createStreamResult, DONE, NEXT, Operator, Stream, StreamResult } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from "../converters";
+import { createSubject, Subject } from "../streams";
 
 /**
  * Creates a stream operator that maps each value from the source stream to a new
@@ -21,52 +22,91 @@ import { eachValueFrom, fromAny } from "../converters";
  *   - or an array of `R`.
  * @returns An {@link Operator} instance that can be used in a stream's `pipe` method.
  */
-export const concatMap = <T = any, R = T>(
+export const concatMap = <T = any, R = any>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) =>
-  createOperator<T, R>("concatMap", function (this : Operator, source, context) {
+  createOperator<T, R>("concatMap", function (this: Operator, source, context) {
+    const output: Subject<R> = createSubject<R>();
     const sc = context?.currentStreamContext();
-    let outerIndex = 0;
-    let innerIterator: AsyncIterator<R> | null = null;
-    let result: StreamResult<T> | null = null;
-    let innerHadEmissions = false;
 
-    return {
-      next: async () => {
-        while (true) {
-          // If no active inner iterator, pull the next outer value
-          if (!innerIterator) {
-            result = createStreamResult(await source.next());
+    let index = 0;
+    let outerCompleted = false;
+    let errorOccurred = false;
+    let currentInnerCompleted = true;
+    let pendingValues: T[] = [];
 
-            if (result.done) return DONE;
+    const processNextInner = async () => {
+      if (pendingValues.length === 0 || !currentInnerCompleted) return;
 
-            // Initialize inner stream
-            innerHadEmissions = false;
+      currentInnerCompleted = false;
+      const outerValue = pendingValues.shift()!;
 
-            const innerStream = fromAny(project(result.value, outerIndex++));
-            context && createStreamContext(context, innerStream);
-            innerIterator = eachValueFrom(innerStream);
-          }
+      try {
+        const innerStream = fromAny(project(outerValue, index++));
+        const innerSc = context?.registerStream(innerStream);
+        let innerHadEmissions = false;
 
-          // Pull next value from inner stream
-          const innerResult = await innerIterator.next();
+        for await (const val of eachValueFrom(innerStream)) {
+          if (errorOccurred) break;
 
-          if (innerResult.done) {
-            innerIterator = null;
-
-            // If inner stream emitted nothing, produce a phantom
-            if (!innerHadEmissions && result !== null) {
-              await sc?.phantomHandler(this, result.value);
-            }
-
-            // Otherwise continue to next outer value
-            continue;
-          }
-
-          // Mark that inner stream produced a value
+          output.next(val);
           innerHadEmissions = true;
-          return NEXT(innerResult.value);
+
+          // Log with inner stream's context
+          innerSc?.logFlow('emitted', null as any, val, 'Inner stream emitted');
         }
-      },
+
+        // Log phantom for inner streams with no emissions
+        if (!innerHadEmissions && !errorOccurred) {
+          await innerSc?.phantomHandler(null as any, outerValue);
+        }
+      } catch (err) {
+        if (!errorOccurred) {
+          errorOccurred = true;
+          output.error(err);
+        }
+      } finally {
+        currentInnerCompleted = true;
+
+        // Process next inner stream if available
+        if (pendingValues.length > 0) {
+          processNextInner();
+        } else if (outerCompleted && pendingValues.length === 0) {
+          output.complete();
+        }
+      }
     };
+
+    (async () => {
+      try {
+        while (true) {
+          const result = createStreamResult(await source.next());
+          if (result.done) break;
+          if (errorOccurred) break;
+
+          pendingValues.push(result.value);
+
+          // Log outer value reception
+          sc?.logFlow('emitted', this, result.value, 'Outer value received');
+
+          if (currentInnerCompleted) {
+            processNextInner();
+          }
+        }
+
+        outerCompleted = true;
+
+        // Complete if no pending values and current inner is done
+        if (pendingValues.length === 0 && currentInnerCompleted && !errorOccurred) {
+          output.complete();
+        }
+      } catch (err) {
+        if (!errorOccurred) {
+          errorOccurred = true;
+          output.error(err);
+        }
+      }
+    })();
+
+    return eachValueFrom<R>(output);
   });
