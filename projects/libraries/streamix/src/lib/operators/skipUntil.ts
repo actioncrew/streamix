@@ -23,7 +23,6 @@ import { createSubject } from '../streams';
 export function skipUntil<T = any>(notifier: Stream) {
   return createOperator<T, T>('skipUntil', function (this: Operator, source, context) {
     const output = createSubject<T>();
-    const sc = context?.currentStreamContext();
     let canEmit = false;
 
     // Subscribe to notifier as an async iterator
@@ -46,7 +45,9 @@ export function skipUntil<T = any>(notifier: Stream) {
     setTimeout(async () => {
       try {
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
+
           if (result.done) {
             output.complete();
             break;

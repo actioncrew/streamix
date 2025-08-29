@@ -17,8 +17,9 @@ import { eachValueFrom } from '../converters';
  * @param notifier The stream that acts as a gatekeeper.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
+
 export const delayUntil = <T = any>(notifier: Stream<any>) =>
-  createOperator<T, T>("delayUntil", function(this: Operator, source) {
+  createOperator<T, T>("delayUntil", function(this: Operator, source, context) {
     let canEmit = false;
     let notifierDone = false;
     let notifierStarted = false;
@@ -45,21 +46,52 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
+
           if (canEmit) {
             if (buffer.length) {
-              return NEXT(buffer.shift()!);
+              const value = buffer.shift()!;
+              return NEXT(value);
             }
-            return source.next();
+
+            // CORRECT: source.next() already returns StreamResult
+            const result = await source.next();
+
+            // Log emission if context available
+            sc?.logFlow?.('emitted', this, result.value, 'Value emitted after delay');
+
+            return result;
           }
 
-          const result = createStreamResult(await source.next());
+          // CORRECT: source.next() already returns StreamResult
+          const result = await source.next();
           if (result.done) return result;
+
+          // Create pending result for buffered value
+          if (sc) {
+            const pendingResult = createStreamResult({
+              value: result.value,
+              done: false
+            });
+            sc.markPending(this, pendingResult);
+          }
 
           buffer.push(result.value);
 
           if (notifierDone) {
             // fallback in case notifier ends without emitting
             canEmit = true;
+
+            // Resolve all pending results when we start emitting
+            if (sc) {
+              buffer.forEach(value => {
+                const resolvedResult = createStreamResult({
+                  value: value,
+                  done: false
+                });
+                sc.resolvePending(this, resolvedResult);
+              });
+            }
           }
         }
       },

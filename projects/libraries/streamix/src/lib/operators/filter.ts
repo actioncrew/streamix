@@ -25,8 +25,8 @@ export const filter = <T = any>(
 
     return {
       next: async () => {
-        const sc = context?.currentStreamContext();
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
           if (result.done) return result;
 

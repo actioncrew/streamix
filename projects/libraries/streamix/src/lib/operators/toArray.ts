@@ -9,7 +9,6 @@ import { createOperator, createStreamResult, DONE, NEXT, Operator, StreamResult 
  */
 export const toArray = <T = any>() =>
   createOperator<T, T[]>("toArray", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
     const collected: StreamResult<T>[] = [];
     let completed = false;
     let emitted = false;
@@ -22,6 +21,7 @@ export const toArray = <T = any>() =>
             return DONE;
           }
 
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) {

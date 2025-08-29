@@ -22,13 +22,14 @@ export const unique = <T = any, K = any>(
   keySelector?: (value: T) => CallbackReturnType<K>
 ) =>
   createOperator<T, T>("unique", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
     const seen = new Set<K | T>();
 
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
+
           if (result.done) return DONE;
 
           const key = keySelector ? await keySelector(result.value) : result.value;

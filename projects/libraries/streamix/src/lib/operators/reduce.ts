@@ -19,7 +19,6 @@ export const reduce = <T = any, A = any>(
   seed: A
 ) =>
   createOperator<T, A>("reduce", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
 
     let finalValue: A = seed;
     let emittedFinal = false;
@@ -27,6 +26,7 @@ export const reduce = <T = any, A = any>(
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) {

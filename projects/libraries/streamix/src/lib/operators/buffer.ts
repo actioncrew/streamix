@@ -51,10 +51,9 @@ export function buffer<T = any>(period: number) {
     (async () => {
       try {
         while (true) {
-          // CORRECT: Get current stream context INSIDE the processing loop
           const sc = context?.currentStreamContext();
-
           const result = await source.next();
+
           if (result.done) break;
 
           // Mark this value as pending in the context
@@ -70,7 +69,6 @@ export function buffer<T = any>(period: number) {
           buffer.push(result.value);
         }
       } catch (err) {
-        // CORRECT: Get current context for error handling too
         const sc = context?.currentStreamContext();
         if (sc && buffer.length > 0) {
           buffer.forEach(value => {

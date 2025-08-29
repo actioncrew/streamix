@@ -87,13 +87,13 @@ export const concatMap = <T = any, R = any>(
     (async () => {
       try {
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
           if (result.done) break;
           if (errorOccurred) break;
 
           pendingValues.push(result.value);
 
-          const sc = context?.currentStreamContext();
           sc?.logFlow("emitted", this, result.value, "Outer value received");
 
           if (currentInnerCompleted) {

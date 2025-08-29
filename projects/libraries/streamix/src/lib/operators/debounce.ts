@@ -44,10 +44,7 @@ export function debounce<T = any>(duration: number) {
     (async () => {
       try {
         while (true) {
-          // CORRECT: Get current context inside the loop
           const sc = context?.currentStreamContext();
-
-          // CORRECT: source.next() already returns StreamResult
           const result = await source.next();
 
           if (result.done) {

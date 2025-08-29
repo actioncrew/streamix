@@ -99,9 +99,10 @@ export function switchMap<T = any, R = any>(
 
     (async () => {
       try {
-        const sc = context?.currentStreamContext();
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
+
           if (result.done) break;
 
           // Track outer value in case inner stream emits nothing

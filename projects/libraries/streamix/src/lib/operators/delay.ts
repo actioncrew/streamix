@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, Operator, StreamResult } from '../abstractions';
+import { createOperator, createStreamResult, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -13,19 +13,29 @@ import { createSubject, Subject } from '../streams';
  * @param ms The time in milliseconds to delay each value.
  * @returns An Operator instance for use in a stream's `pipe` method.
  */
+
 export function delay<T = any>(ms: number) {
   return createOperator<T, T>('delay', function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
-    const sc = context?.currentStreamContext();
 
     (async () => {
       try {
         while (true) {
-          const result: StreamResult<T> = createStreamResult(await source.next());
+          const sc = context?.currentStreamContext();
+          const result = await source.next();
+
           if (result.done) break;
 
+          // Create proper pending result
+          const pendingResult = createStreamResult({
+            value: result.value,
+            done: false
+          });
+
           // Mark the value as pending
-          sc?.markPending(this, result);
+          if (sc) {
+            sc.markPending(this, pendingResult);
+          }
 
           // Delay emission
           await new Promise((resolve) => setTimeout(resolve, ms));
@@ -34,17 +44,24 @@ export function delay<T = any>(ms: number) {
           output.next(result.value);
 
           // Resolve pending state
-          sc?.resolvePending(this, result);
+          if (sc) {
+            sc.resolvePending(this, pendingResult);
+          }
         }
       } catch (err) {
-        // On error, remove any last pending value
-        sc?.pendingResults.forEach((res) => sc?.resolvePending(this, res));
+        const sc = context?.currentStreamContext();
+        if (sc) {
+          // Resolve all pending results on error
+          Array.from(sc.pendingResults).forEach((res) => {
+            sc.resolvePending(this, res);
+          });
+        }
         output.error(err);
       } finally {
         output.complete();
       }
     })();
 
-    return eachValueFrom(output)[Symbol.asyncIterator]();
+    return eachValueFrom(output);
   });
 }

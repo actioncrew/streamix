@@ -22,7 +22,6 @@ export const some = <T = any>(
   predicate: (value: T, index: number) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, boolean>('some', function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
     let evaluated = false;
     let found = false;
     let index = 0;
@@ -35,6 +34,7 @@ export const some = <T = any>(
 
         try {
           while (true) {
+            const sc = context?.currentStreamContext();
             const result = createStreamResult(await source.next());
 
             if (result.done) break;

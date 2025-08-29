@@ -14,7 +14,6 @@ export const max = <T = any>(
   comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
   createOperator<T, T>("max", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
     let maxValue: T | undefined;
     let hasMax = false;
     let emittedMax = false;
@@ -22,6 +21,7 @@ export const max = <T = any>(
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
           // If all values processed, emit max once and complete
           if (emittedMax && !hasMax) return DONE;
           if (emittedMax && hasMax) {

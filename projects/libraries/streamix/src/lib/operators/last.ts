@@ -22,7 +22,6 @@ export const last = <T = any>(
   predicate?: (value: T) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, T>("last", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
 
     let lastValue: T | undefined = undefined;
     let hasMatch = false;
@@ -31,6 +30,7 @@ export const last = <T = any>(
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
           if (finished) return DONE;
 
           const result = await source.next(); // REMOVED createStreamResult wrapper

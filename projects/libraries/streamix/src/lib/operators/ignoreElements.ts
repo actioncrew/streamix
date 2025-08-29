@@ -13,11 +13,10 @@ import { createOperator, createStreamResult, DONE, Operator } from "../abstracti
  */
 export const ignoreElements = <T>() =>
   createOperator<T, never>("ignoreElements", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
-
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
           if (result.done) {
             // If the source is done, we are also done.

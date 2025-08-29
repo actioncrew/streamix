@@ -22,12 +22,12 @@ export const takeWhile = <T = any>(
   predicate: (value: T) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, T>("takeWhile", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
     let active = true; // controls real values
 
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) return result;

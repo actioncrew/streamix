@@ -27,7 +27,6 @@ export const min = <T = any>(
   comparator?: (a: T, b: T) => number | Promise<number>
 ) =>
   createOperator<T, T>("min", function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
 
     let minValue: T | undefined;
     let hasMin = false;
@@ -36,6 +35,7 @@ export const min = <T = any>(
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) {

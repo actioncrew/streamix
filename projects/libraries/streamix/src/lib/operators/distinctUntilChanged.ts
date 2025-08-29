@@ -24,9 +24,8 @@ export const distinctUntilChanged = <T = any>(
 
     return {
       next: async () => {
-        const sc = context?.currentStreamContext();
         while (true) {
-          // Get the next value and wrap it in createStreamResult
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) return DONE;

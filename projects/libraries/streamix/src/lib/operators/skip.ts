@@ -13,13 +13,14 @@ import { createOperator, createStreamResult, DONE, NEXT, Operator } from '../abs
  */
 export const skip = <T = any>(count: number) =>
   createOperator<T, T>('skip', function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
     let counter = count;
 
     return {
       next: async () => {
         while (true) {
+          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
+
           if (result.done) return DONE;
 
           if (counter > 0) {
