@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamContext, createStreamResult, Operator, Stream } from '../abstractions';
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream } from '../abstractions';
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -29,33 +29,39 @@ export function mergeMap<T = any, R = any>(
 ) {
   return createOperator<T, R>('mergeMap', function (this: Operator, source, context) {
     const output: Subject<R> = createSubject<R>();
-    const sc = context?.currentStreamContext();
 
     let index = 0;
     let activeInner = 0;
     let outerCompleted = false;
     let errorOccurred = false;
 
-    // Process each inner stream concurrently.
-    const processInner = async (innerStream: Stream<R>, outerValue: T) => {
-      let innerStreamHadEmissions = false;
+    const processInner = async (innerStream: Stream<R>, innerSc: any, outerValue: T) => {
+      let innerHadEmissions = false;
       try {
         for await (const val of eachValueFrom(innerStream)) {
           if (errorOccurred) break;
+
           output.next(val);
-          innerStreamHadEmissions = true;
+          innerHadEmissions = true;
+
+          // Log with inner stream's context and full operator path
+          innerSc?.logFlow('emitted', null as any, val, 'Inner stream emitted');
         }
       } catch (err) {
         if (!errorOccurred) {
           errorOccurred = true;
           output.error(err);
+          innerSc?.logFlow('error', null as any, undefined, String(err));
         }
       } finally {
         activeInner--;
-        // If the inner stream had no emissions, signal a phantom.
-        if (!innerStreamHadEmissions && !errorOccurred) {
-          await sc?.phantomHandler(this, outerValue);
+
+        // Log phantom for inner streams
+        if (!innerHadEmissions && !errorOccurred) {
+          await innerSc?.phantomHandler(null as any, outerValue);
         }
+
+        // Complete output when all inner streams are done
         if (outerCompleted && activeInner === 0 && !errorOccurred) {
           output.complete();
         }
@@ -69,11 +75,11 @@ export function mergeMap<T = any, R = any>(
           if (result.done) break;
           if (errorOccurred) break;
 
-          const innerStream = fromAny(project(result.value, index++));
-          context && createStreamContext(context, innerStream);
+          const inner = fromAny(project(result.value, index++));
+          const innerSc = context?.registerStream(inner);
 
           activeInner++;
-          processInner(innerStream, result.value); // Pass outerValue
+          processInner(inner, innerSc, result.value);
         }
 
         outerCompleted = true;
