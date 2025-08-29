@@ -46,8 +46,6 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
-
           if (canEmit) {
             if (buffer.length) {
               const value = buffer.shift()!;
@@ -58,7 +56,7 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
             const result = await source.next();
 
             // Log emission if context available
-            sc?.logFlow?.('emitted', this, result.value, 'Value emitted after delay');
+            context?.logFlow?.('emitted', this, result.value, 'Value emitted after delay');
 
             return result;
           }
@@ -68,12 +66,12 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
           if (result.done) return result;
 
           // Create pending result for buffered value
-          if (sc) {
+          if (context) {
             const pendingResult = createStreamResult({
               value: result.value,
               done: false
             });
-            sc.markPending(this, pendingResult);
+            context.markPending(this, pendingResult);
           }
 
           buffer.push(result.value);
@@ -83,13 +81,13 @@ export const delayUntil = <T = any>(notifier: Stream<any>) =>
             canEmit = true;
 
             // Resolve all pending results when we start emitting
-            if (sc) {
+            if (context) {
               buffer.forEach(value => {
                 const resolvedResult = createStreamResult({
                   value: value,
                   done: false
                 });
-                sc.resolvePending(this, resolvedResult);
+                context.resolvePending(this, resolvedResult);
               });
             }
           }

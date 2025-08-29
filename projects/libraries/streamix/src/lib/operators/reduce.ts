@@ -26,7 +26,6 @@ export const reduce = <T = any, A = any>(
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) {
@@ -41,7 +40,7 @@ export const reduce = <T = any, A = any>(
           finalValue = await accumulator(finalValue, result.value);
 
           // Treat intermediate accumulated value as phantom
-          await sc?.markPhantom(this, result);
+          await context?.markPhantom(this, result);
         }
       },
     };

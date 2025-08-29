@@ -25,7 +25,6 @@ export const distinctUntilChanged = <T = any>(
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) return DONE;
@@ -41,13 +40,13 @@ export const distinctUntilChanged = <T = any>(
             return createStreamResult({ value: result.value, done: false });
           } else {
             // If duplicate, create proper phantom result
-            if (sc) {
+            if (context) {
               const phantomResult = createStreamResult({
                 value: result.value,
                 type: 'phantom',
                 done: true
               });
-              sc.markPhantom(this, phantomResult);
+              context.markPhantom(this, phantomResult);
             }
             continue;
           }

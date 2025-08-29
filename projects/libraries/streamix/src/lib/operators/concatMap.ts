@@ -44,7 +44,7 @@ export const concatMap = <T = any, R = any>(
 
       try {
         const innerStream = fromAny(project(outerValue, index++));
-        innerSc = context?.registerStream(innerStream);
+        innerSc = context?.pipeline.registerStream(innerStream);
         let innerHadEmissions = false;
 
         for await (const val of eachValueFrom(innerStream)) {
@@ -72,7 +72,7 @@ export const concatMap = <T = any, R = any>(
           innerSc?.logFlow("error", this, undefined, String(err));
         }
       } finally {
-        innerSc && await context?.unregisterStream(innerSc.streamId);
+        innerSc && await context?.pipeline.unregisterStream(innerSc.streamId);
 
         currentInnerCompleted = true;
 
@@ -87,14 +87,13 @@ export const concatMap = <T = any, R = any>(
     (async () => {
       try {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
           if (result.done) break;
           if (errorOccurred) break;
 
           pendingValues.push(result.value);
 
-          sc?.logFlow("emitted", this, result.value, "Outer value received");
+          context?.logFlow("emitted", this, result.value, "Outer value received");
 
           if (currentInnerCompleted) {
             processNextInner();

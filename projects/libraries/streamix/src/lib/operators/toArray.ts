@@ -21,7 +21,6 @@ export const toArray = <T = any>() =>
             return DONE;
           }
 
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) {
@@ -29,7 +28,7 @@ export const toArray = <T = any>() =>
             if (!emitted) {
               emitted = true;
               // Resolve all pending results
-              collected.forEach((r) => sc?.resolvePending(this, r));
+              collected.forEach((r) => context?.resolvePending(this, r));
               // Emit the final array of values
               return NEXT(collected.map((r) => r.value!));
             }
@@ -37,7 +36,7 @@ export const toArray = <T = any>() =>
           }
 
           // Mark the value as pending
-          sc?.markPending(this, result);
+          context?.markPending(this, result);
           collected.push(result);
         }
       },

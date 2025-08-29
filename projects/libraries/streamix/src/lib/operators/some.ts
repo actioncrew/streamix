@@ -34,7 +34,6 @@ export const some = <T = any>(
 
         try {
           while (true) {
-            const sc = context?.currentStreamContext();
             const result = createStreamResult(await source.next());
 
             if (result.done) break;
@@ -44,7 +43,7 @@ export const some = <T = any>(
               break; // Predicate matched
             }
 
-            await sc?.markPhantom(this, result);
+            await context?.markPhantom(this, result);
           }
         } finally {
           evaluated = true;

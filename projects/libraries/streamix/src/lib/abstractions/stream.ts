@@ -57,21 +57,6 @@ export interface StreamGenerator<T> extends StreamIterator<T> {
 }
 
 /**
- * Converts a normal async generator into a StreamGenerator.
- * Supports automatic phantom propagation: if the generator yields
- * an object with `{ phantom: true, value: T }`, it will be marked as a phantom.
- *
- * @template T
- * @param gen An async generator to wrap.
- * @returns StreamGenerator<T>
- */
-export function toStreamGenerator<T>(
-  gen: AsyncGenerator<T>
-): StreamGenerator<T> {
-  return gen as unknown as StreamGenerator<T>;
-}
-
-/**
  * Represents a reactive stream that supports subscriptions and operator chaining.
  *
  * A stream is a sequence of values over time that can be subscribed to for notifications.

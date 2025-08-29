@@ -98,7 +98,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             }
 
             const innerStream = fromAny(matched.handler(pendingOuter!));
-            innerSc = context?.registerStream(innerStream);
+            innerSc = context?.pipeline.registerStream(innerStream);
             innerIter = eachValueFrom(innerStream);
 
             outerIndex++;

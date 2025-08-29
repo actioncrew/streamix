@@ -18,14 +18,13 @@ export const skip = <T = any>(count: number) =>
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) return DONE;
 
           if (counter > 0) {
             counter--;
-            await sc?.markPhantom(this, result);
+            await context?.markPhantom(this, result);
             continue;
           }
 

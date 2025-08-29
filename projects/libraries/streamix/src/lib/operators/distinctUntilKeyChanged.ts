@@ -26,7 +26,6 @@ export const distinctUntilKeyChanged = <T extends object = any>(
 
     return {
       next: async () => {
-        const sc = context?.currentStreamContext();
         while (true) {
           // CORRECT: source.next() already returns StreamResult, no need to wrap
           const result = await source.next();
@@ -47,14 +46,13 @@ export const distinctUntilKeyChanged = <T extends object = any>(
             lastValue = current;
             return NEXT(current);
           } else {
-            // CORRECT: Create proper phantom result instead of using result directly
-            if (sc) {
+            if (context) {
               const phantomResult = createStreamResult({
                 value: current,
                 type: 'phantom',
                 done: true
               });
-              sc.markPhantom(this, phantomResult);
+              context.markPhantom(this, phantomResult);
             }
             continue;
           }

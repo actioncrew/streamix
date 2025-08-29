@@ -30,7 +30,6 @@ export const last = <T = any>(
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           if (finished) return DONE;
 
           const result = await source.next(); // REMOVED createStreamResult wrapper
@@ -50,13 +49,13 @@ export const last = <T = any>(
               const phantomValue = lastValue!;
               lastValue = value;
 
-              if (sc) {
+              if (context) {
                 const phantomResult = createStreamResult({
                   value: phantomValue,
                   type: 'phantom',
                   done: true
                 });
-                sc.markPhantom(this, phantomResult);
+                context.markPhantom(this, phantomResult);
               }
               continue;
             } else {
@@ -66,13 +65,13 @@ export const last = <T = any>(
             }
           } else {
             // Non-matching values are phantoms - use proper phantom handling
-            if (sc) {
+            if (context) {
               const phantomResult = createStreamResult({
                 value: value,
                 type: 'phantom',
                 done: true
               });
-              sc.markPhantom(this, phantomResult);
+              context.markPhantom(this, phantomResult);
             }
           }
         }

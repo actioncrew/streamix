@@ -16,7 +16,6 @@ export const ignoreElements = <T>() =>
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
           if (result.done) {
             // If the source is done, we are also done.
@@ -25,7 +24,7 @@ export const ignoreElements = <T>() =>
 
           // For every value received, we return a phantom.
           // The value is not passed along, but the event is still signaled.
-          await sc?.markPhantom(this, result);
+          await context?.markPhantom(this, result);
         }
       }
     };

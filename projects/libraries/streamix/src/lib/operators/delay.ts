@@ -21,7 +21,6 @@ export function delay<T = any>(ms: number) {
     (async () => {
       try {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = await source.next();
 
           if (result.done) break;
@@ -33,8 +32,8 @@ export function delay<T = any>(ms: number) {
           });
 
           // Mark the value as pending
-          if (sc) {
-            sc.markPending(this, pendingResult);
+          if (context) {
+            context.markPending(this, pendingResult);
           }
 
           // Delay emission
@@ -44,16 +43,15 @@ export function delay<T = any>(ms: number) {
           output.next(result.value);
 
           // Resolve pending state
-          if (sc) {
-            sc.resolvePending(this, pendingResult);
+          if (context) {
+            context.resolvePending(this, pendingResult);
           }
         }
       } catch (err) {
-        const sc = context?.currentStreamContext();
-        if (sc) {
+        if (context) {
           // Resolve all pending results on error
-          Array.from(sc.pendingResults).forEach((res) => {
-            sc.resolvePending(this, res);
+          Array.from(context.pendingResults).forEach((res) => {
+            context.resolvePending(this, res);
           });
         }
         output.error(err);

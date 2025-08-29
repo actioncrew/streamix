@@ -51,33 +51,31 @@ export function buffer<T = any>(period: number) {
     (async () => {
       try {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = await source.next();
 
           if (result.done) break;
 
           // Mark this value as pending in the context
-          if (sc) {
+          if (context) {
             const pendingResult = createStreamResult({
               value: result.value,
               done: false
             });
-            sc.markPending(this, pendingResult);
+            context.markPending(this, pendingResult);
           }
 
           // Add to buffer
           buffer.push(result.value);
         }
       } catch (err) {
-        const sc = context?.currentStreamContext();
-        if (sc && buffer.length > 0) {
+        if (context && buffer.length > 0) {
           buffer.forEach(value => {
             const phantomResult = createStreamResult({
               value: value,
               type: 'phantom',
               done: true
             });
-            sc.markPhantom(this, phantomResult);
+            context.markPhantom(this, phantomResult);
           });
         }
         output.error(err);

@@ -74,7 +74,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
         // Apply all operators in sequence
         for (const op of operators) {
           const patched = patchOperator(op);
-          iterator = patched.apply(iterator, pipelineContext);
+          iterator = patched.apply(iterator, upstreamSc);
         }
 
         const abortController = new AbortController();

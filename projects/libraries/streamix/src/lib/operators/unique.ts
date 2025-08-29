@@ -27,7 +27,6 @@ export const unique = <T = any, K = any>(
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) return DONE;
@@ -40,7 +39,7 @@ export const unique = <T = any, K = any>(
           }
 
           // duplicate → still emit as phantom
-          await sc?.markPhantom(this, result);
+          await context?.markPhantom(this, result);
         }
       }
     };

@@ -14,7 +14,6 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
 
     return {
       next: async () => {
-        const sc = context?.currentStreamContext();
         if (completed) return DONE;
 
         const buffer: StreamResult<T>[] = [];
@@ -27,7 +26,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
 
             // Flush any remaining buffered values
             if (buffer.length > 0) {
-              buffer.forEach((r) => sc?.resolvePending(this, r));
+              buffer.forEach((r) => context?.resolvePending(this, r));
               return NEXT(buffer.map((r) => r.value!));
             }
 
@@ -35,12 +34,12 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
           }
 
           // Mark the value as pending
-          sc?.markPending(this, result);
+          context?.markPending(this, result);
           buffer.push(result);
         }
 
         // Resolve all values in the buffer
-        buffer.forEach((r) => sc?.resolvePending(this, r));
+        buffer.forEach((r) => context?.resolvePending(this, r));
 
         return NEXT(buffer.map((r) => r.value!));
       },

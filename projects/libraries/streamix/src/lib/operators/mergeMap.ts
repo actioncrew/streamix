@@ -36,7 +36,7 @@ export function mergeMap<T = any, R = any>(
     let errorOccurred = false;
 
     const processInner = async (innerStream: Stream<R>, outerValue: T) => {
-      const innerSc = context?.registerStream(innerStream);
+      const innerSc = context?.pipeline.registerStream(innerStream);
 
       let innerHadEmissions = false;
       try {
@@ -66,7 +66,7 @@ export function mergeMap<T = any, R = any>(
           innerSc.markPhantom(this, phantomResult);
         }
 
-        innerSc && await context?.unregisterStream(innerSc.streamId);
+        innerSc && await context?.pipeline.unregisterStream(innerSc.streamId);
 
         if (outerCompleted && activeInner === 0 && !errorOccurred) {
           output.complete();

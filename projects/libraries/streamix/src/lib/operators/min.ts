@@ -35,7 +35,6 @@ export const min = <T = any>(
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) {
@@ -62,7 +61,7 @@ export const min = <T = any>(
             minValue = value;
           }
 
-          await sc?.markPhantom(this, result);
+          await context?.markPhantom(this, result);
         }
       },
     };

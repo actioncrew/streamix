@@ -26,7 +26,6 @@ export const filter = <T = any>(
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
           if (result.done) return result;
 
@@ -47,12 +46,12 @@ export const filter = <T = any>(
           }
 
           // CORRECT: Use markPhantom to create a proper phantom result
-          const phantomResult = sc?.createResult({
+          const phantomResult = context?.createResult({
             value: value,
             type: 'phantom',
             done: true
           });
-          sc?.markPhantom(this, phantomResult!);
+          context?.markPhantom(this, phantomResult!);
 
           // Continue to next value
           continue;

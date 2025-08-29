@@ -27,20 +27,19 @@ export const takeWhile = <T = any>(
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) return result;
 
           if (!active) {
-            await sc?.markPhantom(this, result);
+            await context?.markPhantom(this, result);
             continue;
           }
 
           const pass = await predicate(result.value);
           if (!pass) {
             active = false;
-            await sc?.markPhantom(this, result);
+            await context?.markPhantom(this, result);
             continue;
           }
 

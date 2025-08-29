@@ -21,7 +21,6 @@ export const max = <T = any>(
     return {
       next: async () => {
         while (true) {
-          const sc = context?.currentStreamContext();
           // If all values processed, emit max once and complete
           if (emittedMax && !hasMax) return DONE;
           if (emittedMax && hasMax) {
@@ -55,7 +54,7 @@ export const max = <T = any>(
             maxValue = value;
           }
 
-          await sc?.markPhantom(this, result);
+          await context?.markPhantom(this, result);
         }
       },
     };

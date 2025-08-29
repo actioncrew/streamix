@@ -23,8 +23,7 @@ export const throttle = <T = any>(duration: number) =>
     const flushPending = () => {
       if (pendingResult !== undefined) {
         output.next(pendingResult.value!);
-        const sc = context?.currentStreamContext();
-        sc?.resolvePending(this, pendingResult);
+        context?.resolvePending(this, pendingResult);
         pendingResult = undefined;
       }
       timer = null;
@@ -34,7 +33,6 @@ export const throttle = <T = any>(duration: number) =>
     (async () => {
       try {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result: StreamResult<T> = createStreamResult(await source.next());
 
           if (result.done) break;
@@ -47,11 +45,11 @@ export const throttle = <T = any>(duration: number) =>
           } else {
             // Previous value is superseded → phantom if any
             if (pendingResult !== undefined) {
-              sc?.markPhantom(this, pendingResult);
+              context?.markPhantom(this, pendingResult);
             }
 
             // Add current value as pending
-            sc?.markPending(this, result);
+            context?.markPending(this, result);
             pendingResult = result;
 
             // Schedule trailing emit
@@ -65,8 +63,7 @@ export const throttle = <T = any>(duration: number) =>
         // Source completed → flush trailing pending
         if (pendingResult !== undefined) flushPending();
       } catch (err) {
-        const sc = context?.currentStreamContext();
-        if (pendingResult) sc?.resolvePending(this, pendingResult);
+        if (pendingResult) context?.resolvePending(this, pendingResult);
         output.error(err);
       } finally {
         if (timer) {

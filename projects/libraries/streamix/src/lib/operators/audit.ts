@@ -24,8 +24,7 @@ export const audit = <T = any>(duration: number) =>
     const flush = () => {
       if (lastResult !== undefined) {
         output.next(lastResult.value!);
-        const sc = context?.currentStreamContext();
-        sc?.resolvePending(this, lastResult);
+        context?.resolvePending(this, lastResult);
         lastResult = undefined;
       }
       timerId = undefined;
@@ -38,7 +37,6 @@ export const audit = <T = any>(duration: number) =>
     (async () => {
       try {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           // Stream completed
@@ -51,12 +49,12 @@ export const audit = <T = any>(duration: number) =>
 
           // If a previous value is still pending, mark it as phantom
           if (timerId !== undefined && lastResult !== undefined) {
-            sc?.markPhantom(this, lastResult);
+            context?.markPhantom(this, lastResult);
           }
 
           // Add new value to pending set and buffer it
           lastResult = result;
-          sc?.markPending(this, lastResult);
+          context?.markPending(this, lastResult);
 
           // Start a new timer if not active
           if (timerId === undefined) {
@@ -65,8 +63,7 @@ export const audit = <T = any>(duration: number) =>
         }
       } catch (err) {
         output.error(err);
-        const sc = context?.currentStreamContext();
-        if (lastResult) sc?.resolvePending(this, lastResult);
+        if (lastResult) context?.resolvePending(this, lastResult);
       } finally {
         if (timerId !== undefined) {
           clearTimeout(timerId);

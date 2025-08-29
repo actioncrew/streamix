@@ -26,8 +26,7 @@ export function debounce<T = any>(duration: number) {
         output.next(latestResult.value!);
 
         // Resolve pending in context
-        const sc = context?.currentStreamContext();
-        sc?.resolvePending(this, latestResult);
+        context?.resolvePending(this, latestResult);
 
         latestResult = undefined;
       }
@@ -42,7 +41,6 @@ export function debounce<T = any>(duration: number) {
     (async () => {
       try {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) {
@@ -57,11 +55,11 @@ export function debounce<T = any>(duration: number) {
 
           // If a pending value exists and the timer is active, mark it as phantom
           if (timeoutId !== undefined && latestResult !== undefined) {
-            sc?.markPhantom(this, latestResult);
+            context?.markPhantom(this, latestResult);
           }
 
           // Add the new result to pending set
-          sc?.markPending(this, result);
+          context?.markPending(this, result);
           latestResult = result;
 
           // Reset the timer
@@ -69,8 +67,7 @@ export function debounce<T = any>(duration: number) {
           timeoutId = setTimeout(flush, duration);
         }
       } catch (err) {
-        const sc = context?.currentStreamContext();
-        if (latestResult) sc?.resolvePending(this, latestResult);
+        if (latestResult) context?.resolvePending(this, latestResult);
         output.error(err);
       } finally {
         isCompleted = true;

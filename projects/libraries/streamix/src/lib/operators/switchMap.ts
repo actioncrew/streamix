@@ -57,7 +57,7 @@ export function switchMap<T = any, R = any>(
 
         // Unregister old stream
         if (currentInnerSc) {
-          context?.unregisterStream(currentInnerSc.streamId);
+          context?.pipeline.unregisterStream(currentInnerSc.streamId);
           currentInnerSc = undefined;
         }
       }
@@ -66,7 +66,7 @@ export function switchMap<T = any, R = any>(
       pendingPhantom = null;
 
       // Register new inner stream
-      currentInnerSc = context?.registerStream(innerStream);
+      currentInnerSc = context?.pipeline.registerStream(innerStream);
 
       currentSubscription = innerStream.subscribe({
         next: (value) => {
@@ -87,7 +87,7 @@ export function switchMap<T = any, R = any>(
 
             // Unregister on completion
             if (currentInnerSc) {
-              context?.unregisterStream(currentInnerSc.streamId);
+              context?.pipeline.unregisterStream(currentInnerSc.streamId);
               currentInnerSc = undefined;
             }
 
@@ -100,7 +100,6 @@ export function switchMap<T = any, R = any>(
     (async () => {
       try {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) break;
@@ -112,7 +111,7 @@ export function switchMap<T = any, R = any>(
           const innerStream = fromAny(project(result.value, index++));
 
           // Log outer emission
-          sc?.logFlow("emitted", this, result.value, "Outer value received");
+          context?.logFlow("emitted", this, result.value, "Outer value received");
 
           await subscribeToInner(innerStream, streamId);
         }

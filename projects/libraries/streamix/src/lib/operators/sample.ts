@@ -23,15 +23,14 @@ export const sample = <T = any>(period: number) =>
 
     const startSampling = () => {
       intervalId = setInterval(async () => {
-        const sc = context?.currentStreamContext();
         if (!lastResult) return;
 
         if (skipped) {
           // Mark as phantom if the last value was skipped
-          sc?.markPhantom(this, lastResult);
+          context?.markPhantom(this, lastResult);
         } else {
           output.next(lastResult.value!);
-          sc?.resolvePending(this, lastResult);
+          context?.resolvePending(this, lastResult);
         }
 
         skipped = true;
@@ -48,18 +47,17 @@ export const sample = <T = any>(period: number) =>
         startSampling();
 
         while (true) {
-          const sc = context?.currentStreamContext();
           const result: StreamResult<T> = createStreamResult(await source.next());
 
           if (result.done) break;
 
           // Previous lastResult becomes phantom if it existed and was skipped
           if (lastResult && skipped) {
-            sc?.markPhantom(this, lastResult);
+            context?.markPhantom(this, lastResult);
           }
 
           // Track new result as pending
-          sc?.markPending(this, result);
+          context?.markPending(this, result);
           lastResult = result;
           skipped = false;
         }
@@ -67,12 +65,10 @@ export const sample = <T = any>(period: number) =>
         // Emit final value
         if (lastResult) {
           output.next(lastResult.value!);
-          const sc = context?.currentStreamContext();
-          sc?.resolvePending(this, lastResult);
+          context?.resolvePending(this, lastResult);
         }
       } catch (err) {
-        const sc = context?.currentStreamContext();
-        if (lastResult) sc?.resolvePending(this, lastResult);
+        if (lastResult) context?.resolvePending(this, lastResult);
         output.error(err);
       } finally {
         stopSampling();

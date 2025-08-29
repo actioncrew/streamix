@@ -45,7 +45,6 @@ export function skipUntil<T = any>(notifier: Stream) {
     setTimeout(async () => {
       try {
         while (true) {
-          const sc = context?.currentStreamContext();
           const result = createStreamResult(await source.next());
 
           if (result.done) {
@@ -57,7 +56,7 @@ export function skipUntil<T = any>(notifier: Stream) {
             output.next(result.value);
           } else {
             // If we are still skipping, emit a phantom value.
-            await sc?.markPhantom(this, result);
+            await context?.markPhantom(this, result);
           }
         }
       } catch (err) {
