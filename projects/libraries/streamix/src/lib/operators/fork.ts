@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, DONE, NEXT, Operator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
 
 /**
@@ -62,76 +62,109 @@ export interface ForkOption<T = any, R = any> {
   handler: (value: T) => Stream<R> | CallbackReturnType<R> | Array<R>;
 }
 
+import { StreamContext } from "../abstractions";
+import { createSubject, Subject } from "../streams";
+
+/**
+ * ForkOption describes a conditional branch for the fork operator.
+ */
+export interface ForkOption<T = any, R = any> {
+  on: (value: T, index: number) => CallbackReturnType<boolean>;
+  handler: (value: T) => Stream<R> | CallbackReturnType<R> | Array<R>;
+}
+
+/**
+ * Fork operator: routes each source value to the first matching handler,
+ * flattens inner streams sequentially, and tracks phantom emissions.
+ */
 export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
   createOperator<T, R>("fork", function (this: Operator, source, context) {
-    let outerIndex = 0;
-    let innerIter: AsyncIterator<R> | null = null;
-    let innerSc: any | null = null;
-    let pendingOuter: T | undefined;
-    let innerHadEmissions = false;
+    const output: Subject<R> = createSubject<R>();
 
-    const closeInner = async () => {
-      try { await innerSc?.finalize?.(); } catch {}
-      innerSc = null;
-      innerIter = null;
-    };
+    let index = 0;
+    let outerCompleted = false;
+    let errorOccurred = false;
+    let currentInnerCompleted = true;
+    let pendingValues: T[] = [];
 
-    return {
-      next: async () => {
-        while (true) {
-          // If no active inner, pull next outer and create one
-          if (!innerIter) {
-            const outerRes = await source.next(); // REMOVED createStreamResult wrapper
-            if (outerRes.done) return DONE;
+    const processNextInner = async () => {
+      if (pendingValues.length === 0 || !currentInnerCompleted) return;
 
-            pendingOuter = outerRes.value;
-            innerHadEmissions = false;
+      currentInnerCompleted = false;
+      const outerValue = pendingValues.shift()!;
+      let innerSc: StreamContext | undefined;
+      let innerHadEmissions = false;
 
-            // Find the first matching option
-            const idx = outerIndex;
-            let matched: ForkOption<T, R> | undefined;
-            for (const opt of options) {
-              if (await opt.on(pendingOuter!, idx)) { matched = opt; break; }
-            }
-            if (!matched) {
-              throw new Error(`No handler found for value: ${pendingOuter}`);
-            }
+      try {
+        // Find first matching ForkOption
+        let matched: ForkOption<T, R> | undefined;
+        for (const opt of options) {
+          if (await opt.on(outerValue, index)) { matched = opt; break; }
+        }
+        if (!matched) throw new Error(`No handler found for value: ${outerValue}`);
 
-            const innerStream = fromAny(matched.handler(pendingOuter!));
-            innerSc = context?.pipeline.registerStream(innerStream);
-            innerIter = eachValueFrom(innerStream);
+        const innerStream = fromAny(matched.handler(outerValue));
+        innerSc = context?.pipeline.registerStream(innerStream);
 
-            outerIndex++;
-          }
+        for await (const val of eachValueFrom(innerStream)) {
+          if (errorOccurred) break;
 
-          // Consume the active inner
-          let innerRes: IteratorResult<R>;
-          try {
-            innerRes = await innerIter.next();
-          } catch (err) {
-            await closeInner();
-            throw err;
-          }
-
-          if (innerRes.done) {
-            // CORRECT: Use proper phantom handling for empty inner streams
-            if (!innerHadEmissions && innerSc) {
-              const phantomResult = createStreamResult({
-                value: pendingOuter,
-                type: 'phantom',
-                done: true
-              });
-              innerSc.markPhantom(this, phantomResult);
-            }
-            await closeInner();
-            continue;
-          }
-
-          // Emit normal value
           innerHadEmissions = true;
-          innerSc?.logFlow?.("emitted", this, innerRes.value, "Inner stream emitted");
-          return NEXT(innerRes.value);
+          innerSc?.logFlow("emitted", this, val, "Inner stream emitted");
+          output.next(val);
+        }
+
+        if (!innerHadEmissions && innerSc) {
+          const phantomResult = createStreamResult({
+            value: outerValue,
+            type: "phantom",
+            done: true
+          });
+          innerSc.markPhantom(this, phantomResult);
+        }
+      } catch (err) {
+        if (!errorOccurred) {
+          errorOccurred = true;
+          output.error(err);
+          innerSc?.logFlow("error", this, undefined, String(err));
+        }
+      } finally {
+        if (innerSc) await context?.pipeline.unregisterStream(innerSc.streamId);
+
+        currentInnerCompleted = true;
+
+        if (pendingValues.length > 0) processNextInner();
+        else if (outerCompleted && pendingValues.length === 0 && !errorOccurred) {
+          output.complete();
         }
       }
     };
+
+    (async () => {
+      try {
+        while (true) {
+          const res = await source.next();
+          if (res.done) break;
+          if (errorOccurred) break;
+
+          pendingValues.push(res.value);
+          context?.logFlow("emitted", this, res.value, "Outer value received");
+
+          if (currentInnerCompleted) processNextInner();
+          index++;
+        }
+
+        outerCompleted = true;
+        if (pendingValues.length === 0 && currentInnerCompleted && !errorOccurred) {
+          output.complete();
+        }
+      } catch (err) {
+        if (!errorOccurred) {
+          errorOccurred = true;
+          output.error(err);
+        }
+      }
+    })();
+
+    return eachValueFrom<R>(output);
   });
