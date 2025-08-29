@@ -80,7 +80,7 @@ export interface PipelineContext {
   flags: { isPending: boolean; isFinalized: boolean };
   streamStack: StreamContext[];
   currentStreamContext(): StreamContext;
-  registerStream(context: StreamContext): void;
+  registerStream(stream: Stream, parent?: StreamContext): StreamContext;
   unregisterStream(streamId: string): void;
   finalize(): Promise<void>;
 }
@@ -130,7 +130,7 @@ const logEvent = (
   result?: StreamResult
 ) => {
   if (severity > threshold) return null;
-  
+
   // store the actual severity on the entry
   const entry = createLogEntry(severity, streamId, operatorPath, message, result);
 
@@ -283,7 +283,7 @@ export function createStreamContext(
     );
     result.type = 'phantom';
     result.done = true;
-    pipelineContext.phantomHandler(operator, context, result.value);
+    pipelineContext.phantomHandler(operator, sc, result.value);
     pendingResults.delete(result);
   };
 
@@ -416,13 +416,13 @@ export function createStreamContext(
     );
   };
 
-  const context: StreamContext = {
+  const sc: StreamContext = {
     streamId,
     pipeline: pipelineContext,
     pendingResults,
     timestamp: performance.now(),
     phantomHandler: (operator, value) =>
-      pipelineContext.phantomHandler(operator, context, value),
+      pipelineContext.phantomHandler(operator, sc, value),
     resolvePending,
     markPhantom,
     markPending,
@@ -431,8 +431,8 @@ export function createStreamContext(
     finalize,
   };
 
-  pipelineContext.registerStream(context);
-  return context;
+  pipelineContext.registerStream(stream, sc);
+  return sc;
 }
 
 // -------------------------------
@@ -448,6 +448,8 @@ export function createPipelineContext(options: {
   const activeStreams = new Map<string, StreamContext>();
   const streamStack: StreamContext[] = [];
 
+  let context: PipelineContext;
+
   const operatorStack = (operator: Operator): string => {
     const operatorIndex = context.operators.indexOf(operator);
     return context.operators.slice(0, operatorIndex + 1).map(op => op?.name ?? 'unknown').join(' → ');
@@ -455,10 +457,139 @@ export function createPipelineContext(options: {
 
   const currentStreamContext = (): StreamContext => streamStack[streamStack.length - 1];
 
-  const registerStream = (ctx: StreamContext) => {
-    activeStreams.set(ctx.streamId, ctx);
-    streamStack.push(ctx);
-    logEvent(context.logLevel, LogLevel.INFO, ctx.streamId, 'init', 'Registered new stream context.');
+  const registerStream = (stream: Stream): StreamContext => {
+    const streamId = `${stream.name}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const pendingResults = new Set<StreamResult<any>>();
+
+    const streamContext: StreamContext = {
+      streamId,
+      pipeline: context,
+      pendingResults,
+      timestamp: performance.now(),
+      phantomHandler: (op, value) => context.phantomHandler(op, streamContext, value),
+      resolvePending: (op, result) => {
+        void op;
+        result.type = 'done';
+        result.done = true;
+        pendingResults.delete(result);
+        return result.resolve();
+      },
+      markPhantom: (op, result) => {
+        result.type = 'phantom';
+        result.done = true;
+        pendingResults.delete(result);
+        context.phantomHandler(op, streamContext, result.value);
+      },
+      markPending: (op, result) => {
+        void op;
+        result.type = 'pending';
+        pendingResults.add(result);
+      },
+      createResult: <T>(options = {}) => createStreamResult<T>({ ...options }),
+      logFlow: (
+        eventType: 'emitted' | 'pending' | 'resolved' | 'phantom' | 'error',
+        operator: Operator | null,
+        result?: any,
+        message?: string,
+      ) => {
+        if (!context.flowLoggingEnabled) return;
+        const eventLevel: LogLevel = (() => {
+          switch (eventType) {
+            case 'error':
+              return LogLevel.ERROR;
+            case 'pending':
+            case 'phantom':
+              return LogLevel.DEBUG; // very verbose
+            case 'resolved':
+            case 'emitted':
+              return LogLevel.INFO;
+            default:
+              return LogLevel.DEBUG;
+          }
+        })();
+
+        if (eventLevel > context.flowLogLevel) return;
+
+        const opPath =
+          operator !== null ? context.operatorStack(operator) : '';
+        const logMsg = `${message ?? ''}`.trim();
+        const hasResult = result !== undefined && result !== null;
+        const resultStr = hasResult
+          ? typeof result === 'object'
+            ? JSON.stringify(result)
+            : String(result)
+          : '';
+
+        // Browser with CSS styles - full message colorization
+        const eventStyle = (() => {
+          switch (eventType) {
+            case 'emitted':
+              return 'color: green; font-weight: bold;';
+            case 'pending':
+              return 'color: orange; font-weight: bold;';
+            case 'resolved':
+              return 'color: teal; font-weight: bold;';
+            case 'phantom':
+              return 'color: purple; font-weight: bold;';
+            case 'error':
+              return 'color: red; font-weight: bold;';
+            default:
+              return 'color: black;';
+          }
+        })();
+
+        if (opPath) {
+          if (hasResult) {
+            console.log(
+              `%c[FLOW] %c[${eventType}] %c[${streamId}] %c[${opPath}]: %c${logMsg} %c${resultStr}`,
+              'color: darkgreen; font-weight: bold;',
+              eventStyle,
+              'color: gray;',
+              'color: blue;',
+              'color: black;',
+              'color: orange;', // Yellow for values
+            );
+          } else {
+            console.log(
+              `%c[FLOW] %c[${eventType}] %c[${streamId}] %c[${opPath}]: %c${logMsg}`,
+              'color: darkgreen; font-weight: bold;',
+              eventStyle,
+              'color: gray;',
+              'color: blue;',
+              'color: black;',
+            );
+          }
+        } else {
+          if (hasResult) {
+            console.log(
+              `%c[FLOW] %c[${eventType}] %c[${streamId}]: %c${logMsg} %c${resultStr}`,
+              'color: darkgreen; font-weight: bold;',
+              eventStyle,
+              'color: gray;',
+              'color: black;',
+              'color: orange;', // Yellow for values
+            );
+          } else {
+            console.log(
+              `%c[FLOW] %c[${eventType}] %c[${streamId}]: %c${logMsg}`,
+              'color: darkgreen; font-weight: bold;',
+              eventStyle,
+              'color: gray;',
+              'color: black;',
+            );
+          }
+        }
+      },
+      finalize: async () => {
+        [...pendingResults].forEach(r => r.finalize());
+        await Promise.all([...pendingResults].map(r => r.wait()));
+      }
+    };
+
+    // Register automatically
+    activeStreams.set(streamId, streamContext);
+    streamStack.push(streamContext);
+    return streamContext;
   };
 
   const unregisterStream = (id: string) => {
@@ -475,7 +606,7 @@ export function createPipelineContext(options: {
     logEvent(context.logLevel, LogLevel.INFO, 'pipeline', 'finalize', 'Pipeline finalized.');
   };
 
-  const context: PipelineContext = {
+  context = {
     logLevel: options.logLevel ?? LogLevel.WARN,
     flowLogLevel: options.flowLogLevel ?? LogLevel.INFO,
     operators: [],
