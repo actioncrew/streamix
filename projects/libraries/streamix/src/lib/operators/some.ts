@@ -44,7 +44,7 @@ export const some = <T = any>(
               break; // Predicate matched
             }
 
-            await sc?.phantomHandler(this, result.value);
+            await sc?.markPhantom(this, result);
           }
         } finally {
           evaluated = true;

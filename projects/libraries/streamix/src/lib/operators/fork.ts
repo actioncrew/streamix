@@ -56,17 +56,22 @@ export interface ForkOption<T = any, R = any> {
  *
  * @throws {Error} If a source value does not match any predicate.
  */
+
+export interface ForkOption<T = any, R = any> {
+  on: (value: T, index: number) => CallbackReturnType<boolean>;
+  handler: (value: T) => Stream<R> | CallbackReturnType<R> | Array<R>;
+}
+
 export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
   createOperator<T, R>("fork", function (this: Operator, source, context) {
-    let outerIndex = 0;                   // increments once per outer value
+    let outerIndex = 0;
     let innerIter: AsyncIterator<R> | null = null;
-    let innerSc: any | null = null;       // StreamContext for the active inner
-    let pendingOuter: T | undefined;      // the outer value that produced current inner
+    let innerSc: any | null = null;
+    let pendingOuter: T | undefined;
     let innerHadEmissions = false;
 
     const closeInner = async () => {
       try { await innerSc?.finalize?.(); } catch {}
-      innerSc && context?.unregisterStream(innerSc.streamId);
       innerSc = null;
       innerIter = null;
     };
@@ -76,13 +81,13 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
         while (true) {
           // If no active inner, pull next outer and create one
           if (!innerIter) {
-            const outerRes = createStreamResult(await source.next());
+            const outerRes = await source.next(); // REMOVED createStreamResult wrapper
             if (outerRes.done) return DONE;
 
             pendingOuter = outerRes.value;
             innerHadEmissions = false;
 
-            // Find the first matching option (same index passed to all predicates)
+            // Find the first matching option
             const idx = outerIndex;
             let matched: ForkOption<T, R> | undefined;
             for (const opt of options) {
@@ -96,7 +101,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
             innerSc = context?.registerStream(innerStream);
             innerIter = eachValueFrom(innerStream);
 
-            outerIndex++; // count this outer value once we’ve created its inner
+            outerIndex++;
           }
 
           // Consume the active inner
@@ -109,17 +114,21 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
           }
 
           if (innerRes.done) {
-            // Inner completed; emit phantom if it produced nothing
-            if (!innerHadEmissions) {
-              await innerSc?.phantomHandler(this, pendingOuter);
+            // CORRECT: Use proper phantom handling for empty inner streams
+            if (!innerHadEmissions && innerSc) {
+              const phantomResult = createStreamResult({
+                value: pendingOuter,
+                type: 'phantom',
+                done: true
+              });
+              innerSc.markPhantom(this, phantomResult);
             }
             await closeInner();
-            continue; // move on to the next outer value
+            continue;
           }
 
           // Emit normal value
           innerHadEmissions = true;
-          // Optional per-emission logging:
           innerSc?.logFlow?.("emitted", this, innerRes.value, "Inner stream emitted");
           return NEXT(innerRes.value);
         }

@@ -21,7 +21,7 @@ describe('mergeMap operator', () => {
     });
   });
 
-  fit('should correctly handle a chain of from, filter, mergeMap, filter, and mergeMap', (done) => {
+  it('should correctly handle a chain of from, filter, mergeMap, filter, and mergeMap', (done) => {
     const testStream = from([1, 2, 3, 4, 5, 6]);
 
     // Project functions for mergeMap

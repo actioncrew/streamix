@@ -29,7 +29,6 @@ export function switchMap<T = any, R = any>(
 ) {
   return createOperator<T, R>("switchMap", function (this: Operator, source, context) {
     const output = createSubject<R>();
-    const sc = context?.currentStreamContext();
 
     let currentSubscription: Subscription | null = null;
     let currentInnerSc: StreamContext | undefined;
@@ -50,7 +49,7 @@ export function switchMap<T = any, R = any>(
       // Cancel previous inner stream
       if (currentSubscription) {
         if (!innerHadEmissions && pendingPhantom) {
-          await currentInnerSc?.phantomHandler(this, pendingPhantom.value);
+          await currentInnerSc?.markPhantom(this, pendingPhantom);
         }
 
         currentSubscription.unsubscribe();
@@ -100,6 +99,7 @@ export function switchMap<T = any, R = any>(
 
     (async () => {
       try {
+        const sc = context?.currentStreamContext();
         while (true) {
           const result = createStreamResult(await source.next());
           if (result.done) break;

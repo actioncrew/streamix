@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream, StreamContext } from '../abstractions';
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream } from '../abstractions';
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -35,7 +35,9 @@ export function mergeMap<T = any, R = any>(
     let outerCompleted = false;
     let errorOccurred = false;
 
-    const processInner = async (innerStream: Stream<R>, innerSc: StreamContext | undefined, outerValue: T) => {
+    const processInner = async (innerStream: Stream<R>, outerValue: T) => {
+      const innerSc = context?.registerStream(innerStream);
+
       let innerHadEmissions = false;
       try {
         for await (const val of eachValueFrom(innerStream)) {
@@ -44,7 +46,6 @@ export function mergeMap<T = any, R = any>(
           output.next(val);
           innerHadEmissions = true;
 
-          // Log with inner stream's context
           innerSc?.logFlow('emitted', this, val, 'Inner stream emitted');
         }
       } catch (err) {
@@ -56,15 +57,17 @@ export function mergeMap<T = any, R = any>(
       } finally {
         activeInner--;
 
-        // Phantom logging if no emissions
-        if (!innerHadEmissions && !errorOccurred) {
-          await innerSc?.phantomHandler(this, outerValue);
+        if (!innerHadEmissions && !errorOccurred && innerSc) {
+          const phantomResult = createStreamResult({
+            value: outerValue,
+            type: 'phantom',
+            done: true
+          });
+          innerSc.markPhantom(this, phantomResult);
         }
 
-        // unregister stream after it finishes
-        innerSc && context?.unregisterStream(innerSc.streamId);
+        innerSc && await context?.unregisterStream(innerSc.streamId);
 
-        // Complete output when all inner streams are done
         if (outerCompleted && activeInner === 0 && !errorOccurred) {
           output.complete();
         }
@@ -74,15 +77,15 @@ export function mergeMap<T = any, R = any>(
     (async () => {
       try {
         while (true) {
-          const result = createStreamResult(await source.next());
+          const result = await source.next();
           if (result.done) break;
           if (errorOccurred) break;
 
           const inner = fromAny(project(result.value, index++));
-          const innerSc = context?.registerStream(inner);
-
           activeInner++;
-          processInner(inner, innerSc, result.value);
+
+          // Process with proper context creation
+          processInner(inner, result.value);
         }
 
         outerCompleted = true;

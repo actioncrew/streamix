@@ -24,7 +24,7 @@ export const skip = <T = any>(count: number) =>
 
           if (counter > 0) {
             counter--;
-            await sc?.phantomHandler(this, result.value);
+            await sc?.markPhantom(this, result);
             continue;
           }
 

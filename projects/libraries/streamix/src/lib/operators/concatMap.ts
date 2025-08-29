@@ -27,7 +27,6 @@ export const concatMap = <T = any, R = any>(
 ) =>
   createOperator<T, R>("concatMap", function (this: Operator, source, context) {
     const output: Subject<R> = createSubject<R>();
-    const sc = context?.currentStreamContext();
 
     let index = 0;
     let outerCompleted = false;
@@ -49,29 +48,31 @@ export const concatMap = <T = any, R = any>(
         let innerHadEmissions = false;
 
         for await (const val of eachValueFrom(innerStream)) {
+          let result = createStreamResult({ value: val });
           if (errorOccurred) break;
 
-          output.next(val);
+          output.next(result.value);
           innerHadEmissions = true;
 
-          // Log with inner stream's context
           innerSc?.logFlow("emitted", this, val, "Inner stream emitted");
         }
 
-        // Log phantom for inner streams with no emissions
-        if (!innerHadEmissions && !errorOccurred) {
-          await innerSc?.phantomHandler(this, outerValue);
+        if (!innerHadEmissions && !errorOccurred && innerSc) {
+          const phantomResult = createStreamResult({
+            value: outerValue,
+            type: 'phantom',
+            done: true
+          });
+          innerSc.markPhantom(this, phantomResult);
         }
       } catch (err) {
         if (!errorOccurred) {
           errorOccurred = true;
           output.error(err);
+          innerSc?.logFlow("error", this, undefined, String(err));
         }
       } finally {
-        // Unregister inner stream when done
-        if (innerSc) {
-          context?.unregisterStream(innerSc.streamId);
-        }
+        innerSc && await context?.unregisterStream(innerSc.streamId);
 
         currentInnerCompleted = true;
 
@@ -92,7 +93,7 @@ export const concatMap = <T = any, R = any>(
 
           pendingValues.push(result.value);
 
-          // Log outer value reception
+          const sc = context?.currentStreamContext();
           sc?.logFlow("emitted", this, result.value, "Outer value received");
 
           if (currentInnerCompleted) {

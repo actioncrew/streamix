@@ -33,15 +33,14 @@ export const takeWhile = <T = any>(
           if (result.done) return result;
 
           if (!active) {
-            await sc?.phantomHandler(this, result.value);
+            await sc?.markPhantom(this, result);
             continue;
           }
 
           const pass = await predicate(result.value);
           if (!pass) {
             active = false;
-            // turn this failed one into phantom too
-            await sc?.phantomHandler(this, result.value);
+            await sc?.markPhantom(this, result);
             continue;
           }
 

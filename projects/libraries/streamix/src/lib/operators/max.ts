@@ -55,7 +55,7 @@ export const max = <T = any>(
             maxValue = value;
           }
 
-          await sc?.phantomHandler(this, maxValue!);
+          await sc?.markPhantom(this, result);
         }
       },
     };

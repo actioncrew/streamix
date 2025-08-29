@@ -17,6 +17,7 @@ import { CallbackReturnType } from "./../abstractions/receiver";
  * @throws {Error} Throws an error with the message "No elements in sequence" if no
  * matching value is found before the source stream completes.
  */
+
 export const last = <T = any>(
   predicate?: (value: T) => CallbackReturnType<boolean>
 ) =>
@@ -32,7 +33,7 @@ export const last = <T = any>(
         while (true) {
           if (finished) return DONE;
 
-          const result = createStreamResult(await source.next());
+          const result = await source.next(); // REMOVED createStreamResult wrapper
 
           if (result.done) {
             finished = true;
@@ -45,10 +46,18 @@ export const last = <T = any>(
 
           if (matches) {
             if (hasMatch) {
-              // Previous last value becomes phantom
-              const phantom = lastValue!;
+              // Previous last value becomes phantom - use proper phantom handling
+              const phantomValue = lastValue!;
               lastValue = value;
-              await sc?.phantomHandler(this, phantom);
+
+              if (sc) {
+                const phantomResult = createStreamResult({
+                  value: phantomValue,
+                  type: 'phantom',
+                  done: true
+                });
+                sc.markPhantom(this, phantomResult);
+              }
               continue;
             } else {
               lastValue = value;
@@ -56,8 +65,15 @@ export const last = <T = any>(
               continue;
             }
           } else {
-            // Non-matching values are phantoms
-            await sc?.phantomHandler(this, value);
+            // Non-matching values are phantoms - use proper phantom handling
+            if (sc) {
+              const phantomResult = createStreamResult({
+                value: value,
+                type: 'phantom',
+                done: true
+              });
+              sc.markPhantom(this, phantomResult);
+            }
           }
         }
       }

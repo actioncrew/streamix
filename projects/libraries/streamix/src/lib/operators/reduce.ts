@@ -41,7 +41,7 @@ export const reduce = <T = any, A = any>(
           finalValue = await accumulator(finalValue, result.value);
 
           // Treat intermediate accumulated value as phantom
-          await sc?.phantomHandler(this, finalValue);
+          await sc?.markPhantom(this, result);
         }
       },
     };

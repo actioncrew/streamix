@@ -56,7 +56,7 @@ export function skipUntil<T = any>(notifier: Stream) {
             output.next(result.value);
           } else {
             // If we are still skipping, emit a phantom value.
-            await sc?.phantomHandler(this, result.value);
+            await sc?.markPhantom(this, result);
           }
         }
       } catch (err) {

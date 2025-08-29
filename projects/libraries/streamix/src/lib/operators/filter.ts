@@ -21,11 +21,11 @@ export const filter = <T = any>(
   predicateOrValue: ((value: T, index: number) => CallbackReturnType<boolean>) | T | T[]
 ) =>
   createOperator<T, T>('filter', function (this: Operator, source, context) {
-    const sc = context?.currentStreamContext();
     let index = 0;
 
     return {
       next: async () => {
+        const sc = context?.currentStreamContext();
         while (true) {
           const result = createStreamResult(await source.next());
           if (result.done) return result;
@@ -42,13 +42,20 @@ export const filter = <T = any>(
           }
 
           if (shouldInclude) {
-            index++; // Increment index only if included
-            // If the value passes the filter, return it as a normal StreamResult.
+            index++;
             return NEXT(value);
           }
 
-          // If the value is filtered out, return a phantom StreamResult to signal the dropped value.
-          await sc?.phantomHandler(this, value);
+          // CORRECT: Use markPhantom to create a proper phantom result
+          const phantomResult = sc?.createResult({
+            value: value,
+            type: 'phantom',
+            done: true
+          });
+          sc?.markPhantom(this, phantomResult!);
+
+          // Continue to next value
+          continue;
         }
       }
     };

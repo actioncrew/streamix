@@ -62,7 +62,7 @@ export const min = <T = any>(
             minValue = value;
           }
 
-          await sc?.phantomHandler(this, minValue!);
+          await sc?.markPhantom(this, result);
         }
       },
     };

@@ -39,7 +39,7 @@ export const unique = <T = any, K = any>(
           }
 
           // duplicate → still emit as phantom
-          await sc?.phantomHandler(this, result.value);
+          await sc?.markPhantom(this, result);
         }
       }
     };
