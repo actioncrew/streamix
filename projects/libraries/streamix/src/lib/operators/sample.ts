@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, Operator } from '../abstractions';
+import { createOperator, createStreamResult, Operator, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -13,25 +13,24 @@ import { createSubject, Subject } from '../streams';
  * @param period The time in milliseconds between each emission.
  * @returns An Operator instance for use in a stream's `pipe` method.
  */
-
 export const sample = <T = any>(period: number) =>
   createOperator<T, T>('sample', function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
 
-    let lastValue: T | undefined;
-    let lastResult: any = undefined;
+    let lastResult: StreamResult<T> | undefined;
     let skipped = false;
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    const startSampling = (sc: any) => {
-      intervalId = setInterval(() => {
-        if (lastValue === undefined || lastResult === undefined) return;
+    const startSampling = () => {
+      intervalId = setInterval(async () => {
+        const sc = context?.currentStreamContext();
+        if (!lastResult) return;
 
         if (skipped) {
           // Mark as phantom if the last value was skipped
           sc?.markPhantom(this, lastResult);
         } else {
-          output.next(lastValue);
+          output.next(lastResult.value!);
           sc?.resolvePending(this, lastResult);
         }
 
@@ -46,50 +45,34 @@ export const sample = <T = any>(period: number) =>
 
     (async () => {
       try {
-        const initialSc = context?.currentStreamContext();
-        if (initialSc) {
-          startSampling(initialSc);
-        }
+        startSampling();
 
         while (true) {
           const sc = context?.currentStreamContext();
-          const result = await source.next();
+          const result: StreamResult<T> = createStreamResult(await source.next());
 
           if (result.done) break;
 
-          // Create proper pending result
-          const pendingResult = createStreamResult({
-            value: result.value,
-            done: false
-          });
-
           // Previous lastResult becomes phantom if it existed and was skipped
-          if (lastResult && skipped && sc) {
-            sc.markPhantom(this, lastResult);
+          if (lastResult && skipped) {
+            sc?.markPhantom(this, lastResult);
           }
 
           // Track new result as pending
-          lastValue = result.value;
-          lastResult = pendingResult;
-
-          if (sc) {
-            sc.markPending(this, pendingResult);
-          }
+          sc?.markPending(this, result);
+          lastResult = result;
           skipped = false;
         }
 
         // Emit final value
-        const finalSc = context?.currentStreamContext();
-        if (lastValue !== undefined && lastResult !== undefined && finalSc) {
-          output.next(lastValue);
-          finalSc.resolvePending(this, lastResult);
+        if (lastResult) {
+          output.next(lastResult.value!);
+          const sc = context?.currentStreamContext();
+          sc?.resolvePending(this, lastResult);
         }
       } catch (err) {
-        // CORRECT: Get current context for error handling
         const sc = context?.currentStreamContext();
-        if (lastResult && sc) {
-          sc.resolvePending(this, lastResult);
-        }
+        if (lastResult) sc?.resolvePending(this, lastResult);
         output.error(err);
       } finally {
         stopSampling();
@@ -97,5 +80,5 @@ export const sample = <T = any>(period: number) =>
       }
     })();
 
-    return eachValueFrom(output);
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });

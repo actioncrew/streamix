@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, Operator } from "../abstractions";
+import { createOperator, createStreamResult, Operator, StreamResult } from "../abstractions";
 import { eachValueFrom } from "../converters";
 import { createSubject, Subject } from "../streams";
 
@@ -13,24 +13,22 @@ import { createSubject, Subject } from "../streams";
  * @param duration The debounce duration in milliseconds.
  * @returns An Operator instance for use in a stream pipeline.
  */
-
 export function debounce<T = any>(duration: number) {
   return createOperator<T, T>("debounce", function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
     let timeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
-    let latestValue: T | undefined = undefined;
-    let latestResult: any = undefined;
+    let latestResult: StreamResult<T> | undefined = undefined;
     let isCompleted = false;
 
-    const flush = (sc: any) => {
-      if (latestValue !== undefined && latestResult !== undefined) {
+    const flush = () => {
+      if (latestResult !== undefined) {
         // Emit the latest value
-        output.next(latestValue);
+        output.next(latestResult.value!);
 
         // Resolve pending in context
+        const sc = context?.currentStreamContext();
         sc?.resolvePending(this, latestResult);
 
-        latestValue = undefined;
         latestResult = undefined;
       }
       timeoutId = undefined;
@@ -45,48 +43,34 @@ export function debounce<T = any>(duration: number) {
       try {
         while (true) {
           const sc = context?.currentStreamContext();
-          const result = await source.next();
+          const result = createStreamResult(await source.next());
 
           if (result.done) {
             isCompleted = true;
 
             // If a pending value exists, flush it before completing
-            if (timeoutId === undefined && latestResult !== undefined && sc) {
-              flush(sc);
+            if (timeoutId === undefined && latestResult !== undefined) {
+              flush();
             }
             break;
           }
 
           // If a pending value exists and the timer is active, mark it as phantom
-          if (timeoutId !== undefined && latestResult !== undefined && sc) {
-            sc.markPhantom(this, latestResult);
+          if (timeoutId !== undefined && latestResult !== undefined) {
+            sc?.markPhantom(this, latestResult);
           }
-
-          // Create proper pending result for the new value
-          const pendingResult = createStreamResult({
-            value: result.value,
-            done: false
-          });
 
           // Add the new result to pending set
-          latestValue = result.value;
-          latestResult = pendingResult;
-
-          if (sc) {
-            sc.markPending(this, pendingResult);
-          }
+          sc?.markPending(this, result);
+          latestResult = result;
 
           // Reset the timer
           if (timeoutId !== undefined) clearTimeout(timeoutId);
-          if (sc) {
-            timeoutId = setTimeout(() => flush(sc), duration);
-          }
+          timeoutId = setTimeout(flush, duration);
         }
       } catch (err) {
         const sc = context?.currentStreamContext();
-        if (latestResult && sc) {
-          sc.resolvePending(this, latestResult);
-        }
+        if (latestResult) sc?.resolvePending(this, latestResult);
         output.error(err);
       } finally {
         isCompleted = true;
@@ -96,14 +80,12 @@ export function debounce<T = any>(duration: number) {
           timeoutId = undefined;
         }
         // Flush any remaining latest value
-        const sc = context?.currentStreamContext();
-        if (latestResult !== undefined && sc) {
-          flush(sc);
-        }
+        if (latestResult !== undefined) flush();
         output.complete();
       }
     })();
 
-    return eachValueFrom<T>(output);
+    const iterable = eachValueFrom<T>(output);
+    return iterable[Symbol.asyncIterator]();
   });
 }

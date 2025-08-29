@@ -1,4 +1,4 @@
-import { createOperator, createStreamResult, Operator } from '../abstractions';
+import { createOperator, createStreamResult, Operator, StreamResult } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -13,20 +13,18 @@ import { createSubject, Subject } from '../streams';
  * @param duration The throttle duration in milliseconds.
  * @returns An Operator instance that applies throttling to the source stream.
  */
-
 export const throttle = <T = any>(duration: number) =>
   createOperator<T, T>('throttle', function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
     let lastEmit = 0;
-    let pendingValue: T | undefined;
-    let pendingResult: any = undefined;
+    let pendingResult: StreamResult<T> | undefined;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const flushPending = (sc: any) => {
-      if (pendingValue !== undefined && pendingResult !== undefined) {
-        output.next(pendingValue);
+    const flushPending = () => {
+      if (pendingResult !== undefined) {
+        output.next(pendingResult.value!);
+        const sc = context?.currentStreamContext();
         sc?.resolvePending(this, pendingResult);
-        pendingValue = undefined;
         pendingResult = undefined;
       }
       timer = null;
@@ -37,7 +35,7 @@ export const throttle = <T = any>(duration: number) =>
       try {
         while (true) {
           const sc = context?.currentStreamContext();
-          const result = await source.next();
+          const result: StreamResult<T> = createStreamResult(await source.next());
 
           if (result.done) break;
 
@@ -47,43 +45,28 @@ export const throttle = <T = any>(duration: number) =>
             output.next(result.value);
             lastEmit = now;
           } else {
-            // Previous value is superseded → mark as phantom if any
-            if (pendingResult !== undefined && sc) {
-              sc.markPhantom(this, pendingResult);
+            // Previous value is superseded → phantom if any
+            if (pendingResult !== undefined) {
+              sc?.markPhantom(this, pendingResult);
             }
-
-            // Create proper pending result for current value
-            const newPendingResult = createStreamResult({
-              value: result.value,
-              done: false
-            });
 
             // Add current value as pending
-            pendingValue = result.value;
-            pendingResult = newPendingResult;
-
-            if (sc) {
-              sc.markPending(this, newPendingResult);
-            }
+            sc?.markPending(this, result);
+            pendingResult = result;
 
             // Schedule trailing emit
-            if (!timer && sc) {
+            if (!timer) {
               const delay = duration - (now - lastEmit);
-              timer = setTimeout(() => flushPending(sc), delay);
+              timer = setTimeout(flushPending, delay);
             }
           }
         }
 
         // Source completed → flush trailing pending
-        const sc = context?.currentStreamContext();
-        if (pendingResult !== undefined && sc) {
-          flushPending(sc);
-        }
+        if (pendingResult !== undefined) flushPending();
       } catch (err) {
         const sc = context?.currentStreamContext();
-        if (pendingResult && sc) {
-          sc.resolvePending(this, pendingResult);
-        }
+        if (pendingResult) sc?.resolvePending(this, pendingResult);
         output.error(err);
       } finally {
         if (timer) {
@@ -94,5 +77,5 @@ export const throttle = <T = any>(duration: number) =>
       }
     })();
 
-    return eachValueFrom(output);
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });
