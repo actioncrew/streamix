@@ -1,6 +1,6 @@
-import { CallbackReturnType, createOperator, createStreamContext, createStreamResult, Operator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream, StreamContext, StreamResult, Subscription } from "../abstractions";
 import { eachValueFrom, fromAny } from '../converters';
-import { createSubject, Subject } from "../streams";
+import { createSubject } from "../streams";
 
 /**
  * Creates a stream operator that maps each value from the source stream to a new inner stream
@@ -9,7 +9,7 @@ import { createSubject, Subject } from "../streams";
  * For each value from the source:
  * 1. The `project` function is called with the value and its index.
  * 2. The returned value is normalized into a stream using {@link fromAny}.
- * 3. The operator switches to the new inner stream, cancelling any previous active inner stream.
+ * 3. The operator subscribes to the new inner stream and immediately cancels any previous active inner stream.
  * 4. Only values from the latest inner stream are emitted.
  *
  * This operator is useful for scenarios such as:
@@ -19,93 +19,110 @@ import { createSubject, Subject } from "../streams";
  * @template T The type of values in the source stream.
  * @template R The type of values emitted by the inner and output streams.
  * @param project A function that maps a source value and its index to either:
- * - a {@link Stream<R>},
- * - a {@link CallbackReturnType<R>} (value or promise),
- * - or an array of `R`.
+ *   - a {@link Stream<R>},
+ *   - a {@link CallbackReturnType<R>} (value or promise),
+ *   - or an array of `R`.
  * @returns An {@link Operator} instance suitable for use in a stream's `pipe` method.
  */
 export function switchMap<T = any, R = any>(
   project: (value: T, index: number) => Stream<R> | CallbackReturnType<R> | Array<R>
 ) {
   return createOperator<T, R>("switchMap", function (this: Operator, source, context) {
-    // Use a Subject for the output stream, consistent with the concatMap pattern
-    const output: Subject<R> = createSubject<R>();
+    const output = createSubject<R>();
     const sc = context?.currentStreamContext();
 
-    let outerCompleted = false;
-    let errorOccurred = false;
-    let outerIndex = 0;
+    let currentSubscription: Subscription | null = null;
+    let currentInnerSc: StreamContext | undefined;
 
-    // Use a unique ID to track the most recent inner stream
+    let inputCompleted = false;
     let currentInnerStreamId = 0;
+    let index = 0;
+    let innerHadEmissions = false;
+    let pendingPhantom: StreamResult<T> | null = null;
 
-    // This async function processes a single inner stream
-    const processInner = async (outerValue: T, id: number) => {
-      let innerHadEmissions = false;
-      const innerStream = fromAny(project(outerValue, outerIndex++));
-      const innerSc = context && createStreamContext(context, innerStream);
-
-      try {
-        // Iterate over the inner stream and emit values
-        for await (const val of eachValueFrom(innerStream)) {
-          // If a new outer value has arrived, this inner stream is no longer the latest.
-          // Break the loop to "switch" to the new stream.
-          if (id !== currentInnerStreamId) {
-            innerSc?.logFlow('emitted', this, val, 'Inner stream canceled due to new stream');
-            break;
-          }
-          if (errorOccurred) break;
-
-          output.next(val);
-          innerHadEmissions = true;
-          innerSc?.logFlow('emitted', null as any, val, 'Inner stream emitted from switchMap handler');
-        }
-
-        // Handle "phantom" value for inner streams that complete with no emissions
-        if (!innerHadEmissions && id === currentInnerStreamId && !errorOccurred) {
-          await innerSc?.phantomHandler(null as any, outerValue);
-        }
-      } catch (err) {
-        if (!errorOccurred) {
-          errorOccurred = true;
-          output.error(err);
-        }
+    const checkComplete = () => {
+      if (inputCompleted && !currentSubscription) {
+        output.complete();
       }
     };
 
-    // This immediately-invoked async function handles the outer stream
+    const subscribeToInner = async (innerStream: Stream<R>, streamId: number) => {
+      // Cancel previous inner stream
+      if (currentSubscription) {
+        if (!innerHadEmissions && pendingPhantom) {
+          await currentInnerSc?.phantomHandler(null as any, pendingPhantom.value);
+        }
+
+        currentSubscription.unsubscribe();
+        currentSubscription = null;
+
+        // Unregister old stream
+        if (currentInnerSc) {
+          context?.unregisterStream(currentInnerSc.streamId);
+          currentInnerSc = undefined;
+        }
+      }
+
+      innerHadEmissions = false;
+      pendingPhantom = null;
+
+      // Register new inner stream
+      currentInnerSc = context?.registerStream(innerStream);
+
+      currentSubscription = innerStream.subscribe({
+        next: (value) => {
+          if (streamId === currentInnerStreamId) {
+            innerHadEmissions = true;
+            output.next(value);
+            currentInnerSc?.logFlow("emitted", null as any, value, "Inner stream emitted");
+          }
+        },
+        error: (err) => {
+          if (streamId === currentInnerStreamId) {
+            output.error(err);
+          }
+        },
+        complete: () => {
+          if (streamId === currentInnerStreamId) {
+            currentSubscription = null;
+
+            // Unregister on completion
+            if (currentInnerSc) {
+              context?.unregisterStream(currentInnerSc.streamId);
+              currentInnerSc = undefined;
+            }
+
+            checkComplete();
+          }
+        },
+      });
+    };
+
     (async () => {
       try {
-        // Loop to pull values from the source stream
         while (true) {
           const result = createStreamResult(await source.next());
           if (result.done) break;
-          if (errorOccurred) break;
 
-          sc?.logFlow('emitted', this, result.value, 'Outer value received');
+          // Track outer value in case inner stream emits nothing
+          pendingPhantom = result;
 
-          // Increment the ID to identify the new latest stream
-          const newId = ++currentInnerStreamId;
+          const streamId = ++currentInnerStreamId;
+          const innerStream = fromAny(project(result.value, index++));
 
-          // Immediately start processing the new inner stream
-          processInner(result.value, newId);
+          // Log outer emission
+          sc?.logFlow("emitted", this, result.value, "Outer value received");
+
+          await subscribeToInner(innerStream, streamId);
         }
 
-        outerCompleted = true;
-
-        // Final check to complete the output stream if all processing is done
-        if (outerCompleted && !errorOccurred) {
-          output.complete();
-        }
+        inputCompleted = true;
+        checkComplete();
       } catch (err) {
-        if (!errorOccurred) {
-          errorOccurred = true;
-          output.error(err);
-        }
+        output.error(err);
       }
     })();
 
-    // Return the output stream, which will be consumed by the next operator in the pipeline
     return eachValueFrom<R>(output);
   });
 }

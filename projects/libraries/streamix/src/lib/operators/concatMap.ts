@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream } from "../abstractions";
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream, StreamContext } from "../abstractions";
 import { eachValueFrom, fromAny } from "../converters";
 import { createSubject, Subject } from "../streams";
 
@@ -41,9 +41,11 @@ export const concatMap = <T = any, R = any>(
       currentInnerCompleted = false;
       const outerValue = pendingValues.shift()!;
 
+      let innerSc: StreamContext | undefined;
+
       try {
         const innerStream = fromAny(project(outerValue, index++));
-        const innerSc = context?.registerStream(innerStream);
+        innerSc = context?.registerStream(innerStream);
         let innerHadEmissions = false;
 
         for await (const val of eachValueFrom(innerStream)) {
@@ -53,7 +55,7 @@ export const concatMap = <T = any, R = any>(
           innerHadEmissions = true;
 
           // Log with inner stream's context
-          innerSc?.logFlow('emitted', null as any, val, 'Inner stream emitted');
+          innerSc?.logFlow("emitted", null as any, val, "Inner stream emitted");
         }
 
         // Log phantom for inner streams with no emissions
@@ -66,9 +68,13 @@ export const concatMap = <T = any, R = any>(
           output.error(err);
         }
       } finally {
+        // 🔑 Unregister inner stream when done
+        if (innerSc) {
+          context?.unregisterStream(innerSc.streamId);
+        }
+
         currentInnerCompleted = true;
 
-        // Process next inner stream if available
         if (pendingValues.length > 0) {
           processNextInner();
         } else if (outerCompleted && pendingValues.length === 0) {
@@ -87,7 +93,7 @@ export const concatMap = <T = any, R = any>(
           pendingValues.push(result.value);
 
           // Log outer value reception
-          sc?.logFlow('emitted', this, result.value, 'Outer value received');
+          sc?.logFlow("emitted", this, result.value, "Outer value received");
 
           if (currentInnerCompleted) {
             processNextInner();
@@ -96,7 +102,6 @@ export const concatMap = <T = any, R = any>(
 
         outerCompleted = true;
 
-        // Complete if no pending values and current inner is done
         if (pendingValues.length === 0 && currentInnerCompleted && !errorOccurred) {
           output.complete();
         }

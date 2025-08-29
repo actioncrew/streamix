@@ -44,7 +44,7 @@ export function mergeMap<T = any, R = any>(
           output.next(val);
           innerHadEmissions = true;
 
-          // Log with inner stream's context and full operator path
+          // Log with inner stream's context
           innerSc?.logFlow('emitted', null as any, val, 'Inner stream emitted');
         }
       } catch (err) {
@@ -56,10 +56,13 @@ export function mergeMap<T = any, R = any>(
       } finally {
         activeInner--;
 
-        // Log phantom for inner streams
+        // Phantom logging if no emissions
         if (!innerHadEmissions && !errorOccurred) {
           await innerSc?.phantomHandler(null as any, outerValue);
         }
+
+        // ✅ unregister stream after it finishes
+        context?.unregisterStream(innerSc);
 
         // Complete output when all inner streams are done
         if (outerCompleted && activeInner === 0 && !errorOccurred) {
