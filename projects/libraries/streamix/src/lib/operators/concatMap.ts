@@ -55,12 +55,12 @@ export const concatMap = <T = any, R = any>(
           innerHadEmissions = true;
 
           // Log with inner stream's context
-          innerSc?.logFlow("emitted", null as any, val, "Inner stream emitted");
+          innerSc?.logFlow("emitted", this, val, "Inner stream emitted");
         }
 
         // Log phantom for inner streams with no emissions
         if (!innerHadEmissions && !errorOccurred) {
-          await innerSc?.phantomHandler(null as any, outerValue);
+          await innerSc?.phantomHandler(this, outerValue);
         }
       } catch (err) {
         if (!errorOccurred) {

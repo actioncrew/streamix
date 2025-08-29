@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream } from '../abstractions';
+import { CallbackReturnType, createOperator, createStreamResult, Operator, Stream, StreamContext } from '../abstractions';
 import { eachValueFrom, fromAny } from '../converters';
 import { createSubject, Subject } from '../streams';
 
@@ -35,7 +35,7 @@ export function mergeMap<T = any, R = any>(
     let outerCompleted = false;
     let errorOccurred = false;
 
-    const processInner = async (innerStream: Stream<R>, innerSc: any, outerValue: T) => {
+    const processInner = async (innerStream: Stream<R>, innerSc: StreamContext | undefined, outerValue: T) => {
       let innerHadEmissions = false;
       try {
         for await (const val of eachValueFrom(innerStream)) {
@@ -45,24 +45,24 @@ export function mergeMap<T = any, R = any>(
           innerHadEmissions = true;
 
           // Log with inner stream's context
-          innerSc?.logFlow('emitted', null as any, val, 'Inner stream emitted');
+          innerSc?.logFlow('emitted', this, val, 'Inner stream emitted');
         }
       } catch (err) {
         if (!errorOccurred) {
           errorOccurred = true;
           output.error(err);
-          innerSc?.logFlow('error', null as any, undefined, String(err));
+          innerSc?.logFlow('error', this, undefined, String(err));
         }
       } finally {
         activeInner--;
 
         // Phantom logging if no emissions
         if (!innerHadEmissions && !errorOccurred) {
-          await innerSc?.phantomHandler(null as any, outerValue);
+          await innerSc?.phantomHandler(this, outerValue);
         }
 
         // unregister stream after it finishes
-        context?.unregisterStream(innerSc);
+        innerSc && context?.unregisterStream(innerSc.streamId);
 
         // Complete output when all inner streams are done
         if (outerCompleted && activeInner === 0 && !errorOccurred) {

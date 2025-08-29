@@ -279,8 +279,6 @@ export function patchOperator<TIn, TOut>(
         async next(): Promise<StreamResult<TOut>> {
 
           const result = await originalIterator.next.apply(originalIterator);
-
-          // context.pipeline.operatorStack.pop();
           return createStreamResult<TOut>({
             ...result,
           });

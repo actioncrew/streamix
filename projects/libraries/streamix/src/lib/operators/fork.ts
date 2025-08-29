@@ -66,7 +66,7 @@ export const fork = <T = any, R = any>(options: ForkOption<T, R>[]) =>
 
     const closeInner = async () => {
       try { await innerSc?.finalize?.(); } catch {}
-      if (innerSc?.streamId) context?.unregisterStream(innerSc.streamId);
+      innerSc && context?.unregisterStream(innerSc.streamId);
       innerSc = null;
       innerIter = null;
     };

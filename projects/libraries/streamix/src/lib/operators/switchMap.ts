@@ -50,7 +50,7 @@ export function switchMap<T = any, R = any>(
       // Cancel previous inner stream
       if (currentSubscription) {
         if (!innerHadEmissions && pendingPhantom) {
-          await currentInnerSc?.phantomHandler(null as any, pendingPhantom.value);
+          await currentInnerSc?.phantomHandler(this, pendingPhantom.value);
         }
 
         currentSubscription.unsubscribe();
@@ -74,7 +74,7 @@ export function switchMap<T = any, R = any>(
           if (streamId === currentInnerStreamId) {
             innerHadEmissions = true;
             output.next(value);
-            currentInnerSc?.logFlow("emitted", null as any, value, "Inner stream emitted");
+            currentInnerSc?.logFlow("emitted", this, value, "Inner stream emitted");
           }
         },
         error: (err) => {
