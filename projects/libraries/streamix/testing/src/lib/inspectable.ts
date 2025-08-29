@@ -33,24 +33,22 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
     },
   });
 
-  // Root StreamContext for the source stream itself
-  const sc = pipelineContext.currentStreamContext();
-
   function createInspectableStream<S>(
     upstream: Stream<any>,
-    operators: Operator<any, any>[],
-    parentContext: PipelineContext
+    operators: Operator<any, any>[]
   ): InspectableStream<S> {
-    const upstreamSc = createStreamContext(parentContext, upstream);
+    const upstreamSc = createStreamContext(pipelineContext, upstream);
 
-    // Create the piped stream object first
+    // Create the piped stream object
     const pipedStream: InspectableStream<S> = {
       name: `${upstream.name}-sink`,
       type: "stream",
-      context: parentContext,
+      context: pipelineContext,
 
       pipe<U>(...nextOps: Operator<any, any>[]): InspectableStream<U> {
-        return createInspectableStream<U>(pipedStream, nextOps, parentContext);
+        // Combine current operators with new ones for proper chaining
+        const allOperators = [...operators, ...nextOps];
+        return createInspectableStream<U>(upstream, allOperators);
       },
 
       subscribe(cb?: any): Subscription {
@@ -62,7 +60,6 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
           async next() {
             const result = await sourceIterator.next();
             if (!result.done) {
-              // Log source values in upstream context
               upstreamSc?.logFlow('emitted', null as any, result.value, 'Emitted source value');
             }
             return result;
@@ -74,10 +71,10 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
 
         let iterator: StreamIterator<any> = loggingSourceIterator;
 
-        // Apply operators to create the sink iterator
+        // Apply all operators in sequence
         for (const op of operators) {
           const patched = patchOperator(op);
-          iterator = patched.apply(iterator, parentContext);
+          iterator = patched.apply(iterator, pipelineContext);
         }
 
         const abortController = new AbortController();
@@ -87,6 +84,9 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
           if (signal.aborted) resolve();
           else signal.addEventListener("abort", () => resolve(), { once: true });
         });
+
+        // Create sink context for the final stream
+        const sinkSc = createStreamContext(pipelineContext, pipedStream);
 
         (async () => {
           try {
@@ -101,9 +101,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
               const { result } = winner;
               if (result.done) break;
 
-              // Log sink values in sink context (values after transformation)
               sinkSc?.logFlow('resolved', null as any, result.value, 'Emitted sink value');
-
               await receiver.next?.(result.value);
             }
           } catch (err: any) {
@@ -129,23 +127,23 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
       },
     };
 
-    // Now create the sink StreamContext with the pipedStream object
-    const sinkSc = createStreamContext(parentContext, pipedStream);
-
     return pipedStream;
   }
 
+  // For the root stream with no operators yet
   const decorated: InspectableStream<T> = {
     ...source,
     context: pipelineContext,
 
     pipe<S>(...operators: Operator<any, any>[]): InspectableStream<S> {
-      return createInspectableStream<S>(source, operators, pipelineContext);
+      return createInspectableStream<S>(source, operators);
     },
 
     subscribe(cb?: any): Subscription {
       const receiver = createReceiver(cb);
       let iterator: StreamIterator<T> = eachValueFrom(source)[Symbol.asyncIterator]();
+
+      const sc = createStreamContext(pipelineContext, source);
 
       const abortController = new AbortController();
       const { signal } = abortController;
@@ -168,9 +166,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
             const { result } = winner;
             if (result.done) break;
 
-            // For the root stream (no operators), this logs the source values
             sc?.logFlow('resolved', null as any, result.value, 'Emitted source value');
-
             await receiver.next?.(result.value);
           }
         } catch (err: any) {

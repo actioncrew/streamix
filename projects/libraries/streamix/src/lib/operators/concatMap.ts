@@ -68,7 +68,7 @@ export const concatMap = <T = any, R = any>(
           output.error(err);
         }
       } finally {
-        // 🔑 Unregister inner stream when done
+        // Unregister inner stream when done
         if (innerSc) {
           context?.unregisterStream(innerSc.streamId);
         }

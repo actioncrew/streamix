@@ -61,7 +61,7 @@ export function mergeMap<T = any, R = any>(
           await innerSc?.phantomHandler(null as any, outerValue);
         }
 
-        // ✅ unregister stream after it finishes
+        // unregister stream after it finishes
         context?.unregisterStream(innerSc);
 
         // Complete output when all inner streams are done

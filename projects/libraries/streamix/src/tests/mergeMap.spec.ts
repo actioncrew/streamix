@@ -21,7 +21,7 @@ describe('mergeMap operator', () => {
     });
   });
 
-  it('should correctly handle a chain of from, filter, mergeMap, filter, and mergeMap', (done) => {
+  fit('should correctly handle a chain of from, filter, mergeMap, filter, and mergeMap', (done) => {
     const testStream = from([1, 2, 3, 4, 5, 6]);
 
     // Project functions for mergeMap
@@ -33,7 +33,7 @@ describe('mergeMap operator', () => {
       // Filter: Keep only even numbers
       filter((value) => value % 2 === 0),
       // MergeMap: Project each even number into an array [value, value * 10]
-      mergeMap(firstProject),
+      mergeMap(firstProject)).pipe(
       // Filter: Keep values greater than 10
       filter((value) => value > 10),
       // MergeMap: Project each value into its double
