@@ -309,9 +309,6 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
         else signal.addEventListener("abort", () => resolve(), { once: true });
       });
 
-      // Create sink context for the final stream
-      const sinkSc = context ? createStreamContext(pipedStream, context) : undefined;
-
       (async () => {
           try {
             while (true) {
@@ -350,6 +347,9 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
         return firstValueFrom(pipedStream);
       },
     };
+
+  // Create sink context for the final stream
+  const sinkSc = context ? createStreamContext(pipedStream, context) : undefined;
 
   return pipedStream;
 }

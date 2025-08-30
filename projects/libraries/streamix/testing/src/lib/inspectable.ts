@@ -33,12 +33,12 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
     },
   });
 
+  // Create source context once and reuse it
+  const sourceContext = context ? createStreamContext(source, context) : undefined;
+
   function createInspectableStream<S>(
-    source: Stream<any>,
     operators: Operator<any, any>[]
   ): InspectableStream<S> {
-    const sourceContext = context ? createStreamContext(source, context) : undefined;
-
     // Create the piped stream object
     const pipedStream: InspectableStream<S> = {
       name: `${source.name}-sink`,
@@ -48,7 +48,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
       pipe<U>(...nextOps: Operator<any, any>[]): InspectableStream<U> {
         // Combine current operators with new ones for proper chaining
         const allOperators = [...operators, ...nextOps];
-        return createInspectableStream<U>(source, allOperators);
+        return createInspectableStream<U>(allOperators);
       },
 
       subscribe(cb?: any): Subscription {
@@ -85,9 +85,6 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
           else signal.addEventListener("abort", () => resolve(), { once: true });
         });
 
-        // Create sink context for the final stream
-        const sinkSc = context ? createStreamContext(pipedStream, context) : undefined;
-
         (async () => {
           try {
             while (true) {
@@ -101,16 +98,16 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
               const { result } = winner;
               if (result.done) break;
 
-              sinkSc?.logFlow('resolved', null as any, result.value, 'Emitted sink value');
+              sinkContext?.logFlow('resolved', null as any, result.value, 'Emitted sink value');
               await receiver.next?.(result.value);
             }
           } catch (err: any) {
-            sinkSc?.logFlow('error', null as any, undefined, String(err));
+            sinkContext?.logFlow('error', null as any, undefined, String(err));
             await receiver.error?.(err);
           } finally {
             await receiver.complete?.();
             await sourceContext?.finalize();
-            await sinkSc?.finalize();
+            await sinkContext?.finalize();
           }
         })();
 
@@ -127,23 +124,25 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
       },
     };
 
+    // Create sink context for this specific piped stream
+    const sinkContext = context ? createStreamContext(pipedStream, context) : undefined;
+
     return pipedStream;
   }
 
   // For the root stream with no operators yet
   const decorated: InspectableStream<T> = {
-    ...source,
+    name: source.name,
+    type: source.type,
     context: context,
 
     pipe<S>(...operators: Operator<any, any>[]): InspectableStream<S> {
-      return createInspectableStream<S>(source, operators);
+      return createInspectableStream<S>(operators);
     },
 
     subscribe(cb?: any): Subscription {
       const receiver = createReceiver(cb);
       let iterator: StreamIterator<T> = eachValueFrom(source)[Symbol.asyncIterator]();
-
-      const sc = context ? createStreamContext(source, context) : undefined;
 
       const abortController = new AbortController();
       const { signal } = abortController;
@@ -166,15 +165,15 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
             const { result } = winner;
             if (result.done) break;
 
-            sc?.logFlow('resolved', null as any, result.value, 'Emitted source value');
+            sourceContext?.logFlow('resolved', null as any, result.value, 'Emitted source value');
             await receiver.next?.(result.value);
           }
         } catch (err: any) {
-          sc?.logFlow('error', null as any, undefined, String(err));
+          sourceContext?.logFlow('error', null as any, undefined, String(err));
           await receiver.error?.(err);
         } finally {
           await receiver.complete?.();
-          await sc?.finalize();
+          await sourceContext?.finalize();
         }
       })();
 
