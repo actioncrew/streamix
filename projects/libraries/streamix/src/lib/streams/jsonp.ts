@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that performs a JSONP request and emits the resulting data once.
@@ -14,7 +14,7 @@ import { createStream, Stream } from '../abstractions';
  * @param {string} [callbackParam='callback'] The name of the query parameter for the callback function.
  * @returns {Stream<T>} A new stream that emits the JSONP data and then completes.
  */
-export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<T> {
+export function jsonp<T = any>(url: string, callbackParam = 'callback', context?: PipelineContext): Stream<T> {
   return createStream<T>('jsonp', async function* () {
     const uniqueCallbackName = `${callbackParam}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement('script');
@@ -45,5 +45,5 @@ export function jsonp<T = any>(url: string, callbackParam = 'callback'): Stream<
     } finally {
       cleanup();
     }
-  });
+  }, context);
 }

@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, PipelineContext, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -18,7 +18,7 @@ import { eachValueFrom } from "../converters";
  * @returns {Stream<T[number]>} A new stream that emits values from the first stream to produce a value.
  */
 export function race<T extends readonly unknown[] = any[]>(
-  ...streams: { [K in keyof T]: Stream<T[K]> }
+  streams: { [K in keyof T]: Stream<T[K]> }, context?: PipelineContext
 ): Stream<T[number]> {
   return createStream<T[number]>('race', async function* () {
     if (streams.length === 0) return;
@@ -51,5 +51,5 @@ export function race<T extends readonly unknown[] = any[]>(
       // Cleanup all controllers
       controllers.forEach(c => c.abort());
     }
-  });
+  }, context);
 }

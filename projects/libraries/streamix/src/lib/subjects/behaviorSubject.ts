@@ -3,6 +3,7 @@ import {
   createReceiver,
   createSubscription,
   Operator,
+  PipelineContext,
   pipeStream,
   Receiver,
   Stream,
@@ -43,7 +44,7 @@ export type BehaviorSubject<T = any> = Subject<T> & {
  * @param {T} initialValue The value that the subject will hold upon creation.
  * @returns {BehaviorSubject<T>} A new BehaviorSubject instance.
  */
-export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject<T> {
+export function createBehaviorSubject<T = any>(initialValue: T, context?: PipelineContext): BehaviorSubject<T> {
   const buffer = createBehaviorSubjectBuffer<T>(initialValue);
   const queue = createQueue();
   let latestValue = initialValue;
@@ -126,7 +127,7 @@ export function createBehaviorSubject<T = any>(initialValue: T): BehaviorSubject
       return latestValue;
     },
     pipe(...operators: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...operators);
+      return pipeStream(this, operators, context);
     },
     subscribe,
     async query(): Promise<T> {

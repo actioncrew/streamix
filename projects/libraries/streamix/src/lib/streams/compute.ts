@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, PipelineContext, Stream } from "../abstractions";
 import { Coroutine } from "../operators";
 
 /**
@@ -15,10 +15,10 @@ import { Coroutine } from "../operators";
  * @param {any} params The data to send to the worker for computation.
  * @returns {Stream<T>} A new stream that emits the result of the computation.
  */
-export function compute<T = any>(task: Coroutine, params: any): Stream<T> {
+export function compute<T = any>(task: Coroutine, params: any, context?: PipelineContext): Stream<T> {
   return createStream<T>("compute", async function* () {
     // Use processTask to handle worker acquisition, messaging, and releasing automatically
     const result = await task.processTask(params);
     yield result;
-  });
+  }, context);
 }

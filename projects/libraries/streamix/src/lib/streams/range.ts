@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { PipelineContext, Stream } from '../abstractions';
 import { loop } from './loop';
 
 /**
@@ -15,12 +15,13 @@ import { loop } from './loop';
  * @param {number} [step=1] - The amount to increment or decrement the value in each step.
  * @returns {Stream<number>} A stream that emits a sequence of numbers.
  */
-export function range(start: number, count: number, step: number = 1): Stream<number> {
+export function range(start: number, count: number, step: number = 1, context?: PipelineContext): Stream<number> {
   const end = start + count * step;
   const stream = loop(
     start,
     current => (step > 0 ? current < end : current > end),
-    current => current + step
+    current => current + step,
+    context
   );
 
   stream.name = 'range';

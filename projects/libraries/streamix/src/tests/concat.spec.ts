@@ -6,7 +6,7 @@ describe('ConcatStream', () => {
     const source1 = from(['source1_value1', 'source1_value2']);
     const source2 = from(['source2_value1', 'source2_value2']);
 
-    const concatStream = concat(source1, source2);
+    const concatStream = concat([source1, source2]);
 
     const emittedValues: any[] = [];
     const subscription = concatStream.subscribe({
@@ -31,7 +31,7 @@ describe('ConcatStream', () => {
     const source1 = from(['source1_value1', 'source1_value2']);
     const source2 = from(['source2_value1', 'source2_value2']);
 
-    const concatStream = concat(source1, source2);
+    const concatStream = concat([source1, source2]);
     const subscription = concatStream.subscribe({
       complete: () => {
         isCompleted = true;
@@ -48,7 +48,7 @@ describe('concat function', () => {
     const source1 = from(['source1_value1', 'source1_value2']);
     const source2 = from(['source2_value1', 'source2_value2']);
 
-    const concatStream = concat(source1, source2);
+    const concatStream = concat([source1, source2]);
 
     expect(concatStream).toBeInstanceOf(Object);
   });

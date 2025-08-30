@@ -43,7 +43,7 @@ describe('groupBy and custom partitioning', () => {
     const groupsMap = new Map<string, any[]>(); // Store latest group values
 
     // Use mergeMap to combine all partitioned streams into one observable
-    const source$ = merge(...partitionedStreams).pipe(
+    const source$ = merge(partitionedStreams).pipe(
       groupBy((value: string) => value.startsWith('Low') ? 'low' : 'high'),
       mergeMap((groupItem: { key: string, value: string }) => {
         const key = groupItem.key; // Get the group key ('low' or 'high')

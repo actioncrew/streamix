@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a timer stream that emits numbers starting from 0.
@@ -12,7 +12,7 @@ import { createStream, Stream } from '../abstractions';
  * If not provided, it defaults to `delayMs`.
  * @returns {Stream<number>} A stream that emits incrementing numbers (0, 1, 2, ...).
  */
-export function timer(delayMs = 0, intervalMs?: number): Stream<number> {
+export function timer(delayMs = 0, intervalMs?: number, context?: PipelineContext): Stream<number> {
   const actualInterval = intervalMs ?? delayMs;
 
   async function* timerGenerator() {
@@ -36,5 +36,5 @@ export function timer(delayMs = 0, intervalMs?: number): Stream<number> {
     }
   }
 
-  return createStream<number>('timer', timerGenerator);
+  return createStream<number>('timer', timerGenerator, context);
 }

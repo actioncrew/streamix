@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, PipelineContext, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -16,7 +16,7 @@ import { eachValueFrom } from "../converters";
  * @param {Stream<T>[]} sources An array of streams to concatenate.
  * @returns {Stream<T>} A new stream that emits values from all input streams in sequence.
  */
-export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
+export function concat<T = any>(sources: Stream<T>[], context?: PipelineContext): Stream<T> {
   async function* generator() {
     for (const source of sources) {
 
@@ -41,5 +41,5 @@ export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
     }
   }
 
-  return createStream<T>("concat", generator);
+  return createStream<T>("concat", generator, context);
 }

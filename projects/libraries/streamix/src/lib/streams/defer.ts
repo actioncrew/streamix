@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 /**
@@ -14,7 +14,7 @@ import { eachValueFrom } from '../converters';
  * @param {() => Stream<T>} factory A function that returns the stream to be subscribed to.
  * @returns {Stream<T>} A new stream that defers subscription to the inner stream.
  */
-export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
+export function defer<T = any>(factory: () => Stream<T>, context?: PipelineContext): Stream<T> {
   async function* generator() {
     const innerStream = factory();
 
@@ -38,5 +38,5 @@ export function defer<T = any>(factory: () => Stream<T>): Stream<T> {
     }
   }
 
-  return createStream<T>('defer', generator);
+  return createStream<T>('defer', generator, context);
 }

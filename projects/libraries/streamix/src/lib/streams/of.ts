@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits a single value and then completes.
@@ -12,8 +12,8 @@ import { createStream, Stream } from '../abstractions';
  * @param {T} value The single value to emit.
  * @returns {Stream<T>} A new stream that emits the value and then completes.
  */
-export function of<T = any>(value: T): Stream<T> {
+export function of<T = any>(value: T, context?: PipelineContext): Stream<T> {
   return createStream<T>('of', async function* () {
     yield value;
-  });
+  }, context);
 }

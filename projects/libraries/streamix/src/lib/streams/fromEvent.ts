@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits events of the specified type from the given EventTarget.
@@ -14,7 +14,8 @@ import { createStream, Stream } from '../abstractions';
  */
 export function fromEvent<T extends Event = Event>(
   target: EventTarget,
-  event: string
+  event: string,
+  context?: PipelineContext
 ): Stream<T> {
   async function* generator() {
     let eventQueue: T[] = [];
@@ -53,5 +54,5 @@ export function fromEvent<T extends Event = Event>(
     }
   }
 
-  return createStream<T>('fromEvent', generator);
+  return createStream<T>('fromEvent', generator, context);
 }

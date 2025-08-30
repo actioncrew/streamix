@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, PipelineContext, Stream } from "../abstractions";
 
 /**
  * Creates a stream that subscribes to a source factory and retries on error.
@@ -19,7 +19,8 @@ import { createStream, Stream } from "../abstractions";
 export function retry<T = any>(
   factory: () => Stream<T>,
   maxRetries: number = 3,
-  delay: number = 1000
+  delay: number = 1000,
+  context?: PipelineContext
 ): Stream<T> {
   return createStream<T>("retry", async function* () {
     let retryCount = 0;
@@ -67,5 +68,5 @@ export function retry<T = any>(
         await new Promise<void>((resolve) => setTimeout(resolve, delay));
       }
     }
-  });
+  }, context);
 }

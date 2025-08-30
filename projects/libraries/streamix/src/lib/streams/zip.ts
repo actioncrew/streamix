@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 /**
@@ -15,7 +15,8 @@ import { eachValueFrom } from '../converters';
  * @returns {Stream<T>} A new stream that emits an array of values.
  */
 export function zip<T extends readonly unknown[] = any[]>(
-  streams: { [K in keyof T]: Stream<T[K]> }
+  streams: { [K in keyof T]: Stream<T[K]> },
+  context?: PipelineContext
 ): Stream<T> {
   // Note: controller is currently unused for aborting from outside
   // You may want to expose it or remove if unused
@@ -66,5 +67,5 @@ export function zip<T extends readonly unknown[] = any[]>(
         iterators.map(it => it.return?.(undefined).catch(() => {}))
       );
     }
-  });
+  }, context);
 }

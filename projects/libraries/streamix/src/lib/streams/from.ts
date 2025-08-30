@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, PipelineContext, Stream } from "../abstractions";
 
 /**
  * Creates a stream from an asynchronous or synchronous iterable.
@@ -12,12 +12,12 @@ import { createStream, Stream } from "../abstractions";
  * @param {AsyncIterable<T> | Iterable<T>} source The iterable source to convert into a stream.
  * @returns {Stream<T>} A new stream that emits each value from the source.
  */
-export function from<T = any>(source: AsyncIterable<T> | Iterable<T>): Stream<T> {
+export function from<T = any>(source: AsyncIterable<T> | Iterable<T>, context?: PipelineContext): Stream<T> {
   async function* generator() {
     for await (const value of source) {
       yield value;
     }
   }
 
-  return createStream<T>("from", generator);
+  return createStream<T>("from", generator, context);
 }

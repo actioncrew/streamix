@@ -1,4 +1,4 @@
-import { Stream } from '../abstractions';
+import { PipelineContext, Stream } from '../abstractions';
 import { timer } from './timer';
 
 /**
@@ -13,9 +13,9 @@ import { timer } from './timer';
  * @param {number} intervalMs The time in milliseconds between each emission.
  * @returns {Stream<number>} A stream that emits incrementing numbers (0, 1, 2, ...).
  */
-export function interval(intervalMs: number): Stream<number> {
+export function interval(intervalMs: number, context?: PipelineContext): Stream<number> {
   // Use the timer function to create a stream that emits at the specified interval
-  const stream = timer(0, intervalMs);
+  const stream = timer(0, intervalMs, context);
 
   stream.name = 'interval';
   return stream;

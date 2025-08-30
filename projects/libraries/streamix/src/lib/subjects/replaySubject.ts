@@ -3,6 +3,7 @@ import {
   createReceiver,
   createSubscription,
   Operator,
+  PipelineContext,
   pipeStream,
   Receiver,
   Stream,
@@ -38,7 +39,7 @@ export type ReplaySubject<T = any> = Subject<T>;
  * @param {number} [capacity=Infinity] The maximum number of past values to buffer and replay to new subscribers. Use `Infinity` for an unbounded buffer.
  * @returns {ReplaySubject<T>} A new ReplaySubject instance.
  */
-export function createReplaySubject<T = any>(capacity: number = Infinity): ReplaySubject<T> {
+export function createReplaySubject<T = any>(capacity: number = Infinity, context?: PipelineContext): ReplaySubject<T> {
   const buffer = createReplayBuffer<T>(capacity) as ReplayBuffer;
   const queue = createQueue();
   let isCompleted = false;
@@ -122,7 +123,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     type: "subject",
     name: "replaySubject",
     pipe(...operators: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...operators);
+      return pipeStream(this, operators, context);
     },
     subscribe,
     async query(): Promise<T> {

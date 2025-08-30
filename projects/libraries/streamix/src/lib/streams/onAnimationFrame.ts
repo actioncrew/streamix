@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits the time elapsed between each animation frame.
@@ -9,7 +9,7 @@ import { createStream, Stream } from '../abstractions';
  *
  * @returns {Stream<number>} A stream that emits the delta time for each animation frame.
  */
-export function onAnimationFrame(): Stream<number> {
+export function onAnimationFrame(context?: PipelineContext): Stream<number> {
   return createStream<number>('onAnimationFrame', async function* () {
     let resolveNext: ((value: number) => void) | null = null;
     let lastTime = performance.now();
@@ -43,5 +43,5 @@ export function onAnimationFrame(): Stream<number> {
         cancelAnimationFrame(rafId);
       }
     }
-  });
+  }, context);
 }

@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits `true` or `false` when a CSS media query's
@@ -12,7 +12,7 @@ import { createStream, Stream } from '../abstractions';
  * @param {string} mediaQueryString The CSS media query string to match (e.g., "(min-width: 600px)").
  * @returns {Stream<boolean>} A stream that emits `true` if the media query matches, and `false` otherwise.
  */
-export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
+export function onMediaQuery(mediaQueryString: string, context?: PipelineContext): Stream<boolean> {
   return createStream<boolean>('onMediaQuery', async function* () {
     if (typeof window === 'undefined' || !window.matchMedia) {
       console.warn('matchMedia is not supported in this environment');
@@ -42,5 +42,5 @@ export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
     } finally {
       mediaQueryList.removeEventListener('change', listener);
     }
-  });
+  }, context);
 }

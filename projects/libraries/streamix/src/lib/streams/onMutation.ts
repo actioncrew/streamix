@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits an array of `MutationRecord` objects whenever
@@ -15,7 +15,8 @@ import { createStream, Stream } from '../abstractions';
  */
 export function onMutation(
   element: Element,
-  options?: MutationObserverInit
+  options?: MutationObserverInit,
+  context?: PipelineContext
 ): Stream<MutationRecord[]> {
   return createStream<MutationRecord[]>('onMutation', async function* () {
     let resolveNext: ((value: MutationRecord[]) => void) | null = null;
@@ -37,5 +38,5 @@ export function onMutation(
     } finally {
       observer.disconnect();
     }
-  });
+  }, context);
 }

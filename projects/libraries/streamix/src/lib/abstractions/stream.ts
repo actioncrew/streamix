@@ -1,5 +1,5 @@
 import { eachValueFrom, firstValueFrom } from "../converters";
-import { StreamResult } from "./context";
+import { PipelineContext, StreamResult } from "./context";
 import { Operator, OperatorChain, patchOperator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
@@ -139,8 +139,10 @@ export type Stream<T = any> = {
  */
 export function createStream<T>(
   name: string,
-  generatorFn: () => AsyncGenerator<T, void, unknown>
+  generatorFn: () => AsyncGenerator<T, void, unknown>,
+  context?: PipelineContext
 ): Stream<T> {
+  void context;
   const activeSubscriptions = new Set<{
     receiver: Receiver<T>;
     subscription: Subscription;
@@ -254,7 +256,7 @@ export function createStream<T>(
 
   // Create pipe function that uses self
   const pipe = ((...operators: Operator<any, any>[]) => {
-    return pipeStream(self, ...operators);
+    return pipeStream(self, operators, context);
   }) as OperatorChain<T>;
 
   // Now define self, closing over pipe
@@ -275,14 +277,15 @@ export function createStream<T>(
  */
 export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
-  ...operators: [...Ops]
+  operators: [...Ops],
+  context?: PipelineContext
 ): Stream<any> {
 
   const pipedStream: Stream<any> = {
     name: `${source.name}-piped`,
     type: 'stream',
 
-    // ✅ Pure object creation - no function calls to pipeStream or anything else
+    // Pure object creation - no function calls to pipeStream or anything else
     pipe: ((...nextOps: Operator<any, any>[]) => {
       const allOps = [...operators, ...nextOps];
 
@@ -293,7 +296,7 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 
         pipe: ((...moreOps: Operator<any, any>[]) => {
           // If more piping is needed, only then do we need to create another stream
-          return pipeStream(source, ...allOps, ...moreOps);
+          return pipeStream(source, [...allOps, ...moreOps], context);
         }) as OperatorChain<any>,
 
         subscribe(cb?: ((value: TIn) => CallbackReturnType) | Receiver<TIn>) {

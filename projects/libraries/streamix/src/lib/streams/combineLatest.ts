@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, PipelineContext, Stream } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -15,7 +15,8 @@ import { eachValueFrom } from "../converters";
  * @returns {Stream<T>} A new stream that emits a tuple of the latest values from all source streams.
  */
 export function combineLatest<T extends unknown[] = any[]>(
-  streams: { [K in keyof T]: Stream<T[K]> }
+  streams: { [K in keyof T]: Stream<T[K]> },
+  context?: PipelineContext
 ): Stream<T> {
   async function* generator() {
     if (streams.length === 0) return;
@@ -80,5 +81,5 @@ export function combineLatest<T extends unknown[] = any[]>(
     }
   }
 
-  return createStream<T>("combineLatest", generator);
+  return createStream<T>("combineLatest", generator, context);
 }

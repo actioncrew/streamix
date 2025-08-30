@@ -1,4 +1,4 @@
-import { CallbackReturnType, createReceiver, createStream, Receiver, Stream, Subscription } from '../abstractions';
+import { CallbackReturnType, createReceiver, createStream, PipelineContext, Receiver, Stream, Subscription } from '../abstractions';
 
 /**
  * Creates an empty stream that emits no values and completes immediately.
@@ -20,10 +20,10 @@ import { CallbackReturnType, createReceiver, createStream, Receiver, Stream, Sub
  *
  * @type {Stream<any>}
  */
-export const empty = <T = any>(): Stream<T> => {
+export const empty = <T = any>(context?: PipelineContext): Stream<T> => {
   const stream = createStream<T>('EMPTY', async function* (this: Stream<T>): AsyncGenerator<T> {
     // No emissions, just complete immediately
-  });
+  }, context);
 
   // Empty stream does not subscribe to any source
   const subscribe = (callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>): Subscription => {

@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits `true` when a given element enters the
@@ -15,7 +15,8 @@ import { createStream, Stream } from '../abstractions';
  */
 export function onIntersection(
   element: Element,
-  options?: IntersectionObserverInit
+  options?: IntersectionObserverInit,
+  context?: PipelineContext
 ): Stream<boolean> {
   return createStream<boolean>('onIntersection', async function* () {
     let resolveNext: ((value: boolean) => void) | null = null;
@@ -39,5 +40,5 @@ export function onIntersection(
       observer.unobserve(element);
       observer.disconnect();
     }
-  });
+  }, context);
 }

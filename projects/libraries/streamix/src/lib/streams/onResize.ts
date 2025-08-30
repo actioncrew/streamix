@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits the dimensions (width and height) of a given
@@ -14,7 +14,7 @@ import { createStream, Stream } from '../abstractions';
  * @param {Element} element The DOM element to observe for size changes.
  * @returns {Stream<{ width: number; height: number }>} A stream that emits an object with the element's `width` and `height` properties.
  */
-export function onResize(element: Element): Stream<{ width: number; height: number }> {
+export function onResize(element: Element, context?: PipelineContext): Stream<{ width: number; height: number }> {
   return createStream('onResize', async function* () {
     let resolveNext: ((value: { width: number; height: number }) => void) | null = null;
 
@@ -40,5 +40,5 @@ export function onResize(element: Element): Stream<{ width: number; height: numb
       observer.unobserve(element);
       observer.disconnect();
     }
-  });
+  }, context);
 }

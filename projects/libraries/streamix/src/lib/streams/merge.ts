@@ -1,4 +1,4 @@
-import { createStream, Stream, StreamResult } from "../abstractions";
+import { createStream, PipelineContext, Stream, StreamResult } from "../abstractions";
 import { eachValueFrom } from "../converters";
 
 /**
@@ -15,7 +15,7 @@ import { eachValueFrom } from "../converters";
  * @param {Stream<T>[]} sources An array of streams to be merged.
  * @returns {Stream<T>} A new stream that emits values from all input streams.
  */
-export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
+export function merge<T = any>(sources: Stream<T>[], context?: PipelineContext): Stream<T> {
   return createStream<T>('merge', async function* () {
     if (sources.length === 0) return;
 
@@ -66,5 +66,5 @@ export function merge<T = any>(...sources: Stream<T>[]): Stream<T> {
         }
       }
     }
-  });
+  }, context);
 }

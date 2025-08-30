@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * A stream that represents a WebSocket-like interface.
@@ -40,7 +40,7 @@ export type WebSocketStream<T = any> = Stream<T> & {
  * @param {string} url - The URL of the WebSocket server to connect to.
  * @returns {WebSocketStream<T>} A stream that emits messages from the WebSocket and has a `send` method to send messages to it.
  */
-export function webSocket<T = any>(url: string): WebSocketStream<T> {
+export function webSocket<T = any>(url: string, context?: PipelineContext): WebSocketStream<T> {
   let socket: WebSocket | null = null;
   let isOpen = false;
   const sendQueue: T[] = [];
@@ -136,7 +136,7 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
   }
 
   // Create the stream wrapping the generator
-  let stream = createStream<T>('webSocket', messageGenerator) as WebSocketStream<T>;
+  let stream = createStream<T>('webSocket', messageGenerator, context) as WebSocketStream<T>;
 
   // Attach send method
   stream.send = (message: T) => {

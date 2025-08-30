@@ -1,4 +1,4 @@
-import { createStream, Stream } from "../abstractions";
+import { createStream, PipelineContext, Stream } from "../abstractions";
 import { Coroutine, CoroutineMessage } from "../operators/coroutine";
 
 /**
@@ -51,7 +51,8 @@ export interface SeizedWorker<T = any, R = T> {
 export function seize<T = any, R = T>(
   task: Coroutine<T, R>,
   onMessage: (message: CoroutineMessage) => void,
-  onError: (error: Error) => void
+  onError: (error: Error) => void,
+  context?: PipelineContext
 ): Stream<SeizedWorker> {
   return createStream("seize", async function* () {
     // Seize a worker from the pool
@@ -99,5 +100,5 @@ export function seize<T = any, R = T>(
         task.returnWorker(workerId);
       }
     }
-  });
+  }, context);
 }

@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits values in a loop based on a condition and an
@@ -18,7 +18,8 @@ import { createStream, Stream } from '../abstractions';
 export function loop<T = any>(
   initialValue: T,
   condition: (value: T) => boolean,
-  iterateFn: (value: T) => T
+  iterateFn: (value: T) => T,
+  context?: PipelineContext
 ): Stream<T> {
   let currentValue = initialValue;
 
@@ -29,6 +30,7 @@ export function loop<T = any>(
         yield currentValue;
         currentValue = iterateFn(currentValue);
       }
-    }
+    },
+    context
   );
 }

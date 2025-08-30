@@ -6,7 +6,7 @@ describe('race', () => {
     const stream2 = createSubject<number>();
     const results: number[] = [];
 
-    const racedStream = race(stream1, stream2);
+    const racedStream = race([stream1, stream2]);
 
     racedStream.subscribe({
       next: (value) => {
@@ -29,7 +29,7 @@ describe('race', () => {
     const stream1 = createSubject<number>();
     const stream2 = createSubject<number>();
 
-    const racedStream = race(stream1, stream2);
+    const racedStream = race([stream1, stream2]);
 
     racedStream.subscribe({
       next: (value) => {
@@ -48,7 +48,7 @@ describe('race', () => {
     const stream1 = createSubject<number>();
     const stream2 = createSubject<number>();
 
-    const racedStream = race(stream1, stream2);
+    const racedStream = race([stream1, stream2]);
 
     racedStream.subscribe({
       next: (value) => {
@@ -70,7 +70,7 @@ describe('race', () => {
     const stream2 = createSubject<number>();
     const errorMsg = 'test error';
 
-    const racedStream = race(stream1, stream2);
+    const racedStream = race([stream1, stream2]);
 
     racedStream.subscribe({
       next: (value) => {
@@ -93,7 +93,7 @@ describe('race', () => {
     const stream3 = createSubject<number>();
     const results: number[] = [];
 
-    const racedStream = race(stream1, stream2, stream3);
+    const racedStream = race([stream1, stream2, stream3]);
 
     racedStream.subscribe({
       next: (value) => {
@@ -128,7 +128,7 @@ describe('race', () => {
     });
 
     const results: number[] = [];
-    const racedStream = race(stream1, stream2);
+    const racedStream = race([stream1, stream2]);
 
     racedStream.subscribe({
       next: (value) => {
@@ -157,7 +157,7 @@ describe('race', () => {
       yield 3;
     });
 
-    const racedStream = race(stream1, stream2);
+    const racedStream = race([stream1, stream2]);
 
     racedStream.subscribe({
       next: (value) => {

@@ -3,6 +3,7 @@ import {
   createReceiver,
   createSubscription,
   Operator,
+  PipelineContext,
   pipeStream,
   Receiver,
   Stream,
@@ -61,7 +62,7 @@ export type Subject<T = any> = Stream<T> & {
  * @template T The type of the values that the subject will emit.
  * @returns {Subject<T>} A new Subject instance.
  */
-export function createSubject<T = any>(): Subject<T> {
+export function createSubject<T = any>(context?: PipelineContext): Subject<T> {
   const buffer = createSubjectBuffer<{ value: T, phantom?: boolean }>();
   const queue = createQueue();
   let latestValue: T | undefined = undefined;
@@ -144,7 +145,7 @@ export function createSubject<T = any>(): Subject<T> {
       return latestValue;
     },
     pipe(...operators: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...operators);
+      return pipeStream(this, operators, context);
     },
     subscribe,
     async query(): Promise<T> {

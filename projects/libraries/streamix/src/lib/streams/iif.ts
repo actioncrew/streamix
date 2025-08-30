@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 import { eachValueFrom } from '../converters';
 
 /**
@@ -16,7 +16,8 @@ import { eachValueFrom } from '../converters';
 export function iif<T = any>(
   condition: () => boolean,
   trueStream: Stream<T>,
-  falseStream: Stream<T>
+  falseStream: Stream<T>,
+  context?: PipelineContext
 ): Stream<T> {
   async function* generator(): AsyncGenerator<T, void, unknown> {
     // Evaluate condition lazily when the stream starts
@@ -42,5 +43,5 @@ export function iif<T = any>(
     }
   }
 
-  return createStream<T>('iif', generator);
+  return createStream<T>('iif', generator, context);
 }

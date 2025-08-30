@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { createStream, PipelineContext, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits the current screen orientation, either
@@ -14,7 +14,7 @@ import { createStream, Stream } from '../abstractions';
  *
  * @returns {Stream<"portrait" | "landscape">} A stream that emits a string indicating the screen's orientation.
  */
-export function onOrientation(): Stream<"portrait" | "landscape"> {
+export function onOrientation(context?: PipelineContext): Stream<"portrait" | "landscape"> {
   return createStream<"portrait" | "landscape">('onOrientation', async function* () {
     if (
       typeof window === 'undefined' ||
@@ -52,5 +52,5 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
     } finally {
       window.screen.orientation.removeEventListener("change", listener);
     }
-  });
+  }, context);
 }
