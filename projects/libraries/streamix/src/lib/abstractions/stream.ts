@@ -200,7 +200,7 @@ export function createStream<T>(
 
   // Create pipe function that uses self
   const pipe = ((...operators: Operator<any, any>[]) => {
-    return pipeStream(self, ...operators);
+    return pipeStream(self, operators);
   }) as OperatorChain<T>;
 
   // Now define self, closing over pipe
@@ -221,26 +221,26 @@ export function createStream<T>(
  */
 export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
-  ...operators: [...Ops]
+  operators: [...Ops]
 ): Stream<any> {
-  const createTransformedIterator = (): AsyncIterator<any> => {
-    const baseIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
-    return operators.reduce<AsyncIterator<any>>(
-      (iter, op) => op.apply(iter),
-      baseIterator
-    );
-  };
-
   const pipedStream: Stream<any> = {
-    name: `${source.name}-piped`,
-    type: source.type,
+    name: `${source.name}-sink`,
+    type: 'stream',
+
     pipe: ((...nextOps: Operator<any, any>[]) => {
-      return pipeStream(pipedStream, ...nextOps);
+      const allOps = [...operators, ...nextOps];
+      return pipeStream(source, allOps);
     }) as OperatorChain<any>,
 
-    subscribe(cb) {
+    subscribe(cb?: ((value: any) => CallbackReturnType) | Receiver<any>) {
       const receiver = createReceiver(cb);
-      const transformedIterator = createTransformedIterator();
+      const sourceIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
+      let currentIterator: AsyncIterator<any> = sourceIterator;
+
+      for (const op of operators) {
+        currentIterator = op.apply(currentIterator);
+      }
+
       const abortController = new AbortController();
       const { signal } = abortController;
 
@@ -254,13 +254,14 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
           while (true) {
             const winner = await Promise.race([
               abortPromise.then(() => ({ aborted: true } as const)),
-              transformedIterator.next().then(result => ({ result }))
+              currentIterator.next().then(result => ({ result }))
             ]);
 
             if ("aborted" in winner || signal.aborted) break;
-            if (winner.result.done) break;
+            const result = winner.result;
+            if (result.done) break;
 
-            await receiver.next?.(winner.result.value);
+            await receiver.next?.(result.value);
           }
         } catch (err: any) {
           if (!signal.aborted) {
@@ -273,14 +274,14 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 
       return createSubscription(async () => {
         abortController.abort();
-        if (transformedIterator.return) {
-          await transformedIterator.return().catch(() => {});
+        if (currentIterator.return) {
+          await currentIterator.return().catch(() => {});
         }
       });
     },
 
     async query() {
-      return await firstValueFrom(pipedStream);
+      return firstValueFrom(pipedStream);
     }
   };
 

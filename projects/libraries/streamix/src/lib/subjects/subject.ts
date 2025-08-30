@@ -142,7 +142,7 @@ export function createSubject<T = any>(): Subject<T> {
       return latestValue;
     },
     pipe(...steps: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, ...steps);
+      return pipeStream(this, steps);
     },
     subscribe,
     async query(): Promise<T> {
