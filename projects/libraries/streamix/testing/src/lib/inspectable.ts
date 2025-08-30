@@ -34,33 +34,33 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
   });
 
   function createInspectableStream<S>(
-    upstream: Stream<any>,
+    source: Stream<any>,
     operators: Operator<any, any>[]
   ): InspectableStream<S> {
-    const upstreamSc = context ? createStreamContext(upstream, context) : undefined;
+    const sourceContext = context ? createStreamContext(source, context) : undefined;
 
     // Create the piped stream object
     const pipedStream: InspectableStream<S> = {
-      name: `${upstream.name}-sink`,
+      name: `${source.name}-sink`,
       type: "stream",
       context: context,
 
       pipe<U>(...nextOps: Operator<any, any>[]): InspectableStream<U> {
         // Combine current operators with new ones for proper chaining
         const allOperators = [...operators, ...nextOps];
-        return createInspectableStream<U>(upstream, allOperators);
+        return createInspectableStream<U>(source, allOperators);
       },
 
       subscribe(cb?: any): Subscription {
         const receiver = createReceiver(cb);
-        const sourceIterator: StreamIterator<any> = eachValueFrom(upstream)[Symbol.asyncIterator]();
+        const sourceIterator: StreamIterator<any> = eachValueFrom(source)[Symbol.asyncIterator]();
 
         // Create a logging wrapper for the source iterator
         const loggingSourceIterator = {
           async next() {
             const result = await sourceIterator.next();
             if (!result.done) {
-              upstreamSc?.logFlow('emitted', null as any, result.value, 'Emitted source value');
+              sourceContext?.logFlow('emitted', null as any, result.value, 'Emitted source value');
             }
             return result;
           },
@@ -74,7 +74,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
         // Apply all operators in sequence
         for (const op of operators) {
           const patched = patchOperator(op);
-          iterator = patched.apply(iterator, upstreamSc);
+          iterator = patched.apply(iterator, sourceContext);
         }
 
         const abortController = new AbortController();
@@ -109,7 +109,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
             await receiver.error?.(err);
           } finally {
             await receiver.complete?.();
-            await upstreamSc?.finalize();
+            await sourceContext?.finalize();
             await sinkSc?.finalize();
           }
         })();

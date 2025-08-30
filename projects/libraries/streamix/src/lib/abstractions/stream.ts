@@ -280,6 +280,8 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   operators: [...Ops],
   context?: PipelineContext
 ): Stream<any> {
+  let sourceContext = context ? createStreamContext(source, context) : undefined;
+
   const pipedStream: Stream<any> = {
     name: `${source.name}-sink`,
     type: 'stream',
@@ -291,13 +293,12 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 
     subscribe(cb?: ((value: any) => CallbackReturnType) | Receiver<any>) {
       const receiver = createReceiver(cb);
-      let streamContext = context ? createStreamContext(this, context) : undefined;
       const sourceIterator = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
-      let currentIterator: StreamIterator<any> = sourceIterator;
+      let iterator: StreamIterator<any> = sourceIterator;
 
       for (const op of operators) {
         const patchedOp = patchOperator(op);
-        currentIterator = patchedOp.apply(currentIterator, streamContext);
+        iterator = patchedOp.apply(iterator, sourceContext);
       }
 
       const abortController = new AbortController();
@@ -308,41 +309,47 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
         else signal.addEventListener("abort", () => resolve(), { once: true });
       });
 
+      // Create sink context for the final stream
+      const sinkSc = context ? createStreamContext(pipedStream, context) : undefined;
+
       (async () => {
-        try {
-          while (true) {
-            const winner = await Promise.race([
-              abortPromise.then(() => ({ aborted: true } as const)),
-              currentIterator.next().then(result => ({ result }))
-            ]);
+          try {
+            while (true) {
+              const winner = await Promise.race([
+                abortPromise.then(() => ({ aborted: true } as const)),
+                iterator.next().then(result => ({ result })),
+              ]);
 
-            if ("aborted" in winner || signal.aborted) break;
-            const result = winner.result;
-            if (result.done) break;
+              if ("aborted" in winner || signal.aborted) break;
 
-            await receiver.next?.(result.value);
-          }
-        } catch (err: any) {
-          if (!signal.aborted) {
+              const { result } = winner;
+              if (result.done) break;
+
+              sinkSc?.logFlow('resolved', null as any, result.value, 'Emitted sink value');
+              await receiver.next?.(result.value);
+            }
+          } catch (err: any) {
+            sinkSc?.logFlow('error', null as any, undefined, String(err));
             await receiver.error?.(err);
+          } finally {
+            await receiver.complete?.();
+            await sourceContext?.finalize();
+            await sinkSc?.finalize();
           }
-        } finally {
-          await receiver.complete?.();
-        }
-      })();
+        })();
 
-      return createSubscription(async () => {
-        abortController.abort();
-        if (currentIterator.return) {
-          await currentIterator.return().catch(() => {});
-        }
-      });
-    },
+        return createSubscription(async () => {
+          abortController.abort();
+          if (sourceIterator.return) {
+            await sourceIterator.return().catch(() => {});
+          }
+        });
+      },
 
-    async query() {
-      return firstValueFrom(pipedStream);
-    }
-  };
+      async query() {
+        return firstValueFrom(pipedStream);
+      },
+    };
 
   return pipedStream;
 }
