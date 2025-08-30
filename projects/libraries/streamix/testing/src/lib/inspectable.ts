@@ -25,7 +25,7 @@ export interface InspectableStream<T = any> extends Stream<T> {
  */
 export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
   // One PipelineContext for the entire source pipeline
-  const pipelineContext = createPipelineContext({
+  const context = createPipelineContext({
     logLevel: LogLevel.WARN,
     flowLogLevel: LogLevel.DEBUG,
     phantomHandler: (operator, streamContext, result) => {
@@ -37,13 +37,13 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
     upstream: Stream<any>,
     operators: Operator<any, any>[]
   ): InspectableStream<S> {
-    const upstreamSc = createStreamContext(pipelineContext, upstream);
+    const upstreamSc = context ? createStreamContext(upstream, context) : undefined;
 
     // Create the piped stream object
     const pipedStream: InspectableStream<S> = {
       name: `${upstream.name}-sink`,
       type: "stream",
-      context: pipelineContext,
+      context: context,
 
       pipe<U>(...nextOps: Operator<any, any>[]): InspectableStream<U> {
         // Combine current operators with new ones for proper chaining
@@ -86,7 +86,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
         });
 
         // Create sink context for the final stream
-        const sinkSc = createStreamContext(pipelineContext, pipedStream);
+        const sinkSc = context ? createStreamContext(pipedStream, context) : undefined;
 
         (async () => {
           try {
@@ -133,7 +133,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
   // For the root stream with no operators yet
   const decorated: InspectableStream<T> = {
     ...source,
-    context: pipelineContext,
+    context: context,
 
     pipe<S>(...operators: Operator<any, any>[]): InspectableStream<S> {
       return createInspectableStream<S>(source, operators);
@@ -143,7 +143,7 @@ export function inspectable<T>(source: Stream<T>): InspectableStream<T> {
       const receiver = createReceiver(cb);
       let iterator: StreamIterator<T> = eachValueFrom(source)[Symbol.asyncIterator]();
 
-      const sc = createStreamContext(pipelineContext, source);
+      const sc = context ? createStreamContext(source, context) : undefined;
 
       const abortController = new AbortController();
       const { signal } = abortController;

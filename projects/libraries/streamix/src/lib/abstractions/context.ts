@@ -253,18 +253,18 @@ export function createStreamResult<T>(options: Partial<StreamResult<T>> = {}): S
 // -------------------------------
 
 export function createStreamContext(
-  pipelineContext: PipelineContext,
   stream: Stream,
+  context: PipelineContext,
 ): StreamContext {
   const streamId = `${stream.name}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const pendingResults = new Set<StreamResult<any>>();
 
   const markPending = (operator: Operator, result: StreamResult<any>) => {
     logEvent(
-      pipelineContext.logLevel,
+      context.logLevel,
       LogLevel.INFO,
       streamId,
-      pipelineContext.operatorStack(operator),
+      context.operatorStack(operator),
       'Marked as pending',
       result,
     );
@@ -274,16 +274,16 @@ export function createStreamContext(
 
   const markPhantom = (operator: Operator, result: StreamResult<any>) => {
     logEvent(
-      pipelineContext.logLevel,
+      context.logLevel,
       LogLevel.DEBUG,
       streamId,
-      pipelineContext.operatorStack(operator),
+      context.operatorStack(operator),
       'Marked as phantom',
       result,
     );
     result.type = 'phantom';
     result.done = true;
-    pipelineContext.phantomHandler(operator, sc, result.value);
+    context.phantomHandler(operator, sc, result.value);
     pendingResults.delete(result);
   };
 
@@ -292,10 +292,10 @@ export function createStreamContext(
     result.done = true;
     pendingResults.delete(result);
     logEvent(
-      pipelineContext.logLevel,
+      context.logLevel,
       LogLevel.INFO,
       streamId,
-      pipelineContext.operatorStack(operator),
+      context.operatorStack(operator),
       'Resolved result:',
       result,
     );
@@ -308,7 +308,7 @@ export function createStreamContext(
     result?: any,
     message?: string,
   ) => {
-    if (!pipelineContext.flowLoggingEnabled) return;
+    if (!context.flowLoggingEnabled) return;
     const eventLevel: LogLevel = (() => {
       switch (eventType) {
         case 'error':
@@ -324,10 +324,10 @@ export function createStreamContext(
       }
     })();
 
-    if (eventLevel > pipelineContext.flowLogLevel) return;
+    if (eventLevel > context.flowLogLevel) return;
 
     const opPath =
-      operator !== null ? pipelineContext.operatorStack(operator) : '';
+      operator !== null ? context.operatorStack(operator) : '';
     const logMsg = `${message ?? ''}`.trim();
     const hasResult = result !== undefined && result !== null;
     const resultStr = hasResult
@@ -399,7 +399,7 @@ export function createStreamContext(
 
   const finalize = async () => {
     logEvent(
-      pipelineContext.logLevel,
+      context.logLevel,
       LogLevel.INFO,
       streamId,
       'finalize',
@@ -408,7 +408,7 @@ export function createStreamContext(
     [...pendingResults].filter((r) => !r.parent).forEach((r) => r.finalize());
     await Promise.allSettled([...pendingResults].map((r) => r.wait()));
     logEvent(
-      pipelineContext.logLevel,
+      context.logLevel,
       LogLevel.INFO,
       streamId,
       'finalize',
@@ -418,11 +418,11 @@ export function createStreamContext(
 
   const sc: StreamContext = {
     streamId,
-    pipeline: pipelineContext,
+    pipeline: context,
     pendingResults,
     timestamp: performance.now(),
     phantomHandler: (operator, value) =>
-      pipelineContext.phantomHandler(operator, sc, value),
+      context.phantomHandler(operator, sc, value),
     resolvePending,
     markPhantom,
     markPending,
@@ -431,7 +431,7 @@ export function createStreamContext(
     finalize,
   };
 
-  pipelineContext.registerStream(stream, sc);
+  context.registerStream(stream, sc);
   return sc;
 }
 
