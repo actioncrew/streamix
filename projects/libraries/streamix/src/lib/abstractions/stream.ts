@@ -1,6 +1,6 @@
 import { eachValueFrom, firstValueFrom } from "../converters";
-import { PipelineContext, StreamResult } from "./context";
-import { Operator, OperatorChain } from "./operator";
+import { createStreamContext, PipelineContext, StreamResult } from "./context";
+import { Operator, OperatorChain, patchOperator } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
 import { createSubscription, Subscription } from "./subscription";
 
@@ -256,7 +256,7 @@ export function createStream<T>(
 
   // Create pipe function that uses self
   const pipe = ((...operators: Operator<any, any>[]) => {
-    return pipeStream(self, operators);
+    return pipeStream(self, operators, context);
   }) as OperatorChain<T>;
 
   // Now define self, closing over pipe
@@ -277,7 +277,8 @@ export function createStream<T>(
  */
 export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
   source: Stream<TIn>,
-  operators: [...Ops]
+  operators: [...Ops],
+  context?: PipelineContext
 ): Stream<any> {
   const pipedStream: Stream<any> = {
     name: `${source.name}-sink`,
@@ -285,16 +286,18 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
 
     pipe: ((...nextOps: Operator<any, any>[]) => {
       const allOps = [...operators, ...nextOps];
-      return pipeStream(source, allOps);
+      return pipeStream(source, allOps, context);
     }) as OperatorChain<any>,
 
     subscribe(cb?: ((value: any) => CallbackReturnType) | Receiver<any>) {
       const receiver = createReceiver(cb);
-      const sourceIterator = eachValueFrom(source)[Symbol.asyncIterator]() as AsyncIterator<TIn>;
-      let currentIterator: AsyncIterator<any> = sourceIterator;
+      let streamContext = context ? createStreamContext(this, context) : undefined;
+      const sourceIterator = eachValueFrom(source)[Symbol.asyncIterator]() as StreamIterator<TIn>;
+      let currentIterator: StreamIterator<any> = sourceIterator;
 
       for (const op of operators) {
-        currentIterator = op.apply(currentIterator);
+        const patchedOp = patchOperator(op);
+        currentIterator = patchedOp.apply(currentIterator, streamContext);
       }
 
       const abortController = new AbortController();

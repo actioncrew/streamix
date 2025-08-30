@@ -127,7 +127,7 @@ export function createBehaviorSubject<T = any>(initialValue: T, context?: Pipeli
       return latestValue;
     },
     pipe(...operators: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, operators);
+      return pipeStream(this, operators, context);
     },
     subscribe,
     async query(): Promise<T> {

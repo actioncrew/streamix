@@ -123,7 +123,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity, contex
     type: "subject",
     name: "replaySubject",
     pipe(...operators: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, operators);
+      return pipeStream(this, operators, context);
     },
     subscribe,
     async query(): Promise<T> {
