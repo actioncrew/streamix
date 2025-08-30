@@ -144,8 +144,8 @@ export function createSubject<T = any>(context?: PipelineContext): Subject<T> {
     get snappy() {
       return latestValue;
     },
-    pipe(...operators: Operator<any, any>[]): Stream<any> {
-      return pipeStream(this, operators, context);
+    pipe(...steps: Operator<any, any>[]): Stream<any> {
+      return pipeStream(this, steps);
     },
     subscribe,
     async query(): Promise<T> {
