@@ -72,11 +72,13 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
         if (resolveNext) {
           resolveNext(messageQueue.shift()!);
           resolveNext = null;
+          rejectNext = null;
         }
       } catch (err) {
         errorQueue.push(err);
-        if (resolveNext) {
-          resolveNext(Promise.reject(err));
+        if (rejectNext) {
+          rejectNext(err);
+          rejectNext = null;
           resolveNext = null;
         }
       }
@@ -84,8 +86,9 @@ export function webSocket<T = any>(url: string): WebSocketStream<T> {
 
     const onClose = () => {
       done = true;
-      if (resolveNext) {
-        resolveNext(Promise.reject(new Error('WebSocket closed')));
+      if (rejectNext) {
+        rejectNext(new Error('WebSocket closed'));
+        rejectNext = null;
         resolveNext = null;
       }
     };
