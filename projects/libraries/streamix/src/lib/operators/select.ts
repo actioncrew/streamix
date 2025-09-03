@@ -51,7 +51,7 @@ export const select = <T = any>(
 
     async function* generator() {
       while (true) {
-        const result: StreamResult<T> = createStreamResult(await source.next());
+        const result: Partial<StreamResult> = createStreamResult(await source.next());
         if (result.done) break;
 
         const nextTargetIndex = (await nextTargetIndexPromise).value;

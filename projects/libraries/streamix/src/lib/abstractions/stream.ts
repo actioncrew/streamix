@@ -15,14 +15,14 @@ import { createSubscription, Subscription } from "./subscription";
  *
  * @template T The type of the values produced by this iterator.
  */
-export interface StreamIterator<T> {
+export interface StreamIterator<T = any> {
   /**
    * Retrieves the next result from the stream.
    *
    * @param value An optional value to send into the iterator.
    * @returns A promise resolving to the next {@link StreamResult}.
    */
-  next(value?: any): Promise<StreamResult<T>>;
+  next(value?: T): Promise<Partial<StreamResult>>;
 
   /**
    * Signals that the consumer is done with the stream and
@@ -31,7 +31,7 @@ export interface StreamIterator<T> {
    * @param value An optional value to return from the stream.
    * @returns A promise resolving to the final {@link StreamResult}.
    */
-  return?(value?: any): Promise<StreamResult<T>>;
+  return?(value?: any): Promise<Partial<StreamResult>>;
 
   /**
    * Propagates an error into the iterator, allowing it to handle
@@ -40,7 +40,7 @@ export interface StreamIterator<T> {
    * @param e An optional error to throw inside the iterator.
    * @returns A promise resolving to the next {@link StreamResult}.
    */
-  throw?(e?: any): Promise<StreamResult<T>>;
+  throw?(e?: any): Promise<Partial<StreamResult>>;
 }
 
 /**

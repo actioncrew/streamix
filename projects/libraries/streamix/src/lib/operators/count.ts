@@ -16,7 +16,7 @@ export const count = <T = any>() =>
     let total = 0;
 
     return {
-      async next(): Promise<StreamResult<number>> {
+      async next(): Promise<Partial<StreamResult<number>>> {
         if (counted) return DONE;
 
         while (true) {

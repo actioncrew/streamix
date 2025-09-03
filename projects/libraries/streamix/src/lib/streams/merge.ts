@@ -20,10 +20,10 @@ export function merge<T = any>(sources: Stream<T>[], context?: PipelineContext):
     if (sources.length === 0) return;
 
     const iterators = sources.map(s => eachValueFrom(s)[Symbol.asyncIterator]());
-    const nextPromises: Array<Promise<StreamResult<T>> | null> = iterators.map(it => it.next());
+    const nextPromises: Array<Promise<Partial<StreamResult>> | null> = iterators.map(it => it.next());
     let activeCount = iterators.length;
 
-    const reflect = (promise: Promise<StreamResult<T>>, index: number) =>
+    const reflect = (promise: Promise<Partial<StreamResult>>, index: number) =>
       promise.then(
         result => ({ ...result, index, status: 'fulfilled' as const }),
         error => ({ error, index, status: 'rejected' as const })

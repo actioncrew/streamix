@@ -17,7 +17,7 @@ export const sample = <T = any>(period: number) =>
   createOperator<T, T>('sample', function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
 
-    let lastResult: StreamResult<T> | undefined;
+    let lastResult: Partial<StreamResult> | undefined;
     let skipped = false;
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -47,7 +47,7 @@ export const sample = <T = any>(period: number) =>
         startSampling();
 
         while (true) {
-          const result: StreamResult<T> = createStreamResult(await source.next());
+          const result: Partial<StreamResult> = createStreamResult(await source.next());
 
           if (result.done) break;
 

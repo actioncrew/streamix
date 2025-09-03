@@ -56,13 +56,13 @@ export type StreamResult<T = any> = IteratorResult<T> & {
 export interface StreamContext {
   pipeline: PipelineContext;
   streamId: string;
-  pendingResults: Set<StreamResult<any>>;
+  pendingResults: Set<Partial<StreamResult>>;
   timestamp: number;
   phantomHandler: (operator: Operator, value: any) => CallbackReturnType;
-  resolvePending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
-  markPhantom: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
-  markPending: (operator: Operator, result: StreamResult<any>) => CallbackReturnType;
-  createResult: <T>(options?: Partial<StreamResult<T>>) => StreamResult<T>;
+  resolvePending: (operator: Operator, result: Partial<StreamResult>) => CallbackReturnType;
+  markPhantom: (operator: Operator, result: Partial<StreamResult>) => CallbackReturnType;
+  markPending: (operator: Operator, result: Partial<StreamResult>) => CallbackReturnType;
+  createResult: (options?: Partial<StreamResult>) => Partial<StreamResult>;
   logFlow(eventType: 'emitted' | 'pending' | 'resolved' | 'phantom' | 'error',
     operator: Operator | null, result?: any, message?: string
   ): void;
@@ -94,7 +94,7 @@ export const createLogEntry = (
   streamId: string,
   operatorPath: string,
   message: string,
-  result?: StreamResult
+  result?: Partial<StreamResult>
 ): LogEntry => ({
   timestamp: performance.now(),
   level,
@@ -127,7 +127,7 @@ const logEvent = (
   streamId: string,
   operatorPath: string,
   message: string,
-  result?: StreamResult
+  result?: Partial<StreamResult>
 ) => {
   if (severity > threshold) return null;
 
@@ -164,12 +164,12 @@ const logEvent = (
 // StreamResult Factory
 // -------------------------------
 
-export function createStreamResult<T>(options: Partial<StreamResult<T>> = {}): StreamResult<T> {
+export function createStreamResult<T>(options: Partial<StreamResult> = {}): IteratorResult<T> & Partial<StreamResult> {
   let resolveFn!: (value?: void | PromiseLike<void>) => void;
   let rejectFn!: (reason?: any) => void;
   const completion = new Promise<void>((res, rej) => { resolveFn = res; rejectFn = rej; });
 
-  const instance: StreamResult<T> = {
+  const instance: StreamResult = {
     done: options.done ?? false,
     value: options.value,
     timestamp: performance.now(),
@@ -257,9 +257,9 @@ export function createStreamContext(
   context: PipelineContext,
 ): StreamContext {
   const streamId = `${stream.name}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  const pendingResults = new Set<StreamResult<any>>();
+  const pendingResults = new Set<Partial<StreamResult>>();
 
-  const markPending = (operator: Operator, result: StreamResult<any>) => {
+  const markPending = (operator: Operator, result: Partial<StreamResult>) => {
     logEvent(
       context.logLevel,
       LogLevel.INFO,
@@ -272,7 +272,7 @@ export function createStreamContext(
     pendingResults.add(result);
   };
 
-  const markPhantom = (operator: Operator, result: StreamResult<any>) => {
+  const markPhantom = (operator: Operator, result: Partial<StreamResult>) => {
     logEvent(
       context.logLevel,
       LogLevel.DEBUG,
@@ -287,7 +287,7 @@ export function createStreamContext(
     pendingResults.delete(result);
   };
 
-  const resolvePending = (operator: Operator, result: StreamResult<any>) => {
+  const resolvePending = (operator: Operator, result: Partial<StreamResult>) => {
     result.type = 'done';
     result.done = true;
     pendingResults.delete(result);
@@ -299,7 +299,8 @@ export function createStreamContext(
       'Resolved result:',
       result,
     );
-    return result.resolve();
+    
+    (result && 'resolve' in result) && result.resolve!();
   };
 
   const logFlow = (
@@ -405,8 +406,8 @@ export function createStreamContext(
       'finalize',
       `Finalizing stream, waiting for ${pendingResults.size} results.`,
     );
-    [...pendingResults].filter((r) => !r.parent).forEach((r) => r.finalize());
-    await Promise.allSettled([...pendingResults].map((r) => r.wait()));
+    [...pendingResults].forEach(r => (r && 'finalize' in r) && r.finalize!());
+    await Promise.all([...pendingResults].map(r => (r && 'wait' in r && r.wait!()) || Promise.resolve()));
     logEvent(
       context.logLevel,
       LogLevel.INFO,
@@ -426,7 +427,7 @@ export function createStreamContext(
     resolvePending,
     markPhantom,
     markPending,
-    createResult: <T>(options = {}) => createStreamResult<T>(options),
+    createResult: (options = {}) => createStreamResult(options),
     logFlow,
     finalize,
   };
@@ -459,7 +460,7 @@ export function createPipelineContext(options: {
 
   const registerStream = (stream: Stream): StreamContext => {
     const streamId = `${stream.name}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const pendingResults = new Set<StreamResult<any>>();
+    const pendingResults = new Set<Partial<StreamResult>>();
 
     const streamContext: StreamContext = {
       streamId,
@@ -472,7 +473,7 @@ export function createPipelineContext(options: {
         result.type = 'done';
         result.done = true;
         pendingResults.delete(result);
-        return result.resolve();
+        (result && 'resolve' in result) && result.resolve!();
       },
       markPhantom: (op, result) => {
         result.type = 'phantom';
@@ -581,8 +582,8 @@ export function createPipelineContext(options: {
         }
       },
       finalize: async () => {
-        [...pendingResults].forEach(r => r.finalize());
-        await Promise.all([...pendingResults].map(r => r.wait()));
+        [...pendingResults].forEach(r => (r && 'finalize' in r) && r.finalize!());
+        await Promise.all([...pendingResults].map(r => (r && 'wait' in r && r.wait!()) || Promise.resolve()));
       }
     };
 

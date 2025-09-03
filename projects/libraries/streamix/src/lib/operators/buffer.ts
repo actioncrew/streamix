@@ -14,7 +14,7 @@ export function buffer<T = any>(period: number) {
   return createOperator<T, T[]>("buffer", function (this: Operator, source, context) {
     const output = createSubject<T[]>();
     let buffer: T[] = [];
-    let pendingResults: StreamResult<T>[] = []; // Track actual pending results
+    let pendingResults: Partial<StreamResult>[] = []; // Track actual pending results
     let completed = false;
 
     const flush = () => {

@@ -24,7 +24,7 @@ export const map = <T = any, R = any>(
     let completed = false;
 
     return {
-      async next(): Promise<StreamResult<R>> {
+      async next(): Promise<Partial<StreamResult<R>>> {
         while (true) {
           if (completed) {
             return DONE;

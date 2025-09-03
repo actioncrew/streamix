@@ -18,7 +18,7 @@ export const audit = <T = any>(duration: number) =>
   createOperator<T, T>('audit', function (this: Operator, source, context) {
     const output = createSubject<T>();
 
-    let lastResult: StreamResult<T> | undefined = undefined;
+    let lastResult: Partial<StreamResult> | undefined = undefined;
     let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
 
     const flush = () => {
@@ -54,7 +54,7 @@ export const audit = <T = any>(duration: number) =>
 
           // Add new value to pending set and buffer it
           lastResult = result;
-          context?.markPending(this, lastResult);
+          context?.markPending(this, lastResult!);
 
           // Start a new timer if not active
           if (timerId === undefined) {

@@ -7,7 +7,7 @@ import { Stream, StreamIterator } from "./stream";
  * Always `{ done: true, value: undefined }`.
  * Used to signal the end of a stream.
  */
-export const DONE: StreamResult<any> = createStreamResult({ done: true, value: undefined });
+export const DONE = createStreamResult({ done: true, value: undefined });
 /**
  * Factory function to create a normal stream result.
  *
@@ -15,7 +15,7 @@ export const DONE: StreamResult<any> = createStreamResult({ done: true, value: u
  * @param value The value to emit downstream.
  * @returns A `StreamResult<R>` object with `{ done: false, value }`.
  */
-export const NEXT = <R = any>(value: R) => createStreamResult({ done: false, value });
+export const NEXT = <R = any>(value: R) => createStreamResult<R>({ done: false, value });
 
 /**
  * Represents a stream operator that transforms values from an input stream into an output stream.
@@ -276,28 +276,28 @@ export function patchOperator<TIn, TOut>(
       context?.pipeline.operators.push(operator);
 
       return {
-        async next(): Promise<StreamResult<TOut>> {
+        async next(): Promise<Partial<StreamResult>> {
 
           const result = await originalIterator.next.apply(originalIterator);
-          return createStreamResult<TOut>({
+          return createStreamResult({
             ...result,
           });
         },
 
-        return: async (): Promise<StreamResult<TOut>> => {
+        return: async (): Promise<Partial<StreamResult>> => {
           if (originalIterator.return) {
             const res = await originalIterator.return();
-            return createStreamResult<TOut>({ ...res });
+            return createStreamResult({ ...res });
           }
-          return createStreamResult<TOut>({ done: true, value: undefined });
+          return createStreamResult({ done: true, value: undefined });
         },
 
-        throw: async (err?: any): Promise<StreamResult<TOut>> => {
+        throw: async (err?: any): Promise<Partial<StreamResult>> => {
           if (originalIterator.throw) {
             const res = await originalIterator.throw(err);
-            return createStreamResult<TOut>({ ...res });
+            return createStreamResult({ ...res });
           }
-          return createStreamResult<TOut>({ done: true, value: undefined, error: err });
+          return createStreamResult({ done: true, value: undefined, error: err });
         },
       };
     },

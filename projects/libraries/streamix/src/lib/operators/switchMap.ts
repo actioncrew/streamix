@@ -37,7 +37,7 @@ export function switchMap<T = any, R = any>(
     let currentInnerStreamId = 0;
     let index = 0;
     let innerHadEmissions = false;
-    let pendingPhantom: StreamResult<T> | null = null;
+    let pendingPhantom: Partial<StreamResult> | null = null;
 
     const checkComplete = () => {
       if (inputCompleted && !currentSubscription) {
