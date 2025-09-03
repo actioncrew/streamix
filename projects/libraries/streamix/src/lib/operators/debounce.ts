@@ -17,7 +17,7 @@ export function debounce<T = any>(duration: number) {
   return createOperator<T, T>("debounce", function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
     let timeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
-    let latestResult: Partial<StreamResult> | undefined = undefined;
+    let latestResult: StreamResult | undefined = undefined;
     let isCompleted = false;
 
     const flush = () => {

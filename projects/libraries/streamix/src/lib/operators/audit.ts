@@ -18,7 +18,7 @@ export const audit = <T = any>(duration: number) =>
   createOperator<T, T>('audit', function (this: Operator, source, context) {
     const output = createSubject<T>();
 
-    let lastResult: Partial<StreamResult> | undefined = undefined;
+    let lastResult: StreamResult | undefined = undefined;
     let timerId: ReturnType<typeof setTimeout> | undefined = undefined;
 
     const flush = () => {

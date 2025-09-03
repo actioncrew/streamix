@@ -22,7 +22,7 @@ export interface StreamIterator<T = any> {
    * @param value An optional value to send into the iterator.
    * @returns A promise resolving to the next {@link StreamResult}.
    */
-  next(value?: T): Promise<Partial<StreamResult>>;
+  next(value?: T): Promise<StreamResult>;
 
   /**
    * Signals that the consumer is done with the stream and
@@ -31,7 +31,7 @@ export interface StreamIterator<T = any> {
    * @param value An optional value to return from the stream.
    * @returns A promise resolving to the final {@link StreamResult}.
    */
-  return?(value?: any): Promise<Partial<StreamResult>>;
+  return?(value?: any): Promise<StreamResult>;
 
   /**
    * Propagates an error into the iterator, allowing it to handle
@@ -40,7 +40,7 @@ export interface StreamIterator<T = any> {
    * @param e An optional error to throw inside the iterator.
    * @returns A promise resolving to the next {@link StreamResult}.
    */
-  throw?(e?: any): Promise<Partial<StreamResult>>;
+  throw?(e?: any): Promise<StreamResult>;
 }
 
 /**

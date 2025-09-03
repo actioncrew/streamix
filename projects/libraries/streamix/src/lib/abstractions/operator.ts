@@ -276,7 +276,7 @@ export function patchOperator<TIn, TOut>(
       context?.pipeline.operators.push(operator);
 
       return {
-        async next(): Promise<Partial<StreamResult>> {
+        async next(): Promise<StreamResult> {
 
           const result = await originalIterator.next.apply(originalIterator);
           return createStreamResult({
@@ -284,7 +284,7 @@ export function patchOperator<TIn, TOut>(
           });
         },
 
-        return: async (): Promise<Partial<StreamResult>> => {
+        return: async (): Promise<StreamResult> => {
           if (originalIterator.return) {
             const res = await originalIterator.return();
             return createStreamResult({ ...res });
@@ -292,7 +292,7 @@ export function patchOperator<TIn, TOut>(
           return createStreamResult({ done: true, value: undefined });
         },
 
-        throw: async (err?: any): Promise<Partial<StreamResult>> => {
+        throw: async (err?: any): Promise<StreamResult> => {
           if (originalIterator.throw) {
             const res = await originalIterator.throw(err);
             return createStreamResult({ ...res });

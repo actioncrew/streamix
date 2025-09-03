@@ -17,7 +17,7 @@ export const throttle = <T = any>(duration: number) =>
   createOperator<T, T>('throttle', function (this: Operator, source, context) {
     const output: Subject<T> = createSubject<T>();
     let lastEmit = 0;
-    let pendingResult: Partial<StreamResult> | undefined;
+    let pendingResult: StreamResult | undefined;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const flushPending = () => {
@@ -33,7 +33,7 @@ export const throttle = <T = any>(duration: number) =>
     (async () => {
       try {
         while (true) {
-          const result: Partial<StreamResult> = createStreamResult(await source.next());
+          const result: StreamResult = createStreamResult(await source.next());
 
           if (result.done) break;
 

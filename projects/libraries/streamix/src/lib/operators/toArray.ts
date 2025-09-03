@@ -9,7 +9,7 @@ import { createOperator, createStreamResult, DONE, NEXT, Operator, StreamResult 
  */
 export const toArray = <T = any>() =>
   createOperator<T, T[]>("toArray", function (this: Operator, source, context) {
-    const collected: Partial<StreamResult>[] = [];
+    const collected: StreamResult[] = [];
     let completed = false;
     let emitted = false;
 

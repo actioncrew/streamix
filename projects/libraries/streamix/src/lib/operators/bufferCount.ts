@@ -16,7 +16,7 @@ export const bufferCount = <T = any>(bufferSize: number = Infinity) =>
       next: async () => {
         if (completed) return DONE;
 
-        const buffer: Partial<StreamResult>[] = [];
+        const buffer: StreamResult[] = [];
 
         while (buffer.length < bufferSize) {
           const result = createStreamResult(await source.next());
