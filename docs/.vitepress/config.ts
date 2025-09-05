@@ -25,12 +25,11 @@ export default defineConfig({
           text: 'API Reference',
           items: [
             { text: 'Overview', link: '/api/' },
-            { text: 'Classes', link: '/api/classes.md' },
-            { text: 'Enumerations', link: '/api/enums.md' },
-            { text: 'Functions', link: '/api/functions.md' },
-            { text: 'Interfaces', link: '/api/interfaces.md' },
-            { text: 'Type Aliases', link: '/api/type-aliases.md' },
-            { text: 'Variables', link: '/api/variables.md' }
+            { text: 'Enumerations', link: '/api/#enumerations' },
+            { text: 'Functions', link: '/api/#functions' },
+            { text: 'Interfaces', link: '/api/#interfaces' },
+            { text: 'Type Aliases', link: '/api/#type-aliases' },
+            { text: 'Variables', link: '/api/#variables' }
           ]
         }
       ],
