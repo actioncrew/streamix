@@ -1,6 +1,9 @@
 {
   "entryPoints": ["projects/libraries/streamix/src/public-api.ts"],
   "out": "docs/api",
+  "gitRemote": "origin",
+  "gitRevision": "main",
+  "sourceLinkTemplate": "https://github.com/actioncrew/streamix/blob/{gitRevision}/{path}#L{line}", 
   "plugin": ["typedoc-plugin-markdown"],
   "theme": "markdown",
   "hideGenerator": true,
@@ -10,7 +13,6 @@
   "excludeInternal": true,
   "entryPointStrategy": "resolve",
   "readme": "none",
-  "gitRevision": "main",
   "sort": ["source-order"],
   "kindSortOrder": [
     "Document",
