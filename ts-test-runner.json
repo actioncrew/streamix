@@ -1,0 +1,67 @@
+{
+  "srcDir": "./projects/libraries/streamix/src/lib",
+  "testDir": "./projects/libraries/streamix/src/tests",
+  "outDir": "./dist/.vite-jasmine-build",
+  "tsconfig": "tsconfig.json",
+  "port": 8888,
+  "browser": "chrome",
+  "watch": true,
+  "viteConfig": {
+    "root": "./",
+    "logLevel": "warn",
+    "build": {
+      "outDir": "./dist/.vite-jasmine-build",
+      "sourcemap": true,
+      "minify": false,
+      "rollupOptions": {
+        "preserveEntrySignatures": "strict",
+        "output": {
+          "format": "es",
+          "entryFileNames": "[name].js",
+          "chunkFileNames": "chunks/[name]-[hash].js",
+          "preserveModules": true,
+          "preserveModulesRoot": "./projects/libraries/streamix/src/lib"
+        }
+      },
+      "emptyOutDir": true
+    }
+  },
+  "viteBuildOptions": {
+    "target": "es2022",
+    "sourcemap": true,
+    "minify": false,
+    "preserveModules": true,
+    "preserveModulesRoot": "./projects/libraries/streamix/src/lib"
+  },
+  "jasmineConfig": {
+    "srcDir": "./dist/.vite-jasmine-build",
+    "specDir": "./dist/.vite-jasmine-build",
+    "srcFiles": [
+      "**/*.js",
+      "!**/*.spec.js",
+      "!**/chunks/**"
+    ],
+    "specFiles": [
+      "**/*.spec.js"
+    ],
+    "helpers": [],
+    "env": {
+      "stopSpecOnExpectationFailure": false,
+      "random": false
+    },
+    "browser": {
+      "name": "chrome"
+    },
+    "esm": true,
+    "esmFilenameExtension": ".js",
+    "jsLoader": "import",
+    "port": 8888,
+    "reporter": "html"
+  },
+  "htmlOptions": {
+    "title": "streamix Tests",
+    "includeSourceScripts": true,
+    "includeSpecScripts": true,
+    "bootScript": "boot1"
+  }
+}
