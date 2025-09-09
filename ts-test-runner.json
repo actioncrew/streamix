@@ -5,7 +5,6 @@
   "tsconfig": "tsconfig.json",
   "port": 8888,
   "browser": "chrome",
-  "watch": true,
   "viteConfig": {
     "root": "./",
     "logLevel": "warn",
