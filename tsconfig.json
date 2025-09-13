@@ -5,7 +5,7 @@
     "allowJs": true,
     "declaration": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist/out-tsc",
+    "outDir": "./dist/streamix",
     "strict": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
@@ -32,7 +32,7 @@
       "@actioncrew/streamix/testing": [
         "./projects/libraries/streamix/testing/src/lib/index.ts"
       ],
-      "@actioncrew/streamix/coroutine/async": [
+      "@actioncrew/streamix/coroutine": [
         "./projects/libraries/streamix/coroutine/async/src/lib/index.ts"
       ],
       "@actioncrew/streamix": [
