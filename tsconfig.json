@@ -33,7 +33,7 @@
         "./projects/libraries/streamix/testing/src/lib/index.ts"
       ],
       "@actioncrew/streamix/coroutine": [
-        "./projects/libraries/streamix/coroutine/async/src/lib/index.ts"
+        "./projects/libraries/streamix/coroutine/src/lib/index.ts"
       ],
       "@actioncrew/streamix": [
         "./projects/libraries/streamix/src/lib/index.ts"
