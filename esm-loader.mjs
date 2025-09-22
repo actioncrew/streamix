@@ -1,31 +1,64 @@
 // esm-loader.mjs
-import { readFileSync } from 'fs';
-import { dirname, resolve as resolvePath } from 'path';
-import stripJsonComments from 'strip-json-comments';
-import { load as loadTs, resolve as resolveTs } from 'ts-node/esm';
-import { createMatchPath } from 'tsconfig-paths';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { existsSync, readFileSync } from "fs";
+import { dirname, join as joinPath, resolve as resolvePath } from "path";
+import stripJsonComments from "strip-json-comments";
+import { load as loadTs, resolve as resolveTs } from "ts-node/esm";
+import { createMatchPath } from "tsconfig-paths";
+import { fileURLToPath, pathToFileURL } from "url";
 
-// Load and register tsconfig paths
+// Resolve paths
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const tsConfig = JSON.parse(stripJsonComments(readFileSync(resolvePath(__dirname, 'tsconfig.json'), 'utf8')));
 
-const baseUrl = tsConfig.compilerOptions.baseUrl;
-const paths = tsConfig.compilerOptions.paths;
+// Load tsconfig.json safely
+const tsConfigRaw = readFileSync(resolvePath(__dirname, "tsconfig.json"), "utf8");
+const tsConfig = JSON.parse(stripJsonComments(tsConfigRaw));
+
+const compilerOptions = tsConfig.compilerOptions ?? {};
+const baseUrl = compilerOptions.baseUrl
+  ? resolvePath(__dirname, compilerOptions.baseUrl)
+  : __dirname;
+const paths = compilerOptions.paths ?? {};
+
 const matchPath = createMatchPath(baseUrl, paths);
 
-export function resolve(specifier, context, defaultResolve) {
-  // Use tsconfig-paths to resolve the specifier
-  const resolvedPath = matchPath(specifier, undefined, undefined, ['.ts', '.js', '.json']);
+// Helpers to try candidate files
+function tryResolveWithExtensions(absPath) {
+  const exts = [".ts", ".tsx", ".js", ".jsx", ".json"];
+  for (const ext of exts) {
+    if (existsSync(absPath + ext)) {
+      return absPath + ext;
+    }
+  }
+  // Check for index files in a folder
+  for (const ext of exts) {
+    const idx = joinPath(absPath, "index" + ext);
+    if (existsSync(idx)) {
+      return idx;
+    }
+  }
+  return null;
+}
 
+export async function resolve(specifier, context, defaultResolve) {
+  // 1. Try resolving via tsconfig-paths
+  const resolvedPath = matchPath(specifier, undefined, undefined, [".ts", ".tsx", ".js", ".jsx", ".json"]);
   if (resolvedPath) {
-    // If tsconfig-paths resolves it, convert the absolute path to a URL
-    // so it can be handled correctly on Windows in ESM mode.
     return resolveTs(pathToFileURL(resolvedPath).href, context, defaultResolve);
   }
 
-  // If tsconfig-paths doesn't resolve it, fall back to the default
+  // 2. Handle relative imports without extension
+  if (specifier.startsWith("./") || specifier.startsWith("../") || specifier.startsWith("/")) {
+    const parentFile = fileURLToPath(context.parentURL);
+    const candidate = resolvePath(dirname(parentFile), specifier);
+    const withExt = tryResolveWithExtensions(candidate);
+
+    if (withExt) {
+      return resolveTs(pathToFileURL(withExt).href, context, defaultResolve);
+    }
+  }
+
+  // 3. Fallback to ts-node/esm default resolver
   return resolveTs(specifier, context, defaultResolve);
 }
 
