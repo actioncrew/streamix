@@ -6,17 +6,19 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "jasmine": "node --loader ./esm-loader.mjs --experimental-specifier-resolution=node node_modules/jasmine/bin/jasmine.js --config=spec/support/jasmine.json --verbose",
+    "jasmine": "node --import tsx --experimental-specifier-resolution=node node_modules/jasmine/bin/jasmine.js --config=spec/support/jasmine.json --verbose",
     "jasmine:browser": "npx ts-test-runner",
     "jasmine:coverage": "c8 --reporter=lcov --reporter=text node --loader ./esm-loader.mjs node_modules/jasmine/bin/jasmine.js --config=spec/support/jasmine.json --verbose",
     "minify": "node terser.mjs",
-    "bundle": "dts-bundle-generator --config ./bundle.config.cjs && npm run minify",
+    "bundle": "npx dts-bundler",
     "clean": "eslint --config eslint.config.js --fix",
     "docs:generate": "typedoc --plugin typedoc-plugin-markdown --out docs/api --hideBreadcrumbs --hidePageHeader",
     "docs:dev": "npm run docs:generate && vitepress dev docs",
     "docs:build": "npm run docs:generate && vitepress build docs"
   },
   "dependencies": {
+    "@actioncrew/dts-bundler": "^1.0.6",
+    "@actioncrew/ts-test-runner": "^1.0.6",
     "@angular/animations": "^18.0.0",
     "@angular/common": "^18.0.0",
     "@angular/compiler": "^18.0.0",
@@ -29,7 +31,6 @@
     "zone.js": "~0.14.3"
   },
   "devDependencies": {
-    "@actioncrew/ts-test-runner": "1.0.5",
     "@angular-devkit/build-angular": "^18.0.1",
     "@angular-eslint/eslint-plugin": "^19.0.2",
     "@angular-eslint/eslint-plugin-template": "^19.0.2",
@@ -57,6 +58,7 @@
     "strip-json-comments": "^5.0.3",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.20.5",
     "typedoc": "^0.28.12",
     "typedoc-plugin-markdown": "^4.8.1",
     "typescript": "~5.4.2",
