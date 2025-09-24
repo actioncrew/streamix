@@ -1,0 +1,33 @@
+{
+  "srcDir": "C:/Users/oleks/OneDrive/Desktop/streamix/projects/libraries/streamix",
+  "testDir": "C:/Users/oleks/OneDrive/Desktop/streamix/projects/libraries/streamix",
+  "outDir": "C:/Users/oleks/OneDrive/Desktop/streamix/dist/.vite-jasmine-build",
+  "browser": "chrome",
+  "headless": true,
+  "port": 8888,
+  "viteBuildOptions": {
+    "target": "es2022",
+    "sourcemap": true,
+    "minify": false,
+    "preserveModules": true,
+    "preserveModulesRoot": "C:/Users/oleks/OneDrive/Desktop/streamix"
+  },
+  "jasmineConfig": {
+    "env": {
+      "stopSpecOnExpectationFailure": false,
+      "random": true,
+      "timeout": 120000
+    },
+    "browser": {
+      "name": "chrome",
+      "headless": false
+    },
+    "reporter": "console"
+  },
+  "htmlOptions": {
+    "title": "Vite + Jasmine Tests",
+    "includeSourceScripts": true,
+    "includeSpecScripts": true,
+    "bootScript": "boot0"
+  }
+}

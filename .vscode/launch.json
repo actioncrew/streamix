@@ -7,8 +7,8 @@
       "name": "Run Jasmine Test (ESM Loader)",
       "runtimeExecutable": "node",
       "runtimeArgs": [
-        "--loader",
-        "./esm-loader.mjs",
+        "--import",
+        "tsx",
         "./node_modules/jasmine/bin/jasmine.js",
         "--config=spec/support/jasmine.json"
       ],
@@ -26,8 +26,8 @@
       "name": "Debug Jasmine Test (ESM Loader)",
       "runtimeExecutable": "node",
       "runtimeArgs": [
-        "--loader",
-        "./esm-loader.mjs",
+        "--import",
+        "tsx",
         "./node_modules/jasmine/bin/jasmine.js",
         "--config=spec/support/jasmine.json"
       ],
