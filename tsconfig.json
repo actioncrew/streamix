@@ -29,7 +29,7 @@
       "@actioncrew/streamix/http": [
         "./projects/libraries/streamix/http/src/lib/index.ts"
       ],
-      "@actioncrew/streamix/coroutine/async": [
+      "@actioncrew/streamix/coroutine": [
         "./projects/libraries/streamix/coroutine/src/lib/index.ts"
       ],
       "@actioncrew/streamix": [
