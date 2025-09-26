@@ -40,7 +40,6 @@ describeBrowser('fromEvent function', () => {
     const stream = fromEvent(element, 'click');
 
     let listenerRemoved = false;
-    let innerUnsubscribed = false;
 
     // Monkey-patch for testing cleanup
     const originalRemove = element.removeEventListener;
