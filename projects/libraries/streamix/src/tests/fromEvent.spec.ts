@@ -2,32 +2,78 @@ import { fromEvent } from '@actioncrew/streamix';
 import { describeBrowser } from './env-spec';
 
 describeBrowser('fromEvent function', () => {
-  it('should emit events from the element', (done) => {
-    // Create a mock HTMLElement
-    const element = document.createElement('button');
 
-    // Create an event stream for 'click' events
+  it('should call the overridden subscribe method', (done) => {
+    const element = document.createElement('button');
     const stream = fromEvent(element, 'click');
 
-    const emittedEvents: Event[] = [];
-
-    const subscription = stream.subscribe({
-      next: (value: Event) => {
-        emittedEvents.push(value);
-
-        // After 2 clicks, we can assert & clean up
-        if (emittedEvents.length === 2) {
-          expect(emittedEvents.length).toBe(2);
-          subscription.unsubscribe(); // cleanup
-          done();
-        }
-      },
-      error: (err) => done.fail(err),
+    const subscription = stream.subscribe((ev) => {
+      expect(ev).toBeInstanceOf(Event);
+      done();
     });
 
-    // Simulate click events
+    // Trigger the listener
+    element.click();
+    subscription.unsubscribe(); // trigger cleanup
+});
+
+  it('should emit multiple events correctly', (done) => {
+    const element = document.createElement('button');
+    const stream = fromEvent(element, 'click');
+
+    const emitted: Event[] = [];
+    const subscription = stream.subscribe((ev) => {
+      emitted.push(ev);
+      if (emitted.length === 2) {
+        expect(emitted.length).toBe(2);
+        done();
+      }
+    });
+
     element.click();
     element.click();
-    subscription.unsubscribe();
+    subscription.unsubscribe(); // trigger cleanup
   });
+
+  it('should remove event listener and unsubscribe on unsubscribe', (done) => {
+    const element = document.createElement('button');
+    const stream = fromEvent(element, 'click');
+
+    let listenerRemoved = false;
+    let innerUnsubscribed = false;
+
+    // Monkey-patch for testing cleanup
+    const originalRemove = element.removeEventListener;
+    element.removeEventListener = function (...args: any[]) {
+      listenerRemoved = true;
+      return originalRemove.apply(this, args as any);
+    };
+
+    const subscription = stream.subscribe();
+
+    subscription.unsubscribe();
+
+    setTimeout(() => {
+      expect(listenerRemoved).toBe(true);
+      done();
+    }, 10);
+  });
+
+  it('should not emit events after unsubscribe', (done) => {
+    const element = document.createElement('button');
+    const stream = fromEvent(element, 'click');
+
+    let count = 0;
+    const subscription = stream.subscribe(() => count++);
+
+    element.click();          // first event should increment count
+    subscription.unsubscribe();
+    element.click();          // second event should be ignored
+
+    setTimeout(() => {
+      expect(count).toBe(1);
+      done();
+    }, 10);
+  });
+
 });
