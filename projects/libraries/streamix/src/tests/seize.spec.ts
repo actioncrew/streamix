@@ -5,8 +5,9 @@ import {
   seize,
   SeizedWorker,
 } from "@actioncrew/streamix";
+import { idescribe } from "./env-spec";
 
-fdescribe("seize operator", () => {
+idescribe("seize operator", () => {
   let originalWorker: any;
   // Global tracker for all created mock workers
   const mockWorkersById: Record<number, any> = {};
