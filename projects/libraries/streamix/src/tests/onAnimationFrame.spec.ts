@@ -1,6 +1,7 @@
 import { map, onAnimationFrame, takeWhile } from '@actioncrew/streamix';
+import { idescribe } from './env-spec';
 
-xdescribe('fromAnimationFrame - Functional Test', () => {
+idescribe('fromAnimationFrame - Functional Test', () => {
 
   it('should emit values at the expected rate', async () => {
     let emittedValues: any[] = [];

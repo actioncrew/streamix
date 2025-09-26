@@ -1,4 +1,4 @@
-import { CallbackReturnType, createOperator, NEXT, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits values from the source stream as long as
@@ -26,23 +26,21 @@ export const takeWhile = <T = any>(
 
     return {
       next: async () => {
-        while (true) {
-          const result = await source.next();
-
-          if (result.done) return result;
-
-          if (!active) {
-            continue;
-          }
-
-          const pass = await predicate(result.value);
-          if (!pass) {
-            active = false;
-            continue;
-          }
-
-          return NEXT(result.value);
+        if (!active) {
+          return DONE;
         }
+
+        const result = await source.next();
+
+        if (result.done) return result;
+
+        const pass = await predicate(result.value);
+        if (!pass) {
+          active = false;
+          return { done: true, value: undefined }; // signal completion
+        }
+
+        return NEXT(result.value);
       },
     };
   });

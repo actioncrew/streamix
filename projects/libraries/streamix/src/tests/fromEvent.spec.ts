@@ -1,7 +1,7 @@
 import { fromEvent } from '@actioncrew/streamix';
-import { describeBrowser } from './env-spec';
+import { idescribe } from './env-spec';
 
-describeBrowser('fromEvent function', () => {
+idescribe('fromEvent function', () => {
 
   it('should call the overridden subscribe method', (done) => {
     const element = document.createElement('button');
