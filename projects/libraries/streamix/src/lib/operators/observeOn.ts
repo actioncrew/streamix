@@ -1,4 +1,4 @@
-import { createOperator, DONE, NEXT, Operator } from '../abstractions';
+import { createOperator, DONE, Operator } from '../abstractions';
 import { eachValueFrom } from '../converters';
 import { createSubject } from '../streams';
 
@@ -44,7 +44,7 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
     if (context === 'microtask') {
       queueMicrotask(fn);
     } else if (context === 'macrotask') {
-      setTimeout(fn);
+      setTimeout(fn, 0);
     } else {
       requestIdleCallback(fn);
     }
@@ -52,6 +52,7 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
 
   return createOperator<T, T>('observeOn', function (this: Operator, source) {
     const output = createSubject<T>();
+    const scheduledPromises: Promise<void>[] = [];
 
     (async () => {
       try {
@@ -59,8 +60,20 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
           const result = await source.next();
           if (result.done) break;
 
-          schedule(() => output.next(result.value));
+          const p = new Promise<void>((resolve) => {
+            schedule(() => {
+              try {
+                output.next(result.value);
+              } finally {
+                resolve();
+              }
+            });
+          });
+          scheduledPromises.push(p);
         }
+
+        // Wait for all scheduled emissions before completing
+        await Promise.all(scheduledPromises);
       } catch (err) {
         output.error(err);
       } finally {
@@ -74,18 +87,14 @@ export const observeOn = <T = any>(context: "microtask" | "macrotask" | "idle") 
     return {
       async next() {
         while (true) {
-          if (completed) {
-            return DONE;
-          }
+          if (completed) return DONE;
 
           const result = await iterator.next();
-
           if (result.done) {
             completed = true;
             return DONE;
           }
-
-          return NEXT(result.value);
+          return { type: 'next', value: result.value };
         }
       }
     };
