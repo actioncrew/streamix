@@ -5,16 +5,19 @@ describe('observeOn', () => {
   let mockRequestIdleCallback: jasmine.Spy;
 
   beforeEach(() => {
-    originalRequestIdleCallback = (global as any).requestIdleCallback;
-    mockRequestIdleCallback = jasmine.createSpy('requestIdleCallback').and.callFake((callback: IdleRequestCallback) => {
-      setTimeout(callback, 0);
-      return 1;
-    });
-    (global as any).requestIdleCallback = mockRequestIdleCallback;
+    originalRequestIdleCallback = (globalThis as any).requestIdleCallback;
+    mockRequestIdleCallback = jasmine
+      .createSpy('requestIdleCallback')
+      .and.callFake((callback: IdleRequestCallback) => {
+        setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 50 } as IdleDeadline), 0);
+        return 1;
+      });
+
+    (globalThis as any).requestIdleCallback = mockRequestIdleCallback;
   });
 
   afterEach(() => {
-    (global as any).requestIdleCallback = originalRequestIdleCallback;
+    (globalThis as any).requestIdleCallback = originalRequestIdleCallback;
   });
 
   it('should emit values using microtask scheduling', async () => {
@@ -56,7 +59,6 @@ describe('observeOn', () => {
 
     const observeOnStream = stream.pipe(observeOn('macrotask'));
     
-    // Use setTimeout to ensure we wait for the macrotask emissions
     setTimeout(async () => {
       try {
         for await (const value of eachValueFrom(observeOnStream)) {
@@ -68,7 +70,7 @@ describe('observeOn', () => {
       } catch (error: any) {
         done.fail(error);
       }
-    }, 10); // Small delay to allow macrotask scheduling to work
+    }, 10);
   });
 
   it('should emit values using idle scheduling', (done) => {
@@ -81,7 +83,6 @@ describe('observeOn', () => {
 
     const observeOnStream = stream.pipe(observeOn('idle'));
     
-    // Use setTimeout to ensure we wait for the idle emissions
     setTimeout(async () => {
       try {
         for await (const value of eachValueFrom(observeOnStream)) {
@@ -94,7 +95,7 @@ describe('observeOn', () => {
       } catch (error: any) {
         done.fail(error);
       }
-    }, 10); // Small delay to allow idle callback scheduling to work
+    }, 10);
   });
 
   it('should propagate errors asynchronously', async () => {

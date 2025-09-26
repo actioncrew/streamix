@@ -5,10 +5,10 @@ describe('coroutine operator', () => {
 
   beforeAll(() => {
     // Store the original Worker
-    originalWorker = (global as any).Worker;
+    originalWorker = (globalThis as any).Worker;
 
-    // Set up global variable for main task
-    (global as any).currentMainTask = undefined;
+    // Set up globalThis variable for main task
+    (globalThis as any).currentMainTask = undefined;
 
     class MockWorker {
       onmessage: ((ev: any) => void) | null = null;
@@ -44,7 +44,7 @@ describe('coroutine operator', () => {
           
           if (msg.type === 'task') {
             try {
-              const mainTask = (global as any).currentMainTask;
+              const mainTask = (globalThis as any).currentMainTask;
               if (!mainTask) {
                 throw new Error('No main task configured');
               }
@@ -107,22 +107,22 @@ describe('coroutine operator', () => {
       }
     }
 
-    (global as any).Worker = MockWorker;
+    (globalThis as any).Worker = MockWorker;
   });
   
   afterAll(() => {
-    (global as any).Worker = originalWorker;
-    delete (global as any).currentMainTask;
+    (globalThis as any).Worker = originalWorker;
+    delete (globalThis as any).currentMainTask;
   });
 
   beforeEach(() => {
     // Reset before each test
-    (global as any).currentMainTask = undefined;
+    (globalThis as any).currentMainTask = undefined;
   });
 
   it('should process tasks and return results', async () => {
     const mainTask = (x: number) => x + 1;
-    (global as any).currentMainTask = mainTask;
+    (globalThis as any).currentMainTask = mainTask;
     
     const co = coroutine(mainTask);
 
@@ -142,7 +142,7 @@ describe('coroutine operator', () => {
 
   it('should allow assignTask directly to a worker', async () => {
     const mainTask = (x: number) => x * 2; // Fixed: x * 2, not x * 3
-    (global as any).currentMainTask = mainTask;
+    (globalThis as any).currentMainTask = mainTask;
     
     const co = coroutine(mainTask);
 
@@ -155,7 +155,7 @@ describe('coroutine operator', () => {
 
   it('should process multiple tasks in sequence', async () => {
     const mainTask = (x: number) => x * 2; // Fixed: consistent task logic
-    (global as any).currentMainTask = mainTask;
+    (globalThis as any).currentMainTask = mainTask;
     
     const co = coroutine(mainTask);
 
@@ -170,7 +170,7 @@ describe('coroutine operator', () => {
 
   it('should finalize and terminate all workers', async () => {
     const mainTask = (x: number) => x * 2;
-    (global as any).currentMainTask = mainTask;
+    (globalThis as any).currentMainTask = mainTask;
     
     const co = coroutine(mainTask);
 
@@ -193,7 +193,7 @@ describe('coroutine operator', () => {
     const mainTask = () => {
       throw new Error('Task failed');
     };
-    (global as any).currentMainTask = mainTask;
+    (globalThis as any).currentMainTask = mainTask;
 
     const co = coroutine(mainTask);
 
@@ -212,7 +212,7 @@ describe('coroutine operator', () => {
       }
       return x * 2;
     };
-    (global as any).currentMainTask = mainTask;
+    (globalThis as any).currentMainTask = mainTask;
 
     const co = coroutine(mainTask);
 
@@ -247,7 +247,7 @@ describe('coroutine operator', () => {
       });
     }
     
-    (global as any).currentMainTask = mainTask;
+    (globalThis as any).currentMainTask = mainTask;
 
     const co = coroutine(mainTask);
     
