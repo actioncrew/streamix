@@ -158,17 +158,14 @@ onmessage = async (event) => {
   // This is the initial task from the main thread
   if (type === 'task') {
     try {
-      let result;
       const utils = {
         requestData: (requestPayload) => __requestData(workerId, taskId, requestPayload),
         reportProgress: __reportProgress(workerId, taskId)
       };
-      // Check if mainTask expects a utils object
-      if (__mainTask.length >= 2) {
-        result = await __mainTask(payload, utils);
-      } else {
-        result = await __mainTask(payload);
-      }
+      
+      // Always call with both parameters - JavaScript will ignore extra parameters
+      const result = await __mainTask(payload, utils);
+      
       postMessage({ workerId, taskId, payload: result, type: 'response' });
     } catch (error) {
       postMessage({ workerId, taskId, error: error.message, type: 'error' });
@@ -241,6 +238,8 @@ export function coroutine<T, R>(
         .map((fn) => fn.toString().replace(/function[\s]*\(/, `function ${fn.name || ""}(`))
         .join(';\n');
       const initCode = config.initCode || '';
+
+      // Ensure the main task is properly stringified as a function
       const mainTaskBody = main.toString().replace(/function[\s]*\(/, `function ${main.name || ""}(`);
 
       return template
@@ -383,11 +382,11 @@ export function coroutine<T, R>(
       }
     };
 
-    const operator = createOperator<T, R>("coroutine", function(this: Operator, source) {
+    const operator = createOperator<T, R>("coroutine", function (this: Operator, source) {
       let completed = false;
 
       return {
-        next: async() => {
+        next: async () => {
           while (true) {
             if (completed || isFinalizing) {
               return DONE;
