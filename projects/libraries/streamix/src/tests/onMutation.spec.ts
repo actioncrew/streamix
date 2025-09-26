@@ -1,9 +1,10 @@
 import { onMutation } from '@actioncrew/streamix';
+import { idescribe } from './env-spec';
 
 // Mock DOM element for testing purposes
 let observedElement: HTMLDivElement;
 
-xdescribe('fromMutation Stream Tests', () => {
+idescribe('fromMutation Stream Tests', () => {
   beforeEach(() => {
     // Create a DOM element for testing
     observedElement = document.createElement('div');

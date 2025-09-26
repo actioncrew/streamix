@@ -1,46 +1,51 @@
-import { createStream, Stream } from '../abstractions';
+import { createSubscription, Receiver, Stream } from '../abstractions';
+import { createSubject } from '../streams';
 
 /**
- * Creates a stream that emits `true` or `false` when a CSS media query's
- * status changes.
+ * Creates a reactive stream that emits `true` or `false` whenever a CSS media query
+ * matches or stops matching.
  *
- * This is a reactive wrapper around the `window.matchMedia` API,
- * allowing you to easily react to changes in screen size, orientation,
- * or other media features. The stream emits the initial match status upon
- * subscription and then emits a new value for every subsequent change.
+ * This stream allows you to reactively track viewport changes, orientation, or
+ * other media features in a consistent, subscription-based way.
  *
- * @param {string} mediaQueryString The CSS media query string to match (e.g., "(min-width: 600px)").
- * @returns {Stream<boolean>} A stream that emits `true` if the media query matches, and `false` otherwise.
+ * **Behavior:**
+ * - The initial match status is emitted immediately upon subscription.
+ * - Subsequent changes are emitted whenever the media query's match state changes.
+ * - Each subscriber has its own listener, which is cleaned up when unsubscribing.
+ *
+ * @param mediaQueryString A valid CSS media query string (e.g., "(min-width: 600px)").
+ * @returns {Stream<boolean>} A stream emitting `true` if the query matches, `false` otherwise.
  */
 export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
-  return createStream<boolean>('onMediaQuery', async function* () {
-    if (typeof window === 'undefined' || !window.matchMedia) {
-      console.warn('matchMedia is not supported in this environment');
-      return;
-    }
+  if (typeof window === 'undefined' || !window.matchMedia) {
+    console.warn('matchMedia is not supported in this environment');
+    const subject = createSubject<boolean>();
+    return subject;
+  }
+
+  const subject = createSubject<boolean>();
+  subject.name = 'onMediaQuery';
+
+  const originalSubscribe = subject.subscribe;
+  subject.subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
+    const subscription = originalSubscribe.call(subject, callback);
 
     const mediaQueryList = window.matchMedia(mediaQueryString);
-    let resolveNext: ((value: boolean) => void) | null = null;
 
     const listener = (event: MediaQueryListEvent) => {
-      resolveNext?.(event.matches);
-      resolveNext = null;
+      subject.next(event.matches);
     };
 
     mediaQueryList.addEventListener('change', listener);
 
-    try {
-      // Emit initial match result immediately
-      yield mediaQueryList.matches;
+    // Emit initial match status immediately
+    subject.next(mediaQueryList.matches);
 
-      while (true) {
-        const next = await new Promise<boolean>((resolve) => {
-          resolveNext = resolve;
-        });
-        yield next;
-      }
-    } finally {
+    return createSubscription(() => {
       mediaQueryList.removeEventListener('change', listener);
-    }
-  });
+      subscription.unsubscribe();
+    });
+  };
+
+  return subject;
 }

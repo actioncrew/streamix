@@ -1,56 +1,73 @@
-import { createStream, Stream } from '../abstractions';
+import { createSubscription, Receiver, Stream } from '../abstractions';
+import { createSubject } from '../subjects';
 
 /**
  * Creates a stream that emits the current screen orientation, either
  * "portrait" or "landscape", whenever it changes.
  *
- * This stream provides a reactive way to handle changes in a device's
- * orientation, which is useful for adapting UI layouts, games, or
- * other interactive experiences.
+ * Automatically unsubscribes when unsubscribed.
  *
- * It emits the initial orientation immediately upon subscription and then
- * emits a new value each time the orientation changes. If the Screen Orientation
- * API is not supported by the environment, the stream will warn and complete immediately.
+ * @returns {Stream<"portrait" | "landscape">} A stream that emits a string indicating the screen's orientation.
+ */
+
+/**
+ * Creates a stream that emits the current screen orientation, either
+ * "portrait" or "landscape", whenever it changes.
+ *
+ * Automatically unsubscribes when unsubscribed.
  *
  * @returns {Stream<"portrait" | "landscape">} A stream that emits a string indicating the screen's orientation.
  */
 export function onOrientation(): Stream<"portrait" | "landscape"> {
-  return createStream<"portrait" | "landscape">('onOrientation', async function* () {
-    if (
-      typeof window === 'undefined' ||
-      !window.screen?.orientation ||
-      typeof window.screen.orientation.angle !== 'number'
-    ) {
-      console.warn("Screen orientation API is not supported in this environment");
-      return;
+  if (!window.screen || !window.screen.orientation) {
+    console.warn("Screen orientation API is not supported in this environment");
+    return createSubject<"portrait" | "landscape">();
+  }
+
+  const subject = createSubject<"portrait" | "landscape">();
+  subject.name = 'onOrientation';
+
+  const getOrientation = () =>
+    window.screen.orientation.angle === 0 || window.screen.orientation.angle === 180
+      ? "portrait"
+      : "landscape";
+
+  const listener = () => {
+    subject.next(getOrientation());
+  };
+
+  let subscriberCount = 0;
+  let isListenerAttached = false;
+
+  // Emit initial orientation immediately when first subscriber connects
+  const originalSubscribe = subject.subscribe;
+  subject.subscribe = (callback?: ((value: "portrait" | "landscape") => void) | Receiver<"portrait" | "landscape">) => {
+    const subscription = originalSubscribe.call(subject, callback);
+
+    subscriberCount++;
+    
+    // Attach listener on first subscriber
+    if (!isListenerAttached) {
+      window.screen.orientation.addEventListener("change", listener);
+      isListenerAttached = true;
+      // Emit initial orientation for new subscriber
+      subject.next(getOrientation());
     }
 
-    const getOrientation = (): "portrait" | "landscape" =>
-      window.screen.orientation.angle === 0 || window.screen.orientation.angle === 180
-        ? "portrait"
-        : "landscape";
-
-    let resolveNext: ((value: "portrait" | "landscape") => void) | null = null;
-
-    const listener = () => {
-      resolveNext?.(getOrientation());
-      resolveNext = null;
+    const cleanup = () => {
+      subscriberCount--;
+      
+      // Remove listener when last subscriber unsubscribes
+      if (subscriberCount === 0 && isListenerAttached) {
+        window.screen.orientation.removeEventListener("change", listener);
+        isListenerAttached = false;
+      }
+      
+      subscription.unsubscribe();
     };
 
-    window.screen.orientation.addEventListener("change", listener);
+    return createSubscription(cleanup);
+  };
 
-    try {
-      // Emit the initial orientation immediately
-      yield getOrientation();
-
-      while (true) {
-        const next = await new Promise<"portrait" | "landscape">((resolve) => {
-          resolveNext = resolve;
-        });
-        yield next;
-      }
-    } finally {
-      window.screen.orientation.removeEventListener("change", listener);
-    }
-  });
+  return subject;
 }

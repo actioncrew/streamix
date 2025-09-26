@@ -1,4 +1,5 @@
-import { createStream, Stream } from '../abstractions';
+import { createSubscription, Receiver, Stream } from '../abstractions';
+import { createSubject } from '../subjects';
 
 /**
  * Creates a stream that emits `true` when a given element enters the
@@ -17,27 +18,38 @@ export function onIntersection(
   element: Element,
   options?: IntersectionObserverInit
 ): Stream<boolean> {
-  return createStream<boolean>('onIntersection', async function* () {
-    let resolveNext: ((value: boolean) => void) | null = null;
+  const subject = createSubject<boolean>();
+  subject.name = 'onIntersection';
+
+  const originalSubscribe = subject.subscribe;
+  subject.subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
+    const subscription = originalSubscribe.call(subject, callback);
 
     const observer = new IntersectionObserver((entries) => {
-      const isIntersecting = entries[0]?.isIntersecting ?? false;
-      resolveNext?.(isIntersecting);
-      resolveNext = null;
+      subject.next(entries[0]?.isIntersecting ?? false);
     }, options);
 
     observer.observe(element);
 
-    try {
-      while (true) {
-        const value = await new Promise<boolean>((resolve) => {
-          resolveNext = resolve;
-        });
-        yield value;
-      }
-    } finally {
+    const cleanup = () => {
       observer.unobserve(element);
       observer.disconnect();
-    }
-  });
+      mutationObserver.disconnect();
+      subscription.unsubscribe();
+    };
+
+    const mutationObserver = new MutationObserver(() => {
+      if (!document.body.contains(element)) {
+        sub.unsubscribe();
+        subject.complete?.();
+      }
+    });
+
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    const sub = createSubscription(cleanup);
+    return sub;
+  };
+
+  return subject;
 }
