@@ -1,6 +1,7 @@
 import { onOrientation } from "@actioncrew/streamix";
+import { idescribe } from "./env-spec";
 
-describe('onOrientation', () => {
+idescribe('onOrientation', () => {
   let originalOrientation: any;
   let mockOrientation: any;
 
