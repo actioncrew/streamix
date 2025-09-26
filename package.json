@@ -7,7 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "jasmine": "node --import tsx --experimental-specifier-resolution=node node_modules/jasmine/bin/jasmine.js --config=spec/support/jasmine.json --verbose",
-    "jasmine:coverage": "c8 --reporter=lcov --reporter=text node --loader ./esm-loader.mjs node_modules/jasmine/bin/jasmine.js --config=spec/support/jasmine.json --verbose",
+    "jasmine:coverage": "c8 --reporter=lcov --reporter=text node --import tsx node_modules/jasmine/bin/jasmine.js --config=spec/support/jasmine.json --verbose",
     "minify": "node terser.mjs",
     "bundle": "dts-bundle-generator --config ./bundle.config.cjs && npm run minify",
     "clean": "eslint --config eslint.config.js --fix",
