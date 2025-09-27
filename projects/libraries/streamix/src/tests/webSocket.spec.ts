@@ -1,4 +1,5 @@
 import { eachValueFrom, webSocket } from "@actioncrew/streamix";
+import { idescribe } from "./env-spec";
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
@@ -44,7 +45,7 @@ class MockWebSocket {
   }
 }
 
-describe("webSocket operator", () => {
+idescribe("webSocket operator", () => {
   let lastWs: MockWebSocket;
   let factory: jasmine.Spy;
 
