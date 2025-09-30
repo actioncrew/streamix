@@ -13,7 +13,8 @@
     "clean": "eslint --config eslint.config.js --fix",
     "docs:generate": "typedoc --plugin typedoc-plugin-markdown --out docs/api --hideBreadcrumbs --hidePageHeader",
     "docs:dev": "npm run docs:generate && vitepress dev docs",
-    "docs:build": "npm run docs:generate && vitepress build docs"
+    "docs:build": "npm run docs:generate && vitepress build docs",
+    "upload:coverage": "npx codecov"
   },
   "dependencies": {
     "@angular/animations": "^18.0.0",
