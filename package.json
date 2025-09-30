@@ -64,8 +64,7 @@
     "typedoc": "^0.28.10",
     "typedoc-plugin-markdown": "^4.8.1",
     "typescript": "~5.4.2",
-    "vitepress": "^1.6.4",
-    "@rollup/rollup-linux-x64-gnu": "4.52.3"
+    "vitepress": "^1.6.4"
   },
   "type": "module",
   "sideEffects": false
