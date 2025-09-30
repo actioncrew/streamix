@@ -1,5 +1,5 @@
 import { fromEvent } from '@actioncrew/streamix';
-import { idescribe } from './env-spec';
+import { idescribe } from './env.spec';
 
 idescribe('fromEvent function', () => {
 

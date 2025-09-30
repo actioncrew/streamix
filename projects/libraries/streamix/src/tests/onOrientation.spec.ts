@@ -1,5 +1,5 @@
 import { onOrientation } from "@actioncrew/streamix";
-import { idescribe } from "./env-spec";
+import { idescribe } from "./env.spec";
 
 idescribe('onOrientation', () => {
   let originalOrientation: any;

@@ -21,7 +21,7 @@ jobs:
         run: npm i
 
       - name: Run tests with coverage
-        run: npm run jasmine:coverage
+        run: npx ts-test-runner --headless --coverage
 
       - name: Upload coverage to Codecov
         run: |

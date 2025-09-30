@@ -5,7 +5,7 @@ import {
   seize,
   SeizedWorker,
 } from "@actioncrew/streamix";
-import { idescribe } from "./env-spec";
+import { idescribe } from "./env.spec";
 
 idescribe("seize operator", () => {
   let originalWorker: any;

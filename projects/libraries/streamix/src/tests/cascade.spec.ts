@@ -1,5 +1,5 @@
 import { cascade, coroutine, createStream, eachValueFrom } from "@actioncrew/streamix";
-import { idescribe } from "./env-spec";
+import { idescribe } from "./env.spec";
 
 idescribe("cascade operator", () => {
   it("should process tasks sequentially via processTask", async () => {

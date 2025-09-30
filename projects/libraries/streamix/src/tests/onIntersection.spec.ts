@@ -1,5 +1,5 @@
 import { onIntersection } from '@actioncrew/streamix';
-import { idescribe } from './env-spec';
+import { idescribe } from './env.spec';
 
 idescribe('Functional tests for fromIntersectionObserver', () => {
   let element: HTMLElement;

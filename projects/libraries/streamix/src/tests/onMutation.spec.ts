@@ -1,5 +1,5 @@
 import { onMutation } from '@actioncrew/streamix';
-import { idescribe } from './env-spec';
+import { idescribe } from './env.spec';
 
 // Mock DOM element for testing purposes
 let observedElement: HTMLDivElement;

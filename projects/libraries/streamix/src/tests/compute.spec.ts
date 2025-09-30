@@ -1,5 +1,5 @@
 import { compute, coroutine, eachValueFrom } from "@actioncrew/streamix";
-import { idescribe } from "./env-spec";
+import { idescribe } from "./env.spec";
 
 idescribe("compute operator", () => {
   it("should emit a single computed result", async () => {

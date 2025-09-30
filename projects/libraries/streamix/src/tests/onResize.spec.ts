@@ -1,5 +1,5 @@
 import { onResize } from "@actioncrew/streamix";
-import { idescribe } from "./env-spec";
+import { idescribe } from "./env.spec";
 
 idescribe('Functional tests for fromResizeObserver', () => {
   it('should detect element resize changes', (done) => {

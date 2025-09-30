@@ -1,5 +1,5 @@
 import { createSubscription, Receiver, Stream } from '../abstractions';
-import { createSubject } from '../streams';
+import { createBehaviorSubject } from '../streams';
 
 /**
  * Creates a reactive stream that emits `true` or `false` whenever a CSS media query
@@ -19,32 +19,50 @@ import { createSubject } from '../streams';
 export function onMediaQuery(mediaQueryString: string): Stream<boolean> {
   if (typeof window === 'undefined' || !window.matchMedia) {
     console.warn('matchMedia is not supported in this environment');
-    const subject = createSubject<boolean>();
-    return subject;
+    return createBehaviorSubject<boolean>(false);
   }
 
-  const subject = createSubject<boolean>();
+  const mql = window.matchMedia(mediaQueryString);
+  const subject = createBehaviorSubject<boolean>(mql.matches);
   subject.name = 'onMediaQuery';
+
+  let listenerCount = 0;
+  let listener: ((event: MediaQueryListEvent) => void) | null = null;
 
   const originalSubscribe = subject.subscribe;
   subject.subscribe = (callback?: ((value: boolean) => void) | Receiver<boolean>) => {
+    // Set up listener on first subscription
+    if (listenerCount === 0) {
+      listener = (event: MediaQueryListEvent) => {
+        subject.next(event.matches);
+      };
+      
+      if (typeof mql.addEventListener === 'function') {
+        mql.addEventListener('change', listener);
+      } else if (typeof (mql as any).addListener === 'function') {
+        (mql as any).addListener(listener);
+      }
+    }
+    
+    listenerCount++;
     const subscription = originalSubscribe.call(subject, callback);
 
-    const mediaQueryList = window.matchMedia(mediaQueryString);
-
-    const listener = (event: MediaQueryListEvent) => {
-      subject.next(event.matches);
+    const cleanup = () => {
+      listenerCount--;
+      subscription.unsubscribe();
+      
+      // Remove listener when last subscriber unsubscribes
+      if (listenerCount === 0 && listener) {
+        if (typeof mql.removeEventListener === 'function') {
+          mql.removeEventListener('change', listener);
+        } else if (typeof (mql as any).removeListener === 'function') {
+          (mql as any).removeListener(listener);
+        }
+        listener = null;
+      }
     };
 
-    mediaQueryList.addEventListener('change', listener);
-
-    // Emit initial match status immediately
-    subject.next(mediaQueryList.matches);
-
-    return createSubscription(() => {
-      mediaQueryList.removeEventListener('change', listener);
-      subscription.unsubscribe();
-    });
+    return createSubscription(cleanup);
   };
 
   return subject;

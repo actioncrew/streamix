@@ -1,5 +1,5 @@
 import { eachValueFrom, webSocket } from "@actioncrew/streamix";
-import { idescribe } from "./env-spec";
+import { idescribe } from "./env.spec";
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];

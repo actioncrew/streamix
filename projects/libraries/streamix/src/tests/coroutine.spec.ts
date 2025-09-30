@@ -1,5 +1,5 @@
 import { coroutine, CoroutineMessage, createStream, eachValueFrom } from "@actioncrew/streamix";
-import { idescribe } from "./env-spec";
+import { idescribe } from "./env.spec";
 
 idescribe('coroutine operator', () => {
   let originalWorker: any;

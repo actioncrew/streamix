@@ -1,5 +1,5 @@
 import { eachValueFrom, firstValueFrom, jsonp } from "@actioncrew/streamix";
-import { idescribe } from "./env-spec";
+import { idescribe } from "./env.spec";
 
 idescribe("jsonp operator", () => {
   let originalHeadAppend: typeof document.head.appendChild;

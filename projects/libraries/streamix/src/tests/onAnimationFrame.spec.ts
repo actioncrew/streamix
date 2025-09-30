@@ -1,5 +1,5 @@
 import { map, onAnimationFrame, takeWhile } from '@actioncrew/streamix';
-import { idescribe } from './env-spec';
+import { idescribe } from './env.spec';
 
 idescribe('fromAnimationFrame - Functional Test', () => {
 
