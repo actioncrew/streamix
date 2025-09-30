@@ -26,7 +26,8 @@ export type WebSocketFactory = (url: string) => WebSocket;
  * @template T - Type of messages to send and receive.
  * @param url The WebSocket URL.
  * @param factory Optional WebSocket factory for dependency injection (useful for testing).
- * @returns A WebSocketStream<T>
+ * @returns {WebSocketStream<T>} A WebSocketStream that can be used to
+ * send and receive messages of type T.
  */
 export function webSocket<T = any>(
   url: string,
