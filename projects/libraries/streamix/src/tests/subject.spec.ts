@@ -1,4 +1,4 @@
-import { createSubject, Subscription } from '@actioncrew/streamix';
+import { createSubject, createSubjectBuffer, Subscription } from '@actioncrew/streamix';
 
 describe('Subject', () => {
   it('should not emit values after unsubscribed', (done) => {
@@ -328,5 +328,148 @@ describe('Subject', () => {
     subscription1.unsubscribe(); // Unsubscribe first subscriber
     subject.next(); // Only subscriber2 gets this
     subject.complete();
+  });
+});
+
+describe('createSubjectBuffer', () => {
+  it('should not deliver any initial value to new readers', async () => {
+    const buffer = createSubjectBuffer<number>();
+    const readerId = await buffer.attachReader();
+    const res = await buffer.peek(readerId);
+    expect(res.value).toBeUndefined();
+    expect(res.done).toBe(false);
+  });
+
+  it('should deliver written values to all readers', async () => {
+    const buffer = createSubjectBuffer<string>();
+    const r1 = await buffer.attachReader();
+    const r2 = await buffer.attachReader();
+
+    await buffer.write('a');
+
+    const v1 = await buffer.read(r1);
+    const v2 = await buffer.read(r2);
+
+    expect(v1.value).toBe('a');
+    expect(v2.value).toBe('a');
+  });
+
+  it('should deliver multiple writes in order', async () => {
+    const buffer = createSubjectBuffer<number>();
+    const r = await buffer.attachReader();
+
+    await buffer.write(1);
+    await buffer.write(2);
+    await buffer.write(3);
+
+    expect((await buffer.read(r)).value).toBe(1);
+    expect((await buffer.read(r)).value).toBe(2);
+    expect((await buffer.read(r)).value).toBe(3);
+  });
+
+  it('should support peek without consuming', async () => {
+    const buffer = createSubjectBuffer<number>();
+    const r = await buffer.attachReader();
+
+    await buffer.write(10);
+    const peek1 = await buffer.peek(r);
+    const peek2 = await buffer.peek(r);
+
+    expect(peek1.value).toBe(10);
+    expect(peek2.value).toBe(10);
+
+    const res = await buffer.read(r);
+    expect(res.value).toBe(10);
+  });
+
+  it('should complete readers after complete()', async () => {
+    const buffer = createSubjectBuffer<number>();
+    const r = await buffer.attachReader();
+
+    await buffer.write(1);
+    await buffer.complete();
+
+    expect((await buffer.read(r)).value).toBe(1);
+    const doneRes = await buffer.read(r);
+    expect(doneRes.done).toBeTrue();
+    expect(buffer.completed(r)).toBeTrue();
+  });
+
+  it('should propagate errors to readers', async () => {
+    const buffer = createSubjectBuffer<number>();
+    const r = await buffer.attachReader();
+
+    await buffer.write(42);
+    const err = new Error('fail');
+    await buffer.error(err);
+
+    await expectAsync(buffer.read(r)).toBeResolved(); // 42
+    await expectAsync(buffer.read(r)).toBeRejectedWith(err);
+  });
+
+  it('should allow multiple readers independently', async () => {
+    const buffer = createSubjectBuffer<string>();
+    const r1 = await buffer.attachReader();
+    const r2 = await buffer.attachReader();
+
+    await buffer.write('x');
+
+    const v1 = await buffer.read(r1);
+    const v2 = await buffer.read(r2);
+
+    expect(v1.value).toBe('x');
+    expect(v2.value).toBe('x');
+
+    await buffer.write('y');
+
+    const n1 = await buffer.read(r1);
+    const n2 = await buffer.read(r2);
+
+    expect(n1.value).toBe('y');
+    expect(n2.value).toBe('y');
+  });
+
+  it('should isolate completion per reader', async () => {
+    const buffer = createSubjectBuffer<number>();
+    const r1 = await buffer.attachReader();
+    const r2 = await buffer.attachReader();
+
+    await buffer.write(1);
+    await buffer.complete();
+
+    expect((await buffer.read(r1)).value).toBe(1);
+    expect((await buffer.read(r2)).value).toBe(1);
+
+    expect((await buffer.read(r1)).done).toBeTrue();
+    expect((await buffer.read(r2)).done).toBeTrue();
+  });
+
+  it('should isolate errors per reader', async () => {
+    const buffer = createSubjectBuffer<number>();
+    const r1 = await buffer.attachReader();
+    const r2 = await buffer.attachReader();
+
+    await buffer.write(7);
+    const err = new Error('boom');
+    await buffer.error(err);
+
+    expect((await buffer.read(r1)).value).toBe(7);
+    expect((await buffer.read(r2)).value).toBe(7);
+
+    await expectAsync(buffer.read(r1)).toBeRejectedWith(err);
+    await expectAsync(buffer.read(r2)).toBeRejectedWith(err);
+  });
+
+  it('should handle rapid writes before a read', async () => {
+    const buffer = createSubjectBuffer<number>();
+    const r = await buffer.attachReader();
+
+    await buffer.write(1);
+    await buffer.write(2);
+    await buffer.write(3);
+
+    expect((await buffer.read(r)).value).toBe(1);
+    expect((await buffer.read(r)).value).toBe(2);
+    expect((await buffer.read(r)).value).toBe(3);
   });
 });

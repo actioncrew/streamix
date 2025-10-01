@@ -75,7 +75,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
     const receiver = createReceiver(callbackOrReceiver);
     let unsubscribing = false;
     let readerId: number | null = null;
-    let latestValue: T | undefined;
+    let readerLatestValue: T | undefined; // Renamed to avoid shadowing
 
     const subscription = createSubscription(() => {
       if (!unsubscribing) {
@@ -94,8 +94,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
         while (true) {
           const result = await buffer.read(readerId);
           if (result.done) break;
-          latestValue = result.value;
-          await receiver.next(latestValue!);
+          readerLatestValue = result.value;
+          await receiver.next(readerLatestValue!);
         }
       } catch (err: any) {
         await receiver.error(err);
@@ -109,7 +109,7 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
 
     Object.assign(subscription, {
       value: () => {
-        return latestValue;
+        return readerLatestValue;
       }
     });
 
@@ -127,6 +127,8 @@ export function createReplaySubject<T = any>(capacity: number = Infinity): Repla
       return await firstValueFrom(this);
     },
     get snappy(): T | undefined {
+      // Return the latest value that was written to the buffer
+      // Note: This is synchronous access to the last value passed to next()
       return latestValue;
     },
     next,
