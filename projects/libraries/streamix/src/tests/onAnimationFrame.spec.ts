@@ -6,8 +6,10 @@ idescribe('fromAnimationFrame - Functional Test', () => {
   it('should emit values at the expected rate', async () => {
     let emittedValues: any[] = [];
     let count = 0;
-    // Subscribe to the stream to collect emitted values
-    const stream = onAnimationFrame().pipe(map((_: any, index: any) => index), takeWhile(() => count < 5));
+    const stream = onAnimationFrame().pipe(
+      map((_: any, index: any) => index),
+      takeWhile(() => count < 5)
+    );
 
     stream.subscribe({
       next: (value: any) => {
@@ -19,27 +21,23 @@ idescribe('fromAnimationFrame - Functional Test', () => {
       },
     });
 
-    // Allow the stream to run for a few frames
-    await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for a while to simulate animation frames
-
-    // Check that we emitted the expected values
-    expect(emittedValues).toEqual([0, 1, 2, 3, 4]); // Because the condition is value < 5
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(emittedValues).toEqual([0, 1, 2, 3, 4]);
   });
 
   it('should stop when condition is met', (done) => {
     let emittedValues: any[] = [];
     let count = 0;
-    // Subscribe to the stream to collect emitted values
     const stream = onAnimationFrame().pipe(takeWhile(() => count < 50));
 
-    stream.subscribe({
+    const sub = stream.subscribe({
       next: (value: any) => {
         count++;
         emittedValues.push(value);
       },
       complete: () => {
-        // Assert that the stream stopped once the condition was met
-        expect(emittedValues.length).toBe(50); // Stop emitting after reaching value >= 5
+        expect(emittedValues.length).toBe(50);
+        expect(() => sub.unsubscribe()).not.toThrow(); // idempotent unsubscribe
         done();
       },
     });
@@ -48,7 +46,6 @@ idescribe('fromAnimationFrame - Functional Test', () => {
   it('should handle infinite loop when condition is always true', async () => {
     let emittedValues: any[] = [];
     let count = 0;
-    // Set condition to always true (infinite loop)
     const infiniteStream = onAnimationFrame().pipe(takeWhile(() => count <= 10));
 
     let subscription = infiniteStream.subscribe({
@@ -58,16 +55,51 @@ idescribe('fromAnimationFrame - Functional Test', () => {
       },
       complete: () => {
         console.log('Infinite stream completed after 10 frames.');
-        subscription.unsubscribe();
+        subscription.unsubscribe(); // redundant but safe
       },
     });
 
-    // Wait for the loop to run a few frames and then complete
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Adjust time for the frames to emit
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(emittedValues.length).toBe(11);
+    expect(emittedValues[0]).toBeLessThan(100);
+    expect(emittedValues[10]).toBeLessThan(100);
+  });
 
-    // Ensure the stream emitted values and stopped after a set number of frames
-    expect(emittedValues.length).toBe(11); // Expect 11 values: 0 to 10
-    expect(emittedValues[0]).toBeLessThan(100); // First value should be 0
-    expect(emittedValues[10]).toBeLessThan(100); // Last value should be 10
+  it('should call unsubscribe callback and cancel animation frame', (done) => {
+    // Spy on cancelAnimationFrame
+    const originalCancel = globalThis.cancelAnimationFrame;
+    const cancelSpy = jasmine.createSpy('cancelAnimationFrame');
+    (globalThis as any).cancelAnimationFrame = cancelSpy;
+
+    const stream = onAnimationFrame();
+    const sub = stream.subscribe(() => {});
+
+    // Wait a couple of frames
+    setTimeout(() => {
+      sub.unsubscribe();
+      expect(cancelSpy).toHaveBeenCalled();
+      // Restore original
+      (globalThis as any).cancelAnimationFrame = originalCancel;
+      done();
+    }, 100);
+  });
+
+  it('should allow multiple independent subscribers', async () => {
+    let valuesA: number[] = [];
+    let valuesB: number[] = [];
+
+    const stream = onAnimationFrame();
+
+    const subA = stream.subscribe(v => valuesA.push(v));
+    const subB = stream.subscribe(v => valuesB.push(v));
+
+    await new Promise(res => setTimeout(res, 200));
+
+    subA.unsubscribe();
+    subB.unsubscribe();
+
+    // Both subscribers should have received some frames
+    expect(valuesA.length).toBeGreaterThan(0);
+    expect(valuesB.length).toBeGreaterThan(0);
   });
 });
