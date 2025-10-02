@@ -21,17 +21,17 @@ import { createSubject } from '../streams';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function skipUntil<T = any>(notifier: Stream) {
-  return createOperator<T, T>('skipUntil', function (this: Operator, source) {
+  return createOperator<T, T>('skipUntil', function (this: Operator, source: AsyncIterator<T>) {
     const output = createSubject<T>();
     let canEmit = false;
 
-    // Subscribe to notifier as an async iterator
-    let notifierSubscription = notifier.subscribe({
+    // Subscribe to notifier
+    const notifierSubscription = notifier.subscribe({
       next: () => {
         canEmit = true;
         notifierSubscription.unsubscribe();
       },
-      error: (err: any) => {
+      error: (err) => {
         output.error(err);
         notifierSubscription.unsubscribe();
       },
@@ -40,29 +40,22 @@ export function skipUntil<T = any>(notifier: Stream) {
       },
     });
 
-
-    // Process source async iterator
-    setTimeout(async () => {
+    // Process source
+    (async () => {
       try {
         while (true) {
-          const result = await source.next();
-          if (result.done) {
-            output.complete();
-            break;
-          }
-
-          if (canEmit) {
-            output.next(result.value);
-          }
+          const { done, value } = await source.next();
+          if (done) break;
+          if (canEmit) output.next(value);
         }
       } catch (err) {
         if (!output.completed()) output.error(err);
       } finally {
         output.complete();
+        notifierSubscription.unsubscribe();
       }
-    }, 0);
+    })();
 
-    const iterable = eachValueFrom<T>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });
 }
