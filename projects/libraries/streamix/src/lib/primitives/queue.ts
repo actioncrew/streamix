@@ -13,7 +13,7 @@ export function createQueue() {
   let last = Promise.resolve();
   let pendingCount = 0;
 
-  const enqueue = (operation: () => Promise<any>): Promise<any> => {
+  const enqueue = (operation: () => Promise<any> | void): Promise<any> => {
     pendingCount++;
 
     // Create the chained promise that will execute the operation
