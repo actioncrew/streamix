@@ -8,7 +8,7 @@
  *
  * @template T The type of the value returned by the callback.
  */
-export type CallbackReturnType<T = any> = T | Promise<T>;
+export type CallbackReturnType<T = any> = (T | Promise<T>);
 
 /**
  * Defines a receiver interface for handling a stream's lifecycle events.
@@ -73,13 +73,13 @@ export function createReceiver<T = any>(
   callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>
 ): StrictReceiver<T> {
   let _completed = false;
+  let _processing = false;
+  let _pendingComplete = false;
 
-  // Create base receiver with proper typing
   const baseReceiver = {
     get completed() { return _completed; }
   } as { readonly completed: boolean; };
 
-  // Normalize the input to always be a Receiver object
   const receiver = (typeof callbackOrReceiver === 'function'
     ? { ...baseReceiver, next: callbackOrReceiver }
     : callbackOrReceiver
@@ -87,21 +87,28 @@ export function createReceiver<T = any>(
       : baseReceiver) as Receiver<T>;
 
   const wrappedReceiver: StrictReceiver<T> = {
-    /**
-     * @inheritdoc
-     */
     next: async (value: T) => {
       if (!_completed) {
+        _processing = true;
         try {
           await receiver.next?.call(receiver, value);
         } catch (err) {
           await wrappedReceiver.error(err instanceof Error ? err : new Error(String(err)));
+        } finally {
+          _processing = false;
+          // If completion was requested during processing, complete now
+          if (_pendingComplete && !_completed) {
+            _pendingComplete = false; // Clear the flag
+            _completed = true;
+            try {
+              await receiver.complete?.call(receiver);
+            } catch (err) {
+              console.error('Unhandled error in complete handler:', err);
+            }
+          }
         }
       }
     },
-    /**
-     * @inheritdoc
-     */
     error: async function (err: Error) {
       if (!_completed) {
         try {
@@ -111,22 +118,21 @@ export function createReceiver<T = any>(
         }
       }
     },
-    /**
-     * @inheritdoc
-     */
     complete: async () => {
       if (!_completed) {
-        _completed = true;
-        try {
-          await receiver.complete?.call(receiver);
-        } catch (err) {
-          console.error('Unhandled error in complete handler:', err);
+        if (_processing) {
+          // Defer completion until after current next() finishes
+          _pendingComplete = true;
+        } else {
+          _completed = true;
+          try {
+            await receiver.complete?.call(receiver);
+          } catch (err) {
+            console.error('Unhandled error in complete handler:', err);
+          }
         }
       }
     },
-    /**
-     * @inheritdoc
-     */
     get completed() {
       return _completed;
     },

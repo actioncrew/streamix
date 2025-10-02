@@ -1,6 +1,7 @@
 import { eachValueFrom, firstValueFrom } from "../converters";
 import { Operator, OperatorChain } from "./operator";
 import { CallbackReturnType, createReceiver, Receiver } from "./receiver";
+import { scheduler } from "./scheduler";
 import { createSubscription, Subscription } from "./subscription";
 
 /**
@@ -88,10 +89,7 @@ export function createStream<T>(
   name: string,
   generatorFn: () => AsyncGenerator<T, void, unknown>
 ): Stream<T> {
-  const activeSubscriptions = new Set<{
-    receiver: Receiver<T>;
-    subscription: Subscription;
-  }>();
+  const activeSubscriptions = new Set<{ receiver: Receiver<T>; subscription: Subscription }>();
   let isRunning = false;
   let abortController = new AbortController();
 
@@ -99,19 +97,23 @@ export function createStream<T>(
     callbackOrReceiver?: ((value: T) => CallbackReturnType) | Receiver<T>
   ): Subscription => {
     const receiver = createReceiver(callbackOrReceiver);
-    const subscription = createSubscription(() => {
+    let subscription: Subscription;
+    subscription = createSubscription(async () => {
       for (const sub of activeSubscriptions) {
         if (sub.subscription === subscription) {
           activeSubscriptions.delete(sub);
-          try {
-            sub.receiver.complete?.();
-          } catch (error) {
-            console.warn("Error completing cancelled receiver:", error);
-          }
+          // Trigger completion for this specific subscriber
+          scheduler.enqueue(async () => {
+            try {
+              await sub.receiver.complete?.();
+            } catch (error) {
+              console.warn("Error completing cancelled receiver:", error);
+            }
+          });
           break;
         }
       }
-
+      
       if (activeSubscriptions.size === 0) {
         abortController.abort();
         isRunning = false;
@@ -128,12 +130,9 @@ export function createStream<T>(
     return subscription;
   };
 
-  const startMulticastLoop = (
-    genFn: () => AsyncGenerator<T, void, unknown>,
-    signal: AbortSignal
-  ) => {
+  const startMulticastLoop = (genFn: () => AsyncGenerator<T>, signal: AbortSignal) => {
     (async () => {
-      let currentIterator: AsyncIterator<T> | null = null;
+      let iterator: AsyncIterator<T> | null = null;
 
       const abortPromise = new Promise<void>((resolve) => {
         if (signal.aborted) resolve();
@@ -141,75 +140,77 @@ export function createStream<T>(
       });
 
       try {
-        currentIterator = genFn()[Symbol.asyncIterator]();
+        iterator = genFn()[Symbol.asyncIterator]();
         while (true) {
           const winner = await Promise.race([
             abortPromise.then(() => ({ aborted: true } as const)),
-            currentIterator.next().then(result => ({ result }))
+            iterator.next().then(result => ({ result }))
           ]);
 
           if ("aborted" in winner || signal.aborted) break;
           if (winner.result.done) break;
 
+          const value = winner.result.value;
           const subscribers = Array.from(activeSubscriptions);
-          await Promise.all(
-            subscribers.map(async ({ receiver }) => {
-              try {
-                await receiver.next?.(winner.result.value);
-              } catch (error) {
-                console.warn("Subscriber error:", error);
+
+          // Deliver value only to active subscribers
+          scheduler.enqueue(async () => {
+            await Promise.all(subscribers.map(async ({ receiver, subscription }) => {
+              if (!subscription.unsubscribed) {
+                try {
+                  await receiver.next?.(value);
+                } catch (err) {
+                  scheduler.enqueue(async () => {
+                    try {
+                      await receiver.error?.(err instanceof Error ? err : new Error(String(err)));
+                    } catch {}
+                  });
+                }
               }
-            })
-          );
+            }));
+          });
         }
       } catch (err) {
         if (!signal.aborted) {
           const error = err instanceof Error ? err : new Error(String(err));
           const subscribers = Array.from(activeSubscriptions);
-          await Promise.all(
-            subscribers.map(async ({ receiver }) => {
-              try {
+          scheduler.enqueue(async () => {
+            await Promise.all(subscribers.map(async ({ receiver, subscription }) => {
+              if (!subscription.unsubscribed) {
                 await receiver.error?.(error);
-              } catch {}
-            })
-          );
+              }
+            }));
+          });
         }
       } finally {
-        if (currentIterator?.return) {
-          try {
-            await currentIterator.return();
-          } catch {}
+        if (iterator?.return) {
+          try { await iterator.return(); } catch {}
         }
-
-        const subscribers = Array.from(activeSubscriptions);
-        await Promise.all(
-          subscribers.map(async ({ receiver }) => {
-            try {
-              await receiver.complete?.();
-            } catch {}
-          })
-        );
-
+        // Only complete remaining subscribers on natural completion
+        if (!signal.aborted) {
+          const subscribers = Array.from(activeSubscriptions);
+          scheduler.enqueue(async () => {
+            await Promise.all(subscribers.map(async ({ receiver, subscription }) => {
+              if (!subscription.unsubscribed) {
+                try { await receiver.complete?.(); } catch {}
+              }
+            }));
+          });
+        }
         isRunning = false;
       }
     })();
   };
 
-  // We must define self first so pipe can capture it
   let self: Stream<T>;
+  const pipe = ((...operators: Operator<any, any>[]) => pipeStream(self, operators)) as OperatorChain<T>;
 
-  // Create pipe function that uses self
-  const pipe = ((...operators: Operator<any, any>[]) => {
-    return pipeStream(self, operators);
-  }) as OperatorChain<T>;
-
-  // Now define self, closing over pipe
   self = {
     type: "stream",
     name,
     pipe,
     subscribe,
-    query: () => firstValueFrom(self)
+    query: () => firstValueFrom(self),
   };
 
   return self;
@@ -219,18 +220,11 @@ export function createStream<T>(
  * Pipes a stream through a series of transformation operators,
  * returning a new derived stream.
  */
-export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
-  source: Stream<TIn>,
-  operators: [...Ops]
-): Stream<any> {
+export function pipeStream<TIn, Ops extends Operator<any, any>[]>(source: Stream<TIn>, operators: [...Ops]): Stream<any> {
   const pipedStream: Stream<any> = {
     name: `${source.name}-sink`,
-    type: 'stream',
-
-    pipe: ((...nextOps: Operator<any, any>[]) => {
-      const allOps = [...operators, ...nextOps];
-      return pipeStream(source, allOps);
-    }) as OperatorChain<any>,
+    type: "stream",
+    pipe: ((...nextOps: Operator<any, any>[]) => pipeStream(source, [...operators, ...nextOps])) as OperatorChain<any>,
 
     subscribe(cb?: ((value: any) => CallbackReturnType) | Receiver<any>) {
       const receiver = createReceiver(cb);
@@ -249,6 +243,17 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
         else signal.addEventListener("abort", () => resolve(), { once: true });
       });
 
+      const subscription = createSubscription(async () => {
+        abortController.abort();
+        if (currentIterator.return) {
+          await currentIterator.return().catch(() => {});
+        }
+        // Trigger completion when unsubscribing
+        scheduler.enqueue(async () => {
+          await receiver.complete?.();
+        });
+      });
+
       (async () => {
         try {
           while (true) {
@@ -256,33 +261,46 @@ export function pipeStream<TIn, Ops extends Operator<any, any>[]>(
               abortPromise.then(() => ({ aborted: true } as const)),
               currentIterator.next().then(result => ({ result }))
             ]);
-
             if ("aborted" in winner || signal.aborted) break;
             const result = winner.result;
             if (result.done) break;
 
-            await receiver.next?.(result.value);
+            scheduler.enqueue(async () => {
+              if (!subscription.unsubscribed) {
+                try {
+                  await receiver.next?.(result.value);
+                } catch (err) {
+                  scheduler.enqueue(async () => {
+                    try {
+                      await receiver.error?.(err instanceof Error ? err : new Error(String(err)));
+                    } catch {}
+                  });
+                }
+              }
+            });
           }
         } catch (err: any) {
-          if (!signal.aborted) {
-            await receiver.error?.(err);
+          if (!signal.aborted && !subscription.unsubscribed) {
+            scheduler.enqueue(async () => await receiver.error?.(err));
           }
         } finally {
-          await receiver.complete?.();
+          // Complete on natural completion (not abort)
+          if (!signal.aborted) {
+            scheduler.enqueue(async () => {
+              if (!subscription.unsubscribed) {
+                await receiver.complete?.();
+              }
+            });
+          }
         }
       })();
 
-      return createSubscription(async () => {
-        abortController.abort();
-        if (currentIterator.return) {
-          await currentIterator.return().catch(() => {});
-        }
-      });
+      return subscription;
     },
 
     async query() {
       return firstValueFrom(pipedStream);
-    }
+    },
   };
 
   return pipedStream;

@@ -20,42 +20,31 @@ import { createSubject } from '../streams';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export function takeUntil<T = any>(notifier: Stream) {
-  return createOperator<T, T>('takeUntil', function (this: Operator, source) {
+  return createOperator<T, T>('takeUntil', function (this: Operator, source: AsyncIterator<T>) {
     const output = createSubject<T>();
-    let shouldStop = false;
+    let stop = false;
 
-    // Subscribe to the notifier
     const notifierSubscription = notifier.subscribe({
-      next: () => {
-        shouldStop = true;
-        notifierSubscription.unsubscribe();
-      },
-      error: (err) => {
-        if (!output.completed()) output.error(err);
-        notifierSubscription.unsubscribe();
-      },
-      complete: () => {
-        notifierSubscription.unsubscribe();
-      },
+      next: () => { stop = true; output.complete(); },
+      error: (err) => { stop = true; output.error(err); output.complete(); },
+      complete: () => { output.complete(); },
     });
 
-    // Process source stream asynchronously
-    setTimeout(async () => {
+    (async () => {
       try {
-        while (!shouldStop) {
-          const result = await source.next();
-          if (result.done || shouldStop) break;
-
-          output.next(result.value);
+        while (!stop) {
+          const { done, value } = await source.next();
+          if (done || stop) break;
+          output.next(value);
         }
       } catch (err) {
         if (!output.completed()) output.error(err);
       } finally {
         output.complete();
+        notifierSubscription.unsubscribe();
       }
-    }, 0);
+    })();
 
-    const iterable = eachValueFrom<T>(output);
-    return iterable[Symbol.asyncIterator]();
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });
 }
