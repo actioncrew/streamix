@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.26
+
+Global scheduler for improved task coordination across streams and operators. Fixed several edge cases in stream operators (`takeUntil`, `skipUntil`) to ensure proper subscription handling and completion propagation. Improved `Semaphore` implementation and tests for deterministic FIFO unblocking of waiting acquires.
+
 ## 2.0.23
 
 BREAKING: Fixed AsyncIterator protocol compliance across all stream operators: All operators now follow the standard pattern: while (true) → check completion → process → return
