@@ -1,4 +1,4 @@
-import { createReplaySubject, eachValueFrom } from '@actioncrew/streamix';
+import { createReplaySubject, createSemaphore, eachValueFrom } from '@actioncrew/streamix';
 
 describe('ReplaySubject', () => {
   it('should emit values to subscribers in real-time as well as replay buffered values', async () => {
@@ -110,5 +110,117 @@ describe('ReplaySubject', () => {
 
     expect(result1).toEqual([6]);
     expect(result2).toEqual([6]);
+  });
+});
+
+
+
+describe('Semaphore', () => {
+  it('should acquire immediately if permits are available', async () => {
+    const sem = createSemaphore(2);
+
+    const release1 = await sem.acquire();
+    const release2 = await sem.acquire();
+
+    expect(release1).toBeInstanceOf(Function);
+    expect(release2).toBeInstanceOf(Function);
+  });
+
+  it('should return null on tryAcquire if no permits are available', () => {
+    const sem = createSemaphore(1);
+
+    const r1 = sem.tryAcquire();
+    const r2 = sem.tryAcquire();
+
+    expect(r1).not.toBeNull();
+    expect(r2).toBeNull();
+  });
+
+  it('should wait for permit if none available', async () => {
+    const sem = createSemaphore(1);
+
+    const release1 = await sem.acquire();
+    let acquired = false;
+
+    sem.acquire().then((release2) => {
+      acquired = true;
+      release2();
+    });
+
+    // Give a small delay to allow promise to attempt acquisition
+    await new Promise((r) => setTimeout(r, 20));
+    expect(acquired).toBeFalse();
+
+    release1(); // release the first permit
+    await new Promise((r) => setTimeout(r, 20));
+    expect(acquired).toBeTrue();
+  });
+
+  it('should unblock multiple waiting acquire calls in order', async () => {
+    const sem = createSemaphore(1);
+
+    const order: number[] = [];
+
+    const r1 = await sem.acquire();
+    const p2 = sem.acquire().then((r) => {
+      order.push(2);
+      r();
+    });
+    const p3 = sem.acquire().then((r) => {
+      order.push(3);
+      r();
+    });
+
+    order.push(1);
+
+    r1(); // release first
+    await p2; // wait for second acquire to finish
+    expect(order).toEqual([1, 2]);
+
+    await p3; // wait for third acquire to finish
+    expect(order).toEqual([1, 2, 3]);
+  });
+
+  it('tryAcquire should acquire permit if available after release', () => {
+    const sem = createSemaphore(1);
+
+    const r1 = sem.tryAcquire();
+    expect(r1).not.toBeNull();
+
+    r1!(); // release the permit
+    const r2 = sem.tryAcquire();
+    expect(r2).not.toBeNull();
+  });
+
+  it('release without waiting acquirers should increase available permits', async () => {
+    const sem = createSemaphore(1);
+
+    const r1 = sem.tryAcquire();
+    expect(r1).not.toBeNull();
+
+    r1!(); // release
+    const r2 = sem.tryAcquire();
+    expect(r2).not.toBeNull();
+  });
+
+  it('should handle concurrent acquire/release correctly', async () => {
+    const sem = createSemaphore(2);
+    const results: number[] = [];
+
+    const p1 = sem.acquire().then((r) => {
+      results.push(1);
+      r();
+    });
+    const p2 = sem.acquire().then((r) => {
+      results.push(2);
+      r();
+    });
+    const p3 = sem.acquire().then((r) => {
+      results.push(3);
+      r();
+    });
+
+    await Promise.all([p1, p2, p3]);
+    expect(results).toEqual([1, 2, 3]);
   });
 });
