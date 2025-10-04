@@ -16,7 +16,7 @@ import { CallbackReturnType } from './../abstractions/receiver';
  * from the stream and can be synchronous or asynchronous.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType<never>) =>
+export const tap = <T = any>(tapFunction: (value: T) => CallbackReturnType<any>) =>
   createOperator<T, T>('tap', function (this: Operator, source) {
     return {
       next: async () => {
