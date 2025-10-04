@@ -1,4 +1,4 @@
-import { createReplaySubject, createSemaphore, eachValueFrom } from '@actioncrew/streamix';
+import { createReplayBuffer, createReplaySubject, createSemaphore, eachValueFrom } from '@actioncrew/streamix';
 
 describe('ReplaySubject', () => {
   it('should emit values to subscribers in real-time as well as replay buffered values', async () => {
@@ -113,8 +113,6 @@ describe('ReplaySubject', () => {
   });
 });
 
-
-
 describe('Semaphore', () => {
   it('should acquire immediately if permits are available', async () => {
     const sem = createSemaphore(2);
@@ -222,5 +220,65 @@ describe('Semaphore', () => {
 
     await Promise.all([p1, p2, p3]);
     expect(results).toEqual([1, 2, 3]);
+  });
+});
+
+describe('createReplayBuffer', () => {
+  it('peek should show next unread value without consuming, and getBuffer should return all stored values', async () => {
+    const buffer = createReplayBuffer<number>(3);
+
+    const r = await buffer.attachReader();
+
+    await buffer.write(1);
+    await buffer.write(2);
+    await buffer.write(3);
+
+    // Peek should return first unread (1) without consuming
+    const peek1 = await buffer.peek(r);
+    expect(peek1.value).toBe(1);
+
+    // Still consumable by read
+    const read1 = await buffer.read(r);
+    expect(read1.value).toBe(1);
+
+    // Buffer snapshot should show [1,2,3]
+    expect(buffer.buffer).toEqual([1, 2, 3]);
+  });
+
+  it('completed should reflect reader state after complete and peek should throw on error values', async () => {
+    const buffer = createReplayBuffer<number>(2);
+    const r = await buffer.attachReader();
+
+    await buffer.write(10);
+    await buffer.write(20);
+
+    // Before complete, reader not completed
+    expect(buffer.completed(r)).toBeFalse();
+
+    // Mark complete
+    await buffer.complete();
+    expect(buffer.completed(r)).toBeFalse(); // still unread items
+
+    await buffer.read(r); // consume 10
+    await buffer.read(r); // consume 20
+    expect(buffer.completed(r)).toBeTrue(); // no more items left
+
+    // Separate buffer for error + peek case
+    const buffer2 = createReplayBuffer<number>(2);
+    const r2 = await buffer2.attachReader();
+
+    await buffer2.write(99);
+    const err = new Error('boom');
+    await buffer2.error(err);
+
+    // Consume 99 first
+    const v = await buffer2.read(r2);
+    expect(v.value).toBe(99);
+
+    // Now peek should throw (error is next)
+    await expectAsync(buffer2.peek(r2)).toBeRejectedWith(err);
+
+    // getBuffer should not include error
+    expect(buffer2.buffer).toEqual([99]);
   });
 });

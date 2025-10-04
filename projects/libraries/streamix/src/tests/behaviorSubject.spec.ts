@@ -331,4 +331,23 @@ describe('createBehaviorSubjectBuffer', () => {
     const res = await buffer.read(r);
     expect(res.value).toBe(4); // only the latest survives
   });
+
+  it('peek should throw if current value is error', async () => {
+    const buffer = createBehaviorSubjectBuffer<number>(42);
+    const r = await buffer.attachReader();
+
+    await buffer.read(r); // consume initial
+    const err = new Error('peek-fail');
+    await buffer.error(err);
+
+    await expectAsync(buffer.peek(r)).toBeRejectedWith(err);
+  });
+
+  it('value should return undefined if last value is error', async () => {
+    const buffer = createBehaviorSubjectBuffer<number>(5);
+    const err = new Error('bad');
+    await buffer.error(err);
+
+    expect(buffer.value).toBeUndefined();
+  });
 });
