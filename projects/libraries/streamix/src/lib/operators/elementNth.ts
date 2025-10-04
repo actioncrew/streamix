@@ -22,7 +22,7 @@ import { select } from "./select";
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const elementNth = <T = any>(
-  indexPattern: (iteration: number) => CallbackReturnType<number | undefined>
+  indexPattern: (iteration: number) => (CallbackReturnType<number> | undefined)
 ): Operator<T, T> => {
   const indexIterator: AsyncGenerator<number> = (async function* () {
     let iteration = 0;

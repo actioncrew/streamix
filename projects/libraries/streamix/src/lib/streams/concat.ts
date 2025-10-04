@@ -1,5 +1,5 @@
 import { createStream, Stream } from "../abstractions";
-import { eachValueFrom } from "../converters";
+import { eachValueFrom, fromAny } from "../converters";
 
 /**
  * Creates a stream that subscribes to multiple streams in sequence.
@@ -13,14 +13,14 @@ import { eachValueFrom } from "../converters";
  * stop processing the remaining streams.
  *
  * @template T The type of the values in the streams.
- * @param {Stream<T>[]} sources An array of streams to concatenate.
+ * @param {(Stream<T> | Promise<T> | Array<T>)[]} sources An array of streams to concatenate.
  * @returns {Stream<T>} A new stream that emits values from all input streams in sequence.
  */
-export function concat<T = any>(...sources: Stream<T>[]): Stream<T> {
+export function concat<T = any>(...sources: (Stream<T> | Promise<T> | Array<T>)[]): Stream<T> {
   async function* generator() {
     for (const source of sources) {
 
-      const iterator = eachValueFrom(source);
+      const iterator = eachValueFrom(fromAny(source));
 
       try {
         for await (const value of iterator) {

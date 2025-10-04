@@ -1,5 +1,6 @@
-import { createOperator, NEXT, Operator, Stream } from "../abstractions";
-import { eachValueFrom } from '../converters';
+import { createOperator, Operator, Stream } from "../abstractions";
+import { eachValueFrom, fromAny } from '../converters';
+import { createSubject } from "../subjects";
 
 /**
  * Creates a stream operator that delays the emission of values from the source stream
@@ -17,51 +18,59 @@ import { eachValueFrom } from '../converters';
  * @param notifier The stream that acts as a gatekeeper.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const delayUntil = <T = any>(notifier: Stream<any>) =>
-  createOperator<T, T>("delayUntil", function(this: Operator, source) {
+export function delayUntil<T = any, R = T>(notifier: Stream<R> | Promise<R>) {
+  return createOperator<T, T>("delayUntil", function (this: Operator, source: AsyncIterator<T>) {
+    const output = createSubject<T>();
     let canEmit = false;
-    let notifierDone = false;
-    let notifierStarted = false;
     const buffer: T[] = [];
 
-    const waitForNotifier = async () => {
-      if (notifierStarted) return;
-      notifierStarted = true;
-      try {
-        for await (const _ of eachValueFrom(notifier)) {
-          void _;
+    const notifierSubscription = fromAny(notifier).subscribe({
+      next: () => {
+        canEmit = true;
+        // flush buffered values
+        for (const v of buffer) output.next(v);
+        buffer.length = 0;
+        notifierSubscription.unsubscribe();
+      },
+      error: (err) => {
+        notifierSubscription.unsubscribe();
+        output.error(err);
+        output.complete();
+      },
+      complete: () => {
+        notifierSubscription.unsubscribe();
+        if (!canEmit) {
           canEmit = true;
-          break;
-        }
-      } catch {
-        // ignore errors, just unblock
-      } finally {
-        notifierDone = true;
-      }
-    };
-
-    waitForNotifier();
-
-    return {
-      next: async () => {
-        while (true) {
-          if (canEmit) {
-            if (buffer.length) {
-              return NEXT(buffer.shift()!);
-            }
-            return source.next();
-          }
-
-          const result = await source.next();
-          if (result.done) return result;
-
-          buffer.push(result.value);
-
-          if (notifierDone) {
-            // fallback in case notifier ends without emitting
-            canEmit = true;
-          }
+          for (const v of buffer) output.next(v);
+          buffer.length = 0;
         }
       },
-    };
+    });
+
+    (async () => {
+      try {
+        while (true) {
+          const { done, value } = await source.next();
+          if (done) break;
+
+          if (canEmit) {
+            output.next(value);
+          } else {
+            buffer.push(value);
+          }
+        }
+      } catch (err) {
+        output.error(err);
+      } finally {
+        // flush buffer if notifier never triggered
+        if (!canEmit && buffer.length > 0) {
+          for (const v of buffer) output.next(v);
+        }
+        output.complete();
+        notifierSubscription.unsubscribe();
+      }
+    })();
+
+    return eachValueFrom(output)[Symbol.asyncIterator]();
   });
+}

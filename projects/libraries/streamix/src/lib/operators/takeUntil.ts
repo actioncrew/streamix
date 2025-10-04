@@ -1,5 +1,5 @@
 import { createOperator, Operator, Stream } from '../abstractions';
-import { eachValueFrom } from '../converters';
+import { eachValueFrom, fromAny } from '../converters';
 import { createSubject } from '../streams';
 
 /**
@@ -19,12 +19,12 @@ import { createSubject } from '../streams';
  * should complete.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export function takeUntil<T = any>(notifier: Stream) {
+export function takeUntil<T = any, R = T>(notifier: Stream<R> | Promise<R>) {
   return createOperator<T, T>('takeUntil', function (this: Operator, source: AsyncIterator<T>) {
     const output = createSubject<T>();
     let stop = false;
 
-    const notifierSubscription = notifier.subscribe({
+    const notifierSubscription = fromAny(notifier).subscribe({
       next: () => { stop = true; notifierSubscription.unsubscribe(); output.complete(); },
       error: (err) => { stop = true; notifierSubscription.unsubscribe(); output.error(err); output.complete(); },
       complete: () => { notifierSubscription.unsubscribe(); },

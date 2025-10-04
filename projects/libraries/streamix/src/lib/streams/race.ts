@@ -1,5 +1,5 @@
 import { createStream, Stream } from "../abstractions";
-import { eachValueFrom } from "../converters";
+import { eachValueFrom, fromAny } from "../converters";
 
 /**
  * Returns a stream that races multiple input streams.
@@ -14,17 +14,17 @@ import { eachValueFrom } from "../converters";
  * If the winning stream emits an error, the output stream will emit that error.
  *
  * @template {readonly unknown[]} T - A tuple type representing the combined values from the streams.
- * @param { { [K in keyof T]: Stream<T[K]> } } streams - An array of streams to race against each other.
+ * @param { { [K in keyof T]: (Stream<T[K]> | Promise<T[K]> | Array<T[K]>) } } streams - An array of streams to race against each other.
  * @returns {Stream<T[number]>} A new stream that emits values from the first stream to produce a value.
  */
 export function race<T extends readonly unknown[] = any[]>(
-  ...streams: { [K in keyof T]: Stream<T[K]> }
+  ...streams: { [K in keyof T]: (Stream<T[K]> | Promise<T[K]> | Array<T[K]>) }
 ): Stream<T[number]> {
   return createStream<T[number]>('race', async function* () {
     if (streams.length === 0) return;
 
     const controllers = streams.map(() => new AbortController());
-    const iterators = streams.map((s) => eachValueFrom(s)[Symbol.asyncIterator]());
+    const iterators = streams.map((s) => eachValueFrom(fromAny(s))[Symbol.asyncIterator]());
 
     try {
       while (true) {

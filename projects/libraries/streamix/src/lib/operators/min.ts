@@ -1,4 +1,4 @@
-import { createOperator, DONE, NEXT, Operator } from '../abstractions';
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits the minimum value from the source stream.
@@ -24,7 +24,7 @@ import { createOperator, DONE, NEXT, Operator } from '../abstractions';
  * @returns An `Operator` instance usable in a stream's `pipe` method.
  */
 export const min = <T = any>(
-  comparator?: (a: T, b: T) => number | Promise<number>
+  comparator?: (a: T, b: T) => CallbackReturnType<number>
 ) =>
   createOperator<T, T>("min", function (this: Operator, source) {
     let minValue: T | undefined;

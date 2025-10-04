@@ -1,5 +1,5 @@
 import { createStream, Stream } from "../abstractions";
-import { eachValueFrom } from "../converters";
+import { eachValueFrom, fromAny } from "../converters";
 
 /**
  * Combines multiple streams and emits a tuple containing the latest values
@@ -11,11 +11,11 @@ import { eachValueFrom } from "../converters";
  * value. The output stream completes when all source streams have completed.
  *
  * @template {unknown[]} T A tuple type representing the combined values from the streams.
- * @param {{ [K in keyof T]: Stream<T[K]> }} streams An array of streams to combine.
+ * @param {{ [K in keyof T]: Stream<T[K]> | Promise<T[K]> | Array<T[K]> }} streams An array of streams to combine.
  * @returns {Stream<T>} A new stream that emits a tuple of the latest values from all source streams.
  */
 export function combineLatest<T extends unknown[] = any[]>(
-  streams: { [K in keyof T]: Stream<T[K]> }
+  streams: { [K in keyof T]: (Stream<T[K]> | Promise<T[K]> | Array<T[K]>) }
 ): Stream<T> {
   async function* generator() {
     if (streams.length === 0) return;
@@ -24,7 +24,7 @@ export function combineLatest<T extends unknown[] = any[]>(
     const hasEmitted = new Array(streams.length).fill(false);
     let completedStreams = 0;
 
-    const asyncIterables = streams.map(eachValueFrom);
+    const asyncIterables = streams.map((stream) => eachValueFrom(fromAny(stream)));
     const iterators = asyncIterables.map((it) => it[Symbol.asyncIterator]());
 
     const promisesByIndex: Array<Promise<any> | null> = new Array(streams.length).fill(null);

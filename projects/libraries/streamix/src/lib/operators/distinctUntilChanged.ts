@@ -1,4 +1,4 @@
-import { createOperator, DONE, NEXT, Operator } from '../abstractions';
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from '../abstractions';
 
 /**
  * Creates a stream operator that emits values from the source stream only if
@@ -15,7 +15,7 @@ import { createOperator, DONE, NEXT, Operator } from '../abstractions';
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
 export const distinctUntilChanged = <T = any>(
-  comparator?: (prev: T, curr: T) => boolean
+  comparator?: (prev: T, curr: T) => CallbackReturnType<boolean>
 ) =>
   createOperator<T, T>('distinctUntilChanged', function (this: Operator, source) {
     // State variables to keep track of the last emitted value.
@@ -33,7 +33,7 @@ export const distinctUntilChanged = <T = any>(
           if (result.done) return DONE;
 
           // Check if the value is different from the last one.
-          const isDistinct = !hasLast || !(comparator ? comparator(lastValue!, result.value) : lastValue === result.value);
+          const isDistinct = !hasLast || !(comparator ? await comparator(lastValue!, result.value) : lastValue === result.value);
 
           if (isDistinct) {
             // If the value is distinct, we update our state and return it as a normal IteratorResult.

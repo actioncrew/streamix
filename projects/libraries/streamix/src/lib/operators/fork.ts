@@ -32,7 +32,7 @@ export interface ForkOption<T = any, R = any> {
    * @param value The source value that matched the predicate.
    * @returns A stream, value, promise, or array to be flattened and emitted.
    */
-  handler: (value: T) => Stream<R> | CallbackReturnType<R> | Array<R>;
+  handler: (value: T) => (Stream<R> | CallbackReturnType<R> | Array<R>);
 }
 
 /**

@@ -1,4 +1,4 @@
-import { createStream, Stream } from '../abstractions';
+import { CallbackReturnType, createStream, Stream } from '../abstractions';
 
 /**
  * Creates a stream that emits a single value and then completes.
@@ -9,11 +9,11 @@ import { createStream, Stream } from '../abstractions';
  * "hot" stream from a predefined value.
  *
  * @template T The type of the value to be emitted.
- * @param {T} value The single value to emit.
+ * @param {CallbackReturnType<T>} value The single value to emit.
  * @returns {Stream<T>} A new stream that emits the value and then completes.
  */
-export function of<T = any>(value: T): Stream<T> {
+export function of<T = any>(value: CallbackReturnType<T>): Stream<T> {
   return createStream<T>('of', async function* () {
-    yield value;
+    yield await value;
   });
 }

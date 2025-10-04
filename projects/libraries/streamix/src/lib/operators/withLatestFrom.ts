@@ -8,7 +8,7 @@ import {
   Stream,
   Subscription
 } from "../abstractions";
-import { eachValueFrom } from "../converters";
+import { eachValueFrom, fromAny } from "../converters";
 import { createSubject } from "../streams";
 
 /**
@@ -29,7 +29,7 @@ import { createSubject } from "../streams";
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  * The output stream emits tuples of `[T, ...R]`.
  */
-export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(...streams: { [K in keyof R]: Stream<R[K]> }) {
+export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(...streams: { [K in keyof R]: (Stream<R[K]> | Promise<R[K]> | Array<R[K]>)}) {
   return createOperator<T, [T, ...R]>("withLatestFrom", function (this: Operator, source) {
     const output = createSubject<[T, ...R]>();
     const latestValues: any[] = new Array(streams.length).fill(undefined);
@@ -37,7 +37,7 @@ export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(..
     const subscriptions: Subscription[] = [];
 
     for (let i = 0; i < streams.length; i++) {
-      const subscription = streams[i].subscribe({
+      const subscription = fromAny(streams[i]).subscribe({
         next: (value) => {
           latestValues[i] = value;
           hasValue[i] = true;
