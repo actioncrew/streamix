@@ -1,4 +1,4 @@
-import { createOperator, DONE, NEXT, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that prepends a specified value to the beginning of the stream.
@@ -11,7 +11,7 @@ import { createOperator, DONE, NEXT, Operator } from "../abstractions";
  * @param initialValue The value to be emitted as the first item in the stream.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const startWith = <T = any>(initialValue: T) =>
+export const startWith = <T = any>(initialValue: CallbackReturnType<T>) =>
   createOperator<T, T>("startWith", function (this: Operator, source) {
     let emittedInitial = false;
     let completed = false;
@@ -25,7 +25,7 @@ export const startWith = <T = any>(initialValue: T) =>
 
           if (!emittedInitial) {
             emittedInitial = true;
-            return NEXT(initialValue);
+            return NEXT(await initialValue);
           }
 
           const result = await source.next();

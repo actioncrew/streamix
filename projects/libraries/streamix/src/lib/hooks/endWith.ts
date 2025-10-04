@@ -1,4 +1,4 @@
-import { createOperator, DONE, NEXT, Operator } from "../abstractions";
+import { CallbackReturnType, createOperator, DONE, NEXT, Operator } from "../abstractions";
 
 /**
  * Creates a stream operator that emits a final, specified value after the source stream has completed.
@@ -10,7 +10,7 @@ import { createOperator, DONE, NEXT, Operator } from "../abstractions";
  * @param finalValue The value to be emitted as the last item in the stream.
  * @returns An `Operator` instance that can be used in a stream's `pipe` method.
  */
-export const endWith = <T = any>(finalValue: T) =>
+export const endWith = <T = any>(finalValue: CallbackReturnType<T>) =>
   createOperator<T, T>("endWith", function (this: Operator, source) {
     let sourceDone = false;
     let finalEmitted = false;
@@ -36,7 +36,7 @@ export const endWith = <T = any>(finalValue: T) =>
 
           if (!finalEmitted) {
             finalEmitted = true;
-            return NEXT(finalValue);
+            return NEXT(await finalValue);
           }
 
           completed = true;
