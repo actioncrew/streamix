@@ -25,9 +25,9 @@ export function takeUntil<T = any>(notifier: Stream) {
     let stop = false;
 
     const notifierSubscription = notifier.subscribe({
-      next: () => { stop = true; output.complete(); },
-      error: (err) => { stop = true; output.error(err); output.complete(); },
-      complete: () => { output.complete(); },
+      next: () => { stop = true; notifierSubscription.unsubscribe(); output.complete(); },
+      error: (err) => { stop = true; notifierSubscription.unsubscribe(); output.error(err); output.complete(); },
+      complete: () => { notifierSubscription.unsubscribe(); },
     });
 
     (async () => {

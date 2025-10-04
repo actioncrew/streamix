@@ -27,7 +27,7 @@
     "zone.js": "~0.14.3"
   },
   "devDependencies": {
-    "@actioncrew/dts-bundler": "^1.0.10",
+    "@actioncrew/dts-bundler": "file:actioncrew-dts-bundler-1.0.11.tgz",
     "@actioncrew/ts-test-runner": "^1.0.11",
     "@angular-devkit/build-angular": "^18.0.1",
     "@angular-eslint/eslint-plugin": "^19.0.2",
