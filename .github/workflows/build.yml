@@ -26,6 +26,11 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+    - name: Clean previous build
+      run: |
+        echo "🧹 Cleaning previous build artifacts..."
+        rm -rf dist
+        rm -rf node_modules
     - run: npm i
     - run: npm run build streamix
     - run: npm run jasmine:coverage
