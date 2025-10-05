@@ -30,7 +30,7 @@ jobs:
 
       # Install dependencies cleanly
       - name: Install dependencies
-        run: npm ci
+        run: npm i
 
       # Build project
       - name: Build streamix
