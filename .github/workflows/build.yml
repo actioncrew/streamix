@@ -20,8 +20,10 @@ jobs:
       # Force clean output and top-level node_modules
       - name: Clean npm cache
         run: npm cache clean --force
+      
+      - name: Clean ts-test-runner cache
         run: rm -rf node_modules/@actioncrew/ts-test-runner/node_modules
-        
+
       # Set up Node.js
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
