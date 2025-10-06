@@ -9,12 +9,20 @@ describe("range", () => {
 
     const rangeStream = range(start, count);
 
-    rangeStream.subscribe({
-      next: (value) => emittedValues.push(value),
-      complete: () => {
-        expect(emittedValues).toEqual(expectedValues);
-      },
-      error: (err) => fail(err),
+    // FIX: Use await Promise to wait for the complete callback
+    await new Promise<void>((resolve, reject) => {
+      rangeStream.subscribe({
+        next: (value) => emittedValues.push(value),
+        complete: () => {
+          try {
+            expect(emittedValues).toEqual(expectedValues);
+            resolve(); // Resolve the promise on successful completion
+          } catch (e) {
+            reject(e); // Reject if the expectation fails
+          }
+        },
+        error: (err) => reject(err), // Reject the promise if an error occurs
+      });
     });
   });
 
@@ -25,12 +33,19 @@ describe("range", () => {
 
     const rangeStream = range(start, count);
 
-    rangeStream.subscribe({
-      next: (value) => emittedValues.push(value),
-      complete: () => {
-        expect(emittedValues.length).toBe(count); // Should emit exactly `count` values
-      },
-      error: (err) => fail(err),
+    await new Promise<void>((resolve, reject) => {
+      rangeStream.subscribe({
+        next: (value) => emittedValues.push(value),
+        complete: () => {
+          try {
+            expect(emittedValues.length).toBe(count);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        },
+        error: (err) => reject(err),
+      });
     });
   });
 
@@ -41,12 +56,19 @@ describe("range", () => {
 
     const rangeStream = range(start, count);
 
-    rangeStream.subscribe({
-      next: (value) => emittedValues.push(value),
-      complete: () => {
-        expect(emittedValues.length).toBe(0); // Should not emit any values
-      },
-      error: (err) => fail(err),
+    await new Promise<void>((resolve, reject) => {
+      rangeStream.subscribe({
+        next: (value) => emittedValues.push(value),
+        complete: () => {
+          try {
+            expect(emittedValues.length).toBe(0);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        },
+        error: (err) => reject(err),
+      });
     });
   });
 
@@ -58,12 +80,19 @@ describe("range", () => {
 
     const rangeStream = range(start, count);
 
-    rangeStream.subscribe({
-      next: (value) => emittedValues.push(value),
-      complete: () => {
-        expect(emittedValues).toEqual(expectedValues);
-      },
-      error: (err) => fail(err),
+    await new Promise<void>((resolve, reject) => {
+      rangeStream.subscribe({
+        next: (value) => emittedValues.push(value),
+        complete: () => {
+          try {
+            expect(emittedValues).toEqual(expectedValues);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        },
+        error: (err) => reject(err),
+      });
     });
   });
 
@@ -74,12 +103,19 @@ describe("range", () => {
 
     const rangeStream = range(start, count);
 
-    rangeStream.subscribe({
-      next: (value) => emittedValues.push(value),
-      complete: () => {
-        expect(emittedValues.length).toBe(0); // No values should be emitted
-      },
-      error: (err) => fail(err),
+    await new Promise<void>((resolve, reject) => {
+      rangeStream.subscribe({
+        next: (value) => emittedValues.push(value),
+        complete: () => {
+          try {
+            expect(emittedValues.length).toBe(0);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        },
+        error: (err) => reject(err),
+      });
     });
   });
 });

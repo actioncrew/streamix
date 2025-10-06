@@ -11,8 +11,8 @@ import { createSubject } from "../subjects";
  * the operator immediately flushes all buffered values and then passes through
  * all subsequent values from the source without delay.
  *
- * If the `notifier` stream completes without ever emitting a value, this operator
- * will eventually flush all buffered values and then pass through subsequent values.
+ * If the `notifier` stream completes without ever emitting a value, the buffered 
+ * values are DISCARDED, and the operator simply waits for the source to complete.
  *
  * @template T The type of the values in the source and output streams.
  * @param notifier The stream that acts as a gatekeeper.
@@ -26,22 +26,28 @@ export function delayUntil<T = any, R = T>(notifier: Stream<R> | Promise<R>) {
 
     const notifierSubscription = fromAny(notifier).subscribe({
       next: () => {
-        canEmit = true;
-        // flush buffered values
-        for (const v of buffer) output.next(v);
-        buffer.length = 0;
+        // The gate is open. Flush the buffer and start live emission.
+        if (!canEmit) { // Only run the flush on the *first* emission
+          canEmit = true;
+          for (const v of buffer) output.next(v);
+          buffer.length = 0;
+        }
+        // Unsubscribe from the notifier immediately after the first next()
         notifierSubscription.unsubscribe();
       },
       error: (err) => {
+        // If notifier errors, the output stream errors
         notifierSubscription.unsubscribe();
         output.error(err);
         output.complete();
+        // Note: output.error() is a terminal event, no need for output.complete()
       },
       complete: () => {
         notifierSubscription.unsubscribe();
+        // If the notifier completes before emitting (i.e., !canEmit), 
+        // the buffered values are discarded, but the source can now emit.
         if (!canEmit) {
           canEmit = true;
-          for (const v of buffer) output.next(v);
           buffer.length = 0;
         }
       },
@@ -62,10 +68,6 @@ export function delayUntil<T = any, R = T>(notifier: Stream<R> | Promise<R>) {
       } catch (err) {
         output.error(err);
       } finally {
-        // flush buffer if notifier never triggered
-        if (!canEmit && buffer.length > 0) {
-          for (const v of buffer) output.next(v);
-        }
         output.complete();
         notifierSubscription.unsubscribe();
       }
