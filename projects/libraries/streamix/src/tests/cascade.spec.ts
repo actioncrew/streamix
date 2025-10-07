@@ -1,7 +1,7 @@
 import { cascade, coroutine, createStream, eachValueFrom } from "@actioncrew/streamix";
 import { idescribe } from "./env.spec";
 
-idescribe("cascade operator", () => {
+idescribe("cascade", () => {
   it("should process tasks sequentially via processTask", async () => {
     const c1 = coroutine((x: number) => x + 1);
     const c2 = coroutine((x: number) => x * 2);

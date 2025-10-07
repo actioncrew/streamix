@@ -1,6 +1,6 @@
 import { delay, EMPTY, filter, from, map, mergeMap, take, timer } from '@actioncrew/streamix';
 
-describe('mergeMap operator', () => {
+describe('mergeMap', () => {
   it('should merge emissions from inner streams correctly', (done) => {
     const testStream = from([1, 2, 3]);
 

@@ -1,6 +1,6 @@
 import { interval } from '@actioncrew/streamix';
 
-describe('IntervalStream', () => {
+describe('interval', () => {
   it('should emit values at specified interval', async () => {
     const intervalMs = 100;
     const intervalStream = interval(intervalMs);

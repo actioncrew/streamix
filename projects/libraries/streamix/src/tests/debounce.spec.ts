@@ -1,6 +1,6 @@
 import { createStream, debounce, from, interval, take } from "@actioncrew/streamix";
 
-describe('debounce operator', () => {
+describe('debounce', () => {
   it('should debounce values from an array stream', (done) => {
     const values = [1, 2, 3, 4, 5];
     const debouncedStream = from(values).pipe(debounce(100));

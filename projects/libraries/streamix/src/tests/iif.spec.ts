@@ -1,7 +1,7 @@
 import { from, iif, switchMap } from '@actioncrew/streamix';
 
 
-describe('iif operator', () => {
+describe('iif', () => {
   it('should choose trueStream when condition is true', (done) => {
     const condition = (value: number) => value > 5;
     const trueStream = from([10, 20, 30]);

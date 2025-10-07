@@ -1,6 +1,6 @@
 import { createSubject, distinctUntilKeyChanged, eachValueFrom, Stream } from '@actioncrew/streamix';
 
-describe('distinctUntilKeyChanged operator', () => {
+describe('distinctUntilKeyChanged', () => {
   let subject: ReturnType<typeof createSubject<any>>;
   let source: Stream<any>;
 

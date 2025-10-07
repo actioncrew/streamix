@@ -1,6 +1,6 @@
 import { catchError, from, map } from '@actioncrew/streamix';
 
-describe('map operator', () => {
+describe('map', () => {
   it('should transform values correctly', (done) => {
     const testStream = from([1, 2, 3]);
     const transform = (value: number) => value * 2;

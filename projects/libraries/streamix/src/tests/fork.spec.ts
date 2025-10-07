@@ -1,6 +1,6 @@
 import { fork, from, of } from '@actioncrew/streamix'; // Adjust the import path accordingly
 
-describe('fork operator', () => {
+describe('fork', () => {
   let source$: any;
   let options: Array<{ on: (value: number) => boolean; handler: any }>;
 

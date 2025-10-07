@@ -1,7 +1,7 @@
 import { fromEvent } from '@actioncrew/streamix';
 import { idescribe } from './env.spec';
 
-idescribe('fromEvent function', () => {
+idescribe('fromEvent', () => {
 
   it('should call the overridden subscribe method', (done) => {
     const element = document.createElement('button');

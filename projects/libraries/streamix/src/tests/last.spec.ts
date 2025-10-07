@@ -1,6 +1,6 @@
 import { from, last } from "@actioncrew/streamix";
 
-describe('last Operator', () => {
+describe('last', () => {
   it('should emit the last value of the stream', (done) => {
     const testStream = from([1, 2, 3, 4]);
     const lastStream = testStream.pipe(last());

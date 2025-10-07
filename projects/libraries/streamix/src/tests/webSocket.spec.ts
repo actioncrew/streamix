@@ -45,7 +45,7 @@ class MockWebSocket {
   }
 }
 
-idescribe("webSocket operator", () => {
+idescribe("webSocket", () => {
   let lastWs: MockWebSocket;
   let factory: jasmine.Spy;
 

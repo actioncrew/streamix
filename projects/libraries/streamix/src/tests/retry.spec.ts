@@ -1,6 +1,6 @@
 import { createStream, eachValueFrom, retry } from "@actioncrew/streamix";
 
-describe('retry stream', () => {
+describe('retry', () => {
   it('should retry the stream once on error and emit correct values', async () => {
     let attempt = 0;
     const factory = jasmine.createSpy('factory').and.callFake(() => {

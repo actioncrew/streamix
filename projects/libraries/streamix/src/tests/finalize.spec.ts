@@ -1,6 +1,6 @@
 import { createStream, finalize } from "@actioncrew/streamix";
 
-describe("finalize operator", () => {
+describe("finalize", () => {
 
   it("should call finalizer on normal completion", (done) => {
     const called: string[] = [];

@@ -1,6 +1,6 @@
 import { buffer, createSubject, eachValueFrom, Stream } from "@actioncrew/streamix";
 
-describe("buffer operator", () => {
+describe("buffer", () => {
   let source: Stream<number>;
   let subject: ReturnType<typeof createSubject<number>>;
 

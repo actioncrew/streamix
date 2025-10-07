@@ -1,6 +1,6 @@
 import { filter, from } from '@actioncrew/streamix';
 
-describe('FilterOperator', () => {
+describe('filter', () => {
   it('should allow values that pass the predicate', (done) => {
     const testStream = from([1, 2, 3, 4, 5]);
     const predicate = (value: number) => value % 2 === 0;

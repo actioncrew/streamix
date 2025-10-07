@@ -1,7 +1,7 @@
 import { onIntersection } from '@actioncrew/streamix';
 import { idescribe } from './env.spec';
 
-idescribe('Functional tests for fromIntersectionObserver', () => {
+idescribe('onIntersection', () => {
   let element: HTMLElement;
   let visibilityStream: any;
 

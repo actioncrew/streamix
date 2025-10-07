@@ -1,6 +1,6 @@
 import { catchError, from, scan } from '@actioncrew/streamix';
 
-describe('scan operator', () => {
+describe('scan', () => {
   it('should accumulate values correctly', (done) => {
     const testStream = from([1, 2, 3]);
     const accumulator = (acc: number, value: number) => acc + value;

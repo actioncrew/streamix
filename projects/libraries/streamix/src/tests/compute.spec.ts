@@ -1,7 +1,7 @@
 import { compute, coroutine, eachValueFrom } from "@actioncrew/streamix";
 import { idescribe } from "./env.spec";
 
-idescribe("compute operator", () => {
+idescribe("compute", () => {
   it("should emit a single computed result", async () => {
     const mainTask = (x: number) => x * 2;
     const co = coroutine(mainTask);

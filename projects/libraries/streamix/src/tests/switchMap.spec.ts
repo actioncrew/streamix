@@ -1,6 +1,6 @@
 import { createSubject, delay, EMPTY, from, switchMap } from '@actioncrew/streamix';
 
-describe('switchMap operator', () => {
+describe('switchMap', () => {
   it('should switch to new inner streams correctly', (done) => {
     const testStream = from([1, 2, 3]).pipe(delay(100));
     const project = (value: number) => from([value * 10, value * 100]);

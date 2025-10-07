@@ -1,6 +1,6 @@
 import { createSubject, createSubjectBuffer, Subscription } from '@actioncrew/streamix';
 
-describe('Subject', () => {
+describe('createSubject', () => {
   it('should not emit values after unsubscribed', (done) => {
     const subject = createSubject<any>();
 

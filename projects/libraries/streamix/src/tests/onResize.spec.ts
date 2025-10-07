@@ -1,7 +1,7 @@
 import { onResize } from "@actioncrew/streamix";
 import { idescribe } from "./env.spec";
 
-idescribe('Functional tests for fromResizeObserver', () => {
+idescribe('onResize', () => {
   it('should detect element resize changes', (done) => {
     const divToTest = document.createElement('div');
     divToTest.style.width = '100px';

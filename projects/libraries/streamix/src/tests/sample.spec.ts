@@ -1,6 +1,6 @@
 import { createSubject, eachValueFrom, sample } from '@actioncrew/streamix';
 
-describe("sample operator", () => {
+describe("sample", () => {
   let subject: any;
 
   beforeEach(() => {

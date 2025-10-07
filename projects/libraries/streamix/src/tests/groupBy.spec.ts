@@ -1,6 +1,6 @@
 import { from, groupBy, map, merge, mergeMap, of, tap } from '@actioncrew/streamix';
 
-describe('groupBy and custom partitioning', () => {
+describe('groupBy', () => {
   it('should partition values using groupBy and sort them by key', (done) => {
     let result: any[] = [];
     const groupsMap = new Map<string, any[]>(); // Store latest group values

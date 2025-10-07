@@ -4,7 +4,7 @@ import { idescribe } from './env.spec';
 // Mock DOM element for testing purposes
 let observedElement: HTMLDivElement;
 
-idescribe('fromMutation Stream Tests', () => {
+idescribe('onMutation', () => {
   beforeEach(() => {
     // Create a DOM element for testing
     observedElement = document.createElement('div');

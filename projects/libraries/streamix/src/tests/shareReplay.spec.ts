@@ -1,6 +1,6 @@
 import { createStream, shareReplay } from '@actioncrew/streamix';
 
-describe('shareReplay operator', () => {
+describe('shareReplay', () => {
   it('should replay last emitted value to new subscribers', done => {
     let executionCount = 0;
 

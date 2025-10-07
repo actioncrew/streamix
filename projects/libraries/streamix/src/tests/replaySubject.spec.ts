@@ -1,6 +1,6 @@
 import { createReplayBuffer, createReplaySubject, createSemaphore, eachValueFrom } from '@actioncrew/streamix';
 
-describe('ReplaySubject', () => {
+describe('createReplaySubject', () => {
   it('should emit values to subscribers in real-time as well as replay buffered values', async () => {
     const subject = createReplaySubject<number>(2);
 
@@ -113,7 +113,7 @@ describe('ReplaySubject', () => {
   });
 });
 
-describe('Semaphore', () => {
+describe('createSemaphore', () => {
   it('should acquire immediately if permits are available', async () => {
     const sem = createSemaphore(2);
 

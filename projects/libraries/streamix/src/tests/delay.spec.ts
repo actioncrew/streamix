@@ -1,6 +1,6 @@
 import { delay, from } from '@actioncrew/streamix';
 
-describe('DelayOperator', () => {
+describe('delay', () => {
   it('should delay each value by the specified time', (done) => {
     const testStream = from([1, 2, 3]);
     const delayTime = 100; // 100 ms delay

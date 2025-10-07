@@ -1,6 +1,6 @@
 import { createStream, eachValueFrom, partition } from '@actioncrew/streamix';
 
-describe('partition operator', () => {
+describe('partition', () => {
 
   async function collect<T>(source: any): Promise<{ true: T[]; false: T[] }> {
     const trueValues: T[] = [];

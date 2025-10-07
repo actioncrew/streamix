@@ -1,6 +1,6 @@
 import { combineLatest, from, Subscription, timer } from '@actioncrew/streamix';
 
-describe('CombineLatestStream with TimerStreams', () => {
+describe('combineLatest', () => {
   it('should combine timer streams correctly', (done) => {
     const firstTimer = timer(0, 50);
     const secondTimer = timer(25, 50);

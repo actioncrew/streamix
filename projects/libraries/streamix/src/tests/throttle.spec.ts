@@ -1,6 +1,6 @@
 import { createSubject, eachValueFrom, throttle } from '@actioncrew/streamix';
 
-describe('throttle operator', () => {
+describe('throttle', () => {
   it('should emit first value immediately and throttle subsequent values', async () => {
     const output: number[] = [];
     const subject = createSubject<number>();

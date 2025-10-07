@@ -1,6 +1,6 @@
 import { createSubject, from, of, take, takeUntil, throwError, timer } from '@actioncrew/streamix';
 
-describe('takeUntil operator', () => {
+describe('takeUntil', () => {
   it('should take emissions until notifier emits', (done) => {
     const testStream = from([1, 2, 3]);
     const notifier = timer(2000, 1000).pipe(take(1));

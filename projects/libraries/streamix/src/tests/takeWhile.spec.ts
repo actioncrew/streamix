@@ -1,6 +1,6 @@
 import { from, takeWhile } from '@actioncrew/streamix';
 
-describe('takeWhile operator', () => {
+describe('takeWhile', () => {
   it('should take emissions while predicate returns true', (done) => {
     const testStream = from([1, 2, 3, 4, 5]);
     const predicate = (value: number) => value < 4;

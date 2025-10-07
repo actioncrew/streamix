@@ -1,6 +1,6 @@
 import { from, withLatestFrom } from '@actioncrew/streamix';
 
-describe('withLatestFrom operator', () => {
+describe('withLatestFrom', () => {
   it('should handle cancellation of the main stream', (done) => {
     const mainStream = from([1, 2, 3]);
     const otherStream = from(['A', 'B', 'C']);

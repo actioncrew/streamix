@@ -1,7 +1,7 @@
 import { eachValueFrom, firstValueFrom, jsonp } from "@actioncrew/streamix";
 import { idescribe } from "./env.spec";
 
-idescribe("jsonp operator", () => {
+idescribe("jsonp", () => {
   let originalHeadAppend: typeof document.head.appendChild;
   let originalHeadRemove: typeof document.head.removeChild;
 

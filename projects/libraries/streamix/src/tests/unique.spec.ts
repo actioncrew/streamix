@@ -1,6 +1,6 @@
 import { createSubject, eachValueFrom, Stream, unique } from '@actioncrew/streamix';
 
-describe('unique operator', () => {
+describe('unique', () => {
   let subject: ReturnType<typeof createSubject<any>>;
   let source: Stream<any>;
 

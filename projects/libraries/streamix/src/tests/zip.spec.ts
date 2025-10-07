@@ -1,6 +1,6 @@
 import { createSubject, from, zip } from '@actioncrew/streamix';
 
-describe('zip operator', () => {
+describe('zip', () => {
   it('should zip values from multiple streams', (done) => {
     const stream1$ = from([1, 2, 3]);
     const stream2$ = from(['a', 'b', 'c']);

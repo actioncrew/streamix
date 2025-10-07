@@ -1,6 +1,6 @@
 import { of } from '@actioncrew/streamix';
 
-describe('OfStream', () => {
+describe('of', () => {
   it('should emit the given value', async () => {
     const value = 'test_value';
     const ofStream = of(value);

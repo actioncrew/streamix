@@ -1,7 +1,7 @@
 import { coroutine, CoroutineMessage, createStream, eachValueFrom } from "@actioncrew/streamix";
 import { idescribe } from "./env.spec";
 
-idescribe('coroutine operator', () => {
+idescribe('coroutine', () => {
   let originalWorker: any;
 
   beforeAll(() => {

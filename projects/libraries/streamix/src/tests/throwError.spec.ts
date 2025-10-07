@@ -1,6 +1,6 @@
 import { from, throwError } from '@actioncrew/streamix';
 
-describe('throwError operator', () => {
+describe('throwError', () => {
   it('should emit an error with the given message when subscribed', (done) => {
     const stream = from([1, 2, 3]).pipe(throwError('Boom!'));
 

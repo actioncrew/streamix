@@ -1,6 +1,6 @@
 import { from, take } from '@actioncrew/streamix';
 
-describe('take operator', () => {
+describe('take', () => {
   it('should take specified number of emissions', (done) => {
     const testStream = from([1, 2, 3, 4, 5]);
     const count = 3;

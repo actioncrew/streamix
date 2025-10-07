@@ -10,7 +10,7 @@ function collect<T>(stream: AsyncGenerator<T>): Promise<T[]> {
   })();
 }
 
-describe('loop operator', () => {
+describe('loop', () => {
   it('should emit a sequence of values while the condition is true', async () => {
     const result = await collect(eachValueFrom(loop(0, x => x < 5, x => x + 1)));
     expect(result).toEqual([0, 1, 2, 3, 4]);

@@ -1,6 +1,6 @@
 import { concatMap, createStream, from, of, Stream } from '@actioncrew/streamix';
 
-describe('ConcatMapOperator', () => {
+describe('concatMap', () => {
 
   let project: (value: any) => Stream;
 

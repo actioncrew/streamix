@@ -1,6 +1,6 @@
 import { first, from } from "@actioncrew/streamix";
 
-describe('first Operator', () => {
+describe('first', () => {
   it('should emit the first value even when there is a delay', (done) => {
     const testStream = from([1, 2, 3, 4]);
     const firstStream = testStream.pipe(first());

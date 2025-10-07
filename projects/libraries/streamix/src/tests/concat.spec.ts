@@ -1,7 +1,7 @@
 import { concat, from } from '@actioncrew/streamix';
 
 
-describe('ConcatStream', () => {
+describe('concat', () => {
   it('should emit values from each source in sequence', (done) => {
     const source1 = from(['source1_value1', 'source1_value2']);
     const source2 = from(['source2_value1', 'source2_value2']);

@@ -20,7 +20,7 @@ export function mockStream(values: any[], completed = false, error?: Error): Str
   return subject;
 }
 
-describe('DeferStream', () => {
+describe('defer', () => {
   it('should create a new stream each time it is subscribed to', (done) => {
     const emissions: any[] = [1, 2, 3];
     const factory = jasmine.createSpy('factory').and.callFake(() => mockStream(emissions, true));

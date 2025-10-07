@@ -1,6 +1,6 @@
 import { createBehaviorSubject, createBehaviorSubjectBuffer } from '@actioncrew/streamix';
 
-describe('BehaviorSubject', () => {
+describe('createBehaviorSubject', () => {
   it('should emit the current value to new subscribers immediately', (done) => {
     const initialValue = 'initial_value';
     const behaviorSubject = createBehaviorSubject(initialValue);
@@ -138,7 +138,6 @@ describe('BehaviorSubject', () => {
     subject.next(30);
   });
 });
-
 
 describe('createBehaviorSubjectBuffer', () => {
   it('should deliver the initial value immediately on first read after attachReader', async () => {
