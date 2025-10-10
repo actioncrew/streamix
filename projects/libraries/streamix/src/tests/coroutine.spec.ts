@@ -192,7 +192,7 @@ idescribe('coroutine', () => {
 
   it('should throw error from processTask directly', async () => {
     const mainTask = () => {
-      throw new Error('Task failed');
+      throw new Error('boom');
     };
     (globalThis as any).currentMainTask = mainTask;
 
@@ -202,14 +202,14 @@ idescribe('coroutine', () => {
       await co.processTask(1);
       fail('Expected processTask to throw error');
     } catch (err: any) {
-      expect(err.message).toBe('Task failed');
+      expect(err.message).toBe('boom');
     }
   });
 
   it('should handle worker errors gracefully in stream', async () => {
     const mainTask = (x: number) => {
       if (x === 2) {
-        throw new Error('Failed on value 2');
+        throw new Error('boom');
       }
       return x * 2;
     };
@@ -232,7 +232,7 @@ idescribe('coroutine', () => {
       }
     } catch (err: any) {
       errorCaught = true;
-      expect(err.message).toBe('Failed on value 2');
+      expect(err.message).toBe('boom');
     }
 
     expect(errorCaught).toBe(true);

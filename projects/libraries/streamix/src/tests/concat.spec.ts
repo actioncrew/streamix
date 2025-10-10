@@ -1,4 +1,4 @@
-import { concat, from } from '@actioncrew/streamix';
+import { concat, createStream, eachValueFrom, from } from '@actioncrew/streamix';
 
 
 describe('concat', () => {
@@ -41,9 +41,7 @@ describe('concat', () => {
       }
     });
   });
-});
 
-describe('concat function', () => {
   it('should create a ConcatStream with provided sources', () => {
     const source1 = from(['source1_value1', 'source1_value2']);
     const source2 = from(['source2_value1', 'source2_value2']);
@@ -51,5 +49,30 @@ describe('concat function', () => {
     const concatStream = concat(source1, source2);
 
     expect(concatStream).toBeInstanceOf(Object);
+  });
+
+  fit('should propagate errors from the source stream', async () => {
+    const errorMessage = 'Test error';
+    
+    const source1 = from([1, 2, 3]); // emits normally
+    const source2 = createStream("errorStream", async function* () {
+      throw new Error(errorMessage); // errors immediately
+    });
+    const source3 = from([4, 5, 6]); // should not run
+
+    const concatenated = concat(source1, source2, source3);
+
+    let caughtError: any = null;
+
+    try {
+      for await (const _ of eachValueFrom(concatenated)) {
+        // do nothing, just consume
+      }
+    } catch (err) {
+      caughtError = err;
+    }
+
+    expect(caughtError).toBeTruthy();
+    expect(caughtError.message).toBe(errorMessage);
   });
 });
