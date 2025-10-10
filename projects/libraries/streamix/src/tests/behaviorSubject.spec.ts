@@ -131,11 +131,16 @@ describe('createBehaviorSubject', () => {
     expect((caughtError as Error).message).toBe('boom!');
   });
 
-  it('should support peek() to get the latest value without subscribing', () => {
+  it('should support query() to get the latest value without subscribing', async () => {
     const subject = createBehaviorSubject<number>(10);
+    expect(await subject.query()).toBe(10);
 
     subject.next(20);
+    expect(await subject.query()).toBe(20);
+
     subject.next(30);
+    expect(await subject.query()).toBe(30);
+    subject.complete();
   });
 });
 

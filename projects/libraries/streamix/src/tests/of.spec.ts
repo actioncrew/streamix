@@ -1,18 +1,19 @@
 import { of } from '@actioncrew/streamix';
 
 describe('of', () => {
-  it('should emit the given value', async () => {
+  it('should emit the given value', (done) => {
     const value = 'test_value';
     const ofStream = of(value);
 
     const emittedValues: any[] = [];
-    const subscription = ofStream.subscribe({
-      next: (value: any) => emittedValues.push(value),
+    ofStream.subscribe({
+      next: (v) => emittedValues.push(v),
       complete: () => {
         expect(emittedValues).toEqual([value]);
-        subscription.unsubscribe();
-      }
-    })
+        done(); // tells Jasmine the async test is done
+      },
+      error: (err) => done.fail(err)
+    });
   });
 
   it('should complete after emitting the value', (done) => {

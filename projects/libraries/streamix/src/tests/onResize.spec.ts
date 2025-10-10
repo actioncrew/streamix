@@ -42,7 +42,7 @@ idescribe('onResize', () => {
     }, 100);
   });
 
-  it('should clean up ResizeObserver when element is removed', (done) => {
+  it('should clean up ResizeObserver when element is removed', () => {
     const divToTest = document.createElement('div');
     divToTest.style.width = '100px';
     divToTest.style.height = '100px';
@@ -50,15 +50,56 @@ idescribe('onResize', () => {
 
     const resizeStream = onResize(divToTest);
 
-    // Subscribe to the stream
+    // Spy on the cleanup mechanism
+    const disconnectSpy = spyOn(ResizeObserver.prototype, 'disconnect');
+
     const subscription = resizeStream.subscribe({
-      next: () => {},
-      complete: () => { subscription.unsubscribe(); done(); } 
+      next: () => { }
     });
 
-    // Remove the element after a short delay
+    // Remove element and verify cleanup
+    document.body.removeChild(divToTest);
+    subscription.unsubscribe();
+
+    expect(disconnectSpy).toHaveBeenCalled();
+  });
+
+  it('should clean up when unsubscribed', () => {
+    const divToTest = document.createElement('div');
+    document.body.appendChild(divToTest);
+
+    const resizeStream = onResize(divToTest);
+    const disconnectSpy = spyOn(ResizeObserver.prototype, 'disconnect');
+
+    const subscription = resizeStream.subscribe({
+      next: () => { }
+    });
+
+    subscription.unsubscribe();
+
+    expect(disconnectSpy).toHaveBeenCalled();
+    document.body.removeChild(divToTest);
+  });
+
+  it('should handle element removal without errors', (done) => {
+    const divToTest = document.createElement('div');
+    document.body.appendChild(divToTest);
+
+    const resizeStream = onResize(divToTest);
+    let errorOccurred = false;
+
+    const subscription = resizeStream.subscribe({
+      next: () => { },
+      error: () => {
+        errorOccurred = true;
+      }
+    });
+
     setTimeout(() => {
       document.body.removeChild(divToTest);
+      subscription.unsubscribe();
+      expect(errorOccurred).toBe(false);
+      done();
     }, 50);
   });
 });

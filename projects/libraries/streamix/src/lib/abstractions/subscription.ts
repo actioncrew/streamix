@@ -41,12 +41,11 @@ export type Subscription = {
 export function createSubscription(
   onUnsubscribe?: () => CallbackReturnType
 ): Subscription {
-  let _unsubscribing = false;
   let _unsubscribed = false;
 
   const unsubscribe = async (): Promise<void> => {
-    if (!_unsubscribing) {
-      _unsubscribing = true;
+    if (!_unsubscribed) {
+      _unsubscribed = true;
       try {
         await onUnsubscribe?.();
         _unsubscribed = true;

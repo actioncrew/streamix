@@ -23,13 +23,15 @@ describe('filter', () => {
     const predicate = (value: number) => value > 3;
 
     const filteredStream = testStream.pipe(filter(predicate));
+    let emittedCount = 0;
 
     filteredStream.subscribe({
-      next: () => {
-        fail('Unexpected value emitted');
-        done();
+      next: (value) => {
+        emittedCount++;
+        fail(`Unexpected value emitted: ${value}`);
       },
       complete: () => {
+        expect(emittedCount).toBe(0); // ✅ Add expectation
         done();
       },
       error: done.fail,

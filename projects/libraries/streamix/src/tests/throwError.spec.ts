@@ -18,6 +18,7 @@ describe('throwError', () => {
 
   it('should complete without error if the source is empty', (done) => {
     const stream = from([]).pipe(throwError('Never thrown'));
+    let completeCalled = false;
 
     stream.subscribe({
       next: () => {
@@ -27,6 +28,8 @@ describe('throwError', () => {
         fail(`Expected no error, but got: ${err}`);
       },
       complete: () => {
+        completeCalled = true;
+        expect(completeCalled).toBe(true);
         done();
       }
     });

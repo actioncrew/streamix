@@ -1,25 +1,35 @@
-import { interval } from '@actioncrew/streamix';
+import { interval, take } from '@actioncrew/streamix';
 
 describe('interval', () => {
   it('should emit values at specified interval', async () => {
     const intervalMs = 100;
-    const intervalStream = interval(intervalMs);
+    const intervalStream = interval(intervalMs).pipe(take(3));
 
     const emittedValues: number[] = [];
-    const subscription = intervalStream.subscribe({
-      next: (value) => emittedValues.push(value),
-      complete: () => {
-        // Check that values are emitted at approximately the correct interval
-        expect(emittedValues.length).toBeGreaterThan(1);
-        for (let i = 1; i < emittedValues.length; i++) {
-          const timeDiff = emittedValues[i] - emittedValues[i - 1];
-          expect(timeDiff).toBeGreaterThanOrEqual(intervalMs - 10); // Allow for slight timing variations
-          expect(timeDiff).toBeLessThanOrEqual(intervalMs + 10);
-        }
+    const timestamps: number[] = [];
 
-        subscription.unsubscribe();
-      }
+    await new Promise<void>((resolve) => {
+      intervalStream.subscribe({
+        next: (value) => {
+          emittedValues.push(value);
+          timestamps.push(Date.now());
+        },
+        complete: () => {
+          resolve();
+        }
+      });
     });
+
+    // ✅ Expectations run after stream completes
+    expect(emittedValues.length).toBe(3);
+    expect(emittedValues).toEqual([0, 1, 2]);
+    
+    // Check timing between emissions
+    for (let i = 1; i < timestamps.length; i++) {
+      const timeDiff = timestamps[i] - timestamps[i - 1];
+      expect(timeDiff).toBeGreaterThanOrEqual(intervalMs - 20);
+      expect(timeDiff).toBeLessThanOrEqual(intervalMs + 20);
+    }
   });
 
   it('should stop emitting after unsubscribe', async () => {

@@ -79,31 +79,33 @@ describe("buffer", () => {
     const duration = 100;
     const buffered = source.pipe(buffer(duration));
     let error: any = null;
+    let started = false;
 
-    const consumerReady = new Promise<void>((resolve) => {
-      (async () => {
-        try {
-          for await (const _ of eachValueFrom(buffered)) {
-            resolve(); // Consumer is active
-            void _;
-          }
-        } catch (err) {
-          error = err;
+    const consumer = (async () => {
+      try {
+        for await (const _ of eachValueFrom(buffered)) {
+          started = true;
+          void _;
         }
-      })();
-    });
+      } catch (err) {
+        error = err;
+      }
+    })();
 
-    // Wait until consumer is actively listening
-    queueMicrotask(async () => {
-      await consumerReady;
+    // Wait for consumer to start
+    while (!started) {
+      subject.next(1); // Emit a value to start the stream
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
 
-      subject.error(new Error("Test error"));
+    // Trigger error
+    subject.error(new Error("Test error"));
 
-      // Wait for the error to propagate
-      await new Promise((resolve) => setTimeout(resolve, 20));
+    // Wait for consumer to catch error
+    await consumer;
 
-      expect(error?.message).toBe("Test error");
-    });
+    // Assert
+    expect(error?.message).toBe("Test error");
   });
 
   it("should emit empty arrays if no values are received in the interval", async () => {

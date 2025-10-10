@@ -66,12 +66,15 @@ describe('createReplaySubject', () => {
 
     const sub = subject.subscribe({
       next: v => received.push(v),
-      complete: () => done(),
+      complete: () => {
+        expect(received).toEqual([1, 2]);
+        done();
+      },
     });
 
     subject.next(1);
     subject.next(2);
-
+    
     sub.unsubscribe();
   });
 
