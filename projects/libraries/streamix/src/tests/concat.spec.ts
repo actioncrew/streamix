@@ -51,7 +51,7 @@ describe('concat', () => {
     expect(concatStream).toBeInstanceOf(Object);
   });
 
-  fit('should propagate errors from the source stream', async () => {
+  it('should propagate errors from the source stream', async () => {
     const errorMessage = 'Test error';
     
     const source1 = from([1, 2, 3]); // emits normally
