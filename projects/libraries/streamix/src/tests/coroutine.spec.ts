@@ -3,10 +3,18 @@ import { idescribe } from "./env.spec";
 
 idescribe('coroutine', () => {
   let originalWorker: any;
+  let originalLog: typeof console.log;
+  let originalError: typeof console.error;
+  let originalWarn: typeof console.warn;
 
   beforeAll(() => {
     // Store the original Worker
     originalWorker = (globalThis as any).Worker;
+
+    // Save originals
+    originalLog = console.log;
+    originalError = console.error;
+    originalWarn = console.warn;
 
     // Set up globalThis variable for main task
     (globalThis as any).currentMainTask = undefined;
@@ -191,6 +199,11 @@ idescribe('coroutine', () => {
   });
 
   it('should throw error from processTask directly', async () => {
+    // Silence them
+    console.log = () => {};
+    console.error = () => {};
+    console.warn = () => {};
+
     const mainTask = () => {
       throw new Error('boom');
     };
@@ -204,9 +217,19 @@ idescribe('coroutine', () => {
     } catch (err: any) {
       expect(err.message).toBe('boom');
     }
+
+    // Restore originals
+    console.log = originalLog;
+    console.error = originalError;
+    console.warn = originalWarn;
   });
 
   it('should handle worker errors gracefully in stream', async () => {
+     // Silence them
+    console.log = () => {};
+    console.error = () => {};
+    console.warn = () => {};
+    
     const mainTask = (x: number) => {
       if (x === 2) {
         throw new Error('boom');
@@ -237,6 +260,11 @@ idescribe('coroutine', () => {
 
     expect(errorCaught).toBe(true);
     expect(processed).toEqual([2]); // Only the first value processed successfully
+    
+    // Restore originals
+    console.log = originalLog;
+    console.error = originalError;
+    console.warn = originalWarn;
   });
 
   it('should handle data requests from workers', async () => {
