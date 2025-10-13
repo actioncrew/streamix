@@ -127,6 +127,65 @@ idescribe('onResize', () => {
     div.dispatchEvent(new Event('resize')); // Note: may not trigger RO, so observer may need to be mocked in real test
   });
 
+ it('should complete when element is removed from DOM', (done) => {
+  const div = document.createElement('div');
+  div.style.width = '100px';
+  div.style.height = '100px';
+  document.body.appendChild(div);
+
+  const resizeStream = onResize(div);
+  let completeCalled = false;
+
+  const subscription = resizeStream.subscribe({
+    next: () => {}, 
+    complete: () => {
+      completeCalled = true;
+      subscription.unsubscribe();
+      
+      // Verify that complete was called
+      expect(completeCalled).toBe(true);
+      
+      // Verify element is no longer in DOM
+      expect(document.body.contains(div)).toBe(false);
+      
+      done();
+    }
+  });
+
+  // Remove the element after a short delay
+  setTimeout(() => {
+    document.body.removeChild(div);
+  }, 50);
+});
+
+// Alternative: If you want to test that complete is called without extra variable
+it('should complete when element is removed from DOM', (done) => {
+  const div = document.createElement('div');
+  div.style.width = '100px';
+  div.style.height = '100px';
+  document.body.appendChild(div);
+
+  const resizeStream = onResize(div);
+
+  const subscription = resizeStream.subscribe({
+    next: () => {}, 
+    complete: () => {
+      subscription.unsubscribe();
+      
+      // If we reach here, complete was called successfully
+      expect(true).toBe(true); // Assertion to confirm complete was invoked
+      
+      done();
+    }
+  });
+
+  // Remove the element after a short delay
+  setTimeout(() => {
+    document.body.removeChild(div);
+  }, 50);
+});
+
+  // More robust version with timeout protection
   it('should complete when element is removed from DOM', (done) => {
     const div = document.createElement('div');
     div.style.width = '100px';
@@ -134,11 +193,19 @@ idescribe('onResize', () => {
     document.body.appendChild(div);
 
     const resizeStream = onResize(div);
+    
+    // Fail test if complete doesn't happen within reasonable time
+    const timeout = setTimeout(() => {
+      subscription.unsubscribe();
+      done.fail('Observable did not complete within expected time');
+    }, 200);
 
     const subscription = resizeStream.subscribe({
       next: () => {}, 
       complete: () => {
+        clearTimeout(timeout);
         subscription.unsubscribe();
+        expect(document.body.contains(div)).toBe(false);
         done();
       }
     });
