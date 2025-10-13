@@ -2,6 +2,17 @@ import { compute, coroutine, eachValueFrom } from "@actioncrew/streamix";
 import { idescribe } from "./env.spec";
 
 idescribe("compute", () => {
+  let originalLog: typeof console.log;
+  let originalError: typeof console.error;
+  let originalWarn: typeof console.warn;
+
+  beforeAll(() => {
+    // Save originals
+    originalLog = console.log;
+    originalError = console.error;
+    originalWarn = console.warn;
+  });
+
   it("should emit a single computed result", async () => {
     const mainTask = (x: number) => x * 2;
     const co = coroutine(mainTask);
@@ -34,8 +45,14 @@ idescribe("compute", () => {
   });
 
   it("should propagate errors from the coroutine task", async () => {
+    
+    // Silence them
+    console.log = () => {};
+    console.error = () => {};
+    console.warn = () => {};
+
     const mainTask = (_x: number) => {
-      throw new Error("Computation failed");
+      throw new Error("boom");
     };
     const co = coroutine(mainTask);
 
@@ -47,7 +64,12 @@ idescribe("compute", () => {
       }
       fail("Expected error to be thrown");
     } catch (err: any) {
-      expect(err.message).toBe("Computation failed");
+      expect(err.message).toBe("boom");
+    } finally {
+      // Restore originals
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
     }
   });
 
