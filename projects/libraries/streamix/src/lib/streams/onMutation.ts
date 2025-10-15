@@ -1,4 +1,4 @@
-import { createSubscription, Receiver, Stream } from '../abstractions';
+import { Receiver, Stream } from '../abstractions';
 import { createSubject } from '../subjects';
 
 /**
@@ -31,7 +31,6 @@ export function onMutation(
     // Watch for DOM removal
     const removalObserver = new MutationObserver(() => {
       if (!document.body.contains(element)) {
-        sub.unsubscribe();
         subject.complete?.();
       }
     });
@@ -43,8 +42,12 @@ export function onMutation(
       subscription.unsubscribe();
     };
 
-    const sub = createSubscription(cleanup);
-    return sub;
+    const originalOnUnsubscribe = subscription.onUnsubscribe;
+    subscription.onUnsubscribe = () => {
+      originalOnUnsubscribe?.call(subscription);
+      cleanup();
+    };
+    return subscription;
   };
 
   return subject;

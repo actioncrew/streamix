@@ -1,4 +1,4 @@
-import { createSubscription, Receiver, Stream } from '../abstractions';
+import { Receiver, Stream } from '../abstractions';
 import { createSubject } from '../subjects';
 
 /**
@@ -40,15 +40,19 @@ export function onIntersection(
 
     const mutationObserver = new MutationObserver(() => {
       if (!document.body.contains(element)) {
-        sub.unsubscribe();
+        subscription.unsubscribe();
         subject.complete?.();
       }
     });
 
     mutationObserver.observe(document.body, { childList: true, subtree: true });
 
-    const sub = createSubscription(cleanup);
-    return sub;
+    const originalOnUnsubscribe = subscription.onUnsubscribe;
+    subscription.onUnsubscribe = () => {
+      originalOnUnsubscribe?.call(subscription);
+      cleanup();
+    };
+    return subscription;
   };
 
   return subject;

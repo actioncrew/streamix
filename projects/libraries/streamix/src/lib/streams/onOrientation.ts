@@ -1,4 +1,4 @@
-import { createSubscription, Receiver, Stream } from '../abstractions';
+import { Receiver, Stream } from '../abstractions';
 import { createSubject } from '../subjects';
 
 /**
@@ -66,7 +66,12 @@ export function onOrientation(): Stream<"portrait" | "landscape"> {
       subscription.unsubscribe();
     };
 
-    return createSubscription(cleanup);
+    const originalOnUnsubscribe = subscription.onUnsubscribe;
+    subscription.onUnsubscribe = () => {
+      originalOnUnsubscribe?.call(subscription);
+      cleanup();
+    };
+    return subscription;
   };
 
   return subject;

@@ -2,7 +2,6 @@ import {
   CallbackReturnType,
   createOperator,
   createReceiver,
-  createSubscription,
   Operator,
   Receiver,
   Stream,
@@ -95,7 +94,7 @@ export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(..
       const receiver = createReceiver(callbackOrReceiver);
       const subscription = originalSubscribe.call(output, receiver);
 
-      return createSubscription(() => {
+      subscription.onUnsubscribe = () => {
         abortController.abort();
         subscription.unsubscribe();
         subscriptions.forEach(sub => sub.unsubscribe());
@@ -103,7 +102,9 @@ export function withLatestFrom<T = any, R extends readonly unknown[] = any[]>(..
         if (typeof iterator.return === "function") {
           iterator.return().catch(() => {});
         }
-      });
+      };
+
+      return subscription;
     };
 
     const iterable = eachValueFrom<[T, ...R]>(output);

@@ -1,4 +1,4 @@
-import { createSubscription, Receiver, Stream } from '../abstractions';
+import { Receiver, Stream } from '../abstractions';
 import { createSubject } from '../subjects';
 
 /**
@@ -36,13 +36,17 @@ export function onAnimationFrame(): Stream<number> {
 
     rafId = requestAnimationFrame(tick);
 
-    return createSubscription(() => {
+    const originalOnUnsubscribe = subscription.onUnsubscribe;
+    subscription.onUnsubscribe = () => {
+      originalOnUnsubscribe?.call(subscription);
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
       subscription.unsubscribe();
-    });
+    };
+
+    return subscription;
   };
 
   subject.name = 'onAnimationFrame';

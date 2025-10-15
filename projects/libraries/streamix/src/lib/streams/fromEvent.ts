@@ -1,4 +1,4 @@
-import { createSubscription, Receiver, Stream } from '../abstractions';
+import { Receiver, Stream } from '../abstractions';
 import { createSubject } from '../subjects';
 
 /**
@@ -28,10 +28,13 @@ export function fromEvent(target: EventTarget, event: string): Stream<Event> {
 
     target.addEventListener(event, listener);
 
-    return createSubscription(() => {
+    const originalOnUnsubscribe = subscription.onUnsubscribe;
+    subscription.onUnsubscribe = () => {
+      originalOnUnsubscribe?.call(subscription);
       target.removeEventListener(event, listener); // Cleanup listener on unsubscribe
-      subscription.unsubscribe(); // Unsubscribe when done
-    });
+    };
+
+    return subscription;
   };
 
   subject.name = 'fromEvent';
